@@ -1,0 +1,2 @@
+# Bazel output locations (logs, waveforms, reports, netlists)
+/bazel-*

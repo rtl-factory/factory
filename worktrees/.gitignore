@@ -1,0 +1,3 @@
+# Separate checkouts for development - contents are never committed.
+*
+!.gitignore
