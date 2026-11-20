@@ -22,7 +22,7 @@ Which labels issues and pull requests carry, and when agents set, change and che
 ## Rules
 
 - Label every issue when you open it: one `type:`, at least one `area:`, `block:` labels for the blocks it touches, one `priority:` and `status:triage`. Why: an unlabelled issue is invisible on every dashboard.
-- Move `status:` as the work moves: `ready` once the issue is clear, `in-progress` at dispatch, `in-review` when the pull request opens, `blocked` while waiting. The `status-clear` workflow removes it when the issue closes; never set one on a closed issue. Why: dashboards and the first mate read status from labels, and a closed issue left `in-progress` reads as live work.
+- Move `status:` as the work moves: `ready` once the issue is clear, `in-progress` at dispatch, `in-review` when the pull request opens, `blocked` while waiting. The `status-clear` workflow removes it when the issue closes and sets `status:triage` when it reopens; never set one on a closed issue. Why: dashboards and the first mate read status from labels, and a closed issue left `in-progress` reads as live work.
 - The first mate must check an issue's labels before dispatching on it, and fix them or escalate to the captain rather than dispatch blind. Why: labels tell the first mate what kind of work it is handing out.
 - Give a pull request the same `type:`, `area:` and `block:` labels as its issue. Why: dashboards count pull requests too.
 - Only a captain may add or remove `authority:needs-captain`. Why: it is the captain's control over merge authority; what it does is in [flow.md](flow.md) Merging.

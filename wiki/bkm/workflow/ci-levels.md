@@ -20,7 +20,7 @@ These workflows run outside the levels; they are workflow rules, not regression 
 
 - `issue-link` runs on every pull request.
 - `label-sync` creates and updates labels from `.github/labels.json` on every merge to `main` that changes it ([labels.md](labels.md)).
-- `status-clear` removes `status:` labels from an issue when it closes ([labels.md](labels.md)).
+- `status-clear` removes `status:` labels from an issue when it closes, and sets `status:triage` when it reopens ([labels.md](labels.md)).
 - `pages` builds the wiki site (`mkdocs build --strict`) on every pull request that touches the wiki, and builds and deploys it on every merge to `main` that does ([wiki-site.md](wiki-site.md)).
 
 ## Rules
