@@ -3,7 +3,7 @@
 Original SM83 code and original monochrome tile patterns. No external game,
 font, code or asset source is used. Build with:
 
-`python3 src/nand2mario/tools/sw_games.py build stackdrop --output workdir/<dir>`
+`python3 src/nand2mario/scripts/sw_games.py build stackdrop --output workdir/<dir>`
 
 The [game contract](https://github.com/amichai-bd/nand2mario/blob/510be34b49f5bc666ad828260ed0e193546736dd/wiki/src/sw/stackdrop/SPEC.md) owns the rules.
 `rules.asm` operates on ordinary WRAM, `render.asm` prepares a tile buffer and

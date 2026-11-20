@@ -98,7 +98,7 @@ python3 tools/sim/sim.py test --project nand2mario --level L0
 python3 tools/sim/sim.py test n2m_system
 ```
 
-`src/nand2mario/tools/game_qualification.py run <game>` runs one pinned game
+`src/nand2mario/scripts/game_qualification.py run <game>` runs one pinned game
 scenario ([#395](https://github.com/amichai-bd/nand2anything/issues/395)).
 Compatibility: ROM-only and MBC1 cartridges; Super Mario Land (MBC1) runs in
 simulation but needs the owner's [private ROM](sw/roms/private/README.md);

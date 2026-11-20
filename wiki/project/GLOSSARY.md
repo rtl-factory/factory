@@ -83,8 +83,12 @@ _Avoid_: feature branch, integration branch
 A self-contained design the factory builds, with everything it needs under `src/<project>/` (for example nand2mario); shared building blocks live in the `common` project.
 _Avoid_: repo, product (for this meaning)
 
+**Discipline**:
+The kind of work a project's code is, and the second level of its path `src/<project>/<discipline>/`: `arch`, `rtl`, `dv`, `fv`, `fpga` or `scripts`.
+_Avoid_: type, work type, layer
+
 **Block**:
-One hardware design unit of a project (an IP or unit), with its code under `src/<project>/<type>/<block>/` and its spec under `wiki/src/<project>/<type>/<block>/`.
+One hardware design unit of a project (an IP or unit), with its code under `src/<project>/<discipline>/<block>/` and its spec under `wiki/src/<project>/<discipline>/<block>/`.
 _Avoid_: module (for this meaning), component
 
 **Vertical slice**:
@@ -92,7 +96,7 @@ An issue that delivers one narrow but complete behaviour, ending in a state a re
 _Avoid_: horizontal slice, layer, phase
 
 **PRD**:
-Product requirements document: what a tool we build must do, for whom, and how we will know it does, kept as `prd.md` next to the tool's `spec.md` in the tool's wiki folder, which mirrors its code folder (`wiki/bkm/workflow/repo-layout.md`).
+Product requirements document: what a tool or script we build must do, for whom, and how we will know it does, kept as `prd.md` next to its `spec.md` in the wiki folder which mirrors its code folder (`wiki/bkm/workflow/repo-layout.md`).
 _Avoid_: requirements spec, MRD
 
 **Interface**:
@@ -112,7 +116,7 @@ Imagine removing a block and wiring its contents into its neighbours: if complex
 _Avoid_: inline test
 
 **Spec**:
-The specification of one block or tool, in the wiki folder that mirrors its code (`wiki/src/<project>/<type>/<block>/` for a block). It changes in the same pull request as the code.
+The specification of one block, script or tool, in the wiki folder that mirrors its code (`wiki/src/<project>/<discipline>/<block>/` for a block). It changes in the same pull request as the code.
 _Avoid_: design doc, documentation (for this meaning)
 
 **Pull request**:
@@ -170,13 +174,13 @@ The commit at which a formal property was last confirmed to describe the RTL it 
 
 ## Hosts and tools
 
-**Repo tool**:
-A tool any project can use, such as the simulation runner or the toolchain; its code is in `tools/<tool>/` and its PRD and spec in `wiki/tools/<tool>/`.
-_Avoid_: global tool, factory script
+**Tool**:
+Code any project can use unchanged, such as the simulation runner or the toolchain; its code is in `tools/<tool>/` and its PRD and spec in `wiki/tools/<tool>/`. Only these are tools.
+_Avoid_: repo tool (say tool), global tool
 
-**Project tool**:
-A tool bound to one project, or to a block of the `common` project, that changes when that project or block changes; its code is in `src/<project>/tools/<tool>/` and its PRD and spec in `wiki/src/<project>/tools/<tool>/`.
-_Avoid_: project script, helper
+**Script**:
+Code bound to one project, or to a block of the `common` project, that changes when that project or block changes; its code is in the project's `scripts` discipline, `src/<project>/scripts/<script>/`, and its PRD and spec in `wiki/src/<project>/scripts/<script>/`.
+_Avoid_: project tool, helper
 
 **Board host**:
 The Linux host a board is wired to; the only place that board is programmed and observed.

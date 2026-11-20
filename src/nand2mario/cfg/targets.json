@@ -165,7 +165,7 @@
       "max_cycles": 1000000,
       "level": "L0",
       "wrapper": [
-        "src.nand2mario.tools.cpu_regression",
+        "src.nand2mario.scripts.cpu_regression",
         "--output",
         "{output}",
         "--workdir",
@@ -263,7 +263,7 @@
       },
       "level": "L1",
       "wrapper": [
-        "src.nand2mario.tools.system_regression",
+        "src.nand2mario.scripts.system_regression",
         "--output",
         "{output}",
         "--workdir",
@@ -505,7 +505,7 @@
       },
       "level": "L1",
       "wrapper": [
-        "src.nand2mario.tools.system_regression",
+        "src.nand2mario.scripts.system_regression",
         "--program",
         "system_background",
         "--output",
@@ -586,7 +586,7 @@
       },
       "level": "L1",
       "wrapper": [
-        "src.nand2mario.tools.system_regression",
+        "src.nand2mario.scripts.system_regression",
         "--program",
         "system_objects",
         "--output",
@@ -779,7 +779,7 @@
       },
       "level": "L1",
       "wrapper": [
-        "src.nand2mario.tools.system_regression",
+        "src.nand2mario.scripts.system_regression",
         "--program",
         "system_mbc1",
         "--output",
@@ -902,7 +902,7 @@
       "max_cycles": 2600000,
       "level": "L1",
       "wrapper": [
-        "src.nand2mario.tools.system_regression",
+        "src.nand2mario.scripts.system_regression",
         "--program",
         "system_vga",
         "--output",
@@ -984,7 +984,7 @@
       },
       "level": "L1",
       "wrapper": [
-        "src.nand2mario.tools.system_regression",
+        "src.nand2mario.scripts.system_regression",
         "--program",
         "system_snapshot",
         "--output",
@@ -1185,7 +1185,7 @@
       },
       "level": "L2",
       "wrapper": [
-        "src.nand2mario.tools.system_regression",
+        "src.nand2mario.scripts.system_regression",
         "--program",
         "system_sdram",
         "--output",
@@ -1267,7 +1267,7 @@
       },
       "level": "L1",
       "wrapper": [
-        "src.nand2mario.tools.system_regression",
+        "src.nand2mario.scripts.system_regression",
         "--program",
         "system_preload",
         "--output",
@@ -1350,7 +1350,7 @@
       },
       "level": "L1",
       "wrapper": [
-        "src.nand2mario.tools.system_regression",
+        "src.nand2mario.scripts.system_regression",
         "--program",
         "system_sdram_preload",
         "--output",
@@ -1443,7 +1443,7 @@
       },
       "level": "L1",
       "wrapper": [
-        "src.nand2mario.tools.system_regression",
+        "src.nand2mario.scripts.system_regression",
         "--program",
         "de10_lite",
         "--output",
@@ -1536,7 +1536,7 @@
       },
       "level": "L1",
       "wrapper": [
-        "src.nand2mario.tools.system_regression",
+        "src.nand2mario.scripts.system_regression",
         "--program",
         "de2_115",
         "--output",
@@ -1547,7 +1547,7 @@
     },
     "n2m_system_sw_games": {
       "kind": "cocotb",
-      "description": "Original nand2mario games built from committed source (src/nand2mario/cfg/sw-games.json): a finite Start/Right scenario with frame evidence on the unmodified system, run through src/nand2mario/tools/sw_games.py run",
+      "description": "Original nand2mario games built from committed source (src/nand2mario/cfg/sw-games.json): a finite Start/Right scenario with frame evidence on the unmodified system, run through src/nand2mario/scripts/sw_games.py run",
       "top": "n2m_system",
       "sources": [
         "src/nand2mario/rtl/core/n2m_interfaces_pkg.sv",
@@ -1617,7 +1617,7 @@
       },
       "level": "L2",
       "wrapper": [
-        "src.nand2mario.tools.sw_games",
+        "src.nand2mario.scripts.sw_games",
         "run",
         "springtrail",
         "stackdrop",
@@ -1627,7 +1627,7 @@
     },
     "n2m_system_mooneye": {
       "kind": "cocotb",
-      "description": "One pinned Mooneye acceptance ROM (src/nand2mario/cfg/mooneye.json) on the unmodified system; the Mooneye LD B,B breakpoint registers from the retirement record give the verdict, run through src/nand2mario/tools/mooneye.py",
+      "description": "One pinned Mooneye acceptance ROM (src/nand2mario/cfg/mooneye.json) on the unmodified system; the Mooneye LD B,B breakpoint registers from the retirement record give the verdict, run through src/nand2mario/scripts/mooneye.py",
       "top": "n2m_system",
       "sources": [
         "src/nand2mario/rtl/core/n2m_interfaces_pkg.sv",
@@ -1697,7 +1697,7 @@
       },
       "level": "L1",
       "wrapper": [
-        "src.nand2mario.tools.mooneye",
+        "src.nand2mario.scripts.mooneye",
         "smoke",
         "--output",
         "{output}"
@@ -1705,7 +1705,7 @@
     },
     "n2m_system_mooneye_long": {
       "kind": "cocotb",
-      "description": "One pinned Mooneye acceptance ROM (src/nand2mario/cfg/mooneye.json) on the unmodified system; the Mooneye LD B,B breakpoint registers from the retirement record give the verdict, run through src/nand2mario/tools/mooneye.py Long bound (40 M cycles) for ROMs that legitimately run past the default, such as timer/div_write.",
+      "description": "One pinned Mooneye acceptance ROM (src/nand2mario/cfg/mooneye.json) on the unmodified system; the Mooneye LD B,B breakpoint registers from the retirement record give the verdict, run through src/nand2mario/scripts/mooneye.py Long bound (40 M cycles) for ROMs that legitimately run past the default, such as timer/div_write.",
       "top": "n2m_system",
       "sources": [
         "src/nand2mario/rtl/core/n2m_interfaces_pkg.sv",
@@ -1777,7 +1777,7 @@
     },
     "n2m_system_ppu_trace": {
       "kind": "cocotb",
-      "description": "PPU timing trace aid (src/nand2mario/dv/conformance/test_ppu_trace.py): loads one ROM like the Mooneye harness and writes STAT mode, STAT interrupt and CPU retirement events with cycle, dot and LY to N2M_TRACE_OUT; checked by src/nand2mario/tools/mooneye.py trace-smoke",
+      "description": "PPU timing trace aid (src/nand2mario/dv/conformance/test_ppu_trace.py): loads one ROM like the Mooneye harness and writes STAT mode, STAT interrupt and CPU retirement events with cycle, dot and LY to N2M_TRACE_OUT; checked by src/nand2mario/scripts/mooneye.py trace-smoke",
       "top": "n2m_system",
       "sources": [
         "src/nand2mario/rtl/core/n2m_interfaces_pkg.sv",
@@ -1848,7 +1848,7 @@
       "public_depth": 3,
       "level": "L1",
       "wrapper": [
-        "src.nand2mario.tools.mooneye",
+        "src.nand2mario.scripts.mooneye",
         "trace-smoke",
         "--output",
         "{output}"
@@ -1928,7 +1928,7 @@
       "public_depth": 3,
       "level": "manual",
       "wrapper": [
-        "src.nand2mario.tools.game_qualification",
+        "src.nand2mario.scripts.game_qualification",
         "run",
         "all",
         "--output",
@@ -2030,7 +2030,7 @@
       },
       "level": "L2",
       "wrapper": [
-        "src.nand2mario.tools.game_library",
+        "src.nand2mario.scripts.game_library",
         "run",
         "--output",
         "{output}"
@@ -2109,7 +2109,7 @@
       },
       "level": "L2",
       "wrapper": [
-        "src.nand2mario.tools.game_library",
+        "src.nand2mario.scripts.game_library",
         "run",
         "--output",
         "{output}",
@@ -2207,7 +2207,7 @@
       },
       "level": "L1",
       "wrapper": [
-        "src.nand2mario.tools.system_regression",
+        "src.nand2mario.scripts.system_regression",
         "--program",
         "system_asic_ram",
         "--output",
@@ -2289,7 +2289,7 @@
       },
       "level": "L1",
       "wrapper": [
-        "src.nand2mario.tools.system_regression",
+        "src.nand2mario.scripts.system_regression",
         "--program",
         "system_background_asic_ram",
         "--output",
@@ -2371,7 +2371,7 @@
       },
       "level": "L1",
       "wrapper": [
-        "src.nand2mario.tools.system_regression",
+        "src.nand2mario.scripts.system_regression",
         "--program",
         "system_objects_asic_ram",
         "--output",

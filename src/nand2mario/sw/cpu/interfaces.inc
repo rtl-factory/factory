@@ -1,4 +1,4 @@
-; Generated from src/nand2mario/cfg/sw-interfaces.json by src/nand2mario/tools/sw/interfaces_inc.py; DO NOT EDIT.
+; Generated from src/nand2mario/cfg/sw-interfaces.json by src/nand2mario/scripts/sw/interfaces_inc.py; DO NOT EDIT.
 ; Source SHA-256: 5e13ee4002b8f0bd0dd90ca1d02b60aec56b16cc55b65a4eda203e9b82d2fe9e
 GB_ADDRESS_BITS EQU 16
 GB_DATA_BITS EQU 8
