@@ -10,7 +10,7 @@ Captains need to see, at a glance and without asking an agent, what the factory 
 
 1. Show open issues and pull requests grouped by status, area, block and priority, taken from their labels.
 2. Show each open epic with its sub-issues and how many are closed.
-3. Show everything waiting on a captain, from labels: open issues and pull requests that need captain (`authority:needs-captain`), and open issues marked blocked (`status:blocked`) with the reason from their latest comment.
+3. Show what is blocked or waiting on a captain, from labels: open issues and pull requests that need captain (`authority:needs-captain`), and open issues marked blocked (`status:blocked`) with the reason from their latest comment.
 
 **Regression results**
 
