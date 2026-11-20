@@ -14,7 +14,7 @@ Captains and agents need to read the factory's BKMs, glossary, decisions, block 
 
 ## Out of scope
 
-- Generated dashboards and metrics (the tracker); they need data from CI first.
+- Generated dashboards and metrics: the tracker tool produces those.
 - Access control beyond what GitHub Pages gives the repository.
 
 ## Acceptance

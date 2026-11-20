@@ -9,7 +9,6 @@ A hardware development factory: captains (humans) set direction and decide, a fi
 | [Specs](specs/README.md) | External reference specifications: standards, protocols, ISAs |
 | [Blocks](src/README.md) | Specs and docs for each hardware block, mirroring `src/` |
 | [Tools](tools/README.md) | The tools the factory builds, each with its requirements (PRD) and spec |
-| [Tracker](tracker/README.md) | Metrics and dashboards |
 
 Start with the [flow](bkm/workflow/flow.md), which covers how a change goes from an issue to `main`, and the [glossary](project/GLOSSARY.md).
 
