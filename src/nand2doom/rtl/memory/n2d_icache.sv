@@ -141,7 +141,7 @@ module n2d_icache (
                         valid_update, rst_i, '0)
         // Tag and line share one write enable and the read address equals the
         // write address, so one packed {tag, line} word per set keeps the
-        // single-port shape (common memory contract, wiki/src/common/memory/HAS.md).
+        // single-port shape (common memory contract, https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/memory/HAS.md).
         logic refill_write;
         assign refill_write = !rst_i && refill_ok && regs_q.victim_way == 1'(way);
         logic [TAG_WIDTH+127:0] way_write;

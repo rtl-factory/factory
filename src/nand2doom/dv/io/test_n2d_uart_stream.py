@@ -1,4 +1,4 @@
-"""Serial-pin DV for the nand2doom streaming load session (io/DV.md)."""
+"""Serial-pin DV for the nand2doom streaming load session (wiki/src/nand2doom/dv/io/dv-plan.md)."""
 
 from __future__ import annotations
 

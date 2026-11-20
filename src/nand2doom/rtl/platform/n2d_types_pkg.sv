@@ -72,7 +72,7 @@ package n2d_types_pkg;
 
     // n2d_ps2_keyboard physical receiver: synchronized-clock edge history,
     // frame assembly, prefix tracking and sticky diagnostics (asynchronous
-    // reset per io/HAS). The frame timeout counter follows
+    // reset per wiki/src/nand2doom/rtl/io/mas.md). The frame timeout counter follows
     // FRAME_TIMEOUT_CYCLES and is a register of its own.
     typedef struct packed {
         logic       ps2_clk_previous;

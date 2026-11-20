@@ -4,7 +4,7 @@ module n2d_uart_debug
     import n2d_pkg::*;
 #(
     // The bit period follows the system clock: CLOCK_HZ / BAUD clocks, with
-    // any remainder spread by the PHY's fractional accumulator (io/HAS.md
+    // any remainder spread by the PHY's fractional accumulator (wiki/src/nand2doom/rtl/io/mas.md
     // "Link rate"). CLKS_PER_BIT alone selects an integer divisor.
     parameter int unsigned CLOCK_HZ = N2D_SYSTEM_CLOCK_HZ,
     parameter int unsigned BAUD = N2D_UART_BAUD,
@@ -24,7 +24,7 @@ module n2d_uart_debug
     input  logic                  uart_rx_i,
     output logic                  uart_tx_o,
 
-    // Port groups (n2d_pkg), one direction each; see io/HAS.md.
+    // Port groups (n2d_pkg), one direction each; see wiki/src/nand2doom/rtl/io/mas.md.
     output n2d_debug_control_t    debug_control_o,
     input  n2d_debug_status_t     debug_status_i,
     output n2d_input_event_t      input_event_o,
@@ -33,7 +33,7 @@ module n2d_uart_debug
     input  n2d_debug_txn_status_t txn_status_i,
     output n2d_debug_mem_req_t    mem_req_o,
     input  n2d_debug_mem_rsp_t    mem_rsp_i,
-    // UART memory endpoint screen reads (io/HAS.md "UART memory endpoint").
+    // UART memory endpoint screen reads (wiki/src/nand2doom/rtl/io/mas.md "UART memory endpoint").
     output n2d_screen_req_t       screen_req_o,
     input  n2d_screen_rsp_t       screen_rsp_i
 );

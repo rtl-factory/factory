@@ -1,6 +1,6 @@
 `include "src/common/rtl/pkg/macros.vh"
 
-// Streaming image-load session on the shared debug UART (io/HAS.md
+// Streaming image-load session on the shared debug UART (wiki/src/nand2doom/rtl/io/mas.md
 // "Streaming load session"). The router sits in front of the bulk framer and
 // legacy engine. At an idle legacy boundary the stream start byte opens a
 // session; until the session closes every received byte belongs to this

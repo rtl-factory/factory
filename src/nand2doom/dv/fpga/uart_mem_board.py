@@ -1,4 +1,4 @@
-"""UART memory endpoint through a real nand2doom board top (io/DV.md).
+"""UART memory endpoint through a real nand2doom board top (wiki/src/nand2doom/dv/io/dv-plan.md).
 
 Load transaction (identify, hold, write and verify, entry, release) of a
 small program over the board UART, then live reads of the front framebuffer
@@ -224,7 +224,7 @@ async def endpoint_load_and_readback(link, half_width=False):
     # The bank swap and palette commit land at the next vertical blank; poll
     # the live front view until the program's words are displayed.
     # A half-width bank stores only even-x bytes and reads each one for both
-    # source pixels it represents (video/HAS.md).
+    # source pixels it represents (wiki/src/nand2doom/rtl/video/mas.md).
     expected = b"".join(w.to_bytes(4, "little") for w in PATTERN)
     if half_width:
         expected = bytes(expected[i & ~1] for i in range(len(expected)))

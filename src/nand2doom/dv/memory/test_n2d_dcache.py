@@ -57,7 +57,7 @@ async def _check_transactions(responder: LineResponder, oracle: CacheModel, labe
 
 
 SET_COUNT = 512
-# Documented healthy-path Halt walk slot per way/set entry (memory/HAS.md).
+# Documented healthy-path Halt walk slot per way/set entry (wiki/src/nand2doom/rtl/memory/mas.md).
 WALK_SLOT_CLOCKS = 24
 
 

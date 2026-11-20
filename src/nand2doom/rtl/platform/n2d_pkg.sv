@@ -77,7 +77,7 @@ package n2d_pkg;
         logic [31:0] rdata;
     } n2d_screen_rsp_t;
 
-    // UART memory endpoint map (io/HAS.md "UART memory endpoint"): SDRAM is
+    // UART memory endpoint map (wiki/src/nand2doom/rtl/io/mas.md "UART memory endpoint"): SDRAM is
     // loaded and read while held; the front framebuffer view and the scanned
     // palette view are read while the CPU runs. Windows are {attributes,
     // size, base}, window 0 lowest. Attributes: 1 write, 2 held read, 4 live
@@ -96,7 +96,7 @@ package n2d_pkg;
     /* verilator lint_on UNUSEDPARAM */
 
     // ---------------------------------------------------------------------
-    // Host debug protocol constants (io/HAS.md). Compositions that elaborate
+    // Host debug protocol constants (wiki/src/nand2doom/rtl/io/mas.md). Compositions that elaborate
     // n2d_uart_bulk without the debug engine (the bulk-router fixture) use
     // none of the engine-only framing/status values, so they are exempt from
     // the unused-parameter rule here; their values are still checked by the
@@ -207,7 +207,7 @@ package n2d_pkg;
     endfunction
 
     // ---------------------------------------------------------------------
-    // Streaming image-load session (io/HAS.md "Streaming load session").
+    // Streaming image-load session (wiki/src/nand2doom/rtl/io/mas.md "Streaming load session").
     // Compositions without n2d_uart_stream (the bulk-router fixture) use none
     // of these values, so they share the unused-parameter exemption above.
     // ---------------------------------------------------------------------
@@ -221,7 +221,7 @@ package n2d_pkg;
     localparam logic [31:0] N2D_STREAM_IDENTITY     = 32'h3153_324e;
     localparam logic [31:0] N2D_STREAM_MAX_PAYLOAD  = 32'd1024;
     localparam logic [31:0] N2D_SDRAM_BYTES         = 32'h0400_0000;
-    // Debug UART link rates (io/HAS.md "Link rate"). The bit period is
+    // Debug UART link rates (wiki/src/nand2doom/rtl/io/mas.md "Link rate"). The bit period is
     // N2D_SYSTEM_CLOCK_HZ / baud clocks. The default link is 1 Mbaud
     // (25 clocks); the load rate is the FTDI FT232R maximum, 3 Mbaud
     // (8 1/3 clocks through the PHY's fractional accumulator).
