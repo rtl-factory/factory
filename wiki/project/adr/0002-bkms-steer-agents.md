@@ -1,3 +1,3 @@
-# BKMs steer the agents; skills stay generic
+# BKMs steer the agents; skills only route
 
-Project-specific method lives in BKMs under `wiki/`, not in skills. Skills stay generic and rarely change; they point at the BKMs, which humans tune over time to change how agents behave. The alternative, encoding our method directly into skills, would fork every skill from upstream and hide the human-facing controls inside agent plumbing.
+All method lives in BKMs under `wiki/bkm/`. Skills are thin entry points that route an agent to the right BKM; they do not chain into other skills and rarely change. Humans change how agents work by tuning BKMs. We rejected the upstream style of many small skills invoking each other: it hides the method inside agent plumbing, and every local tweak would fork a skill.

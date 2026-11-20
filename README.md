@@ -27,9 +27,9 @@ factory/
 │
 ├── cfg/                Project settings and limits
 ├── tools/              Scripts and shared automation
-├── .claude/            Agent skills, agents, and settings
-├── .agents/            Skill discovery for Codex
-├── .gitlab/            CI jobs and issue/MR templates
+├── .claude/            Agent skills (source of truth), agents, and settings
+├── .agents/            Symlink to .claude/skills for Codex
+├── .github/            CI workflows and issue/PR templates
 └── worktrees/          Separate checkouts for development
 ```
 amichai was here
