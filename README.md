@@ -1,6 +1,6 @@
 # factory
 
-A hardware development factory: humans decide, agents execute. Every change starts with a GitHub issue. Agents start at `AGENTS.md`.
+A hardware development factory: humans decide, agents execute. Every change starts with a GitHub issue. Agents start at `AGENTS.md`, which Claude Code and Codex read natively; there is deliberately no `CLAUDE.md`.
 
 ## Inspirations
 

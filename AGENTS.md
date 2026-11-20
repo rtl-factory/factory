@@ -6,4 +6,5 @@ This repo is a hardware development factory: captains (humans) set direction and
 - Before any piece of work, use the `bkm-router` skill to find the BKMs to follow. For the steps of a change and who may merge, use the `flow` skill.
 - Use the terms in `wiki/project/GLOSSARY.md`.
 - Respect the decisions in `wiki/project/adr/`; if your work contradicts one, say so instead of overriding it.
+- Keep this file the only agent instructions file; never add a `CLAUDE.md`. Claude Code (v2.1.277 or later) and Codex read `AGENTS.md` natively, and Claude Code stops reading it once a `CLAUDE.md` exists.
 - Never change a BKM, skill, this file, the glossary, an ADR or `.github/` inside unrelated work; open an issue for it.
