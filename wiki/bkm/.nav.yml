@@ -2,7 +2,7 @@ nav:
   - README.md
   - Workflow: workflow
   - Design: design
-  - Architecture: arch
+  - RTL: rtl
   - Writing: writing
   - DV: dv
   - FV: fv

@@ -19,6 +19,8 @@ How a design is built with Quartus for the DE2-115 and DE10-Lite, gated, handed 
 - Report the build, timing, programming and what was observed on the board as separate evidence; a build host never claims board evidence. Why: each is a different fact with a different proof.
 - Never restart a fit that is progressing in order to move it to another host. Why: the restart costs more than waiting.
 
+- Describe each board top in its board spec, `wiki/src/<project>/fpga/<board>/board-spec.md` ([standard-docs.md](../design/standard-docs.md)), and refresh its budget section from the build evidence whenever the board top, its config or its constraints change. Why: the board's facts and its last known-good numbers are in one place a reviewer can read.
+
 ## Steps
 
 1. Check the host: the readiness check passes.
