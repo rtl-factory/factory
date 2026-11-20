@@ -59,4 +59,4 @@ Engineering principles, one per file. Follow each one whose trigger matches what
 
 ## Not yet written
 
-No BKMs yet for writing RTL or for synthesis. They will live in `wiki/bkm/rtl/` and `wiki/bkm/syn/`.
+No BKMs yet for planning, architecture, RTL or synthesis. They will live in `wiki/bkm/design/` and `wiki/bkm/{arch,rtl,syn}/`; open topic issues track them.

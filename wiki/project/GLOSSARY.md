@@ -127,6 +127,12 @@ _Avoid_: full stop, manual merge
 One of L0 to L4: a cumulative set of CI checks bound to one trigger, from L0 (fastest, on demand) to L4 (nightly). Running a level runs every level below it.
 _Avoid_: light CI, full CI, test tier, suite
 
+**Code owner**:
+A person or team listed in `.github/CODEOWNERS`; GitHub requests their review on every pull request.
+_Avoid_: maintainer
+
+## Verification
+
 **Verification plan**:
 The per-block document in `wiki/src/dv/<block>/` that maps each spec feature and acceptance criterion to its stimulus, checker, coverage points, tests and regression level.
 _Avoid_: test plan (for this meaning)
@@ -137,7 +143,3 @@ _Avoid_: property list
 
 **Sync commit**:
 The commit at which a formal property was last confirmed to describe the RTL it covers.
-
-**Code owner**:
-A person or team listed in `.github/CODEOWNERS`; GitHub requests their review on every pull request.
-_Avoid_: maintainer
