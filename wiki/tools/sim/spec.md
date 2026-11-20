@@ -13,6 +13,8 @@ Each project lists its targets in `src/<project>/cfg/targets.json`:
 | `top` | HDL top level |
 | `test_module`, `testcase` | cocotb test (Python module path from the repository root); cocotb targets only |
 | `defines`, `plusargs` | Native targets only: `-D` defines at build time; plusargs at run time |
+| `regression_action` | Native targets only: `test` (default) builds and runs; `compile` only builds, for a harness whose inputs a script prepares (nand2doom's performance harness) |
+| `trace_fst` | Native targets only: build with `--trace-fst` so the harness can write an FST window |
 | `default_seed` | Seed used unless `--seed` is given |
 | `clock_hz`, `max_cycles` | Passed to the test as `DV_CLOCK_HZ`, `DV_MAX_CYCLES` |
 | `timeout_seconds` | Time budget of the test run (compile gets a fixed extra allowance) |
@@ -32,7 +34,7 @@ python tools/sim/sim.py test --all
 
 `--level L` alone runs every non-manual target at level `L` or below; with `--project` it narrows that project. `--workdir DIR` (default `workdir/sim/`, ignored by git) sets the scratch directory; keep it under the repository's `workdir/`, because wrappers refuse outputs anywhere else. A target runs in a child process under its time budget and writes `DIR/cocotb/<target>/{build,test}/` (wrapped targets: `DIR/wrapped/<target>/`). Verilator flags: `--timing --assert --Wall`, compiled from the repository root so ``` `include ``` paths are root-relative.
 
-Seeds: a wrapped target gets its seed and `--waves` through the `SIM_SEED` and `SIM_WAVES` environment variables, which the wrapper's own `test --direct` call reads, so the printed seed is the one the test used. Native targets take no seed and write no waveforms; their result line shows `seed=-`. A target that runs past its budget is stopped with its whole process group.
+Seeds: a wrapped target gets its seed and `--waves` through the `SIM_SEED` and `SIM_WAVES` environment variables, which the wrapper's own `test --direct` call reads, so the printed seed is the one the test used. Native targets take no seed and ignore `--waves` (a `trace_fst` harness writes its own FST window when its script asks); their result line shows `seed=-`. A target that runs past its budget is stopped with its whole process group.
 
 ## Origin
 

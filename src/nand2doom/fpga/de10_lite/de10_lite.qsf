@@ -1,0 +1,17 @@
+# Sources, exact device, and pins are generated from src/nand2doom/cfg/n2d_quartus.json.
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 2
+set_global_assignment -name SEED 1
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
+set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
+set_global_assignment -name INTERNAL_FLASH_UPDATE_MODE "SINGLE IMAGE WITH ERAM"
+set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to RESET_N
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to UART_RXD
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to PS2_CLK
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to PS2_DAT
+# Single SDRAM load and resistor VGA DAC: explicit moderate drive. LEDs and
+# point-to-point serial need only 4 mA. These cover every output/bidirectional pin.
+set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to DRAM*
+set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to VGA_*
+set_instance_assignment -name CURRENT_STRENGTH_NEW "4MA" -to LEDR*
+set_instance_assignment -name CURRENT_STRENGTH_NEW "4MA" -to UART_TXD

@@ -6,3 +6,4 @@ Specs and docs for each project's blocks, mirroring the code: code lives under `
 |---|---|
 | [common](common/README.md) | Shared blocks and scripts every project can reuse: UART, VGA, memory, synchronizers, the JTAG keyboard |
 | [nand2mario](nand2mario/README.md) | A Game Boy-compatible system for the DE10-Lite and DE2-115 |
+| [nand2doom](nand2doom/README.md) | Doom on our own RV32IM CPU, caches, SDRAM and framebuffer, for the DE10-Lite and DE2-115 |
