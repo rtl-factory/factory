@@ -8,7 +8,7 @@ BKMs define how work is done here. Find the rows that match what you are doing, 
 | When you are | Follow |
 |---|---|
 | doing any work on an issue, from alignment to landing, or deciding who may merge | `wiki/bkm/workflow/flow.md` |
-| adding a tool, script, block or folder, moving one, or deciding where code or its documents go (tool or script, which discipline) | `wiki/bkm/workflow/repo-layout.md` |
+| adding a tool, script, block or folder, moving one, or deciding where code or its documents go (tool or script, script or software, which discipline) | `wiki/bkm/workflow/repo-layout.md` |
 | the first mate: dispatching, supervising, pausing, handing over or landing crewmates' work, or running competing candidates on one issue | `wiki/bkm/workflow/first-mate.md` |
 | working out what plays first mate and crewmate on a given agent platform, or adding a platform to that list | `wiki/bkm/workflow/first-mate-platforms.md` |
 | splitting a plan into issues or an epic, or triaging an issue | `wiki/bkm/workflow/issues.md` |
@@ -17,16 +17,17 @@ BKMs define how work is done here. Find the rows that match what you are doing, 
 | writing a pull request or a GitHub comment, getting it landable, taking over a stalled one, or landing it | `wiki/bkm/workflow/landing.md` |
 | reporting to a captain, catching one up, resuming after a restart, or keeping a decision trail | `wiki/bkm/workflow/reporting.md` |
 | debugging a failing simulation, formal check, lint, synthesis run, test or tool | `wiki/bkm/debug/debugging.md` |
-| designing a block or where its interface goes, finding where structure should change, refactoring a block, or explaining how and why a block works | `wiki/bkm/arch/architecture.md` |
+| designing a block or where its interface goes, finding where structure should change, refactoring a block, or explaining how and why a block works | `wiki/bkm/rtl/architecture.md` |
 | deciding where a check runs, or reading CI results | `wiki/bkm/workflow/ci-levels.md` |
-| verifying a block in simulation: test-first, verification plans, testbenches, seeds, coverage | `wiki/bkm/dv/verification.md` |
+| verifying a block in simulation: test-first, DV plans, testbenches, seeds, coverage | `wiki/bkm/dv/verification.md` |
 | verifying a block formally: properties, assumptions, proofs, covers, counterexamples | `wiki/bkm/fv/formal.md` |
 | building an FPGA image with Quartus, handing it to a board host, or programming a board | `wiki/bkm/fpga/fpga.md` |
 | writing or changing a wiki page, or the wiki site build | `wiki/bkm/workflow/wiki-site.md` |
 | configuring or auditing GitHub repository settings | `wiki/bkm/workflow/github-settings.md` |
 | stress-testing a plan or decision with a captain | `wiki/bkm/design/grilling.md`, with `wiki/bkm/design/domain-modeling.md` |
-| turning an aligned idea into a plan, a PRD or a block spec, prototyping to answer a design question, or planning work too large for one session | `wiki/bkm/design/planning.md` |
+| turning an aligned idea into a plan or a PRD, prototyping to answer a design question, or planning work too large for one session | `wiki/bkm/design/planning.md` |
 | meeting a fuzzy term, or a decision that may deserve an ADR | `wiki/bkm/design/domain-modeling.md` |
+| writing or changing a standard document (HAS, MAS, DV plan, FV plan, board spec), or deciding which documents a discipline keeps and their file names | `wiki/bkm/design/standard-docs.md` |
 | writing a glossary entry | `wiki/bkm/design/glossary-format.md` |
 | writing an ADR | `wiki/bkm/design/adr-format.md` |
 | writing or changing a BKM | `wiki/bkm/writing/writing-bkms.md` |
@@ -64,4 +65,4 @@ Engineering principles, one per file. Follow each one whose trigger matches what
 
 ## Not yet written
 
-No BKM yet for writing RTL. It will live in `wiki/bkm/rtl/`.
+No BKM yet for writing RTL code itself (coding style, lint, synthesis rules). It will live in `wiki/bkm/rtl/`, beside the architecture BKM.

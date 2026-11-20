@@ -28,7 +28,7 @@ Which topic sources each BKM used, and why the others were rejected, is recorded
 | `debug/debugging.md` | topic #38; sources used in its front matter |
 | `writing/improving-bkms.md` | topic #41; sources used in its front matter |
 | `dv/verification.md`, `fv/formal.md` | topic #39; sources used in their front matter |
-| `arch/architecture.md` | topic #40; sources used in its front matter |
+| `rtl/architecture.md` | topic #40; sources used in its front matter |
 | `design/planning.md` | topic #32; sources used in its front matter |
 
 SRE = Skills for Real Engineers.

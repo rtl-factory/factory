@@ -16,24 +16,23 @@ Our BKMs (Best Known Methods) build on these agent-skill packs. We adapt their i
 Code is laid out by project, then discipline, then the block or script:
 
 ```
-src/<project>/<discipline>/<name>/      disciplines: arch, rtl, dv, fv, fpga, scripts
+src/<project>/<discipline>/<name>/      disciplines: rtl, dv, fv, fpga, scripts, sw
 tools/<tool>/                           tools any project can use
 ```
 
-The wiki mirrors both trees down to the same folder, so every document sits at the path of the code it describes: a block's spec and plans, a script's or a tool's PRD and spec. The rules are in [wiki/bkm/workflow/repo-layout.md](wiki/bkm/workflow/repo-layout.md).
+The wiki mirrors both trees down to the same folder, so every document sits at the path of the code it describes, and each discipline has its standard documents: the design's HAS and each block's MAS for `rtl`, a DV plan, an FV plan, a board spec, and a PRD and spec for scripts, software and tools. The rules are in [wiki/bkm/workflow/repo-layout.md](wiki/bkm/workflow/repo-layout.md) and [wiki/bkm/design/standard-docs.md](wiki/bkm/design/standard-docs.md).
 
 ```
 factory/
 ├── src/                        Projects: design, models, verification and scripts
 │   └── <project>/              One folder per project, e.g. nand2mario/, common/
-│       ├── arch/<block>/       Architecture models
 │       ├── rtl/<block>/        Hardware implementation
 │       ├── dv/<block>/         Simulation tests (cocotb)
 │       ├── fv/<block>/         Formal verification
 │       ├── fpga/<board>/       Board tops, Quartus settings, pins, constraints
-│       ├── scripts/<script>/   Scripts bound to this project or one of its blocks
-│       ├── cfg/                Simulation targets and per-board build config
-│       └── sw/                 Software that runs on the design
+│       ├── scripts/<script>/   Host scripts bound to this project or one of its blocks
+│       ├── sw/<name>/          Software that runs on the design's own CPU
+│       └── cfg/                Simulation targets and per-board build config (not a discipline)
 │
 ├── tools/                      Tools any project can use
 │   └── <tool>/                 e.g. sim/, toolchain/, pages/
@@ -41,12 +40,13 @@ factory/
 ├── wiki/                       Documentation, published as the wiki site (mkdocs.yml)
 │   ├── src/                    Mirrors src/
 │   │   └── <project>/          The project's landing page
-│   │       ├── arch/<block>/       Architecture specs
-│   │       ├── rtl/<block>/        Block specs
-│   │       ├── dv/<block>/         Verification plans
-│   │       ├── fv/<block>/         Formal plans
-│   │       ├── fpga/<board>/       Board docs
-│   │       └── scripts/<script>/   prd.md, spec.md
+│   │       ├── rtl/has.md          HAS: the design's high-level architecture
+│   │       ├── rtl/<block>/        mas.md: the block's micro-architecture
+│   │       ├── dv/<block>/         dv-plan.md
+│   │       ├── fv/<block>/         fv-plan.md
+│   │       ├── fpga/<board>/       board-spec.md
+│   │       ├── scripts/<script>/   prd.md, spec.md
+│   │       └── sw/<name>/          prd.md, spec.md
 │   ├── tools/                  Mirrors tools/
 │   │   └── <tool>/             prd.md, spec.md
 │   ├── specs/                  External reference specifications

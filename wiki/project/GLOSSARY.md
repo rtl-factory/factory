@@ -84,19 +84,19 @@ A self-contained design the factory builds, with everything it needs under `src/
 _Avoid_: repo, product (for this meaning)
 
 **Discipline**:
-The kind of work a project's code is, and the second level of its path `src/<project>/<discipline>/`: `arch`, `rtl`, `dv`, `fv`, `fpga` or `scripts`.
+The kind of work a project's code is, and the second level of its path `src/<project>/<discipline>/`: `rtl`, `dv`, `fv`, `fpga`, `scripts` or `sw`. Each has its standard documents in the wiki (`wiki/bkm/design/standard-docs.md`); `cfg/` is a project folder, not a discipline.
 _Avoid_: type, work type, layer
 
 **Block**:
-One hardware design unit of a project (an IP or unit), with its code under `src/<project>/<discipline>/<block>/` and its spec under `wiki/src/<project>/<discipline>/<block>/`.
+One hardware design unit of a project (an IP or unit), with its code under `src/<project>/<discipline>/<block>/` and its MAS under `wiki/src/<project>/rtl/<block>/mas.md`.
 _Avoid_: module (for this meaning), component
 
 **Vertical slice**:
-An issue that delivers one narrow but complete behaviour, ending in a state a reviewer crewmate can check; for a block, typically spec, RTL and a DV test for one feature.
+An issue that delivers one narrow but complete behaviour, ending in a state a reviewer crewmate can check; for a block, typically its MAS, RTL and a DV test for one feature.
 _Avoid_: horizontal slice, layer, phase
 
 **PRD**:
-Product requirements document: what a tool or script we build must do, for whom, and how we will know it does, kept as `prd.md` next to its `spec.md` in the wiki folder which mirrors its code folder (`wiki/bkm/workflow/repo-layout.md`).
+Product requirements document: what a tool, script or piece of software we build must do, for whom, and how we will know it does, kept as `prd.md` next to its `spec.md` in the wiki folder which mirrors its code folder (`wiki/bkm/workflow/repo-layout.md`).
 _Avoid_: requirements spec, MRD
 
 **Interface**:
@@ -116,8 +116,16 @@ Imagine removing a block and wiring its contents into its neighbours: if complex
 _Avoid_: inline test
 
 **Spec**:
-The specification of one block, script or tool, in the wiki folder that mirrors its code (`wiki/src/<project>/<discipline>/<block>/` for a block). It changes in the same pull request as the code.
+The specification of one script, piece of software or tool, kept as `spec.md` next to its PRD in the wiki folder that mirrors its code and changed in the same pull request as the code; "the spec" of a block means its MAS, and of a whole design its HAS.
 _Avoid_: design doc, documentation (for this meaning)
+
+**HAS**:
+High-level architecture specification: the architecture of a project's whole design (its blocks, the seams between them, the memory map, clocks and resets, and the trade-offs behind them), one per project at `wiki/src/<project>/rtl/has.md`.
+_Avoid_: architecture doc, system spec, top-level spec
+
+**MAS**:
+Micro-architecture specification: how one block is built behind its interface (the interface itself, data and control paths, FSMs, pipelines, storage), one per block at `wiki/src/<project>/rtl/<block>/mas.md`.
+_Avoid_: design spec, uarch doc
 
 **Pull request**:
 The GitHub request to merge one branch into another; the only way changes reach `main` or an epic branch.
@@ -161,13 +169,13 @@ _Avoid_: maintainer
 
 ## Verification
 
-**Verification plan**:
-The per-block document in `wiki/src/<project>/dv/<block>/` that maps each spec feature and acceptance criterion to its stimulus, checker, coverage points, tests and regression level.
-_Avoid_: test plan (for this meaning)
+**DV plan**:
+The verification plan of one block or testbench, `wiki/src/<project>/dv/<block>/dv-plan.md`, that maps each spec feature and acceptance criterion to its stimulus, checker, coverage points, tests and regression level.
+_Avoid_: test plan, verification plan (say DV plan)
 
-**Formal plan**:
-The per-block document in `wiki/src/<project>/fv/<block>/` that records each property's statement, spec source, assumptions, result, command and sync commit.
-_Avoid_: property list
+**FV plan**:
+The formal verification plan of one block, `wiki/src/<project>/fv/<block>/fv-plan.md`, that records each property's statement, spec source, assumptions, result, command and sync commit.
+_Avoid_: formal plan, property list
 
 **Sync commit**:
 The commit at which a formal property was last confirmed to describe the RTL it covers.
@@ -181,6 +189,14 @@ _Avoid_: repo tool (say tool), global tool
 **Script**:
 Code bound to one project, or to a block of the `common` project, that changes when that project or block changes; its code is in the project's `scripts` discipline, `src/<project>/scripts/<script>/`, and its PRD and spec in `wiki/src/<project>/scripts/<script>/`.
 _Avoid_: project tool, helper
+
+**Software**:
+Code and data that run on a design's own CPU (C and assembly sources, firmware and runtimes, linker scripts and the target build setup, ROM and data images built for the design); it is the project's `sw` discipline, `src/<project>/sw/<name>/`, with its PRD and spec in `wiki/src/<project>/sw/<name>/`. Code that runs on the host to build, load or drive it is a script.
+_Avoid_: firmware (for the whole discipline), target code, program (for this meaning)
+
+**Board spec**:
+The document of one board top, `wiki/src/<project>/fpga/<board>/board-spec.md`: the device, the pins and I/O standards, clocks and constraints, the resource and timing budget, and how the image is built and programmed.
+_Avoid_: board doc, pinout (for the whole document)
 
 **Board host**:
 The Linux host a board is wired to; the only place that board is programmed and observed.

@@ -5,7 +5,7 @@ upstream: mattpocock/skills skills/engineering/codebase-design/{SKILL,DEEPENING,
 
 # Architecture of blocks
 
-How to shape blocks and the seams between them, find where the existing structure should change, refactor it safely, and explain how and why a block is built. RTL lives under `src/<project>/rtl/<block>/`, architecture models under `src/<project>/arch/<block>/`, specs under `wiki/src/<project>/<discipline>/<block>/`.
+How to shape blocks and the seams between them, find where the existing structure should change, refactor it safely, and explain how and why a block is built. RTL lives under `src/<project>/rtl/<block>/`; the design's architecture is its HAS, `wiki/src/<project>/rtl/has.md`, and each block's design its MAS, `wiki/src/<project>/rtl/<block>/mas.md` ([standard-docs.md](../design/standard-docs.md)). There is no separate architecture discipline (ADR 0013): a behavioural model of a block is a DV reference model under `src/<project>/dv/<block>/`, or a throwaway prototype per [planning.md](../design/planning.md).
 
 ## Terms
 
@@ -33,7 +33,7 @@ How to shape blocks and the seams between them, find where the existing structur
 
 ## Steps: find deepening opportunities
 
-1. Scope first: take the direction a captain or the issue names; otherwise find hot spots with `git log --oneline -- src/<project>/rtl/ src/<project>/arch/` and look there. Why: deepening pays off where change keeps landing.
+1. Scope first: take the direction a captain or the issue names; otherwise find hot spots with `git log --oneline -- src/<project>/rtl/` and look there. Why: deepening pays off where change keeps landing.
 2. Read the glossary, the ADRs and the specs of the area, then the RTL. Note friction: shallow pass-through blocks (deletion test), the same control logic or FSM duplicated across blocks, leaky interfaces (sideband signals, exposed internal state, a protocol that only works with one neighbour's timing), one concept spread over many small blocks, blocks untestable through their ports.
 3. For each candidate write: the blocks involved, the problem, the change in plain words, the benefit in locality, leverage and tests, and a strength (`Strong`, `Worth exploring`, `Speculative`). Do not propose interfaces yet.
 4. Post the list as a comment on your issue, top recommendation first, and report it to the first mate. Open an issue for each candidate it or a captain picks, per [issues.md](../workflow/issues.md); a reshape that enables a feature is prefactoring and blocks it. When a captain rejects one for a load-bearing reason, offer an ADR.
