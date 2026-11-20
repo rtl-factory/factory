@@ -3,6 +3,8 @@ nav:
   - Workflow: workflow
   - Design: design
   - Writing: writing
+  - DV: dv
+  - FV: fv
   - Debug: debug
   - Principles: principles
   - Sources: SOURCES.md
