@@ -12,7 +12,7 @@ The path every change takes from intent to `main`.
 2. **Issue.** Open or update the GitHub issue: what to build, acceptance criteria, labels per [labels.md](labels.md). The first mate may open issues and update epics on its own as work goes, within the aligned goal. Mark it `status:ready` once it is clear enough to dispatch.
 3. **Branch.** Create `issue/<number>-<slug>` from `main`, or from the epic branch if the issue belongs to an epic.
 4. **Worktree.** Check the branch out in `worktrees/issue-<number>/`.
-5. **Change.** Make the change. When it touches a block, change the code under `src/<type>/<block>/` and its spec under `wiki/src/<type>/<block>/` together, and loop until they agree. Run L0 until it passes.
+5. **Change.** Make the change. When it touches a block, change the code under `src/<project>/<type>/<block>/` and its spec under `wiki/src/<project>/<type>/<block>/` together, and loop until they agree. Run L0 until it passes.
 6. **Pull request.** Commit, push, and open a pull request whose description says `Closes #<number>`.
 7. **Review.** The first mate dispatches a reviewer crewmate; it reviews against the issue, the spec and the BKMs and posts its findings as a pull request review. Fix the findings and return to step 5 until the reviewer passes the pull request.
 8. **Approve.** Treat the reviewer's pass as approval, unless the pull request needs captain (see Merging); then wait for a captain to say it is ready, and record that as a pull request comment.

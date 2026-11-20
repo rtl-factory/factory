@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "sections": [
+    {"unit": "objects", "section": "code", "region": "ROM0", "address": 336},
+    {"unit": "objects", "section": "vblank_vector", "region": "ROM0", "vector": "VBLANK"}
+  ]
+}

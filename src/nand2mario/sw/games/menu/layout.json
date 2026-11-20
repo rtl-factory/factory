@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "sections": [
+    {
+      "unit": "main",
+      "section": "code",
+      "region": "ROM0",
+      "address": 512
+    },
+    {
+      "unit": "main",
+      "section": "assets",
+      "region": "ROM0",
+      "address": 3072
+    },
+    {
+      "unit": "main",
+      "section": "vars",
+      "region": "WRAM"
+    }
+  ]
+}

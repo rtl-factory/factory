@@ -79,9 +79,13 @@ The branch where one issue's work is done. It merges into `main`, or into its ep
 The branch an epic's issue branches merge into; it merges into `main` through one pull request once it is healthy.
 _Avoid_: feature branch, integration branch
 
+**Project**:
+A self-contained design the factory builds, with everything it needs under `src/<project>/` (for example nand2mario); shared building blocks live in the `common` project.
+_Avoid_: repo, product (for this meaning)
+
 **Block**:
-One hardware design unit, with its code under `src/<type>/<block>/` and its spec under `wiki/src/<type>/<block>/`.
-_Avoid_: module (for this meaning), IP, component
+One hardware design unit of a project (an IP or unit), with its code under `src/<project>/<type>/<block>/` and its spec under `wiki/src/<project>/<type>/<block>/`.
+_Avoid_: module (for this meaning), component
 
 **Vertical slice**:
 An issue that delivers one narrow but complete behaviour, ending in a state a reviewer crewmate can check; for a block, typically spec, RTL and a DV test for one feature.
@@ -108,7 +112,7 @@ Imagine removing a block and wiring its contents into its neighbours: if complex
 _Avoid_: inline test
 
 **Spec**:
-The specification of one block, in `wiki/src/<type>/<block>/`. It changes in the same pull request as the block's code.
+The specification of one block, in `wiki/src/<project>/<type>/<block>/`. It changes in the same pull request as the block's code.
 _Avoid_: design doc, documentation (for this meaning)
 
 **Pull request**:
@@ -154,11 +158,11 @@ _Avoid_: maintainer
 ## Verification
 
 **Verification plan**:
-The per-block document in `wiki/src/dv/<block>/` that maps each spec feature and acceptance criterion to its stimulus, checker, coverage points, tests and regression level.
+The per-block document in `wiki/src/<project>/dv/<block>/` that maps each spec feature and acceptance criterion to its stimulus, checker, coverage points, tests and regression level.
 _Avoid_: test plan (for this meaning)
 
 **Formal plan**:
-The per-block document in `wiki/src/fv/<block>/` that records each property's statement, spec source, assumptions, result, command and sync commit.
+The per-block document in `wiki/src/<project>/fv/<block>/` that records each property's statement, spec source, assumptions, result, command and sync commit.
 _Avoid_: property list
 
 **Sync commit**:

@@ -1,0 +1,19 @@
+# Sources, exact device, and pins are generated from src/nand2mario/cfg/n2m_de2_115_quartus.json.
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 2
+set_global_assignment -name SEED 1
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
+set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
+# Status uses 4 mA; SDRAM and the ADV7123 inputs use 8 mA.
+set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to VGA_*
+set_instance_assignment -name CURRENT_STRENGTH_NEW "4MA" -to LEDR*
+set_instance_assignment -name CURRENT_STRENGTH_NEW "4MA" -to HEX*
+# The UART RX pull-up holds an unplugged adapter idle.
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to UART_RXD
+set_instance_assignment -name CURRENT_STRENGTH_NEW "4MA" -to UART_TXD
+set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to DRAM*
+set_instance_assignment -name SLEW_RATE 2 -to LEDR*
+set_instance_assignment -name SLEW_RATE 2 -to HEX*
+set_parameter -name INTEL_DEVICE_FAMILY "Cyclone IV E" -to {n2m_system:u_system|n2m_display:u_display|n2m_frame_ram:u_frame_ram|n2a_sdp_ram:g_banks[0].u_ram}
+set_parameter -name INTEL_DEVICE_FAMILY "Cyclone IV E" -to {n2m_system:u_system|n2m_display:u_display|n2m_frame_ram:u_frame_ram|n2a_sdp_ram:g_banks[1].u_ram}
+set_parameter -name INTEL_DEVICE_FAMILY "Cyclone IV E" -to {n2m_system:u_system|n2m_display:u_display|n2m_frame_ram:u_frame_ram|n2a_sdp_ram:g_banks[2].u_ram}

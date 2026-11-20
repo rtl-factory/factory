@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "sections": [
+    {"unit": "mbc1", "section": "code", "region": "ROM0", "address": 336},
+    {"unit": "mbc1", "section": "bank_code", "region": "ROM1", "address": 16384},
+    {"unit": "mbc1", "section": "bank_id", "region": "ROM1", "address": 32766}
+  ]
+}

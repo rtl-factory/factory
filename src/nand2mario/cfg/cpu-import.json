@@ -1,0 +1,146 @@
+{
+  "source_commit": "c8d0db4e290d9412ce3f5d736e68561b127975c6",
+  "authority": "owner-authorized intra-owner adaptation of owner-authored source; third-party terms unchanged",
+  "files": [
+    {
+      "source": "src/rtl/cpu/n2m_cpu_control.sv",
+      "sha256": "142e294ccb058f4ba85e9abb6348c92d08f827d33b38f80c8c6d420d806ae1ea",
+      "destination": "src/nand2mario/rtl/core/n2m_cpu_control.sv",
+      "action": "owner-adapt"
+    },
+    {
+      "source": "src/rtl/cpu/n2m_cpu.sv",
+      "sha256": "ef2b073488558a95ede5989381e0979bb7836a2948753b4e2ee129dcd03d72b1",
+      "destination": "src/nand2mario/rtl/core/n2m_cpu.sv",
+      "action": "owner-adapt"
+    },
+    {
+      "source": "src/rtl/cpu/n2m_cpu_execute.sv",
+      "sha256": "f90cca5fa7d8ec6a6cd1e8dcfe16b618d24fc1198a9ac9960631a85eb0b0b185",
+      "destination": "src/nand2mario/rtl/core/n2m_cpu_execute.sv",
+      "action": "owner-adapt"
+    },
+    {
+      "source": "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "sha256": "f28c7cd56e59d232cf26127d26c5d399e4129a2e147d42fe0c233bf213c44159",
+      "destination": "src/nand2mario/rtl/core/n2m_cpu_stop_policy.sv",
+      "action": "owner-adapt"
+    },
+    {
+      "source": "src/rtl/cpu/n2m_cpu_bus.sv",
+      "sha256": "258bd0935bd70364d6823c96137daf1e6018be6b196cd82c8ac2991aede9b953",
+      "destination": "src/nand2mario/rtl/core/n2m_cpu_bus.sv",
+      "action": "owner-adapt"
+    },
+    {
+      "source": "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "sha256": "7f76a7584adc4fa7bd314e34b175ed2d0634c4b738ce2b1c30f1f3e7e252acd8",
+      "destination": "src/nand2mario/rtl/core/n2m_cpu_pkg.sv",
+      "action": "owner-adapt"
+    },
+    {
+      "source": "src/rtl/cpu/n2m_cpu_retire.sv",
+      "sha256": "5fffa705b744286a3ca2d466dcc6f3a71a95dfb748e31913ab784e07aa2a75c5",
+      "destination": "src/nand2mario/rtl/core/n2m_cpu_retire.sv",
+      "action": "owner-adapt"
+    },
+    {
+      "source": "tools/sw/assembler.py",
+      "sha256": "b14ea594b61cd9b980c51be3fbe564a640fc081a28548342ad289d69fd12a5fa",
+      "destination": "src/nand2mario/tools/sw/assembler.py",
+      "action": "owner-adapt"
+    },
+    {
+      "source": "tools/sw/expressions.py",
+      "sha256": "5ca2b7d79e635f5537c479a9a3fa96301d5a870f9ca56cb8a4da1b0c81a9efa7",
+      "destination": "src/nand2mario/tools/sw/expressions.py",
+      "action": "owner-adapt"
+    },
+    {
+      "source": "tools/sw/objects.py",
+      "sha256": "c817ccd33a91fe568037ed5aa34bc800dbb1020dec3a16b13835bfc9fbd8f102",
+      "destination": "src/nand2mario/tools/sw/objects.py",
+      "action": "owner-adapt"
+    },
+    {
+      "source": "tools/sw/linker.py",
+      "sha256": "e70c1e2345bf4db7fb4c9e7fbaf2f4fe797d200aec6838861e823ec36febfcae",
+      "destination": "src/nand2mario/tools/sw/linker.py",
+      "action": "owner-adapt"
+    },
+    {
+      "source": "tools/sw/package.py",
+      "sha256": "e16becca8a2391b4f3b0044c4f317758bf4f320a0cdaedd34e3f560216cc17bd",
+      "destination": "src/nand2mario/tools/sw/package.py",
+      "action": "owner-adapt"
+    },
+    {
+      "source": "tools/sw/opcodes.json",
+      "sha256": "1d5c3953499c6d3867d5fcf0329a8ce49c88184436b8d5fa6926d73008236dc1",
+      "destination": "src/nand2mario/tools/sw/opcodes.json",
+      "action": "adapt-MIT opcode data/notice"
+    },
+    {
+      "source": "tools/sw/object.schema.json",
+      "sha256": "d9d14d13997ecdc5e230e21bcbf4f338cb7f4f968799d49fcfda1962db3be126",
+      "destination": "src/nand2mario/tools/sw/object.schema.json",
+      "action": "owner-adapt"
+    },
+    {
+      "source": "tools/sw/layout.schema.json",
+      "sha256": "f451659b563ccf726de5dbbea8616a85e1912450ff51129f289929cb468f985d",
+      "destination": "src/nand2mario/tools/sw/layout.schema.json",
+      "action": "owner-adapt"
+    },
+    {
+      "source": "tools/sw/map.schema.json",
+      "sha256": "e873a704e9fb4e04dfff5d9c9d6c617a196e1cd2077ecc236625ad644d735164",
+      "destination": "src/nand2mario/tools/sw/map.schema.json",
+      "action": "owner-adapt"
+    },
+    {
+      "source": "tools/sw/listing.schema.json",
+      "sha256": "bce6df22a65a26053fc87921fefe36b1fdbd26e349e13b1883409af585821542",
+      "destination": "src/nand2mario/tools/sw/listing.schema.json",
+      "action": "owner-adapt"
+    },
+    {
+      "source": "tools/sw/symbols.schema.json",
+      "sha256": "4b012769c2c93294ece2e4afcaa2d751b9341a8a8b7b126988fed1d279a8e602",
+      "destination": "src/nand2mario/tools/sw/symbols.schema.json",
+      "action": "owner-adapt"
+    },
+    {
+      "source": "tools/sw/MGBDIS_LICENSE.md",
+      "sha256": "8f9ea251eb9eaa3560be46ce5adb7e190bbc890cff6e5eb532df0ccacefa0fa4",
+      "destination": "src/nand2mario/tools/sw/MGBDIS_LICENSE.md",
+      "action": "adapt-MIT opcode data/notice"
+    },
+    {
+      "source": "src/rtl/cpu/n2m_cpu_alu.sv",
+      "sha256": "035d3b4b4e2c6d194575afaf81ef97948719e310415790b736c4fd98bdf5995d",
+      "destination": "src/nand2mario/rtl/core/n2m_cpu_execute.sv",
+      "action": "owner-adapt extended operations only; accepted ALU unchanged"
+    },
+    {
+      "source": "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "sha256": "d2bc8fd499f6e2a4b5ec2c5a40bd7a923ee28dbf265e932c514caa7c76f78730",
+      "destination": "src/nand2mario/cfg/cpu-software.json",
+      "action": "owner-adapt selected software placement constants only; compact RTL package unchanged"
+    },
+    {
+      "source": "tools/provenance.json",
+      "sha256": "895a642ccfc567c5cc67c76a9ac35e6db5612b5588419be318a38bfd788db459",
+      "destination": "src/nand2mario/tools/sw/mgbdis-provenance.json",
+      "action": "retain exact MIT opcode provenance record"
+    }
+  ],
+  "adaptations": [
+    "25 MHz synchronous reset and machine-enable timing; common macros",
+    "compact acknowledged bus with wait/early-response buffering and sticky faults",
+    "compact 143-bit architectural retirement, no host/dot/epoch/IDU metadata",
+    "direct-entry reset only; no loader/MBC/peripheral profiles",
+    "local standard-library software imports and direct-image profile only",
+    "independent repository Python ISA oracle, generated original programs and finite Verilator checks"
+  ]
+}

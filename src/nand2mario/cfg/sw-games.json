@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "description": "Original nand2mario games, owner-adapted from standalone nand2mario src/sw at 510be34b49f5bc666ad828260ed0e193546736dd (src/nand2mario/cfg/sw-import.json). Built by src/nand2mario/tools/sw_games.py with cpu_sw.py.",
+  "games": {
+    "stackdrop": {
+      "directory": "src/nand2mario/sw/games/stackdrop",
+      "sources": [
+        "main.asm"
+      ],
+      "layout": "layout.json",
+      "entry": "main::Start",
+      "title": "STACKDROP",
+      "assets": {
+        "Tiles": {
+          "source": "assets/tiles.json",
+          "author": "Original Stackdrop frame, block, digit, label, marquee and title pixels by the nand2mario project; no external source"
+        }
+      },
+      "scenario": [
+        [
+          "title",
+          0,
+          30
+        ],
+        [
+          "start",
+          128,
+          4
+        ],
+        [
+          "play",
+          0,
+          40
+        ],
+        [
+          "right",
+          1,
+          20
+        ]
+      ],
+      "image_sha256": "0a675babe8ce7117e088286575a0abc80b4301f737a16871670686aa2c20e0f4"
+    },
+    "springtrail": {
+      "directory": "src/nand2mario/sw/games/springtrail",
+      "sources": [
+        "main.asm"
+      ],
+      "layout": "layout.json",
+      "entry": "main::Start",
+      "title": "SPRINGTRAIL",
+      "assets": {
+        "Tiles": {
+          "source": "tiles.json",
+          "author": "Original Springtrail lettering, courier and terrain by the nand2mario project; no external source"
+        },
+        "Courier": {
+          "source": "assets/courier/unique-tiles.json",
+          "author": "Original approved courier tiles by the nand2mario project; https://github.com/amichai-bd/nand2mario/blob/510be34b49f5bc666ad828260ed0e193546736dd/wiki/src/sw/springtrail/CHARACTER_ART.md"
+        },
+        "Core": {
+          "source": "assets/core/core-tiles.json",
+          "author": "Original approved core font pixels; https://github.com/amichai-bd/nand2mario/blob/510be34b49f5bc666ad828260ed0e193546736dd/wiki/src/sw/springtrail/CORE_ART.md, only selected glyphs loaded into VRAM"
+        },
+        "Terrain": {
+          "source": "assets/core/terrain-tiles.json",
+          "author": "Original approved core terrain, block and item pixels; https://github.com/amichai-bd/nand2mario/blob/510be34b49f5bc666ad828260ed0e193546736dd/wiki/src/sw/springtrail/CORE_ART.md, only selected tiles loaded into VRAM"
+        },
+        "Enemies": {
+          "source": "assets/core/enemies-tiles.json",
+          "author": "Original approved entity tiles by the nand2mario project; https://github.com/amichai-bd/nand2mario/blob/510be34b49f5bc666ad828260ed0e193546736dd/wiki/src/sw/springtrail/ENTITIES.md selects runtime tiles149..173"
+        }
+      },
+      "scenario": [
+        [
+          "title",
+          0,
+          30
+        ],
+        [
+          "start",
+          128,
+          4
+        ],
+        [
+          "play",
+          0,
+          40
+        ],
+        [
+          "right",
+          1,
+          20
+        ]
+      ],
+      "image_sha256": "12f2ee544139173a65feeff1b3e1eebfe53f77dbe03085622240ba53c3785784"
+    },
+    "menu": {
+      "sources": [
+        "main.asm"
+      ],
+      "layout": "layout.json",
+      "title": "GAME MENU",
+      "assets": {
+        "Font": {
+          "source": "assets/font-tiles.json",
+          "author": "Original approved core font glyphs A-Z, 0-9 and dash (CORE_ART.md tiles 56..92) plus an original blank and cursor arrow by the nand2mario project; no external source"
+        },
+        "GreyArt": {
+          "source": "assets/design/v2-grey-tiles.json",
+          "author": "Original mid-grey plate caps, dithered gradient cells and plate shadow of the menu v2 design by the nand2mario project; no external source"
+        },
+        "Pointer": {
+          "source": "assets/design/v2-cursor-tiles.json",
+          "author": "Original two-phase cursor pointer of the menu v2 design by the nand2mario project; no external source"
+        },
+        "Splash": {
+          "source": "assets/design/v2-splash-tiles.json",
+          "author": "Original boot splash badge of the menu v2 design by the nand2mario project; no external source"
+        },
+        "Stars": {
+          "source": "assets/design/v2-stars-tiles.json",
+          "author": "Original star field cells of the menu v2 design by the nand2mario project; no external source"
+        }
+      },
+      "profile": "dmg-loader-v1",
+      "directory": "src/nand2mario/sw/games/menu",
+      "entry": "main::Start",
+      "image_sha256": "f74293b907517ff7c702be754031c66787eae34ec535f31e7ac9fcdd62a995d1"
+    }
+  }
+}

@@ -1,0 +1,345 @@
+{
+  "schema_version": 1,
+  "description": "Prebuilt Mooneye Test Suite (MIT, Joonas Javanainen) pinned for the n2m acceptance conformance run (wiki/src/nand2mario/conformance/DV.md). Binaries are fetched into workdir only and never committed.",
+  "release": {
+    "name": "mts-20260714-0944-31510e1",
+    "commit": "31510e12eea6286d36eea060a6adde755e1067aa",
+    "url": "https://gekkio.fi/files/mooneye-test-suite/mts-20260714-0944-31510e1/mts-20260714-0944-31510e1.zip",
+    "sha256": "18aa29462dfe1fcd32a2cb3621733abdc72410074918b9245aa99a6920f7d3f2",
+    "license": "MIT",
+    "license_member": "mts-20260714-0944-31510e1/LICENSE",
+    "license_sha256": "8a9a9fe1603b7566d56978c89a6442ae1db2dd96042fb94c20b9647c47afae88"
+  },
+  "model": "DMG",
+  "max_cycles": 12000000,
+  "selected": [
+    {
+      "rom": "acceptance/add_sp_e_timing.gb",
+      "sha256": "bf736cb8fc06949ba2b16d68ab831e9e6a726a8521ff25ea4257d7cb3499839e"
+    },
+    {
+      "rom": "acceptance/boot_div-dmgABCmgb.gb",
+      "sha256": "ef2cd0ac53dd2f656461e9b29e95aaef44a843379a2337c168f1832c488242d3"
+    },
+    {
+      "rom": "acceptance/boot_hwio-dmgABCmgb.gb",
+      "sha256": "39f29e27e803bab7ae789bd7dfd556a9df9bc65a825206745aca3f30e4887456"
+    },
+    {
+      "rom": "acceptance/boot_regs-dmgABC.gb",
+      "sha256": "50b4869bfdf6f69e14f82ac4d673c1983b29439157cf84bb422268069766c3c5"
+    },
+    {
+      "rom": "acceptance/call_cc_timing.gb",
+      "sha256": "2ef47505ed501128071b490174dccb6904ee6037f88723ed98a23382eee7b4d1"
+    },
+    {
+      "rom": "acceptance/call_cc_timing2.gb",
+      "sha256": "67d84fc4d97c64399118ef3483a455fe7269d6fdf7f9840f6a00a9596d838a8c"
+    },
+    {
+      "rom": "acceptance/call_timing.gb",
+      "sha256": "249f524368b8b9bbaa7e05b36f29a5210137d61d59889b596ea505d42e6b749b"
+    },
+    {
+      "rom": "acceptance/call_timing2.gb",
+      "sha256": "d7ee4ceae48ef630c43a8e960c923b951f492250d9f5e28c1795705692051b47"
+    },
+    {
+      "rom": "acceptance/di_timing-GS.gb",
+      "sha256": "618dd8f765c71c0f299cd124d8596d12da9ef987e800a45ac5c4b98fd240c54d"
+    },
+    {
+      "rom": "acceptance/div_timing.gb",
+      "sha256": "382a9cd42a60ef0a3f03ef834d476a32907f1b3a42b40de5bd3d9705ae9a9734"
+    },
+    {
+      "rom": "acceptance/ei_sequence.gb",
+      "sha256": "dcd7f37e8fe7d8eb38cab6732a5826e0bb0278fd1e1d9e297c28d205da1b69e1"
+    },
+    {
+      "rom": "acceptance/ei_timing.gb",
+      "sha256": "e5fa88f83727e79912f2c69b91b8e3c1351c0b50ac26203a60c7a6c21e825dbc"
+    },
+    {
+      "rom": "acceptance/halt_ime0_ei.gb",
+      "sha256": "0768fd3e698047f5ec2631b5a830558f0ac14bd9cb0ef0ebcc409b00d69adb4d"
+    },
+    {
+      "rom": "acceptance/halt_ime0_nointr_timing.gb",
+      "sha256": "40a1e614d77a881672b7c20420aed6b121ad9d3977d71a08fd9bb92ee8f010cf"
+    },
+    {
+      "rom": "acceptance/halt_ime1_timing.gb",
+      "sha256": "09d9be4ebdd7645a6b208f18b1354f4b75420ae567dcf27ac404ed6f934d2efa"
+    },
+    {
+      "rom": "acceptance/halt_ime1_timing2-GS.gb",
+      "sha256": "10f0f35025d9d648831eaa7b1bfc42251fe26cf130ee483e6baac88d20c01581"
+    },
+    {
+      "rom": "acceptance/if_ie_registers.gb",
+      "sha256": "d055b2b4c44902cf827296a06b17cea4f2c84f6b7d540c777cb1d1049ef35e61"
+    },
+    {
+      "rom": "acceptance/intr_timing.gb",
+      "sha256": "a795a190830104a4a231935d3bd16e64a1088bb79084f80bf7d9946ca93d873d"
+    },
+    {
+      "rom": "acceptance/jp_cc_timing.gb",
+      "sha256": "8747fa6f969c8ac153a79b37abd2abac5ea98dbe142d5e77e074adec6e9fd481"
+    },
+    {
+      "rom": "acceptance/jp_timing.gb",
+      "sha256": "514ba4b96355f5074b63feb159a06af85f4fbea412a2d49599c19ea3781712e0"
+    },
+    {
+      "rom": "acceptance/ld_hl_sp_e_timing.gb",
+      "sha256": "fe22571b9aee1681b81b31055b3773574ba11eb838550fd86e0e773cb0f4240e"
+    },
+    {
+      "rom": "acceptance/oam_dma_restart.gb",
+      "sha256": "5234eaaa78fcf722a4c8d32bb4f108c65c24e327d062315c6b61f60e535e25de"
+    },
+    {
+      "rom": "acceptance/oam_dma_start.gb",
+      "sha256": "7c39f8f6f8043fe0ea289d8015b3e72c125ac302a22159b49514dd4e78d89dd3"
+    },
+    {
+      "rom": "acceptance/oam_dma_timing.gb",
+      "sha256": "e8477c5da80e4fb7999da08abf01ad2438d65fb308a8f0c36b0c7e464c0ad0e0"
+    },
+    {
+      "rom": "acceptance/pop_timing.gb",
+      "sha256": "4b658ab238b46319f24fa890faf9f337f03ce8769c05be6540742c9aaaf5773a"
+    },
+    {
+      "rom": "acceptance/push_timing.gb",
+      "sha256": "f764ee5053f4d1f84896ec3ff8761e30beded493d204566e3e5b20af736179f9"
+    },
+    {
+      "rom": "acceptance/rapid_di_ei.gb",
+      "sha256": "4bcfbee2dcdca7895afff7947742ec942166aeb4899f07995863149ef360f7f0"
+    },
+    {
+      "rom": "acceptance/ret_cc_timing.gb",
+      "sha256": "eb95fe488131f625c656631b0188484f3126d80944584128dc514aaf95111fb6"
+    },
+    {
+      "rom": "acceptance/ret_timing.gb",
+      "sha256": "cfb13c7aa11ff299402530c021fe93bd6f51769433757fd32e46985eb1296206"
+    },
+    {
+      "rom": "acceptance/reti_intr_timing.gb",
+      "sha256": "a98440bfb0e4f29ef762515e4b842e2777bc35445a30903ed86799cf18dc5c55"
+    },
+    {
+      "rom": "acceptance/reti_timing.gb",
+      "sha256": "bb90e11fdb8e40f8d69c94aff300c65ea28e74fd212316a477edbb2325a61eb0"
+    },
+    {
+      "rom": "acceptance/rst_timing.gb",
+      "sha256": "8ba26360bad21b451f36551863e60831f98e3de1308ae6bf2aee7a73973c99c2"
+    },
+    {
+      "rom": "acceptance/bits/mem_oam.gb",
+      "sha256": "eba5d165aaa55e7d4a1d1d910ea312a55c78157923c29fbbc34031709390f1de"
+    },
+    {
+      "rom": "acceptance/bits/reg_f.gb",
+      "sha256": "4b193e887ee3ac82b38b796729e1503e9a78da3e1140f8bd5600d0884f2e2627"
+    },
+    {
+      "rom": "acceptance/bits/unused_hwio-GS.gb",
+      "sha256": "1588928b71c596e41c58c9f414a18a0f906c0bf82a1dfde9d4cefc624a2d193d"
+    },
+    {
+      "rom": "acceptance/instr/daa.gb",
+      "sha256": "1498d92d70592a07a2493ef764609916616f0b023b21408189e277201e6c14c1"
+    },
+    {
+      "rom": "acceptance/interrupts/ie_push.gb",
+      "sha256": "f80df1b48ca2f81d4ec43b9c66be5f0b30f0d409603d256cc5c7cfc6241c0120"
+    },
+    {
+      "rom": "acceptance/oam_dma/basic.gb",
+      "sha256": "326b747cac8cc96b62d6ee508e73b87eda24bfe29553d3d32e719f3b6d76c97c"
+    },
+    {
+      "rom": "acceptance/oam_dma/reg_read.gb",
+      "sha256": "006516fcb302867a2848b47529208ef530669c6445e41d4f3d2dbd33995154a3"
+    },
+    {
+      "rom": "acceptance/oam_dma/sources-GS.gb",
+      "sha256": "35a38c640047c38b63da0b929f9d744914ee53555e7ccc6853bcc0e82185f11e"
+    },
+    {
+      "rom": "acceptance/ppu/hblank_ly_scx_timing-GS.gb",
+      "sha256": "3adec9174d16b7a4cece42e5525e4363ff956c19070600aa9344de68b0885449",
+      "target": "n2m_system_mooneye_long",
+      "reason": "18 SCX/line cases of two frames each need about 16 M system cycles; runs on the 40 M-cycle long target."
+    },
+    {
+      "rom": "acceptance/ppu/intr_1_2_timing-GS.gb",
+      "sha256": "3bac47fc79ce514fd7f6bbe0d87f1160b91a5292be27fee7bc3bcea6bc171ee9"
+    },
+    {
+      "rom": "acceptance/ppu/intr_2_0_timing.gb",
+      "sha256": "6ea58d6940ad2dde6d20ef1fc63f1da83bdff842672d757a7a2377a3d0cfb7ff"
+    },
+    {
+      "rom": "acceptance/ppu/intr_2_mode0_timing.gb",
+      "sha256": "be1555d577506073ba1ec4717060aa24075c02b9c787b874623a98bf2ac2da6e"
+    },
+    {
+      "rom": "acceptance/ppu/intr_2_mode0_timing_sprites.gb",
+      "sha256": "52b10bb0d3073ec35d6bc4f0129fcabb788e4d11ea765163a49d519121d5169e"
+    },
+    {
+      "rom": "acceptance/ppu/intr_2_mode3_timing.gb",
+      "sha256": "b5cb7d22162e3ed6fa2dafeaa487cf1d1c042b5e8a3a9877823c33b578b9c31e"
+    },
+    {
+      "rom": "acceptance/ppu/intr_2_oam_ok_timing.gb",
+      "sha256": "38d7acfddce357c8b084f9bb647d6ffc99d1fb85d7a312c2db2c348ba888f7ff"
+    },
+    {
+      "rom": "acceptance/ppu/lcdon_timing-GS.gb",
+      "sha256": "2a9d46b61935ae1a2332abd419bd6d63c2c48697b96ad547c859c207cf531e2f"
+    },
+    {
+      "rom": "acceptance/ppu/lcdon_write_timing-GS.gb",
+      "sha256": "e28b34cef8b5d58bf19e058be2206309129a5896568e918b6b11b6c61dce2a51"
+    },
+    {
+      "rom": "acceptance/ppu/stat_irq_blocking.gb",
+      "sha256": "604436aeb6a37badd71be0fafa526307345f1de6af757193f11fc77e09a01fc7"
+    },
+    {
+      "rom": "acceptance/ppu/stat_lyc_onoff.gb",
+      "sha256": "29f04aaf6b26085bca1dccfab648fb44fbf57d4aa923bca75a30167e45d8670e"
+    },
+    {
+      "rom": "acceptance/ppu/vblank_stat_intr-GS.gb",
+      "sha256": "f7de9a3ef1399f73ad16ef23dccf05d38cbd62373215608ee5da53a35850436e"
+    },
+    {
+      "rom": "acceptance/serial/boot_sclk_align-dmgABCmgb.gb",
+      "sha256": "14c48977ddf9c734d53c23ad435a21d2db7fbd90411f99d2c7713b2335e55778"
+    },
+    {
+      "rom": "acceptance/timer/div_write.gb",
+      "sha256": "2be1e4da6fa24b9123d2a8bae47dd0d6f5e97e1855186c0c0f49e6d213eebfff",
+      "target": "n2m_system_mooneye_long",
+      "reason": "65535 DIV-write iterations need about 24 M system cycles; runs on the 40 M-cycle long target."
+    },
+    {
+      "rom": "acceptance/timer/rapid_toggle.gb",
+      "sha256": "59fe311058895c39475f74bcffb7d4f29272edb74e75d2cfe860c1a9d033b68a"
+    },
+    {
+      "rom": "acceptance/timer/tim00.gb",
+      "sha256": "2193036c1628efd9ba86e5729292ef716d6ff3178cfa2abb9797709cd40252e8"
+    },
+    {
+      "rom": "acceptance/timer/tim00_div_trigger.gb",
+      "sha256": "5cafdf474dfa7507b0db596118ad7bc65a6d5d652ee4232263dd028e7f2462b7"
+    },
+    {
+      "rom": "acceptance/timer/tim01.gb",
+      "sha256": "b6f5043eae7fd2b2c3dc098ff16f664c8eb5699523616d84274669cf90c17fe7"
+    },
+    {
+      "rom": "acceptance/timer/tim01_div_trigger.gb",
+      "sha256": "73c1e2677a2a122a285aa052e232153b133873c68cbcbf1cf41aa3d0a1b80a96"
+    },
+    {
+      "rom": "acceptance/timer/tim10.gb",
+      "sha256": "fe3b0b292341d5ff26c9db3f6c9f3ba8a3d6e8b63977c61767a457962bd1faed"
+    },
+    {
+      "rom": "acceptance/timer/tim10_div_trigger.gb",
+      "sha256": "d83c7acf20a0315486ed77db4f873db40fff6099564f8e250df66274a304b1b9"
+    },
+    {
+      "rom": "acceptance/timer/tim11.gb",
+      "sha256": "624fd3ad3ede2790095162cfa212e488825072a0ecc287ff0e88da6c5d7040f1"
+    },
+    {
+      "rom": "acceptance/timer/tim11_div_trigger.gb",
+      "sha256": "3f60bc3d2ba63bd9209706332dd6d0ef59ad09ada8dede0caa9e2e5132ed102e"
+    },
+    {
+      "rom": "acceptance/timer/tima_reload.gb",
+      "sha256": "1ca70c725bd1e027b07d3058839bd140eccddd9f4ca41305c4f8ab3acaff8a98"
+    },
+    {
+      "rom": "acceptance/timer/tima_write_reloading.gb",
+      "sha256": "7d9a6d5ada792596621f8bfdf257112887b2dd01d98e0f91a253afd6e05d0540"
+    },
+    {
+      "rom": "acceptance/timer/tma_write_reloading.gb",
+      "sha256": "e48ff98d4f363b92e92bdabe86253fcf63f648964e3a61e73d52aedcba3e5ab2"
+    }
+  ],
+  "excluded": [
+    {
+      "rom": "acceptance/boot_div-S.gb",
+      "reason": "other hardware model (not DMG ABC)"
+    },
+    {
+      "rom": "acceptance/boot_div-dmg0.gb",
+      "reason": "other hardware model (not DMG ABC)"
+    },
+    {
+      "rom": "acceptance/boot_div2-S.gb",
+      "reason": "other hardware model (not DMG ABC)"
+    },
+    {
+      "rom": "acceptance/boot_hwio-S.gb",
+      "reason": "other hardware model (not DMG ABC)"
+    },
+    {
+      "rom": "acceptance/boot_hwio-dmg0.gb",
+      "reason": "other hardware model (not DMG ABC)"
+    },
+    {
+      "rom": "acceptance/boot_regs-dmg0.gb",
+      "reason": "other hardware model (not DMG ABC)"
+    },
+    {
+      "rom": "acceptance/boot_regs-mgb.gb",
+      "reason": "other hardware model (not DMG ABC)"
+    },
+    {
+      "rom": "acceptance/boot_regs-sgb.gb",
+      "reason": "other hardware model (not DMG ABC)"
+    },
+    {
+      "rom": "acceptance/boot_regs-sgb2.gb",
+      "reason": "other hardware model (not DMG ABC)"
+    }
+  ],
+  "known_failures": [
+    {
+      "rom": "acceptance/oam_dma/sources-GS.gb",
+      "issue": 496
+    },
+    {
+      "rom": "acceptance/ppu/intr_2_mode0_timing_sprites.gb",
+      "issue": 483
+    },
+    {
+      "rom": "acceptance/ppu/lcdon_timing-GS.gb",
+      "issue": 483
+    },
+    {
+      "rom": "acceptance/ppu/lcdon_write_timing-GS.gb",
+      "issue": 483
+    },
+    {
+      "rom": "acceptance/ppu/stat_lyc_onoff.gb",
+      "issue": 483
+    }
+  ]
+}

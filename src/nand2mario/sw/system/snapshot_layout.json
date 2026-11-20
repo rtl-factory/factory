@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "sections": [
+    {"unit": "snapshot", "section": "code", "region": "ROM0", "address": 336},
+    {"unit": "snapshot", "section": "vblank_vector", "region": "ROM0", "vector": "VBLANK"}
+  ]
+}

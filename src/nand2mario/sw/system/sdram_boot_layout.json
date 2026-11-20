@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "sections": [
+    {"unit": "sdram_boot", "section": "code", "region": "ROM0", "address": 336},
+    {"unit": "sdram_boot", "section": "bank_code", "region": "ROM1", "address": 16384},
+    {"unit": "sdram_boot", "section": "bank_id", "region": "ROM1", "address": 32766}
+  ]
+}

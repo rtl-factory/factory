@@ -13,23 +13,27 @@ Our BKMs (Best Known Methods) build on these agent-skill packs. We adapt their i
 
 ## Layout
 
-First choose the type of work, then choose the hardware block:
+First choose the project, then the type of work, then the block (an IP or unit):
 
 ```
-src/<type>/<block>/
+src/<project>/<type>/<block>/
 ```
 
 ```
 factory/
-├── src/                Design, models, and verification code
-│   ├── arch/           Architecture models
-│   ├── rtl/            Hardware implementation
-│   ├── dv/             Simulation tests
-│   ├── fv/             Formal verification
-│   └── fpga/           FPGA implementation: Quartus settings, pins, constraints
+├── src/                Projects: design, models and verification code
+│   ├── <project>/      One folder per project, e.g. nand2mario/, common/
+│   │   ├── arch/       Architecture models
+│   │   ├── rtl/        Hardware implementation
+│   │   ├── dv/         Simulation tests (cocotb)
+│   │   ├── fv/         Formal verification
+│   │   ├── fpga/       Board tops, Quartus settings, pins, constraints (one folder per board)
+│   │   ├── cfg/        Simulation targets and per-board build config
+│   │   ├── sw/         Software that runs on the design
+│   │   └── tools/      Project-specific scripts
 │
 ├── wiki/               Documentation, published as the wiki site (mkdocs.yml)
-│   ├── src/            Documentation for the hardware blocks (mirrors src/)
+│   ├── src/            Specs and docs per project and block (mirrors src/)
 │   ├── specs/          External reference specifications
 │   ├── bkm/            Best Known Methods, one directory per kind of work
 │   ├── project/        Glossary and decisions (ADRs)

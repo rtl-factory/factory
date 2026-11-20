@@ -1,0 +1,342 @@
+{
+  "source_commit": "510be34b49f5bc666ad828260ed0e193546736dd",
+  "authority": "owner-authorized intra-owner adaptation of owner-authored source (Amichai, 2026-10-10, issue #418); third-party terms unchanged",
+  "files": [
+    {
+      "source": "tools/sw/assets.py",
+      "sha256": "8262f87d66c0615b2548652a383661d7020581551f4e65e462ae2659a62fcc1e",
+      "destination": "src/nand2mario/tools/sw/assets.py",
+      "action": "owner-adapt: docstring provenance header only; encoder and validation unchanged"
+    },
+    {
+      "source": "src/sw/generated/interfaces.inc",
+      "sha256": "e776038662227516b2af88d463842226d1806a6bffa298d30fd79a68e864f70e",
+      "destination": "src/nand2mario/cfg/sw-interfaces.json",
+      "action": "owner-adapt: architectural GB_*/VECTOR_*/BUTTON_*/MBC1_* and menu/exit-demo-required LIBRARY_*/PROFILE_JOYP_SELECT names/values in JSON facts; generated locally. No donor host transport or fixed MBC1 profile geometry imported."
+    },
+    {
+      "source": "src/sw/stackdrop/README.md",
+      "sha256": "a37c544cb5d9434c78672bd5a12a0d650d9756778fac6bc015176d498b18302d",
+      "destination": "src/nand2mario/sw/games/stackdrop/README.md",
+      "action": "owner-adapt: build command and spec links point to n2a sw_games.py and the pinned standalone wiki"
+    },
+    {
+      "source": "src/sw/stackdrop/layout.json",
+      "sha256": "418c9096c8bda177b262f72751729d8da810363be42fc8f1455d2dd9719c392c",
+      "destination": "src/nand2mario/sw/games/stackdrop/layout.json",
+      "action": "owner-adapt: layout unit names main.asm -> main for the n2a linker"
+    },
+    {
+      "source": "src/sw/stackdrop/main.asm",
+      "sha256": "d6ede964c3c6eb1d9fb1262d491af5de47cbac229d60f82ceca947586f03d658",
+      "destination": "src/nand2mario/sw/games/stackdrop/main.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/stackdrop/render.asm",
+      "sha256": "11bf2ae75815a5b2029125ec8d10b593ab47450fae2b4d31758de6cd311e7931",
+      "destination": "src/nand2mario/sw/games/stackdrop/render.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/stackdrop/rules.asm",
+      "sha256": "4c860539156c85c77979a308efedfea8b2e65f43853939ebc589facc292f0c98",
+      "destination": "src/nand2mario/sw/games/stackdrop/rules.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/stackdrop/state.asm",
+      "sha256": "f5303503315c3ba4871e848d5c65445ab1b80a3fe00744fecd459213d914ae30",
+      "destination": "src/nand2mario/sw/games/stackdrop/state.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/stackdrop/tables.asm",
+      "sha256": "516636c53f44f4acacf481c737a7ab1fd65969e0a4d6242a725ecc8283ba5984",
+      "destination": "src/nand2mario/sw/games/stackdrop/tables.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/stackdrop/assets/tiles.json",
+      "sha256": "4d0e7bc2654900353d9b7001b687f1fe2bef6ca68a59c752e8e8e3a787bef843",
+      "destination": "src/nand2mario/sw/games/stackdrop/assets/tiles.json",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/README.md",
+      "sha256": "4a0add2a7545f690c562fcb333f9eeffac1d6292fae38e16c1c1d8d1c90a2d2e",
+      "destination": "src/nand2mario/sw/games/springtrail/README.md",
+      "action": "owner-adapt: build command and spec links point to n2a sw_games.py and the pinned standalone wiki"
+    },
+    {
+      "source": "src/sw/springtrail/blocks.asm",
+      "sha256": "6a127f67e9cccbb7a0cff70a140c2874cbd67fd48f6c925503a9732161396c0b",
+      "destination": "src/nand2mario/sw/games/springtrail/blocks.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/collision.asm",
+      "sha256": "43dcbab83731e2832bdfd55d6f013d0176eca53b0da6085bb859b9b85525a849",
+      "destination": "src/nand2mario/sw/games/springtrail/collision.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/columns.asm",
+      "sha256": "dc07d59af70f99e417ea814d1b9774344460a615e2a17a07a09f942957a463e5",
+      "destination": "src/nand2mario/sw/games/springtrail/columns.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/courier.asm",
+      "sha256": "def7a94a2292244391ace5d72d0a2c7a64085527a594dd862c9463a4805040c2",
+      "destination": "src/nand2mario/sw/games/springtrail/courier.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/entities.asm",
+      "sha256": "0e225944637f56447128bb2beefa0bf9a16bccc315a118821236601f7506d5d3",
+      "destination": "src/nand2mario/sw/games/springtrail/entities.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/hud.asm",
+      "sha256": "0216cd20ce3c782f4b18f02a7565e4f71598d66ef8f50917dbd9db3c0a588c92",
+      "destination": "src/nand2mario/sw/games/springtrail/hud.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/interactions.asm",
+      "sha256": "c67b4734edfe7a2b6e8d16e8f850708ef03042fbb3cf3d1abac98b1699f32f79",
+      "destination": "src/nand2mario/sw/games/springtrail/interactions.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/layout.json",
+      "sha256": "7f6e1eeb3734899cc1b3b65d3b73f524fd3cec013c31f663694307a169265b47",
+      "destination": "src/nand2mario/sw/games/springtrail/layout.json",
+      "action": "owner-adapt: layout unit names main.asm -> main for the n2a linker"
+    },
+    {
+      "source": "src/sw/springtrail/main.asm",
+      "sha256": "ead089294579302b9744074ab0b5b229fe1945ffcb231976eded04e0c6191315",
+      "destination": "src/nand2mario/sw/games/springtrail/main.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/map.asm",
+      "sha256": "27affb1ce1307b9538af7487d08ce0dff7a1969b49291f17892cf3b8afb18b63",
+      "destination": "src/nand2mario/sw/games/springtrail/map.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/map_restore.asm",
+      "sha256": "b46268915cf166dfb0e1a9ac375b1f1858e7a35826191ab905db5668f74fe15a",
+      "destination": "src/nand2mario/sw/games/springtrail/map_restore.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/movement.asm",
+      "sha256": "9a9cfae2d671af3b2f6358a9702b0c6c4cbd95b13d92fbc44fb8655051d85a6e",
+      "destination": "src/nand2mario/sw/games/springtrail/movement.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/oam_dma.asm",
+      "sha256": "8fff900f26cdf318b5c3a26ec8fe3f6af8bc06040db2a9e6a68ab20aca30e3b1",
+      "destination": "src/nand2mario/sw/games/springtrail/oam_dma.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/power.asm",
+      "sha256": "75db9df93a83f7b6d62270dbc4e40f12212a25b743db124b114604ea4e7ce567",
+      "destination": "src/nand2mario/sw/games/springtrail/power.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/progress.asm",
+      "sha256": "09dbc0c0801686c3fe8a4a451f3076ef9f1aa69ef247f3dfba32aafea6f706c2",
+      "destination": "src/nand2mario/sw/games/springtrail/progress.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/render.asm",
+      "sha256": "368d5e4449307eb510f48e68598ea5bda9751c75adcd9fca52a3e75664034fab",
+      "destination": "src/nand2mario/sw/games/springtrail/render.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/scene.asm",
+      "sha256": "077c8d1416799819b47be2e9d959121ff4423e8266353eee32a277c42b1d5536",
+      "destination": "src/nand2mario/sw/games/springtrail/scene.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/state.asm",
+      "sha256": "409fe2a91144d97d4acbdeab2044b26552466a455e36100f2361a0cd04ab91bb",
+      "destination": "src/nand2mario/sw/games/springtrail/state.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/stream.asm",
+      "sha256": "01fef4fe20adb89dc23b6742911d3a349f69d9e453315c46f730210d083e1e8f",
+      "destination": "src/nand2mario/sw/games/springtrail/stream.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/tiles.json",
+      "sha256": "0dc275f16c06d5ffa00874d2f914ed620efbc9119a964550b09862cf3c50bb08",
+      "destination": "src/nand2mario/sw/games/springtrail/tiles.json",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/world.asm",
+      "sha256": "42a53e1a7cf70d5addd26736ba7ae1acfb5203db493e6eaeaacddbbfe9c24489",
+      "destination": "src/nand2mario/sw/games/springtrail/world.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/assets/core/core-maps.json",
+      "sha256": "b2bbd13dc3fa480c035a2a368b0e0b01c1da38083316021b8ffe8707b6384024",
+      "destination": "src/nand2mario/sw/games/springtrail/assets/core/core-maps.json",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/assets/core/core-tiles.json",
+      "sha256": "a9a87978efcbd30d7a1e1a08f5aed8b76233e6012db07b7d78bb744d6a7b632e",
+      "destination": "src/nand2mario/sw/games/springtrail/assets/core/core-tiles.json",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/assets/core/enemies-maps.json",
+      "sha256": "b1ddb50becbe094447f2fbdb4eb4a571302be7809068ba90c674138e90b57ed0",
+      "destination": "src/nand2mario/sw/games/springtrail/assets/core/enemies-maps.json",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/assets/core/enemies-tiles.json",
+      "sha256": "fd76e118c5e2b4b8805a7ed114a0d61e70d41e0038310f22b3bd1279ec1294a8",
+      "destination": "src/nand2mario/sw/games/springtrail/assets/core/enemies-tiles.json",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/assets/core/terrain-maps.json",
+      "sha256": "ac686e426ac7528237a50b49d762d12f39af8afe3fe6950ee7ecd61e062b24f5",
+      "destination": "src/nand2mario/sw/games/springtrail/assets/core/terrain-maps.json",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/assets/core/terrain-tiles.json",
+      "sha256": "905544b77e061b2b23cf0ff2210f74471b16a3ca9da6ad3e1d0b7ee5ee6568c5",
+      "destination": "src/nand2mario/sw/games/springtrail/assets/core/terrain-tiles.json",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/assets/courier/poses.json",
+      "sha256": "61b57d3911e9ea2d3f962ce1ec1dd3554a0ed8057b93ec6c16cf18aeba19a4cd",
+      "destination": "src/nand2mario/sw/games/springtrail/assets/courier/poses.json",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/springtrail/assets/courier/unique-tiles.json",
+      "sha256": "e82d8ffa376f1bccb0047001b18184582876b5bb13f28149e84b8210ac97ecc9",
+      "destination": "src/nand2mario/sw/games/springtrail/assets/courier/unique-tiles.json",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/menu/main.asm",
+      "sha256": "3b13f9ca817633c94de877bdba7c7a06a5dd3c294e50ea0855e922068ce25ce4",
+      "destination": "src/nand2mario/sw/games/menu/main.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/menu/layout.json",
+      "sha256": "a886d16b33141e5654b0ddee4271cf142f6421da15251892ce6fc4f3ffeb0363",
+      "destination": "src/nand2mario/sw/games/menu/layout.json",
+      "action": "owner-adapt: layout unit main.asm to main"
+    },
+    {
+      "source": "src/sw/menu/assets/font-tiles.json",
+      "sha256": "a69a0198faf9ab29a65c25d3557bba442d4ab6566ac20a625ea13267c308a5f4",
+      "destination": "src/nand2mario/sw/games/menu/assets/font-tiles.json",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/menu/assets/design/v2-grey-tiles.json",
+      "sha256": "24dc694b9030681735387b8ce6638fb3a5e7832809bb01dc26ba8998c42dbf8b",
+      "destination": "src/nand2mario/sw/games/menu/assets/design/v2-grey-tiles.json",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/menu/assets/design/v2-cursor-tiles.json",
+      "sha256": "e89f680c44a7a118dfc308aef5cfa0280a907208f1e1a7a816e60f8fff6e5ae7",
+      "destination": "src/nand2mario/sw/games/menu/assets/design/v2-cursor-tiles.json",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/menu/assets/design/v2-splash-tiles.json",
+      "sha256": "dad5397472e417b12a5ae055acf3526a85f65775dda4c90f567fef2c9e4483e1",
+      "destination": "src/nand2mario/sw/games/menu/assets/design/v2-splash-tiles.json",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/menu/assets/design/v2-stars-tiles.json",
+      "sha256": "6b86e0cfbb336c42a92f309c22356551875adc2ebf244e7976f0e8a7a85fc17b",
+      "destination": "src/nand2mario/sw/games/menu/assets/design/v2-stars-tiles.json",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/menu/README.md",
+      "sha256": "9938f256cc5ff75b295d515a62806d4da6b75973b30cbb534568ab271e373095",
+      "destination": "src/nand2mario/sw/games/menu/README.md",
+      "action": "owner-adapt: local build command, source-pin and supported feature notes"
+    },
+    {
+      "source": "src/dv/menu/reference.py",
+      "sha256": "ec90146303d05061781b2854c63924c9306d5642d402afb501af3ef88451574c",
+      "destination": "src/nand2mario/dv/menu/reference.py",
+      "action": "owner-adapt: project asset path and owning-spec docstring only; pixel oracle unchanged"
+    },
+    {
+      "source": "src/dv/menu/fixture.py",
+      "sha256": "57fd3e5a94e4c4b18e260cca435068b72f6ae8b7ebf62547a79c549cc112ec94",
+      "destination": "src/nand2mario/dv/menu/fixture.py",
+      "action": "owner-adapt: relative reference import and current workflow docstring; donor-only build wrapper removed; fixture bytes unchanged; trailing blank lines after omitted build wrapper removed (whitespace only)"
+    },
+    {
+      "source": "src/dv/menu/test_menu_reference.py",
+      "sha256": "b9f3b5353296dbfb5506cb7fc2f6c27f421e2a10129ac85530d4b351967e7381",
+      "destination": "src/nand2mario/dv/menu/test_menu_reference.py",
+      "action": "owner-adapt: relative imports and project paths; non-runtime design-preview renderer check omitted; remaining 14 checks retained"
+    },
+    {
+      "source": "src/sw/exit-demo/main.asm",
+      "sha256": "e99cc7f2a9e0551f4ba15484da03df492cf3210b1c320a558f53c171ec930321",
+      "destination": "src/nand2mario/sw/system/menu_exit.asm",
+      "action": "owner-copy: unchanged"
+    },
+    {
+      "source": "src/sw/exit-demo/layout.json",
+      "sha256": "eec7b70e2eeb0572a3b87630fbad5a692ea54fb5d4dbb089e8b921e217a8422e",
+      "destination": "src/nand2mario/sw/system/menu_exit_layout.json",
+      "action": "owner-adapt: layout unit main.asm to menu_exit"
+    },
+    {
+      "source": "tools/n2m/host/library.py",
+      "sha256": "8bbd5d133947ecc42f4e38c078ed4cb893dde6b35c1325f10e1ef15b3d5120af",
+      "destination": "src/nand2mario/tools/game_library.py",
+      "action": "contract-adapt: catalogue byte layout and slot/profile/CRC rules; native local-source packer, no donor host transport copied"
+    },
+    {
+      "source": "src/rtl/cartridge/n2m_loader.sv",
+      "sha256": "d7b1b2a2a4cba443f13e212780f9bdb4b29f5ed3e12c904fd230d0972fb27229",
+      "destination": "src/nand2mario/rtl/cartridge/n2m_library.sv",
+      "action": "contract-reference/native rewrite: menu-required snapshot, catalogue selection, CRC and reset behavior on the n2a byte backing port; no donor RTL source copied"
+    },
+    {
+      "source": "src/rtl/cartridge/n2m_loader_engine.sv",
+      "sha256": "f9825f95a50e213a77231924535e51d0e8361ae1ea983a8b48a011eeb92b0147",
+      "destination": "src/nand2mario/rtl/cartridge/n2m_library.sv",
+      "action": "contract-reference/native rewrite: menu-required snapshot, catalogue selection, CRC and reset behavior on the n2a byte backing port; no donor RTL source copied"
+    }
+  ]
+}
