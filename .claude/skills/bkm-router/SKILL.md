@@ -8,19 +8,21 @@ BKMs define how work is done here. Find the rows that match what you are doing, 
 | When you are | Follow |
 |---|---|
 | doing any work on an issue, from alignment to landing, or deciding who may merge | `wiki/bkm/workflow/flow.md` |
-| the first mate: dispatching, supervising and landing crewmates' work | `wiki/bkm/workflow/first-mate.md` |
+| the first mate: dispatching, supervising, pausing, handing over or landing crewmates' work, or running competing candidates on one issue | `wiki/bkm/workflow/first-mate.md` |
 | splitting a plan into issues or an epic, or triaging an issue | `wiki/bkm/workflow/issues.md` |
 | opening, labelling or dispatching an issue | `wiki/bkm/workflow/labels.md` |
 | reviewing a pull request as the reviewer crewmate | `wiki/bkm/workflow/review.md` |
 | writing a pull request or a GitHub comment, getting it landable, taking over a stalled one, or landing it | `wiki/bkm/workflow/landing.md` |
 | reporting to a captain, catching one up, resuming after a restart, or keeping a decision trail | `wiki/bkm/workflow/reporting.md` |
 | debugging a failing simulation, formal check, lint, synthesis run, test or tool | `wiki/bkm/debug/debugging.md` |
+| designing a block or where its interface goes, finding where structure should change, refactoring a block, or explaining how and why a block works | `wiki/bkm/arch/architecture.md` |
 | deciding where a check runs, or reading CI results | `wiki/bkm/workflow/ci-levels.md` |
 | verifying a block in simulation: test-first, verification plans, testbenches, seeds, coverage | `wiki/bkm/dv/verification.md` |
 | verifying a block formally: properties, assumptions, proofs, covers, counterexamples | `wiki/bkm/fv/formal.md` |
 | writing or changing a wiki page, or the wiki site build | `wiki/bkm/workflow/wiki-site.md` |
 | configuring or auditing GitHub repository settings | `wiki/bkm/workflow/github-settings.md` |
 | stress-testing a plan or decision with a captain | `wiki/bkm/design/grilling.md`, with `wiki/bkm/design/domain-modeling.md` |
+| turning an aligned idea into a plan, a PRD or a block spec, prototyping to answer a design question, or planning work too large for one session | `wiki/bkm/design/planning.md` |
 | meeting a fuzzy term, or a decision that may deserve an ADR | `wiki/bkm/design/domain-modeling.md` |
 | writing a glossary entry | `wiki/bkm/design/glossary-format.md` |
 | writing an ADR | `wiki/bkm/design/adr-format.md` |
@@ -59,4 +61,4 @@ Engineering principles, one per file. Follow each one whose trigger matches what
 
 ## Not yet written
 
-No BKMs yet for planning, architecture, RTL or synthesis. They will live in `wiki/bkm/design/` and `wiki/bkm/{arch,rtl,syn}/`; open topic issues track them.
+No BKMs yet for writing RTL or for synthesis. They will live in `wiki/bkm/rtl/` and `wiki/bkm/syn/`.

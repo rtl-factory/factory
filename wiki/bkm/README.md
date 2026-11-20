@@ -10,11 +10,12 @@ The list of every BKM and when to follow it lives in the `bkm-router` skill (`.c
 | `design/` | deciding what to build: grilling, domain modeling, glossary and ADR formats |
 | `writing/` | writing BKMs, skills and anything else an agent reads; retros |
 | `debug/` | debugging hard failures |
+| `arch/` | designing blocks and their interfaces, refactoring, explaining how a block works |
 | `principles/` | engineering principles, one per file |
 
 | `dv/` | simulation-based verification |
 | `fv/` | formal verification |
 
-Planned, created with their first BKM: `arch/`, `rtl/`, `syn/`.
+Planned, created with their first BKM: `rtl/`, `syn/`.
 
 Many BKMs are adapted from outside packs under the MIT license; their front matter names the upstream file and commit. [SOURCES.md](SOURCES.md) maps which pack feeds which BKM.
