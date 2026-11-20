@@ -35,8 +35,12 @@ The agent a captain talks to. It turns the captain's intent into issues, dispatc
 _Avoid_: orchestrator, lead agent, conductor, coordinator, manager, chief of staff
 
 **Crewmate**:
-An agent the first mate dispatches to do one issue, in its own worktree on its own issue branch. It reports only to the first mate.
+An agent the first mate dispatches to do one issue, in its own worktree on its own issue branch (a candidate crewmate works on a scratch branch instead). It reports only to the first mate.
 _Avoid_: worker, subagent, implementer, teammate
+
+**Candidate crewmate**:
+One of several crewmates the first mate dispatches on the same issue as competing attempts, each on a scratch branch `candidate/<number>-<n>` with no pull request; only the chosen candidate's branch becomes the issue branch.
+_Avoid_: arena entry, contestant
 
 **Reviewer crewmate**:
 A crewmate with a fresh context that reviews another crewmate's pull request against the issue, the spec and the BKMs. It never reviews its own work.

@@ -8,7 +8,7 @@ BKMs define how work is done here. Find the rows that match what you are doing, 
 | When you are | Follow |
 |---|---|
 | doing any work on an issue, from alignment to landing, or deciding who may merge | `wiki/bkm/workflow/flow.md` |
-| the first mate: dispatching, supervising and landing crewmates' work | `wiki/bkm/workflow/first-mate.md` |
+| the first mate: dispatching, supervising, pausing, handing over or landing crewmates' work, or running competing candidates on one issue | `wiki/bkm/workflow/first-mate.md` |
 | splitting a plan into issues or an epic, or triaging an issue | `wiki/bkm/workflow/issues.md` |
 | opening, labelling or dispatching an issue | `wiki/bkm/workflow/labels.md` |
 | reviewing a pull request as the reviewer crewmate | `wiki/bkm/workflow/review.md` |
