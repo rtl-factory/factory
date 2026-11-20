@@ -7,7 +7,7 @@ nand2mario runs on two boards, the DE10-Lite and the DE2-115. A crewmate or a ca
 ## Requirements
 
 1. Build the image for either board, and for the game-library profile, headless with the pinned Quartus, from the board's committed config (device, top, parameters, sources, pins, settings, constraints); keep every generated file under `workdir/`.
-2. Fail the build on: a fit that does not complete, timing not met at any corner, a clock that is not the one the config names, an unconstrained or illegal clock or port, fitted RAM other than the config expects, and any warning the config does not list as reviewed. Write the evidence (resources, slack per corner, clocks, warnings, Quartus version, source commit) to `evidence.json` beside the image.
+2. Fail the build on: a fit that does not complete, timing not met at any corner, a clock that is not the one the config names, an unconstrained or illegal clock or port, fitted RAM other than the config expects, and any warning the config does not list as reviewed. Write the evidence (resources, slack per corner, clocks, warnings, Quartus version, source commit) beside the image.
 3. Program a board only on an explicit `--yes`, with an exact cable name, and only an image whose identity (project, device, source commit, Quartus version) matches its evidence; without `--yes`, print the exact command and run nothing.
 4. Load a cartridge image into the board's cartridge backing over UART while the console is held in reset, optionally read it back to verify, then release the console.
 5. Frame every loader request and response with a CRC; retry a lost or corrupted reply a bounded number of times; never accept a reply whose echo, address or sequence does not match the request.

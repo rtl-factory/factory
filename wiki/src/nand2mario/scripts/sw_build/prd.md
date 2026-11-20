@@ -8,12 +8,12 @@ The simulations and the boards need program images: CPU smoke tests, the system 
 
 1. Assemble LR35902 source into relocatable objects, link several units against a section layout, and package a 32 KiB direct-entry image with a valid header, for the direct and the loader memory profiles. Use only Python in the repository: no external assembler, no network.
 2. Reject, with a diagnostic naming the file and line: unknown opcodes, out-of-range operands and relocations, undefined or duplicate symbols, overlapping sections, and a loader image that places code in ROM bank 1.
-3. Take the design's hardware addresses (memory regions, registers) from committed config (`src/nand2mario/cfg/cpu-software.json`, `sw-interfaces.json`), never from constants in the code; generate the assembler prelude from `sw-interfaces.json` and fail when the committed prelude is stale.
-4. Build each original game declared in `src/nand2mario/cfg/sw-games.json` with its shade assets and header title, and match its recorded SHA-256.
+3. Take the design's hardware addresses (memory regions, registers) from committed config, never from constants in the code; generate the assembler prelude from that config and fail when the committed prelude is stale.
+4. Build each original game declared in the games config with its shade assets and header title, and match its recorded SHA-256.
 5. Expand a direct image into an MBC1 cartridge of 2 to 128 banks, with each bank's number and data pattern, the MBC1+RAM+BATTERY header and both checksums recomputed.
 6. Build the game-library image (a menu plus several games, with a catalogue in the original encoding) for the `CART_LIBRARY=1` system, for on-chip or SDRAM backing.
 7. Write only below `workdir/`; refuse an output path that leaves it, is a link or special file, or has an unsafe ancestor; offer a dry run that writes nothing.
-8. Record where each imported file came from (`src/nand2mario/cfg/cpu-import.json`, `sw-import.json`), and check imported files against their source hashes.
+8. Record where each imported file came from, and check imported files against their source hashes.
 
 ## Out of scope
 

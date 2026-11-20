@@ -68,4 +68,4 @@ python3 tools/sim/sim.py test n2m_system
 
 ## Software
 
-Original smoke software is in `sw/cpu/` (CPU smoke) and `sw/system/` (system smoke with the timer, joypad and serial interrupts, the background frame program with the VBlank interrupt, and the objects frame program with window, sprites and OAM DMA). The original games and menu are in `sw/games/`. They are built by the project's own assembler and linker (`scripts/sw/`), with no sibling checkout, commercial ROM or external oracle.
+Original smoke software is in `sw/cpu/` (CPU smoke) and `sw/system/` (system smoke with the timer, joypad and serial interrupts, the background frame program with the VBlank interrupt, and the objects frame program with window, sprites and OAM DMA). The original games and menu are in `sw/games/`. They are built by the project's own assembler and linker (`scripts/sw_build/asm/`), with no sibling checkout, commercial ROM or external oracle.

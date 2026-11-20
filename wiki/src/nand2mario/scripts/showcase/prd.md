@@ -9,7 +9,7 @@ Readers want to see nand2mario run without a board. The game qualification alrea
 1. Read one or more per-game results directories written by the system game qualification, and fail if a game's results are missing.
 2. Write each captured frame as a PNG scaled by exactly 2, with no smoothing.
 3. Write one animated GIF per game from sampled frames, merging consecutive identical frames into one with their summed delay, so the GIF matches the frame sequence.
-4. Write a title strip, a gallery and a `provenance.json` that records the source commit, the hash of every input and output, and a label saying these are simulation captures, not board captures.
+4. Write a title strip, a gallery and a provenance record of the source commit, the hash of every input and output, and a label saying these are simulation captures, not board captures.
 5. Take the game catalogue (name, author, licence, credits) from a given JSON file, defaulting to the qualified games.
 
 ## Out of scope
