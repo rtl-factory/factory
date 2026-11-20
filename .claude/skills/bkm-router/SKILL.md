@@ -1,6 +1,6 @@
 ---
 name: bkm-router
-description: List of every BKM and when to follow it. Use before any work in this repo, and whenever the kind of work changes: issues, branches, pull requests, CI, orchestrating crewmates, grilling, glossary terms, ADRs, writing BKMs or skills, RTL, DV, FV, synthesis, architecture.
+description: List of every BKM and principle and when to follow it. Use before any work in this repo, and whenever the kind of work changes: issues, branches, pull requests, CI, orchestrating crewmates, grilling, glossary terms, ADRs, writing BKMs or skills, debugging, testing, measuring, refactoring, RTL, DV, FV, synthesis, architecture.
 ---
 
 BKMs define how work is done here. Find the rows that match your work, read those BKMs, and follow them. If none fits, say so and propose a new BKM in an issue instead of improvising a method.
@@ -18,5 +18,35 @@ BKMs define how work is done here. Find the rows that match your work, read thos
 | writing or changing a BKM | `wiki/bkm/writing/writing-bkms.md` |
 | writing anything an agent reads (BKM, skill, `AGENTS.md`) | `wiki/bkm/writing/writing-for-agents.md` |
 | writing or changing a skill | `wiki/bkm/writing/skill-mechanics.md` |
+
+## Principles
+
+Engineering principles, one per file. Follow each one whose trigger matches what you are doing.
+
+- `wiki/bkm/principles/attack-the-premise.md`: Apply when two or more fixes that share one premise have failed the same gate.
+- `wiki/bkm/principles/boundary-discipline.md`: Apply when wiring validation, error handling, or framework adapters.
+- `wiki/bkm/principles/build-the-lever.md`: Apply to any non-trivial work, not just bulk work: edits, migrations, analyses, checks.
+- `wiki/bkm/principles/encode-lessons-in-structure.md`: Apply when you catch yourself writing the same instruction a second time, or notice a recurring correction.
+- `wiki/bkm/principles/exhaust-the-design-space.md`: Apply when facing a novel UI interaction or architectural decision with no precedent in the codebase.
+- `wiki/bkm/principles/explain-the-number.md`: Apply before you measure, and before you trust, report, or act on a number you measured: a speedup, a regression, a throughput, a latency, or an eval result.
+- `wiki/bkm/principles/fix-root-causes.md`: Apply when debugging.
+- `wiki/bkm/principles/foundational-thinking.md`: Apply before writing logic: choosing core types and data structures, sequencing scaffold-vs-feature work, asking what concurrent actors share.
+- `wiki/bkm/principles/guard-the-context-window.md`: Apply when context is filling up: large outputs, long files, repeated reads, fan-out planning.
+- `wiki/bkm/principles/laziness-protocol.md`: Apply when refactoring, evaluating diff size, or tempted to add abstractions, layers, or signal threading.
+- `wiki/bkm/principles/make-operations-idempotent.md`: Apply when designing commands, lifecycle steps, or processing loops that run amid crashes, restarts, and retries.
+- `wiki/bkm/principles/migrate-callers-then-delete-legacy-apis.md`: Apply when introducing a new internal API while old callers still exist.
+- `wiki/bkm/principles/minimize-reader-load.md`: Apply when reviewing or shaping code that's hard to trace.
+- `wiki/bkm/principles/model-the-domain.md`: Apply when writing stateful logic, or when code branches a lot or repeats a shape assumption across files.
+- `wiki/bkm/principles/never-block-on-the-human.md`: Apply when tempted to ask 'should I do X?' on reversible work.
+- `wiki/bkm/principles/outcome-oriented-execution.md`: Apply during planned rewrites and migrations with explicit phase boundaries.
+- `wiki/bkm/principles/prove-it-works.md`: Apply after completing a task, before declaring done.
+- `wiki/bkm/principles/redesign-from-first-principles.md`: Apply when integrating a new requirement into an existing design.
+- `wiki/bkm/principles/separate-before-serializing-shared-state.md`: Apply when concurrent actors might write to the same file, branch, key, or state object.
+- `wiki/bkm/principles/sequence-verifiable-units.md`: Apply to multi-step work (sweeps, migrations, runs of similar edits) and to how you stack commits and PRs.
+- `wiki/bkm/principles/subtract-before-you-add.md`: Apply when sequencing an addition, refactor, or rewrite.
+- `wiki/bkm/principles/test-behavior-not-implementation.md`: Apply when you write, change, or keep a test.
+- `wiki/bkm/principles/type-system-discipline.md`: Apply when designing types, reviewing a function signature, or writing code in any statically-typed language.
+
+## Not yet written
 
 Work types without BKMs yet: architecture, RTL, DV, FV, synthesis. Their BKMs will live in `wiki/bkm/<type>/`.

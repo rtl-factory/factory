@@ -9,7 +9,8 @@ The list of every BKM and when to follow it lives in the `bkm-router` skill (`.c
 | `workflow/` | how work moves: the flow, the first mate, CI levels, GitHub settings |
 | `design/` | deciding what to build: grilling, domain modeling, glossary and ADR formats |
 | `writing/` | writing BKMs, skills and anything else an agent reads |
+| `principles/` | engineering principles, one per file |
 
 Planned, created with their first BKM: `arch/`, `rtl/`, `dv/`, `fv/`, `syn/`.
 
-Some BKMs are adapted from outside sources under the MIT license; their front matter names the upstream file and commit. See `LICENSE-mattpocock-skills`.
+Many BKMs are adapted from outside packs under the MIT license; their front matter names the upstream file and commit. [SOURCES.md](SOURCES.md) maps which pack feeds which BKM.

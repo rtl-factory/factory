@@ -12,5 +12,5 @@ Every change follows these steps. The rules for each are in `wiki/bkm/workflow/f
 5. **Code and spec loop**: change the code and the block spec together, run L0, repeat until they agree and L0 passes.
 6. **Pull request**: commit, push, open a pull request that closes the issue.
 7. **Review**: a reviewer crewmate reviews; fix and loop back to step 5 until it passes.
-8. **Approval**: the captain's word, or the `full-send` label.
+8. **Approval**: full stop (the captain's word) by default; full send (no wait) with the `full-send` label.
 9. **Merge**: squash an issue branch; merge-commit an epic branch into `main`.

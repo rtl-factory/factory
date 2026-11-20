@@ -15,7 +15,7 @@ The path every change takes from a captain's intent to `main`.
 5. **Code and spec loop.** Change the code under `src/<type>/<block>/` and its spec under `wiki/src/<type>/<block>/` together. Run L0. Repeat until the code matches the spec, the spec matches the issue, and L0 passes.
 6. **Pull request.** Commit, push, and open a pull request whose description says `Closes #<number>`.
 7. **Review.** A reviewer crewmate, with a fresh context, reviews the pull request against the issue, the spec and the BKMs, and posts its findings as a pull request review. The implementing crewmate fixes them; return to step 5 until the reviewer passes it.
-8. **Approval.** Wait for the captain's approval, which the first mate records as a pull request comment, unless the issue is labelled `full-send`.
+8. **Approval.** By default (full stop), wait for the captain's approval, which the first mate records as a pull request comment. With the `full-send` label (full send), skip this step.
 9. **Merge.** Once L1 passes, merge (see Merging). The issue closes.
 10. **Clean up.** Remove the worktree and delete the issue branch.
 

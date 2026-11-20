@@ -63,8 +63,12 @@ _Avoid_: design doc, documentation (for this meaning)
 The captain's go-ahead to merge a pull request into `main`, given after the reviewer crewmate passes it and recorded by the first mate as a pull request comment. It is a step in the flow, not a GitHub review.
 _Avoid_: LGTM, sign-off
 
+**Full stop**:
+The default merge mode: the first mate takes the pull request to ready-to-merge (reviewed, L1 green) and stops for the captain's approval.
+_Avoid_: manual merge
+
 **Full send**:
-An issue labelled `full-send`: its first mate may merge the pull request into `main` without a captain's approval. Without the label, a captain approves.
+The merge mode of an issue labelled `full-send`: the first mate takes the pull request all the way to merged without waiting for the captain's approval.
 _Avoid_: auto-merge, YOLO
 
 **Pull request**:

@@ -1,6 +1,6 @@
 ---
 status: draft
-upstream: roles and principles from kunchenguid/firstmate AGENTS.md and VISION.md @ 427056c (MIT); the tooling is not adopted
+upstream: roles and principles from kunchenguid/firstmate AGENTS.md and VISION.md @ 427056c (MIT, see ../LICENSE-firstmate); the tooling is not adopted
 ---
 
 # First mate
