@@ -1,0 +1,5 @@
+# Python packages for the simulation runner and the L0 CI job (wiki/tools/sim/spec.md).
+# Change a pin only through an issue.
+cocotb==2.1.0
+pytest==9.1.1
+pillow==12.3.0

@@ -1,0 +1,67 @@
+# L0 regression (wiki/bkm/workflow/ci-levels.md): the scripts' and tools' unit
+# tests and every L0 simulation target, on Verilator and cocotb at the versions
+# pinned in cfg/toolchain.json and tools/sim/requirements.txt.
+name: l0
+
+on:
+  pull_request:
+    branches: [main, "epic/**"]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: l0-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the Verilator pin
+        id: pin
+        run: |
+          python3 -I -c 'import json; v = json.load(open("cfg/toolchain.json"))["verilator"]; [print(k + "=" + v[k]) for k in ("version", "tag", "repository")]' >> "$GITHUB_OUTPUT"
+
+      - name: Restore Verilator
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ~/verilator
+          key: verilator-${{ steps.pin.outputs.version }}-${{ runner.os }}-ubuntu-24.04
+
+      - name: Build Verilator
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq flex libfl-dev help2man zlib1g-dev
+          git clone --depth 1 --branch "${{ steps.pin.outputs.tag }}" "${{ steps.pin.outputs.repository }}" "$RUNNER_TEMP/verilator-src"
+          cd "$RUNNER_TEMP/verilator-src"
+          autoconf
+          ./configure --prefix="$HOME/verilator"
+          make -j"$(nproc)"
+          make install
+
+      - name: Put Verilator on PATH
+        run: |
+          echo "$HOME/verilator/bin" >> "$GITHUB_PATH"
+          "$HOME/verilator/bin/verilator" --version
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/sim/requirements.txt
+      - run: pip install -r tools/sim/requirements.txt
+
+      - name: Unit tests (scripts and tools)
+        run: python -m pytest -q src/*/scripts tools
+
+      - name: L0 simulation targets
+        run: python tools/sim/sim.py --workdir workdir/sim test --level L0

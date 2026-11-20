@@ -15,8 +15,8 @@ How the toolchain is built, against its [requirements](prd.md). Decisions: ADR 0
 
 | Tool | Version | Source and notes |
 |---|---|---|
-| Verilator | 5.052 | Built from the upstream tag; cocotb needs 5.036 or newer; 5.054 is newer but unproven here |
-| cocotb | 2.1.0 | pip, with a coverage library for functional coverage (choose in the build issue) |
+| Verilator | 5.052 | Built from the upstream tag; pinned in `cfg/toolchain.json`; cocotb needs 5.036 or newer; 5.054 is newer but unproven here |
+| cocotb | 2.1.0 | pip, pinned with the other simulation packages in `tools/sim/requirements.txt`; a coverage library for functional coverage is chosen in the build issue |
 | Python | 3.12 or newer | |
 | Yosys, SymbiYosys and solvers | one dated OSS CAD Suite release (to verify) | One bundle keeps Yosys, SymbiYosys and the SMT solvers mutually compatible |
 | Quartus Prime Lite | 25.1std.0 Build 1129 | Proven for both boards in nand2anything |
@@ -50,6 +50,10 @@ At session start, `.claude/hooks/session-start.sh` (registered in `.claude/setti
 A first install takes about three minutes (about 40 s download, 2 min install, 9.4 GB installed). Without `QUARTUS_FILES_FOLDER` the hook prints a note and the session starts without Quartus.
 
 Known host issues: a `setlocale` warning needs an `en_US.UTF-8` locale; on Arch, `quartus_map` and friends need `libxcrypt-compat`.
+
+## Install (Verilator, CI)
+
+The `l0` CI job ([ci-levels.md](../../bkm/workflow/ci-levels.md)) builds Verilator from the pinned tag on Ubuntu 24.04 (`flex`, `libfl-dev`, `help2man`, `zlib1g-dev`; `autoconf`, `./configure --prefix=~/verilator`, `make`, `make install`) and caches the install by version, so only the first run after a pin change rebuilds it. The same steps install it on a Linux host.
 
 The other tools' install steps are written by the build issue that installs them.
 

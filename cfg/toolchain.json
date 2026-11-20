@@ -1,5 +1,10 @@
 {
   "_comment": "Pinned toolchain versions, install locations and checksums. Spec: wiki/tools/toolchain/spec.md. Change a pin only through an issue.",
+  "verilator": {
+    "version": "5.052",
+    "tag": "v5.052",
+    "repository": "https://github.com/verilator/verilator"
+  },
   "quartus": {
     "version": "25.1std.0 Build 1129",
     "edition": "Lite",
