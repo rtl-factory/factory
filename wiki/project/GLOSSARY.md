@@ -19,20 +19,30 @@ _Avoid_: prompt, command, plugin
 ## Work flow
 
 **Issue**:
-A GitHub issue. Every change to the repo starts with one, and an issue is what triggers an agent to do the work it describes.
+A GitHub issue. Every change to the repo starts with one, and a human assigning it to an agent is what starts the work.
 _Avoid_: ticket, task, story, request
 
 **Epic**:
-A parent issue whose sub-issues cannot reach `main` one by one and must land together through an epic branch. Opt-in: used only when issues depend on each other that way.
-_Avoid_: feature, initiative, project
+A parent issue whose sub-issues cannot reach `main` one by one and must land together through its epic branch. Every parent issue is an epic; issues that are merely related are linked, not grouped.
+_Avoid_: feature, initiative, project, tracking issue
 
 **Issue branch**:
 The branch where one issue's work is done. It merges into `main`, or into its epic branch when the issue belongs to an epic.
 
 **Epic branch**:
-The integration branch of an epic. Its issue branches merge into it under light CI; it merges into `main` under full CI once it is healthy.
+The integration branch of an epic. Its issue branches merge into it; it merges into `main` through one pull request once it is healthy.
 _Avoid_: feature branch, integration branch
 
 **Pull request**:
 The GitHub request to merge one branch into another; the only way changes reach `main` or an epic branch.
 _Avoid_: merge request, MR, diff
+
+## CI
+
+**Regression level**:
+One of L0 to L4, a cumulative set of CI checks bound to one trigger: L0 on every pull request, L1 after every merge to `main`, L2 hourly, L3 every 6 hours, L4 nightly. Running a level runs every level below it.
+_Avoid_: light CI, full CI, test tier, suite
+
+**Code owner**:
+A person or team listed in `.github/CODEOWNERS` whose approval a pull request into `main` needs.
+_Avoid_: reviewer, maintainer (when the approval is required)

@@ -1,3 +1,8 @@
+---
+status: active
+upstream: mattpocock/skills skills/engineering/domain-modeling/ADR-FORMAT.md @ abeeaf95 (MIT, see ../LICENSE-mattpocock-skills)
+---
+
 # ADR Format
 
 ADRs live in `wiki/project/adr/` and use sequential numbering: `0001-slug.md`, `0002-slug.md`, etc.

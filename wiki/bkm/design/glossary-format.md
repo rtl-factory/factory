@@ -1,3 +1,8 @@
+---
+status: active
+upstream: mattpocock/skills skills/engineering/domain-modeling/GLOSSARY-FORMAT.md @ abeeaf95 (MIT, see ../LICENSE-mattpocock-skills)
+---
+
 # GLOSSARY.md Format
 
 ## Structure
@@ -51,7 +56,7 @@ _Avoid_: Client, buyer, account
 - **Ordering ↔ Billing**: Shared types for `CustomerId` and `Money`
 ```
 
-The skill infers which structure applies:
+Infer which structure applies:
 
 - If `GLOSSARY-MAP.md` exists, read it to find contexts
 - If only a root `GLOSSARY.md` exists, single context
