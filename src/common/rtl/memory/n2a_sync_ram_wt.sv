@@ -1,5 +1,5 @@
 // Portable backend of the common write-through single-port RAM contract
-// owned by wiki/src/common/memory/HAS.md: one clock, one-edge registered read
+// owned by wiki/src/common/rtl/memory/mas.md: one clock, one-edge registered read
 // on every edge, optional full-word write, and a same-edge same-address
 // collision returns the NEW word (write-through). No reset or initialization.
 //

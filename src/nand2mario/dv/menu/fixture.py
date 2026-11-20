@@ -1,7 +1,7 @@
 """Original donor fixture primitives for the native menu scenario.
 
 Source pin and adaptation: src/nand2mario/cfg/sw-import.json. The native
-src/nand2mario/scripts/game_library.py builds the unchanged menu and exit-demo,
+src/nand2mario/scripts/sw_build/game_library.py builds the unchanged menu and exit-demo,
 then uses these independent fixture bytes and reference frames. Seven small
 32 KiB stubs, one 64 KiB MBC1 stub, an empty entry and an illegal-length entry
 exercise the original layout/catalogue contract. All program bytes are

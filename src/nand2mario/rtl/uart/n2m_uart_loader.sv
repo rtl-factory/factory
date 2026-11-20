@@ -6,7 +6,7 @@
 // releases the console core's reset, writes image bytes into the cartridge
 // backing through the load port and reads them back, pins and reads back
 // the displayed frame through the display's snapshot port, and answers every
-// frame with one checksummed response (wiki/src/nand2mario/uart/HAS.md).
+// frame with one checksummed response (wiki/src/nand2mario/rtl/uart/mas.md).
 // A WRITE payload is buffered and committed only after its CRC verified, so
 // a corrupted frame changes nothing. Frames are stop-and-wait: bytes that
 // arrive while a frame is executed or answered are dropped and flagged, a

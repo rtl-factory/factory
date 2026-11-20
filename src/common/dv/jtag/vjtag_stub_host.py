@@ -4,7 +4,7 @@ A board top elaborated with `sld_virtual_jtag_stub.sv` exposes the hub's scan
 outputs as bench variables (`tck_q`, `tdi_q`, `capture_q`, `shift_q`,
 `update_q`, `update_ir_q`, `ir_q`) and reads `tdo`. `StubHost` drives them with
 the common endpoint's IR1 command / IR2 status scans, padding each DR scan with
-the hub's late-TDI bits (wiki/src/common/jtag/HAS.md#wire-contract). Each
+the hub's late-TDI bits (wiki/src/common/rtl/jtag/mas.md#wire-contract). Each
 consumer's board test checks where the accepted bytes land."""
 from cocotb.triggers import Timer
 

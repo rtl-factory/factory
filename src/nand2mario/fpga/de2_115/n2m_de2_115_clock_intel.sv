@@ -1,6 +1,6 @@
 // Intel Cyclone IV E backend of the nand2mario DE2-115 clock contract: one
 // altpll (u_pll) dividing the 50 MHz board reference to the 25 MHz system
-// clock, with its lock status (wiki/src/nand2mario/fpga/HAS.md).
+// clock, with its lock status (wiki/src/nand2mario/fpga/de2_115/board-spec.md).
 //
 // This file and n2m_de2_115_clock_portable.sv define the same module name.
 // Only the Quartus source list selects this file; simulation targets list

@@ -47,73 +47,73 @@
     {
       "source": "tools/sw/assembler.py",
       "sha256": "b14ea594b61cd9b980c51be3fbe564a640fc081a28548342ad289d69fd12a5fa",
-      "destination": "src/nand2mario/scripts/sw/assembler.py",
+      "destination": "src/nand2mario/scripts/sw_build/asm/assembler.py",
       "action": "owner-adapt"
     },
     {
       "source": "tools/sw/expressions.py",
       "sha256": "5ca2b7d79e635f5537c479a9a3fa96301d5a870f9ca56cb8a4da1b0c81a9efa7",
-      "destination": "src/nand2mario/scripts/sw/expressions.py",
+      "destination": "src/nand2mario/scripts/sw_build/asm/expressions.py",
       "action": "owner-adapt"
     },
     {
       "source": "tools/sw/objects.py",
       "sha256": "c817ccd33a91fe568037ed5aa34bc800dbb1020dec3a16b13835bfc9fbd8f102",
-      "destination": "src/nand2mario/scripts/sw/objects.py",
+      "destination": "src/nand2mario/scripts/sw_build/asm/objects.py",
       "action": "owner-adapt"
     },
     {
       "source": "tools/sw/linker.py",
       "sha256": "e70c1e2345bf4db7fb4c9e7fbaf2f4fe797d200aec6838861e823ec36febfcae",
-      "destination": "src/nand2mario/scripts/sw/linker.py",
+      "destination": "src/nand2mario/scripts/sw_build/asm/linker.py",
       "action": "owner-adapt"
     },
     {
       "source": "tools/sw/package.py",
       "sha256": "e16becca8a2391b4f3b0044c4f317758bf4f320a0cdaedd34e3f560216cc17bd",
-      "destination": "src/nand2mario/scripts/sw/package.py",
+      "destination": "src/nand2mario/scripts/sw_build/asm/package.py",
       "action": "owner-adapt"
     },
     {
       "source": "tools/sw/opcodes.json",
       "sha256": "1d5c3953499c6d3867d5fcf0329a8ce49c88184436b8d5fa6926d73008236dc1",
-      "destination": "src/nand2mario/scripts/sw/opcodes.json",
+      "destination": "src/nand2mario/scripts/sw_build/asm/opcodes.json",
       "action": "adapt-MIT opcode data/notice"
     },
     {
       "source": "tools/sw/object.schema.json",
       "sha256": "d9d14d13997ecdc5e230e21bcbf4f338cb7f4f968799d49fcfda1962db3be126",
-      "destination": "src/nand2mario/scripts/sw/object.schema.json",
+      "destination": "src/nand2mario/scripts/sw_build/asm/object.schema.json",
       "action": "owner-adapt"
     },
     {
       "source": "tools/sw/layout.schema.json",
       "sha256": "f451659b563ccf726de5dbbea8616a85e1912450ff51129f289929cb468f985d",
-      "destination": "src/nand2mario/scripts/sw/layout.schema.json",
+      "destination": "src/nand2mario/scripts/sw_build/asm/layout.schema.json",
       "action": "owner-adapt"
     },
     {
       "source": "tools/sw/map.schema.json",
       "sha256": "e873a704e9fb4e04dfff5d9c9d6c617a196e1cd2077ecc236625ad644d735164",
-      "destination": "src/nand2mario/scripts/sw/map.schema.json",
+      "destination": "src/nand2mario/scripts/sw_build/asm/map.schema.json",
       "action": "owner-adapt"
     },
     {
       "source": "tools/sw/listing.schema.json",
       "sha256": "bce6df22a65a26053fc87921fefe36b1fdbd26e349e13b1883409af585821542",
-      "destination": "src/nand2mario/scripts/sw/listing.schema.json",
+      "destination": "src/nand2mario/scripts/sw_build/asm/listing.schema.json",
       "action": "owner-adapt"
     },
     {
       "source": "tools/sw/symbols.schema.json",
       "sha256": "4b012769c2c93294ece2e4afcaa2d751b9341a8a8b7b126988fed1d279a8e602",
-      "destination": "src/nand2mario/scripts/sw/symbols.schema.json",
+      "destination": "src/nand2mario/scripts/sw_build/asm/symbols.schema.json",
       "action": "owner-adapt"
     },
     {
       "source": "tools/sw/MGBDIS_LICENSE.md",
       "sha256": "8f9ea251eb9eaa3560be46ce5adb7e190bbc890cff6e5eb532df0ccacefa0fa4",
-      "destination": "src/nand2mario/scripts/sw/MGBDIS_LICENSE.md",
+      "destination": "src/nand2mario/scripts/sw_build/asm/MGBDIS_LICENSE.md",
       "action": "adapt-MIT opcode data/notice"
     },
     {
@@ -131,7 +131,7 @@
     {
       "source": "tools/provenance.json",
       "sha256": "895a642ccfc567c5cc67c76a9ac35e6db5612b5588419be318a38bfd788db459",
-      "destination": "src/nand2mario/scripts/sw/mgbdis-provenance.json",
+      "destination": "src/nand2mario/scripts/sw_build/asm/mgbdis-provenance.json",
       "action": "retain exact MIT opcode provenance record"
     }
   ],

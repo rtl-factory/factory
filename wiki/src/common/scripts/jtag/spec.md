@@ -59,7 +59,7 @@ From WSL with Windows Quartus (`quartus_stp.exe` in `quartus_bin`), the host sta
 
 ## Users
 
-nand2mario's board flow (`src/nand2mario/scripts/n2m_board.py`, `joypad`) maps button names to keys and sends them through this library.
+nand2mario's board flow (`src/nand2mario/scripts/board/n2m_board.py`, `joypad`) maps button names to keys and sends them through this library.
 
 ## Origin
 

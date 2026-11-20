@@ -4,7 +4,7 @@
 // selects exactly one of them: Verilator targets list this file; a Quartus
 // project lists the Intel file. Product RTL instantiates `n2a_sdp_ram` and
 // never selects a backend itself. The owning contract is
-// wiki/src/common/memory/HAS.md.
+// wiki/src/common/rtl/memory/mas.md.
 // The selection boundary needs one module name in two differently named
 // files, so the filename lint is waived for this file only.
 /* verilator lint_off DECLFILENAME */

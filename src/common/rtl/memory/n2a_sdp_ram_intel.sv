@@ -9,7 +9,7 @@
 // target. Verilator lint of the wiring uses the DV-only port stub in
 // src/common/dv/memory/. The owning contract, parameter rationale and the
 // Quartus fitter evidence obligation are in
-// wiki/src/common/memory/HAS.md.
+// wiki/src/common/rtl/memory/mas.md.
 // The selection boundary needs one module name in two differently named
 // files, so the filename lint is waived for this file only.
 /* verilator lint_off DECLFILENAME */

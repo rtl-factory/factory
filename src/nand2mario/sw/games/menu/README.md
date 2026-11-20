@@ -8,7 +8,7 @@ The menu builds byte-identically with the local `dmg-loader-v1` profile.
 Run from the repository root:
 
 ```sh
-python3 src/nand2mario/scripts/sw_games.py build menu --output workdir/games
+python3 src/nand2mario/scripts/sw_build/sw_games.py build menu --output workdir/games
 ```
 
 The menu/library contract (in nand2anything, not ported yet; it will be
