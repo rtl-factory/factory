@@ -4,36 +4,38 @@ status: draft
 
 # Repository layout
 
-Where code and its documents live, and how to choose the folder for something new. The decision behind it is ADR 0010.
+Where code and its documents live, and how to choose the folder for something new. The decisions behind it are ADR 0010 and ADR 0011.
 
 ## Rules
 
+- Lay out a project's code by project, then discipline, then unit: `src/<project>/<discipline>/<name>/`. The disciplines are `arch`, `rtl`, `dv`, `fv`, `fpga` and `scripts`; a project may also have `cfg/` (targets and board config) and `sw/` (software that runs on the design). Why: the discipline says what kind of work the code is, and the path is the same in every project.
 - Put code in the source tree and its documents in `wiki/`, at the path that mirrors the code: the documents for code in `<path>/` live in `wiki/<path>/`. Why: every document is in one place and on the site, and its path names the code it describes.
 
   | What | Code | Documents |
   |---|---|---|
-  | Block of a project | `src/<project>/<type>/<block>/` (type: `arch`, `rtl`, `dv`, `fv`, `fpga`) | `wiki/src/<project>/<type>/<block>/`: spec, verification plan, formal plan |
-  | Project tool | `src/<project>/tools/<tool>/` | `wiki/src/<project>/tools/<tool>/`: `prd.md`, `spec.md` |
-  | Repo tool | `tools/<tool>/` | `wiki/tools/<tool>/`: `prd.md`, `spec.md` |
+  | Block | `src/<project>/<discipline>/<block>/` (`arch`, `rtl`, `dv`, `fv`, `fpga`) | `wiki/src/<project>/<discipline>/<block>/`: spec, verification plan, formal plan |
+  | Script | `src/<project>/scripts/<script>/` | `wiki/src/<project>/scripts/<script>/`: `prd.md`, `spec.md` |
+  | Tool | `tools/<tool>/` | `wiki/tools/<tool>/`: `prd.md`, `spec.md` |
 
+- Say **tool** only for code in the top-level `tools/`, and **script** for code in a project's `scripts/` discipline. Never call a script a tool. Why: one word per layer means "where does this live" has one answer.
 - Never put a PRD, spec or plan in the source tree. A code folder may keep a short `README.md` that says what is in it and points to its documents in the wiki, and third-party notices stay with the files they cover. Why: a requirements or design document beside the code is one the site never shows, or a second copy that drifts from the wiki one.
-- Every tool must have a PRD and a spec at its mirrored wiki path, written per [planning.md](../design/planning.md); they change with the code per [flow.md](flow.md). Why: a tool without written requirements cannot be reviewed against anything.
-- Make a tool a **repo tool** when any project could use it unchanged (the simulation runner, the toolchain, the wiki site, the tracker). Make it a **project tool** when it is bound to one project, or to a block of the `common` project: it speaks a block's protocol, reads one project's config, or encodes one board's facts. Why: a tool lives next to what forces it to change.
-- When unsure, ask: if this project or block were deleted, would the tool still be worth keeping? If not, it is a project tool of that project. Why: it is the deletion test (glossary) applied to tools, and it gives the same answer every time.
-- A tool shared by several projects but tied to a shared block is a project tool of `common`, not a repo tool. Why: sharing makes it common; only independence from every design makes it a repo tool.
-- Name the tool's spec path in the header of its entry file. Why: a reader of the code finds the documents without knowing this rule.
-- When a tool's scope changes (a project tool every project now uses), move its code and its documents together in one pull request through its own issue. Why: the mirror breaks if only one side moves.
+- Every tool and every script must have a PRD and a spec at its mirrored wiki path, written per [planning.md](../design/planning.md); they change with the code per [flow.md](flow.md). Why: code without written requirements cannot be reviewed against anything.
+- Make it a **tool** when any project could use it unchanged (the simulation runner, the toolchain, the wiki site, the tracker). Make it a **script** of a project when it is bound to that project, or to a block of the `common` project: it speaks a block's protocol, reads one project's config, or encodes one board's facts. Why: code lives next to what forces it to change.
+- When unsure, ask: if this project or block were deleted, would it still be worth keeping? If not, it is a script of that project. Why: it is the deletion test (glossary) applied to tools, and it gives the same answer every time.
+- Code shared by several projects but tied to a shared block is a script of `common`, not a tool. Why: sharing makes it common; only independence from every design makes it a tool.
+- Name the spec path in the header of the tool's or script's entry file. Why: a reader of the code finds the documents without knowing this rule.
+- When the scope changes (a script every project now uses, so a tool), move the code and its documents together in one pull request through its own issue. Why: the mirror breaks if only one side moves.
 
 ### Example: the JTAG keyboard host
 
-The JTAG keyboard host sends key scan codes to a board over JTAG. It is the host side of the `common` JTAG keyboard block (`src/common/rtl/jtag/`) and speaks that block's own command and status format, so it changes whenever the block does, and it would be useless if the block were deleted. It is therefore a project tool of `common`: code in `src/common/tools/jtag/`, documents in `wiki/src/common/tools/jtag/`. The simulation runner, by contrast, runs any project's targets and knows no design, so it is a repo tool: code in `tools/sim/`, documents in `wiki/tools/sim/`.
+The JTAG keyboard host sends key scan codes to a board over JTAG. It is the host side of the `common` JTAG keyboard block (`src/common/rtl/jtag/`) and speaks that block's own command and status format, so it changes whenever the block does, and it would be useless if the block were deleted. It is therefore a script of `common`: code in `src/common/scripts/jtag/`, documents in `wiki/src/common/scripts/jtag/`. The simulation runner, by contrast, runs any project's targets and knows no design, so it is a tool: code in `tools/sim/`, documents in `wiki/tools/sim/`.
 
-## Steps: add a tool
+## Steps: add a tool or a script
 
-1. Decide repo tool or project tool (Rules), and say which in the issue.
+1. Decide tool or script (Rules), and say which in the issue.
 2. Create the code folder, with its tests in `tests/` inside it.
 3. Write `prd.md` and `spec.md` in the mirrored wiki folder per [planning.md](../design/planning.md), with a `README.md` landing page per [wiki-site.md](wiki-site.md).
-4. Add the tool to the table of its section's landing page: `wiki/tools/README.md` for a repo tool, the project's `wiki/src/<project>/README.md` for a project tool.
+4. Add it to the table of its section's landing page: `wiki/tools/README.md` for a tool, the project's `wiki/src/<project>/scripts/README.md` for a script.
 
 ## Exit criteria
 

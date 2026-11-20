@@ -24,8 +24,8 @@ from cocotb.clock import Clock
 from cocotb.triggers import FallingEdge, ReadOnly, RisingEdge, Timer
 from cocotb.utils import get_sim_time
 
-from ...tools import frame_snapshot as fs
-from ...tools.cart_loader import (CMD_HOLD, CMD_RELEASE, CMD_SNAP_PIN, CMD_SNAP_READ, STATUS_NO_FRAME,
+from ...scripts import frame_snapshot as fs
+from ...scripts.cart_loader import (CMD_HOLD, CMD_RELEASE, CMD_SNAP_PIN, CMD_SNAP_READ, STATUS_NO_FRAME,
                                   STATUS_NOT_PINNED, decode_response, encode_request, response_total_length)
 from ..video import display_model as dm
 from .test_system import idle_host, load_image, power_up

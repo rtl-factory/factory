@@ -7,8 +7,8 @@ A hardware development factory: captains (humans) set direction and decide, a fi
 | [BKMs](bkm/README.md) | Best Known Methods: how every kind of work is done, plus the engineering principles |
 | [Project](project/README.md) | The glossary and the decisions (ADRs) |
 | [Specs](specs/README.md) | External reference specifications: standards, protocols, ISAs |
-| [Blocks](src/README.md) | Specs and docs for each project, its blocks and its tools, mirroring `src/` |
-| [Tools](tools/README.md) | The repo tools, each with its requirements (PRD) and spec; project tools sit with their project under Blocks |
+| [Blocks](src/README.md) | Specs and docs for each project, by discipline: its blocks and its scripts, mirroring `src/` |
+| [Tools](tools/README.md) | The tools any project can use, each with its requirements (PRD) and spec; a project's scripts sit with the project under Blocks |
 
 Start with the [flow](bkm/workflow/flow.md), which covers how a change goes from an issue to `main`, and the [glossary](project/GLOSSARY.md).
 

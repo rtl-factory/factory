@@ -5,7 +5,7 @@ upstream: mattpocock/skills skills/engineering/codebase-design/{SKILL,DEEPENING,
 
 # Architecture of blocks
 
-How to shape blocks and the seams between them, find where the existing structure should change, refactor it safely, and explain how and why a block is built. RTL lives under `src/<project>/rtl/<block>/`, architecture models under `src/<project>/arch/<block>/`, specs under `wiki/src/<project>/<type>/<block>/`.
+How to shape blocks and the seams between them, find where the existing structure should change, refactor it safely, and explain how and why a block is built. RTL lives under `src/<project>/rtl/<block>/`, architecture models under `src/<project>/arch/<block>/`, specs under `wiki/src/<project>/<discipline>/<block>/`.
 
 ## Terms
 

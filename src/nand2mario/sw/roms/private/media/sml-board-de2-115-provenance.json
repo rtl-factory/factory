@@ -21,13 +21,13 @@
     "build_host": "WSL2 build host; SOF hash and receipt verified on the board host",
     "timing": "all corners met at 25 MHz; Slow 1200mV 85C setup slack 0.855 ns (Fmax 25.55 MHz)",
     "programmed_utc": "2026-10-10T17:58:32Z",
-    "programmer": "src/nand2mario/tools/n2m_board.py program --board de2_115 (receipt validated before quartus_pgm)"
+    "programmer": "src/nand2mario/scripts/n2m_board.py program --board de2_115 (receipt validated before quartus_pgm)"
   },
   "tools": {
-    "load": "src/nand2mario/tools/n2m_board.py load --board de2_115",
-    "snapshot": "src/nand2mario/tools/n2m_board.py snapshot --board de2_115",
-    "input": "src/nand2mario/tools/n2m_board.py joypad --board de2_115 (Virtual JTAG keyboard)",
-    "gif": "src/nand2mario/tools/frame_snapshot.py gif --durations-ms 1000 1000 1000 1000 --manifests ...",
+    "load": "src/nand2mario/scripts/n2m_board.py load --board de2_115",
+    "snapshot": "src/nand2mario/scripts/n2m_board.py snapshot --board de2_115",
+    "input": "src/nand2mario/scripts/n2m_board.py joypad --board de2_115 (Virtual JTAG keyboard)",
+    "gif": "src/nand2mario/scripts/frame_snapshot.py gif --durations-ms 1000 1000 1000 1000 --manifests ...",
     "webcam": ".agents/skills/board-webcam/board_cam.py still --warmup 20"
   },
   "input_sequence": [

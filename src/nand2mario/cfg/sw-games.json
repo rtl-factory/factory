@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Original nand2mario games, owner-adapted from standalone nand2mario src/sw at 510be34b49f5bc666ad828260ed0e193546736dd (src/nand2mario/cfg/sw-import.json). Built by src/nand2mario/tools/sw_games.py with cpu_sw.py.",
+  "description": "Original nand2mario games, owner-adapted from standalone nand2mario src/sw at 510be34b49f5bc666ad828260ed0e193546736dd (src/nand2mario/cfg/sw-import.json). Built by src/nand2mario/scripts/sw_games.py with cpu_sw.py.",
   "games": {
     "stackdrop": {
       "directory": "src/nand2mario/sw/games/stackdrop",

@@ -23,7 +23,7 @@ from cocotb.triggers import FallingEdge, First, ReadOnly, RisingEdge, Timer
 from cocotb.utils import get_sim_time
 
 from src.common.dv.jtag.vjtag_stub_host import StubHost
-from ...tools.cart_loader import (CMD_HOLD, CMD_PING, CMD_READ, CMD_RELEASE, CMD_WRITE, address_field,
+from ...scripts.cart_loader import (CMD_HOLD, CMD_PING, CMD_READ, CMD_RELEASE, CMD_WRITE, address_field,
                                   chunks, decode_response, encode_request, response_total_length)
 from ..core.test_cpu import unpack
 from ..system.test_system import load_image, power_up
@@ -282,8 +282,8 @@ async def board_smoke(dut):
     else:
         raise AssertionError('VGA comparison accepted a corrupted expectation')
     if hasattr(dut, 'VGA_CLK'):
-        from ...tools import frame_snapshot as fs
-        from ...tools.cart_loader import CMD_SNAP_PIN, CMD_SNAP_RELEASE
+        from ...scripts import frame_snapshot as fs
+        from ...scripts.cart_loader import CMD_SNAP_PIN, CMD_SNAP_RELEASE
         pin = await uart.exchange(encode_request(CMD_SNAP_PIN))
         assert pin.ok, pin.describe()
         packed = bytearray()

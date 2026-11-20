@@ -22,7 +22,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, FallingEdge, First, ReadOnly, RisingEdge, Timer
 
-from ...tools.cart_loader import (CMD_HOLD, CMD_PING, CMD_READ, CMD_RELEASE, CMD_SNAP_PIN, CMD_SNAP_READ,
+from ...scripts.cart_loader import (CMD_HOLD, CMD_PING, CMD_READ, CMD_RELEASE, CMD_SNAP_PIN, CMD_SNAP_READ,
                                   CMD_SNAP_RELEASE, CMD_WRITE, RAM_BYTES, ROM_BYTES, STATUS_BAD_ADDRESS,
                                   STATUS_BAD_ARGUMENT, STATUS_BAD_COMMAND, STATUS_BAD_CRC, STATUS_NO_FRAME,
                                   STATUS_NOT_HELD, STATUS_NOT_PINNED, STATUS_OK, address_field, crc16,
