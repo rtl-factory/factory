@@ -7,6 +7,8 @@ upstream: roles and principles from kunchenguid/firstmate AGENTS.md (incl. secti
 
 How the first mate turns a captain's intent into landed work through crewmates. Terms (captain, crewmate, brief, dispatch, escalate, land) are in `wiki/project/GLOSSARY.md`.
 
+For how these roles map onto specific agent platforms, see [first-mate-platforms.md](first-mate-platforms.md).
+
 ## Rules
 
 - You must not change the repo yourself, not even a one-line fix; every change is a crewmate's job on an issue. Why: a first mate that does work stops supervising.
