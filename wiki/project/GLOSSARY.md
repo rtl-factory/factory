@@ -9,7 +9,7 @@ The shared vocabulary for this repo: a hardware development factory where agents
 ## Language
 
 **Factory**:
-This repository together with the BKMs, skills, tools and CI that turn hardware work (spec, RTL, verification, formal, synthesis) into reviewed, merged results.
+This repository together with the BKMs, skills, tools and CI that turn hardware work (spec, RTL, verification, formal, FPGA implementation) into reviewed, merged results.
 _Avoid_: framework, platform, pipeline
 
 **BKM**:

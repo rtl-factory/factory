@@ -8,7 +8,7 @@ Documentation for each hardware block, mirroring the code under `src/<type>/<blo
 | [rtl](rtl/README.md) | Block specs for the hardware implementation |
 | [dv](dv/README.md) | Verification plans and testbench docs |
 | [fv](fv/README.md) | Formal verification plans and properties |
-| [syn](syn/README.md) | Synthesis setup, constraints and results |
+| [fpga](fpga/README.md) | FPGA implementation: Quartus settings, pins, timing constraints and fit results per board |
 
 !!! note "Placeholder"
     No blocks yet.

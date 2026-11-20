@@ -23,7 +23,7 @@ Captains need to see, at a glance and without asking an agent, what the factory 
 
 **Design metrics**
 
-7. Show, per block and over time: functional coverage, formal proof status (proven, bounded with its depth, or failing), and synthesis area and timing.
+7. Show, per block and over time: functional coverage, formal proof status (proven, bounded with its depth, or failing), and FPGA fit results (resource use and timing) per board.
 
 **Publishing**
 
@@ -50,7 +50,7 @@ Each requirement is verified at the highest place it can be: the generated pages
 | 4 | After a failing and then a passing run of a level, the page shows the latest result, and the health of `main` changes accordingly |
 | 5 | The history of a level lists both runs in order, each failing run linking to its CI run |
 | 6 | For a closed issue and a merged pull request, the shown lead time, review rounds and waiting time match their GitHub history; merges per week match the merge count on `main` for that week; each metric shows at least two points in time |
-| 7 | For a block with coverage, proof and synthesis results from two runs, the page shows both points and their numbers match the reports CI produced |
+| 7 | For a block with coverage, proof and FPGA fit results from two runs, the page shows both points and their numbers match the reports CI produced |
 | 8 | The published pages are static files on the wiki site; nothing else is deployed |
 | 9 | After a merge to `main` and after a scheduled level, the pages show a new collection time |
 | 10 | Every tracker page shows its collection time; with a source that has no data (a level with no job yet), the page says so instead of showing zero |

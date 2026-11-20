@@ -26,7 +26,7 @@ factory/
 │   ├── rtl/            Hardware implementation
 │   ├── dv/             Simulation tests
 │   ├── fv/             Formal verification
-│   └── syn/            Synthesis setup and constraints
+│   └── fpga/           FPGA implementation: Quartus settings, pins, constraints
 │
 ├── wiki/               Documentation, published as the wiki site (mkdocs.yml)
 │   ├── src/            Documentation for the hardware blocks (mirrors src/)
