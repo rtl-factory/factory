@@ -34,7 +34,6 @@ factory/
 │   ├── bkm/            Best Known Methods, one directory per kind of work
 │   ├── project/        Glossary and decisions (ADRs)
 │   ├── tools/          Documentation for the tools
-│   └── tracker/        Metrics and dashboards
 │
 ├── cfg/                Project settings and limits
 ├── tools/              Tools we build, one folder each with its prd.md and spec.md
