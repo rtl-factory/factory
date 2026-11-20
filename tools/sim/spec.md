@@ -30,7 +30,9 @@ python tools/sim/sim.py test --project nand2mario [--level L1]
 python tools/sim/sim.py test --all
 ```
 
-`--workdir DIR` (default `workdir/sim/`, ignored by git) sets the scratch directory. A target runs in a child process under its time budget and writes `DIR/cocotb/<target>/{build,test}/` (wrapped targets: `DIR/wrapped/<target>/`). Verilator flags: `--timing --assert --Wall`, compiled from the repository root so ``` `include ``` paths are root-relative.
+`--level L` alone runs every non-manual target at level `L` or below; with `--project` it narrows that project. `--workdir DIR` (default `workdir/sim/`, ignored by git) sets the scratch directory; keep it under the repository's `workdir/`, because wrappers refuse outputs anywhere else. A target runs in a child process under its time budget and writes `DIR/cocotb/<target>/{build,test}/` (wrapped targets: `DIR/wrapped/<target>/`). Verilator flags: `--timing --assert --Wall`, compiled from the repository root so ``` `include ``` paths are root-relative.
+
+Seeds: a wrapped target gets its seed and `--waves` through the `SIM_SEED` and `SIM_WAVES` environment variables, which the wrapper's own `test --direct` call reads, so the printed seed is the one the test used. Native targets take no seed and write no waveforms; their result line shows `seed=-`. A target that runs past its budget is stopped with its whole process group.
 
 ## Origin
 

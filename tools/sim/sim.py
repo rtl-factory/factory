@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -20,6 +21,7 @@ import time
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_WORKDIR = ROOT / "workdir" / "sim"
 COMPILE_ALLOWANCE_SECONDS = 900
+LEVELS = ["L0", "L1", "L2", "L3", "L4"]
 
 
 def load_targets(root: Path = ROOT) -> dict:
@@ -92,8 +94,10 @@ def run_native(name: str, target: dict, base: Path) -> int:
 
 def run_target(name: str, target: dict, workdir: Path, seed: int | None, waves: bool,
                direct: bool = False) -> bool:
+    native = target.get("kind") == "native"
     seed = target.get("default_seed", 1) if seed is None else seed
     wrapped = bool(target.get("wrapper")) and not direct
+    env = dict(os.environ)
     base = workdir / ("wrapped" if wrapped else "cocotb") / name
     if base.exists():
         shutil.rmtree(base)
@@ -104,6 +108,8 @@ def run_target(name: str, target: dict, workdir: Path, seed: int | None, waves: 
         timeout *= 4
         fields = {"output": str(base / "out"), "workdir": str(base / "lane")}
         argv = [sys.executable, "-B", "-m"] + [a.format(**fields) for a in target["wrapper"]]
+        # The wrapper's own `test --direct` call picks these up.
+        env.update(SIM_SEED=str(seed), SIM_WAVES="1" if waves else "")
     else:
         argv = [sys.executable, "-B", __file__, "--workdir", str(workdir), "_child", name, "--seed", str(seed)]
         if waves:
@@ -111,11 +117,14 @@ def run_target(name: str, target: dict, workdir: Path, seed: int | None, waves: 
     start = time.monotonic()
     log = base / "run.log"
     with log.open("w") as handle:
+        # Own process group, so a timeout also stops the simulator and any wrapper children.
+        proc = subprocess.Popen(argv, cwd=ROOT, stdout=handle, stderr=subprocess.STDOUT,
+                                env=env, start_new_session=True)
         try:
-            code = subprocess.run(argv, cwd=ROOT, stdout=handle, stderr=subprocess.STDOUT,
-                                  timeout=timeout).returncode
-            verdict = None
+            code, verdict = proc.wait(timeout=timeout), None
         except subprocess.TimeoutExpired:
+            os.killpg(proc.pid, signal.SIGKILL)
+            proc.wait()
             code, verdict = 124, f"TIMEOUT after {timeout}s"
     text = "".join(p.read_text(errors="replace") for p in (log, base / "build.log", base / "test.log") if p.exists())
     expected = target.get("expected_fatal")
@@ -125,7 +134,8 @@ def run_target(name: str, target: dict, workdir: Path, seed: int | None, waves: 
     else:
         passed = code == 0
         verdict = verdict or ("PASS" if passed else f"FAIL (exit {code})")
-    print(f"{name:45s} seed={seed:<10} {time.monotonic() - start:7.1f}s  {verdict}", flush=True)
+    shown = "-" if native else seed
+    print(f"{name:45s} seed={shown!s:<10} {time.monotonic() - start:7.1f}s  {verdict}", flush=True)
     if not passed:
         print(f"    log: {log}", flush=True)
     return passed
@@ -142,7 +152,8 @@ def main(argv=None) -> int:
     test.add_argument("--project", help="only targets of this project (src/<project>)")
     test.add_argument("--seed", type=int, help="override the target's default seed")
     test.add_argument("--waves", action="store_true", help="write waveforms")
-    test.add_argument("--level", help="only targets at this regression level or below (L0, L1, L2)")
+    test.add_argument("--level", choices=LEVELS,
+                      help="targets at this regression level or below; alone, all such targets")
     test.add_argument("--direct", action="store_true",
                       help="run the target itself, not its wrapper (wrappers call this)")
     child = sub.add_parser("_child")
@@ -158,17 +169,23 @@ def main(argv=None) -> int:
         return 0
     if args.command == "_child":
         return run_one(args.target, targets[args.target], workdir, args.seed, args.waves)
-    names = args.targets or (sorted(targets) if args.all or args.project else [])
+    if args.direct and args.seed is None and os.environ.get("SIM_SEED"):
+        args.seed = int(os.environ["SIM_SEED"])
+    if args.direct and os.environ.get("SIM_WAVES"):
+        args.waves = True
+    selection = args.all or args.project or args.level
+    names = args.targets or (sorted(targets) if selection else [])
     if args.project:
         names = [n for n in names if targets[n]["project"] == args.project]
-    if args.all or args.project:
+    if selection and not args.targets:
         names = [n for n in names if targets[n].get("level") != "manual"]
     if args.level:
-        order = ["L0", "L1", "L2", "L3", "L4"]
-        names = [n for n in names if targets[n].get("level") in order[:order.index(args.level) + 1]]
+        names = [n for n in names if targets[n].get("level") in LEVELS[:LEVELS.index(args.level) + 1]]
     unknown = [n for n in names if n not in targets]
     if not names or unknown:
-        parser.error(f"unknown targets: {unknown}" if unknown else "name targets, or use --all or --project")
+        parser.error(f"unknown targets: {unknown}" if unknown else "name targets, or use --all, --project or --level")
+    if (args.seed is not None or args.waves) and any(targets[n].get("kind") == "native" for n in names):
+        print("note: native targets take no seed and write no waveforms", file=sys.stderr)
     if not shutil.which("verilator"):
         parser.error("verilator not on PATH")
     failed = [n for n in names if not run_target(n, targets[n], workdir, args.seed, args.waves, args.direct)]
