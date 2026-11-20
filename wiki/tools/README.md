@@ -1,6 +1,5 @@
 # Tools
 
-The tools the factory uses (simulators, formal tools, synthesis, lint, build) and how to run them: versions, licences, commands and where results land. One page per tool.
+The tools the factory builds. Each tool lives in `tools/<tool>/` in the repository, with its requirements (`prd.md`) and its spec (`spec.md`) next to its code; this section shows those two documents for every tool.
 
-!!! note "Placeholder"
-    No tools chosen yet. Each tool choice that is hard to reverse gets an ADR in [Decisions](../project/adr/README.md).
+Tools we use but do not build (simulators, formal tools, synthesis) and their versions and licences are recorded as decisions in [Decisions](../project/adr/README.md) once chosen.

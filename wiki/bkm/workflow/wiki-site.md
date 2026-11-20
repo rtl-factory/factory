@@ -9,6 +9,7 @@ How the `wiki/` folder is published as a GitHub Pages site, and how to keep it b
 ## Rules
 
 - Write wiki pages as plain Markdown under `wiki/`; the site is generated from them by MkDocs with the Material theme (`mkdocs.yml`). Why: the files stay readable on GitHub and in an editor; the site is only a view.
+- Don't copy a tool's `prd.md` or `spec.md` into `wiki/`; the site build publishes them from `tools/<tool>/` under Tools (`tools/pages/hooks.py`), per [planning.md](../design/planning.md). Why: a copy drifts from the tool's own documents.
 - Give every folder under `wiki/` a `README.md`; it is the folder's landing page. Why: a folder without one has no page to land on.
 - Link between wiki pages with relative `.md` links. Link to files outside `wiki/` with full GitHub URLs. Why: relative links work both on GitHub and on the site; links out of `wiki/` break on the site.
 - Set a folder's title and page order in its `.nav.yml`; without one, pages are listed alphabetically. Why: folder names like `prd` or `dv` are not readable titles.

@@ -3,3 +3,6 @@
 
 # Wiki site build output (mkdocs build)
 /site/
+
+# Python bytecode
+__pycache__/

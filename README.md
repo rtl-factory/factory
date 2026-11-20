@@ -30,7 +30,6 @@ factory/
 │
 ├── wiki/               Documentation, published as the wiki site (mkdocs.yml)
 │   ├── src/            Documentation for the hardware blocks (mirrors src/)
-│   ├── prd/            Product requirements documents
 │   ├── specs/          External reference specifications
 │   ├── bkm/            Best Known Methods, one directory per kind of work
 │   ├── project/        Glossary and decisions (ADRs)
@@ -38,7 +37,7 @@ factory/
 │   └── tracker/        Metrics and dashboards
 │
 ├── cfg/                Project settings and limits
-├── tools/              Scripts and shared automation
+├── tools/              Tools we build, one folder each with its prd.md and spec.md
 ├── .claude/            Agent skills that route to BKMs (source of truth)
 ├── .agents/skills      Symlink to .claude/skills, for Codex
 ├── .github/            CI workflows and issue/PR templates
