@@ -1,6 +1,6 @@
 # BKM sources
 
-Where our BKMs come from. Four agent-skill packs overlap heavily, so we take each idea once: one BKM per topic, drawing on every pack that covers it. Each BKM's front matter names the upstream files it uses.
+Where our BKMs come from. Four agent-skill packs, plus one captain's own project repository, overlap heavily, so we take each idea once: one BKM per topic, drawing on every pack that covers it. Each BKM's front matter names the upstream files it uses.
 
 | Pack | Author | License |
 |---|---|---|
