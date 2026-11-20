@@ -16,9 +16,11 @@ Which checks run when. This BKM is the single source for the CI schedule. Levels
 | L3 | every 6 hours on `main` | long regression |
 | L4 | nightly on `main` | everything, including the longest runs |
 
-Two workflows run outside the levels:
+These workflows run outside the levels; they are workflow rules, not regression checks:
 
-- `issue-link` runs on every pull request; it is a workflow rule, not a regression check.
+- `issue-link` runs on every pull request.
+- `label-sync` creates and updates labels from `.github/labels.json` on every merge to `main` that changes it ([labels.md](labels.md)).
+- `status-clear` removes `status:` labels from an issue when it closes ([labels.md](labels.md)).
 - `pages` builds the wiki site (`mkdocs build --strict`) on every pull request that touches the wiki, and builds and deploys it on every merge to `main` that does ([wiki-site.md](wiki-site.md)).
 
 ## Rules

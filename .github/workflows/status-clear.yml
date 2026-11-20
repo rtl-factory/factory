@@ -1,0 +1,28 @@
+# Removes every status: label when an issue closes (wiki/bkm/workflow/labels.md):
+# status: tracks open work only, so a closed issue carries none.
+name: status-clear
+
+on:
+  issues:
+    types: [closed]
+
+permissions:
+  issues: write
+
+jobs:
+  status-clear:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            for (const l of issue.labels) {
+              if (!l.name.startsWith('status:')) continue;
+              try {
+                await github.rest.issues.removeLabel({ ...context.repo, issue_number: issue.number, name: l.name });
+                core.info(`removed ${l.name} from #${issue.number}`);
+              } catch (e) {
+                if (e.status !== 404) throw e;  // already gone: nothing to do
+              }
+            }
