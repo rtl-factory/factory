@@ -117,13 +117,17 @@ def run_target(name: str, target: dict, workdir: Path, seed: int | None, waves: 
     start = time.monotonic()
     log = base / "run.log"
     with log.open("w") as handle:
-        # Own process group, so a timeout also stops the simulator and any wrapper children.
+        # Own process group, so a timeout also stops the simulator and any wrapper
+        # children; a --direct run stays in its wrapper's group so the outer kill reaches it.
         proc = subprocess.Popen(argv, cwd=ROOT, stdout=handle, stderr=subprocess.STDOUT,
-                                env=env, start_new_session=True)
+                                env=env, start_new_session=not direct)
         try:
             code, verdict = proc.wait(timeout=timeout), None
         except subprocess.TimeoutExpired:
-            os.killpg(proc.pid, signal.SIGKILL)
+            if direct:
+                proc.kill()  # the wrapper's group kill covers its children
+            else:
+                os.killpg(proc.pid, signal.SIGKILL)
             proc.wait()
             code, verdict = 124, f"TIMEOUT after {timeout}s"
     text = "".join(p.read_text(errors="replace") for p in (log, base / "build.log", base / "test.log") if p.exists())
