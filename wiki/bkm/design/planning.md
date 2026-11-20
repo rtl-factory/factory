@@ -15,7 +15,7 @@ How to turn an aligned idea into a written plan (a PRD, an interface sketch for 
 - Sharpen a vague request before planning it: say what a senior hardware engineer would do here that was not asked for, the rawest source they would start from (the standard, the datasheet, the reference implementation, measured traces, not a summary), the methods and tools they would use, and what other than the agent or the captain would show the result is right (a reference model, a compliance suite, a formal property, a synthesis report). Fold the answers into the plan. Why: this makes the work deeper, not bigger, and names its oracle up front.
 - Settle by experiment every open question an experiment can settle (Steps: prototype); escalate to the captain only product or preference calls no run can settle. Why: a measured answer beats an opinion, and captain attention is the scarcest resource ([never-block-on-the-human](../principles/never-block-on-the-human.md)).
 - Write a PRD in `wiki/prd/<product>.md` with the sections listed in [wiki/prd/README.md](../../prd/README.md), in glossary terms and with no file paths or code, except a snippet from a prototype that states a decision better than prose (an FSM table, a register map). Why: paths go stale; behaviour and decisions do not.
-- Name the verification seams in the PRD: for each requirement, the highest interface where it is checked (block boundary, subsystem testbench, formal harness), reusing existing ones and adding as few new ones as possible. Why: checks at a high seam survive refactors; each new seam is a testbench to build and keep.
+- Name in the PRD, for each requirement, the highest level where it is verified (a block's interface, a subsystem testbench, a formal harness), reusing existing ones and adding as few new ones as possible. Why: checks at a high level survive refactors; each new one is a testbench to build and keep.
 - Sketch each block's interfaces before any RTL (Steps: sketch). Keep the sketch in the PRD's Blocks section; the block's spec under `wiki/src/<type>/<block>/` is written in that block's first slice, with its code ([flow.md](../workflow/flow.md) step 5). Why: the spec and the code change together; a spec far ahead of the code misleads like one that lags it.
 - A plan is done when a crewmate could build every slice from it without asking a question. Why: every question a crewmate must ask is a decision the plan left open.
 - Record every planning decision as a comment on the issue it belongs to, with its evidence link ([reporting.md](../workflow/reporting.md) Decision trail). Why: the next session, or a reviewer, must find why the plan says what it says.
@@ -32,9 +32,8 @@ How to turn an aligned idea into a written plan (a PRD, an interface sketch for 
 ## Steps: sketch the blocks
 
 1. Trace every block and interface the change touches, and the clock and reset domains it crosses.
-2. Sketch two different shapes: block boundaries, ports and their protocols (valid/ready, credits, a bus standard), who owns each piece of state, parameters, registers. Follow [foundational-thinking](../principles/foundational-thinking.md); for a decision without precedent here, follow [exhaust-the-design-space](../principles/exhaust-the-design-space.md).
-3. Pick the shape where each piece of state has one owner, each job has one way to be done, and neighbouring blocks need to know least. When a new requirement keeps forcing workarounds into an existing design, follow [redesign-from-first-principles](../principles/redesign-from-first-principles.md).
-4. Write the chosen sketch, and in one line why the other lost, into the PRD's Blocks section.
+2. Design the new blocks and interfaces per [architecture.md](../arch/architecture.md) "Steps: design it twice".
+3. Write the chosen sketch, and in one line why the others lost, into the PRD's Blocks section; it moves into the block's spec in the block's first slice.
 
 ## Steps: prototype to answer a design question
 

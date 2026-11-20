@@ -17,7 +17,7 @@ Which topic sources each BKM used, and why the others were rejected, is recorded
 |---|---|
 | `design/grilling.md`, `design/domain-modeling.md`, `design/glossary-format.md`, `design/adr-format.md` | Skills for Real Engineers: `grilling`, `grill-me`, `grill-with-docs`, `domain-modeling` |
 | `writing/writing-for-agents.md`, `writing/skill-mechanics.md` | Skills for Real Engineers: `writing-for-agents` |
-| `workflow/first-mate.md` | firstmate: roles, principles, crewmate brief |
+| `workflow/first-mate.md` | firstmate: roles, principles, crewmate brief; topic #34 for orchestration, sources in its front matter |
 | `principles/*.md` (23 files) | pstack: every `principle-*` skill except `principle-experience-first` |
 | `workflow/issues.md` | topic #33; sources used in its front matter |
 | `workflow/review.md` | topic #36; sources used in its front matter |
@@ -27,7 +27,6 @@ Which topic sources each BKM used, and why the others were rejected, is recorded
 | `writing/improving-bkms.md` | topic #41; sources used in its front matter |
 | `dv/verification.md`, `fv/formal.md` | topic #39; sources used in their front matter |
 | `arch/architecture.md` | topic #40; sources used in its front matter |
-| `workflow/first-mate.md` (orchestration) | topic #34; sources used in its front matter |
 | `design/planning.md` | topic #32; sources used in its front matter |
 
 SRE = Skills for Real Engineers.
@@ -40,7 +39,7 @@ SRE = Skills for Real Engineers.
 | SRE `writing-beats`, `writing-fragments`, `writing-shape` | article writing |
 | SRE `ask-matt` | a router over upstream skills; replaced by the `bkm-router` skill |
 | pstack `typescript-best-practices`, `make-bot-ui`, `principle-experience-first`, `poteto-mode/playbooks/visual-parity.md` | TypeScript, UI or product UX |
-| pstack `setup-pstack`, `poteto-help`, `poteto-mode`, `ketchup-video` | pack setup, help and personal style; the useful parts are covered by the topics above |
+| pstack `setup-pstack`, `poteto-help`, `poteto-mode`, `ketchup-video` | pack setup, help and personal style; the useful parts are covered by the BKMs above |
 
 ## Background reading
 

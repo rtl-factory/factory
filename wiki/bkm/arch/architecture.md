@@ -17,10 +17,10 @@ How to shape blocks and the seams between them, find where the existing structur
 - Use the spec's and the glossary's domain names for blocks and seams, and follow [model-the-domain](../principles/model-the-domain.md) and [foundational-thinking](../principles/foundational-thinking.md) for what sits behind the seam. Why: a seam named after a domain concept stays put when the code moves.
 - Put a seam only where something actually varies across it: two implementations of one interface (the RTL and its architecture model, two bus fabrics, a hard macro and its behavioural model). A seam with one side is indirection. Why: every seam is a protocol to specify, verify and time-close.
 - Keep internal seams internal: sub-blocks, assertions and formal properties a block uses for itself do not appear in its interface. Why: exposing them to make a test easy makes every neighbour depend on them.
-- Test a block through its interface: DV drives its ports and checks against the spec or the architecture model, per [test-behavior-not-implementation](../principles/test-behavior-not-implementation.md). If you need to test past the interface, treat the block as the wrong shape. Why: the interface is the test surface; tests that reach inside break on every refactor.
+- If a test must reach past a block's interface to check it, treat the block as the wrong shape ([verification.md](../dv/verification.md) tests only through ports). Why: the interface is the test surface; needing to reach inside means the seam is in the wrong place.
 - You **must** compare at least two radically different candidate structures before committing a new block, a new seam or a changed interface (Design it twice). Why: the first design is rarely the best, and an interface is the hardest thing to change later ([exhaust-the-design-space](../principles/exhaust-the-design-space.md)).
 - Judge structure by reader load: a change that does not make the block easier to trace is reverted, per [minimize-reader-load](../principles/minimize-reader-load.md). Why: that is the measure of whether a reshape was worth it.
-- Respect the ADRs in `wiki/project/adr/` and in the block's spec folder. Raise a candidate that contradicts one only when the friction is real, and say which ADR and why it is worth reopening. Why: settled decisions are not re-argued for free.
+- Respect the ADRs in `wiki/project/adr/`. Raise a candidate that contradicts one only when the friction is real, and say which ADR and why it is worth reopening. Why: settled decisions are not re-argued for free.
 - Never mix a refactor with new behaviour. A bug or missing feature found while refactoring gets its own issue ([labels.md](../workflow/labels.md)). Why: a reviewer cannot tell a structure change from a behaviour change in one diff.
 
 ## Steps: design it twice
@@ -29,7 +29,7 @@ How to shape blocks and the seams between them, find where the existing structur
 2. Draft two or more candidates, each under a different constraint: fewest ports and entry points; the common transaction trivial; most flexible; or one interface shared by RTL and architecture model. A crewmate drafts them itself; the first mate may instead dispatch one crewmate per constraint.
 3. For each, write: the interface (ports, protocol, invariants, ordering, latency, error modes), one transaction sketched cycle by cycle, what it hides, the dependency strategy, and where it is thin.
 4. Compare them in prose on depth, locality (where a future change lands) and seam placement, and on any number you can estimate per [explain-the-number](../principles/explain-the-number.md). Recommend one, or a hybrid. Be opinionated.
-5. Record the choice and the rejected options in the spec. If the reason would stop a future crewmate re-proposing a rejected option, write an ADR ([adr-format](../design/adr-format.md)). If it needs a captain's call, grill per [grilling](../design/grilling.md).
+5. Record the choice and the rejected options in the spec (or, before the block exists, in the PRD's Blocks section per [planning.md](../design/planning.md)). If the reason would stop a future crewmate re-proposing a rejected option, write an ADR ([adr-format](../design/adr-format.md)). If it needs a captain's call, grill per [grilling](../design/grilling.md).
 
 ## Steps: find deepening opportunities
 
