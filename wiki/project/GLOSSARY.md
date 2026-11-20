@@ -88,7 +88,7 @@ An issue that delivers one narrow but complete behaviour, ending in a state a re
 _Avoid_: horizontal slice, layer, phase
 
 **PRD**:
-Product requirements document: what a piece of hardware must do, for whom, and how we will know it does, in `wiki/prd/`. Blocks and their specs follow from it.
+Product requirements document: what a tool we build must do, for whom, and how we will know it does, kept as `tools/<tool>/prd.md` next to the tool's spec.
 _Avoid_: requirements spec, MRD
 
 **Interface**:

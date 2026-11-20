@@ -33,6 +33,9 @@ theme:
         icon: material/weather-sunny
         name: Light mode
 
+hooks:
+  - tools/pages/hooks.py
+
 plugins:
   - search
   - awesome-nav

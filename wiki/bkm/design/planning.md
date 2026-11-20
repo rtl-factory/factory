@@ -5,7 +5,7 @@ upstream: mattpocock/skills skills/engineering/to-spec/SKILL.md, skills/engineer
 
 # Planning and specs
 
-How to turn an aligned idea into a written plan (a PRD, an interface sketch for each block, the decisions behind them) before the build issues exist. Interview the captain per [grilling.md](grilling.md); split the finished plan into issues per [issues.md](../workflow/issues.md).
+How to turn an aligned idea into a written plan (a tool's PRD, an interface sketch for each block, the decisions behind them) before the build issues exist. Interview the captain per [grilling.md](grilling.md); split the finished plan into issues per [issues.md](../workflow/issues.md).
 
 ## Rules
 
@@ -14,7 +14,7 @@ How to turn an aligned idea into a written plan (a PRD, an interface sketch for 
 - Before writing anything, restate in your own words the captain's goal and the problem behind it, and get the captain to confirm it. Why: a plan built on a misread goal is wrong in every section.
 - Sharpen a vague request before planning it: say what a senior hardware engineer would do here that was not asked for, the rawest source they would start from (the standard, the datasheet, the reference implementation, measured traces, not a summary), the methods and tools they would use, and what other than the agent or the captain would show the result is right (a reference model, a compliance suite, a formal property, a synthesis report). Fold the answers into the plan. Why: this makes the work deeper, not bigger, and names its oracle up front.
 - Settle by experiment every open question an experiment can settle (Steps: prototype); escalate to the captain only product or preference calls no run can settle. Why: a measured answer beats an opinion, and captain attention is the scarcest resource ([never-block-on-the-human](../principles/never-block-on-the-human.md)).
-- Write a PRD in `wiki/prd/<product>.md` with the sections listed in [wiki/prd/README.md](../../prd/README.md), in glossary terms and with no file paths or code, except a snippet from a prototype that states a decision better than prose (an FSM table, a register map). Why: paths go stale; behaviour and decisions do not.
+- Write a tool's PRD as `tools/<tool>/prd.md`, next to its spec `tools/<tool>/spec.md`, with these sections: **Problem** (who needs it and why), numbered testable **Requirements**, **Out of scope**, and **Acceptance** (a check per requirement). Write it in glossary terms and with no file paths or code, except a snippet from a prototype that states a decision better than prose (an FSM table, a register map). Why: paths go stale; behaviour and decisions do not.
 - Name in the PRD, for each requirement, the highest place where it is verified (a block's interface, a subsystem testbench, a formal harness), reusing existing ones and adding as few new ones as possible. Why: checks at a high place survive refactors; each new one is a testbench to build and keep.
 - Sketch each block's interfaces before any RTL (Steps: sketch). Keep the sketch in the PRD's Blocks section; the block's spec under `wiki/src/<type>/<block>/` is written in that block's first slice, with its code ([flow.md](../workflow/flow.md) step 5). Why: the spec and the code change together; a spec far ahead of the code misleads like one that lags it.
 - A plan is done when a crewmate could build every slice from it without asking a question. Why: every question a crewmate must ask is a decision the plan left open.
