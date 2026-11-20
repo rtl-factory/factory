@@ -5,7 +5,7 @@ nonzero on any FAIL; READY is printed when nothing fails.
 
     python3 tools/toolchain/check.py [--config cfg/toolchain.json] [--json]
 
-Spec: tools/toolchain/spec.md.
+Spec: wiki/tools/toolchain/spec.md.
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = ROOT / "cfg" / "toolchain.json"
-SPEC = "tools/toolchain/spec.md (Install, Quartus)"
+SPEC = "wiki/tools/toolchain/spec.md (Install, Quartus)"
 
 
 def run(command: list[str], timeout: int = 120) -> tuple[int, str]:

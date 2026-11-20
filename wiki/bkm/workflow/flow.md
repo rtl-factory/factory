@@ -12,7 +12,7 @@ The path every change takes from intent to `main`.
 2. **Issue.** Open or update the GitHub issue: what to build, acceptance criteria, labels per [labels.md](labels.md). The first mate may open issues and update epics on its own as work goes, within the aligned goal. Mark it `status:ready` once it is clear enough to dispatch.
 3. **Branch.** Create `issue/<number>-<slug>` from `main`, or from the epic branch if the issue belongs to an epic.
 4. **Worktree.** Check the branch out in `worktrees/issue-<number>/`.
-5. **Change.** Make the change. When it touches a block, change the code under `src/<project>/<type>/<block>/` and its spec under `wiki/src/<project>/<type>/<block>/` together, and loop until they agree. Run L0 until it passes.
+5. **Change.** Make the change. When it touches a block or a tool, change its code and its documents at the mirrored wiki path ([repo-layout.md](repo-layout.md)) together, and loop until they agree. Run L0 until it passes.
 6. **Pull request.** Commit, push, and open a pull request whose description says `Closes #<number>`.
 7. **Review.** The first mate dispatches a reviewer crewmate; it reviews against the issue, the spec and the BKMs and posts its findings as a pull request review. Fix the findings and return to step 5 until the reviewer passes the pull request.
 8. **Approve.** Treat the reviewer's pass as approval, unless the pull request needs captain (see Merging); then wait for a captain to say it is ready, and record that as a pull request comment.
@@ -24,7 +24,7 @@ The path every change takes from intent to `main`.
 - Every change must start with an issue. Why: the issue is the record of what was decided and why (ADR 0003).
 - A crewmate must only be dispatched on an issue labelled `status:ready`. Why: a vague issue produces vague work.
 - One issue → one issue branch → one pull request. Why: each pull request maps to exactly one decision.
-- A change to a block must change its code and spec in the same pull request. Why: a spec that lags the code misleads the next reader.
+- A change to a block or a tool must change its code and its spec in the same pull request. Why: a spec that lags the code misleads the next reader.
 - A pull request into `main` must close at least one issue. Why: nothing lands without a decision behind it; the `issue-link` check enforces it.
 - Related issues should be linked ("blocked by", "relates to"), not made into an epic. Why: an epic is for landing together, not for grouping.
 

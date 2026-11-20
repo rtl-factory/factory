@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run a project's cocotb simulation targets on Verilator (tools/sim/spec.md).
+"""Run a project's cocotb simulation targets on Verilator (wiki/tools/sim/spec.md).
 
 Targets live in src/<project>/cfg/targets.json. Each run builds and tests one
 target under <workdir>/cocotb/<target>/{build,test}, prints its seed, and

@@ -1,7 +1,7 @@
 """Host side of the common Virtual JTAG keyboard endpoint (n2a_jtag_keyboard).
 
 Persistent quartus_stp transport with explicit configuration and no discovery,
-the IR1/IR2 command/status protocol (wiki/src/common/jtag/HAS.md), and the
+the IR1/IR2 command/status protocol (wiki/src/common/tools/jtag/spec.md), and the
 Set-2 scan-code translation shared by every consumer (nand2linux console and
 headless `type`, the nand2tetris console). This file is self-contained: it also
 runs under native Windows Python as the bounded Quartus owner, so it imports

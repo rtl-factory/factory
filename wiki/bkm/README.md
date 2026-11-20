@@ -6,7 +6,7 @@ The list of every BKM and when to follow it lives in the `bkm-router` skill (`.c
 
 | Directory | Holds |
 |---|---|
-| `workflow/` | how work moves: the flow, issues, review, landing, reporting, the first mate, labels, CI levels, GitHub settings, the wiki site |
+| `workflow/` | how work moves: the flow, the repository layout, issues, review, landing, reporting, the first mate, labels, CI levels, GitHub settings, the wiki site |
 | `design/` | deciding what to build: planning a PRD or spec, grilling, domain modeling, glossary and ADR formats |
 | `writing/` | writing BKMs, skills and anything else an agent reads; retros |
 | `debug/` | debugging hard failures |

@@ -13,3 +13,4 @@ Architecture decision records: one per decision that is hard to reverse, surpris
 | [0007](0007-merge-authority.md) | Full send by default; captains hold back what they choose and the factory's controls |
 | [0008](0008-squash-issues-merge-epics.md) | Squash issue branches; merge-commit epic branches into main |
 | [0009](0009-linux-toolchain.md) | Linux-first toolchain: Verilator and cocotb, SymbiYosys, Quartus Prime Lite, installed natively at pinned versions |
+| [0010](0010-docs-mirror-code-in-wiki.md) | Documents live in the wiki, mirroring the code tree; tools are repo tools or project tools |
