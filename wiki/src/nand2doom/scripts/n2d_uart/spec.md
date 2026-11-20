@@ -140,9 +140,9 @@ partial word is a short last frame (no masked Poke).
 ```text
 python -B -m unittest discover -s src/nand2doom/scripts/tests -p test_n2d_uart.py -v
 python -B -m unittest discover -s src/nand2doom/scripts/tests -p test_n2d_uart_stream.py -v
-python tools/build/build.py test n2d_uart_debug --verilator VERILATOR_PATH --seed 33
-python tools/build/build.py test n2d_uart_debug_memory --verilator VERILATOR_PATH --seed 31
-python tools/build/build.py test n2d_uart_stream --verilator VERILATOR_PATH --seed 125
+python3 tools/sim/sim.py test n2d_uart_debug --seed 33
+python3 tools/sim/sim.py test n2d_uart_debug_memory --seed 31
+python3 tools/sim/sim.py test n2d_uart_stream --seed 125
 ```
 
 | Test | Coverage |

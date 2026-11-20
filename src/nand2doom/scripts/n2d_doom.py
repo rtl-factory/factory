@@ -163,7 +163,7 @@ def _download(url: str, destination: Path, expected: str) -> None:
         local = VENDORED_DOWNLOADS / destination.name
         if local.exists():
             if local.is_symlink() or _sha256(local) != expected:
-                raise ValueError(f"vendored input changed or LFS object absent: {local.name}")
+                raise ValueError(f"cached input changed: {local.name} (delete it to fetch it again)")
             shutil.copyfile(local, temporary)
         else:
             with urllib.request.urlopen(url, timeout=60) as response, temporary.open("wb") as out:

@@ -31,6 +31,11 @@ def load_targets(root: Path = ROOT) -> dict:
             if name in targets:
                 raise ValueError(f"target {name} defined twice")
             target = dict(target, project=registry.parts[-3])
+            native = target.get("kind") == "native"
+            if target.get("regression_action", "test") not in ("test", "compile") or (
+                    not native and ("regression_action" in target or "trace_fst" in target)):
+                raise ValueError(f"target {name}: regression_action (test or compile) and "
+                                 "trace_fst are for native targets only")
             targets[name] = target
     return targets
 

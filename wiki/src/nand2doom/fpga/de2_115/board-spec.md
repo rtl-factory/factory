@@ -25,8 +25,8 @@ a unit test compares every shared pin and standard.
 | `HEX3[6:2]`, `HEX4`-`HEX7` | manual tables | 3.3-V LVTTL |
 
 The JP5 voltage jumper must select 3.3 V (GND on pin 12). The host link is a
-3.3 V TTL-232R cable at 3 Mbaud 8-N-1; tools take `--port` and
-`--baud de2_115` ([UART tools](../../scripts/n2d_uart/spec.md)). SDRAM/VGA
+3.3 V TTL-232R cable at 3 Mbaud 8-N-1; scripts take `--port` and
+`--baud de2_115` ([UART scripts](../../scripts/n2d_uart/spec.md)). SDRAM/VGA
 8 mA; UART TX, LEDs and digits 4 mA; slew rate 2 stated on 2.5 V outputs.
 
 ## Bring-up
@@ -34,7 +34,7 @@ The JP5 voltage jumper must select 3.3 V (GND on pin 12). The host link is a
 The [play command](../../scripts/n2d_play/spec.md) automates:
 
 1. `jtagconfig` lists one `USB-Blaster [1-1]` with device `020F70DD`; JTAG
-   tools [resolve its name by IDCODE](../../scripts/n2d_jtag_keyboard/spec.md#device-resolution).
+   scripts [resolve its name by IDCODE](../../scripts/n2d_jtag_keyboard/spec.md#device-resolution).
 2. `quartus_pgm -c "USB-Blaster [1-1]" -m jtag -o "p;n2d_de2_115.sof@1"`
    with an image holding the stream loader and JTAG keyboard.
 3. `n2d_uart.py --baud de2_115 --port PORT ping` (`N2D1`), then `halt`.
@@ -59,5 +59,15 @@ Last passing build in the factory (Quartus Prime Lite 25.1std, `python3 src/nand
 | Logic elements | 29,181 of 114,480 (25%) |
 | M9K blocks | 320 of 432 |
 | PLLs | 1 of 4 |
-| Worst setup slack, any corner | 5.413 ns at 25 MHz |
-| Minimum slack (hold), any check and corner | 0.123 ns |
+| Worst setup slack, any clock and corner | 5.413 ns |
+| Minimum slack, any clock, check and corner | 0.123 ns (hold) |
+
+System clock (25 MHz PLL output) slack per corner, in ns:
+
+| Corner | Setup | Hold |
+|---|---|---|
+| Slow 1200mV 85C | 6.848 | 0.317 |
+| Slow 1200mV 0C | 7.402 | 0.324 |
+| Fast 1200mV 0C | 9.215 | 0.123 |
+
+Built from commit `c3ed333` (the RTL, settings and constraints are unchanged at the head of #96); 90 reviewed warning occurrences, 86 of them constant outputs (unused LEDs and digits).

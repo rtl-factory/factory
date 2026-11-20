@@ -11,7 +11,7 @@ codec `n2d_uart_debug_host.py` is an independent wire oracle (framing,
 little-endian fields, CRC-8/CRC-32, sequences, statuses, payloads). Input
 tests observe only public MMIO and endpoint status. Generated logs, XML and
 opt-in waves stay under `workdir/cocotb/`. The
-[host-tool contract](../../scripts/n2d_uart/spec.md#tests)
+[host-script contract](../../scripts/n2d_uart/spec.md#tests)
 adds hardware-free transport and manifest tests; host-only changes rerun the
 two UART targets for codec compatibility.
 
@@ -73,7 +73,7 @@ The `n2d_de2_115` board target also streams two Writes over JP5 at exactly
 ([host contract](../../scripts/n2d_uart/spec.md#streaming-load)).
 
 ```text
-python3 tools/build/build.py test n2d_uart_stream --verilator VERILATOR_PATH --seed 125
+python3 tools/sim/sim.py test n2d_uart_stream --seed 125
 ```
 
 ## UART memory endpoint
@@ -127,7 +127,7 @@ and list `src/nand2doom/dv/io/n2d_jtag_system_lint.v`, whose waivers are
 (`board_jtag.py`): with
 the CPU halted and PS/2 idle, W make/break and extended Up make/break (two
 4-byte commands) must be exactly the four FIFO writes `01D 11D 275 375`.
-`test_quartus` lints `n2a_jtag_virtual` against the stub; the host tool is
+`test_quartus` lints `n2a_jtag_virtual` against the stub; the host script is
 covered by `src/nand2doom/scripts/tests/test_n2d_jtag_keyboard.py`.
 
 ## Gaps

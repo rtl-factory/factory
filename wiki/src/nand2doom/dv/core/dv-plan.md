@@ -28,8 +28,7 @@ architecture cases run with the fetch BTB active.
 
 ## Targets
 
-Run `python3 tools/build/build.py test <target>` (`plan <target> --action
-test` prints the plan; `--verilator <path>` selects the simulator).
+Run `python3 tools/sim/sim.py test <target> [--seed N]` (`python3 tools/sim/sim.py list` lists the targets and their levels).
 
 | Target | Seed and bounds |
 | --- | --- |

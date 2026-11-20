@@ -10,7 +10,7 @@ Cyclone IV E, the primary physical target). Both run at 25 MHz and share the
 source closure, address map, serial protocol and RAM roles; only board files
 differ. This page is the DE10-Lite board spec and owns the contracts both boards share, the way `cfg/n2d_quartus.json` makes the DE10-Lite the base board and the DE2-115 a set of overrides; the [DE2-115 board spec](../de2_115/board-spec.md) holds what is specific to the DE2-115. The [DV plan](../../dv/fpga/dv-plan.md) owns verification.
 
-<!-- wiki-budget: the Quartus report gate (warning, RAM, clock and timing contract) and recorded fits are acceptance criteria the build tool and tests enforce -->
+<!-- wiki-budget: the Quartus report gate (warning, RAM, clock and timing contract) and recorded fits are acceptance criteria the Quartus script and tests enforce -->
 
 ## Requirements
 
@@ -59,7 +59,7 @@ each board top binds the common `n2a_jtag_virtual` to the endpoint inside
   `DRAM_DQ` the single resolved `tri` bus, driven only while output enable is
   high. No pin adapter module. Controller states and mapping follow the
   [memory contract](../../rtl/memory/mas.md#sdram-controller).
-- The Quartus tool resolves the DE2-115 from the shared manifest by swapping
+- The Quartus script resolves the DE2-115 from the shared manifest by swapping
   the clock backend and the board top.
 
 ## Electrical interfaces
@@ -363,14 +363,23 @@ Last passing build in the factory (Quartus Prime Lite 25.1std, `python3 src/nand
 | Logic elements | 27,241 of 49,760 (55%) |
 | M9K blocks | 174 of 182 (8 left) |
 | PLLs | 1 of 4 |
-| Worst setup slack (system clock, Slow 1200mV 85C) | 4.263 ns at 25 MHz |
-| Minimum slack, any check and corner | 0.141 ns |
+| Minimum slack, any clock, check and corner | 0.141 ns |
+
+System clock (25 MHz PLL output) slack per corner, in ns:
+
+| Corner | Setup | Hold |
+|---|---|---|
+| Slow 1200mV 85C | 4.263 | 0.324 |
+| Slow 1200mV 0C | 4.978 | 0.283 |
+| Fast 1200mV 0C | 8.493 | 0.155 |
+
+Built from commit `c3ed333` (the RTL, settings and constraints are unchanged at the head of #96).
 
 ## Files
 
 | Path | Role |
 | --- | --- |
-| `src/nand2doom/fpga/de10_lite/n2d_de10_lite.sv`, `n2d_de2_115.sv` | Board tops |
+| `src/nand2doom/fpga/de10_lite/n2d_de10_lite.sv`, `src/nand2doom/fpga/de2_115/n2d_de2_115.sv` | Board tops |
 | `src/nand2doom/fpga/de10_lite/n2d_de10_lite_clock_{intel,portable}.sv`, `src/nand2doom/fpga/de2_115/n2d_de2_115_clock_{intel,portable}.sv` | Clock backends |
 | `src/nand2doom/cfg/n2d_quartus.json` | Pins, sources, RAM requirements, reviewed diagnostics |
-| `src/nand2doom/fpga/de10_lite/de10_lite.sdc`, `n2d_de2_115.sdc` | Constraints |
+| `src/nand2doom/fpga/de10_lite/de10_lite.sdc`, `src/nand2doom/fpga/de2_115/n2d_de2_115.sdc` | Constraints |

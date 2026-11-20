@@ -19,7 +19,7 @@ All targets are cocotb 2.1.0 on Verilator at 25 MHz with logs under
 
 | Target | Seed, bound | Command |
 | --- | --- | --- |
-| `n2d_icache` | 30, 30 s | `python3 tools/build/build.py test n2d_icache` |
+| `n2d_icache` | 30, 30 s | `python3 tools/sim/sim.py test n2d_icache` |
 | `n2d_dcache` (`WAYS` 4), `n2d_dcache_2way` | 30, 30 s | `... test n2d_dcache` |
 | `n2d_dcache_write_buffer`, `_2way` | 30 | `... test n2d_dcache_write_buffer` |
 | `n2d_dcache_prefetch` (`WAYS` 4, `PREFETCH_LINES` 2) | 30, 60 s | `... test n2d_dcache_prefetch` |

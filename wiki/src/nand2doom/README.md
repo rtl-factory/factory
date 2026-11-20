@@ -19,7 +19,7 @@ Each page sits at the wiki path that mirrors its code ([repository layout](../..
 | Doom port | [PRD](sw/doom/prd.md), [spec](sw/doom/spec.md) | [DV plan](dv/software/dv-plan.md) | `sw/doom/`, `sw/third_party/`, `dv/software/` |
 | Scripts | [scripts](scripts/README.md) | | `scripts/` |
 
-The pages came over from nand2anything (its per-area HAS and DV pages and tool specs), with paths rewritten to this layout; links to pages that were not ported (the shared RISC-V ownership page, the build specification, the performance studies, the RTL diagram, the `common` block specs) point at nand2anything.
+The pages came over from nand2anything (its per-area HAS and DV pages and tool specs, now script specs), with paths rewritten to this layout; links to pages that were not ported (the shared RISC-V ownership page, the build specification, the performance studies, the RTL diagram, the `common` block specs) point at nand2anything.
 
 ## Layout
 

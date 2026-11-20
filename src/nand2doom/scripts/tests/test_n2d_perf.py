@@ -30,6 +30,16 @@ done status=pass cycle=2100 run_cycles=2000 retired=500 ihit=300 imiss=100 dhit=
 
 
 class N2dPerfTests(unittest.TestCase):
+    def test_harness_builds_through_tools_sim_as_a_compile_only_target(self):
+        sys.path.insert(0, str(REPO_ROOT / "tools/sim"))
+        import sim  # noqa: E402
+        targets = sim.load_targets(REPO_ROOT)
+        for name in ("n2d_perf_fast", "n2d_perf_sdram", "n2d_perf_fast_half", "n2d_perf_sdram_half"):
+            with self.subTest(target=name):
+                self.assertEqual("compile", targets[name]["regression_action"])
+                self.assertEqual([sys.executable, "tools/sim/sim.py", "test", name],
+                                 n2d_perf.build_command(name))
+
     def test_uart_tokens_are_reset_pc_then_resume_with_gaps(self) -> None:
         tokens = n2d_perf.uart_tokens()
         first = list(request(CMD_RESET_PC, 1, address=0))

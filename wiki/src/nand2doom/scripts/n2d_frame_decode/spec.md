@@ -2,12 +2,12 @@
 
 Converts supplied framebuffer/palette snapshots into exact PNGs and a small
 sampled GIF for inspection and documentation. It never acquires data, opens
-serial, imports firmware or the [UART tool](../n2d_uart/spec.md), touches the
+serial, imports firmware or the [UART script](../n2d_uart/spec.md), touches the
 board, fetches game assets, edits a README or labels a decode as physical
 acceptance. The caller owns active-palette identity, complete-frame
 synchronization and SOF/firmware/input provenance (palette MMIO reads the
 inactive bank; a CPU halt can freeze a partial frame); the
-[capture tool](../n2d_capture/spec.md) and showcase workflow own acquisition
+[capture script](../n2d_capture/spec.md) and showcase workflow own acquisition
 and publication.
 
 ## Format

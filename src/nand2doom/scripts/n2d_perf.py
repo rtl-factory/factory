@@ -42,6 +42,11 @@ RENDER_ORACLE_PATH = REPO_ROOT / "src/nand2doom/dv/software/render_oracle.json"
 RENDER_HALF_ORACLE_PATH = RENDER_ORACLE_PATH.with_name("render_oracle_half.json")
 
 
+
+def build_command(target: str) -> list[str]:
+    """Build the native harness with tools/sim; its targets are compile-only."""
+    return [sys.executable, "tools/sim/sim.py", "test", target]
+
 def render_oracle_path(geometry: str) -> Path:
     if geometry not in ("full", "half"):
         raise ValueError(f"unknown render geometry: {geometry}")
@@ -580,7 +585,7 @@ def main(argv: list[str] | None = None) -> int:
     for path in (image_dir, output):
         if workdir not in path.parents and path != workdir:
             raise SystemExit(f"error: {path} must be below {workdir}")
-    binary = REPO_ROOT / f"workdir/verilator/{target}/obj/{target}_sim"
+    binary = REPO_ROOT / f"workdir/sim/cocotb/{target}/obj/{target}_sim"  # tools/sim build layout
     try:
         uart_tokens(tuple(args.input))
     except ValueError as error:
@@ -650,7 +655,7 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit("error: --fst must be START:END with END > START")
         plusargs += [f"+fst={output / 'window.fst'}", f"+fst_start={int(start)}",
                      f"+fst_end={int(end)}"]
-    subprocess.run([sys.executable, "tools/build/build.py", "compile", target],
+    subprocess.run(build_command(target),
                    cwd=REPO_ROOT, check=True)
     started = time.monotonic()
     run = subprocess.run([str(binary), *plusargs], cwd=REPO_ROOT, timeout=args.timeout)

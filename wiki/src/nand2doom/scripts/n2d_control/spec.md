@@ -8,7 +8,7 @@ before Connect (a running-state Ping proves neither wiring, game identity nor
 ownership); only the assigned operator runs live trials. The
 [play command](../n2d_play/spec.md) launches these controls after loading.
 Framing, baud, deadlines and transports belong to the
-[UART tools](../n2d_uart/spec.md) and [JTAG library](../../../common/scripts/jtag/spec.md). No
+[UART scripts](../n2d_uart/spec.md) and [JTAG library](../../../common/scripts/jtag/spec.md). No
 installation, network service, global keyboard hook, capture, framebuffer,
 driver or RTL change.
 

@@ -38,8 +38,10 @@ def _tarball(entries: dict[str, bytes]) -> bytes:
 def _upstream_source(test: unittest.TestCase, name: str) -> str:
     """A pinned upstream engine file, read from the vendored engine archive."""
     archive = n2d_doom.VENDORED_DOWNLOADS / f"doomgeneric-{n2d_doom.ENGINE_REVISION}.tar.gz"
-    if not archive.is_file() or n2d_doom._sha256(archive) != n2d_doom.ENGINE_SHA256:
-        test.skipTest("vendored engine archive absent (git lfs pull)")
+    if not archive.is_file():  # fetched once from its pinned origin into the local cache
+        n2d_doom._download(n2d_doom.ENGINE_URL, archive, n2d_doom.ENGINE_SHA256)
+    if n2d_doom._sha256(archive) != n2d_doom.ENGINE_SHA256:
+        test.fail("cached engine archive does not match the pinned SHA-256")
     with tarfile.open(archive, "r:gz") as engine:
         member = f"doomgeneric-{n2d_doom.ENGINE_REVISION}/doomgeneric/{name}"
         return engine.extractfile(member).read().decode("utf-8")

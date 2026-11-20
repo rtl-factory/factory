@@ -3,25 +3,26 @@
   "scope": "Exact public engine/data/library package inputs, not proprietary game data",
   "files": [
     {
-      "file": "downloads/doomgeneric-dcb7a8dbc7a16ce3dda29382ac9aae9d77d21284.tar.gz",
+      "file": "workdir/downloads/nand2doom/doomgeneric-dcb7a8dbc7a16ce3dda29382ac9aae9d77d21284.tar.gz",
       "sha256": "1bd3f7f26220494159a38d71f2847ec81b58d6bbd7c7c8d81b08993018001148",
       "bytes": 3090406,
       "origin": "https://github.com/ozkl/doomgeneric/archive/dcb7a8dbc7a16ce3dda29382ac9aae9d77d21284.tar.gz",
       "license": "GPL-2.0-or-later"
     },
     {
-      "file": "downloads/freedoom-0.13.0.zip",
+      "file": "workdir/downloads/nand2doom/freedoom-0.13.0.zip",
       "sha256": "3f9b264f3e3ce503b4fb7f6bdcb1f419d93c7b546f4df3e874dd878db9688f59",
       "bytes": 24143781,
       "origin": "https://github.com/freedoom/freedoom/releases/download/v0.13.0/freedoom-0.13.0.zip",
       "license": "BSD-3-Clause"
     },
     {
-      "file": "downloads/picolibc-1.8.6-2.deb",
+      "file": "workdir/downloads/nand2doom/picolibc-1.8.6-2.deb",
       "sha256": "9563bbe39bbdf4eda1970ced8c54e5df47a112d91427fc4fc38100428fd23a9b",
       "bytes": 157988340,
       "origin": "http://archive.ubuntu.com/ubuntu/pool/universe/p/picolibc/picolibc-riscv64-unknown-elf_1.8.6-2_all.deb",
       "license": "See PICOLIBC-COPYRIGHT; component-specific licenses"
     }
-  ]
+  ],
+  "cache": "Not committed: n2d_doom.py fetches each file from its origin, checks its SHA-256 and caches it under workdir/downloads/nand2doom/."
 }

@@ -2201,6 +2201,310 @@
       "default_seed": 62,
       "max_cycles": 1500000,
       "level": "L2"
+    },
+    "common_sync_ram": {
+      "kind": "cocotb",
+      "description": "Common portable synchronous RAM contract",
+      "top": "n2a_sync_ram",
+      "sources": [
+        "src/common/rtl/memory/n2a_sync_ram.sv"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "test_module": "src.common.dv.memory.test_sync_ram",
+      "testcase": "sync_ram_contract",
+      "default_seed": 20,
+      "max_cycles": 16,
+      "level": "L0"
+    },
+    "common_sync_ram_wt": {
+      "kind": "cocotb",
+      "description": "Common write-through single-port RAM contract, portable backend",
+      "top": "n2a_sync_ram_wt",
+      "sources": [
+        "src/common/rtl/memory/n2a_sync_ram_wt.sv"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "test_module": "src.common.dv.memory.test_sync_ram_wt",
+      "testcase": "sync_ram_wt_contract",
+      "default_seed": 22,
+      "max_cycles": 24,
+      "level": "L0"
+    },
+    "common_sync_ram_wt_8192x16": {
+      "kind": "cocotb",
+      "description": "Common write-through RAM at the Hack screen CPU-copy geometry, portable backend",
+      "top": "n2a_sync_ram_wt_8192x16_fixture",
+      "sources": [
+        "src/common/rtl/memory/n2a_sync_ram_wt.sv",
+        "src/common/dv/memory/n2a_sync_ram_wt_8192x16_fixture.sv"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "test_module": "src.common.dv.memory.test_sync_ram_wt",
+      "testcase": "sync_ram_wt_contract",
+      "default_seed": 22,
+      "max_cycles": 24,
+      "level": "L0"
+    },
+    "common_sync_ram_wt_8192x8": {
+      "kind": "cocotb",
+      "description": "Common write-through RAM at the nand2mario VRAM/WRAM byte geometry, portable backend",
+      "top": "n2a_sync_ram_wt_8192x8_fixture",
+      "sources": [
+        "src/common/rtl/memory/n2a_sync_ram_wt.sv",
+        "src/common/dv/memory/n2a_sync_ram_wt_8192x8_fixture.sv"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "test_module": "src.common.dv.memory.test_sync_ram_wt",
+      "testcase": "sync_ram_wt_contract",
+      "default_seed": 22,
+      "max_cycles": 24,
+      "level": "L0"
+    },
+    "common_sync_ram_invalid_addr_width": {
+      "kind": "native",
+      "description": "Common synchronous RAM address-width rejection",
+      "top": "n2a_sync_ram_invalid_addr_width_fixture",
+      "sources": [
+        "src/common/rtl/memory/n2a_sync_ram.sv",
+        "src/common/dv/memory/n2a_sync_ram_invalid_addr_width_fixture.sv"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "level": "L0",
+      "expected_fatal": {
+        "any_of": [
+          {
+            "file": "n2a_sync_ram.sv",
+            "hierarchy": "n2a_sync_ram_invalid_addr_width_fixture.dut.g_invalid_addr_width",
+            "message": "n2a_sync_ram ADDR_WIDTH must equal $clog2(DEPTH)"
+          }
+        ]
+      }
+    },
+    "common_sync_ram_invalid_data_width": {
+      "kind": "native",
+      "description": "Common synchronous RAM zero data-width rejection",
+      "top": "n2a_sync_ram_invalid_data_width_fixture",
+      "sources": [
+        "src/common/rtl/memory/n2a_sync_ram.sv",
+        "src/common/dv/memory/n2a_sync_ram_invalid_data_width_fixture.sv"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "level": "L0",
+      "expected_fatal": {
+        "any_of": [
+          {
+            "file": "n2a_sync_ram.sv",
+            "hierarchy": "n2a_sync_ram_invalid_data_width_fixture.dut.g_invalid_data_width",
+            "message": "n2a_sync_ram DATA_WIDTH must be at least 1"
+          }
+        ]
+      }
+    },
+    "common_sync_ram_invalid_depth": {
+      "kind": "native",
+      "description": "Common synchronous RAM illegal depth rejection",
+      "top": "n2a_sync_ram_invalid_depth_fixture",
+      "sources": [
+        "src/common/rtl/memory/n2a_sync_ram.sv",
+        "src/common/dv/memory/n2a_sync_ram_invalid_depth_fixture.sv"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "level": "L0",
+      "expected_fatal": {
+        "any_of": [
+          {
+            "file": "n2a_sync_ram.sv",
+            "hierarchy": "n2a_sync_ram_invalid_depth_fixture.dut.g_invalid_depth",
+            "message": "n2a_sync_ram DEPTH must be a power of two and at least 2"
+          }
+        ]
+      }
+    },
+    "common_sync_ram_invalid_min_depth": {
+      "kind": "native",
+      "description": "Common synchronous RAM minimum depth rejection",
+      "top": "n2a_sync_ram_invalid_min_depth_fixture",
+      "sources": [
+        "src/common/rtl/memory/n2a_sync_ram.sv",
+        "src/common/dv/memory/n2a_sync_ram_invalid_min_depth_fixture.sv"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "level": "L0",
+      "expected_fatal": {
+        "any_of": [
+          {
+            "file": "n2a_sync_ram.sv",
+            "hierarchy": "n2a_sync_ram_invalid_min_depth_fixture.dut.g_invalid_depth",
+            "message": "n2a_sync_ram DEPTH must be a power of two and at least 2"
+          }
+        ]
+      }
+    },
+    "common_sync_ram_intel_stub": {
+      "kind": "cocotb",
+      "description": "Intel single-port backend wiring through the DV altsyncram port stub",
+      "top": "n2a_sync_ram",
+      "sources": [
+        "src/common/dv/memory/n2a_altsyncram_port_stub.sv",
+        "src/common/rtl/memory/n2a_sync_ram_intel.sv"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "test_module": "src.common.dv.memory.test_sync_ram",
+      "testcase": "sync_ram_contract",
+      "default_seed": 20,
+      "max_cycles": 16,
+      "level": "L0"
+    },
+    "common_tdp_ram": {
+      "kind": "cocotb",
+      "description": "Common same-clock true-dual-port RAM contract, portable backend",
+      "top": "n2a_tdp_ram",
+      "sources": [
+        "src/common/rtl/memory/n2a_tdp_ram_portable.sv"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "test_module": "src.common.dv.memory.test_tdp_ram",
+      "testcase": "tdp_ram_contract",
+      "default_seed": 22,
+      "max_cycles": 26,
+      "level": "L0"
+    },
+    "common_tdp_ram_16384x8": {
+      "kind": "cocotb",
+      "description": "Common true-dual-port RAM at the nand2linux shared host window byte-plane geometry",
+      "top": "n2a_tdp_ram_16384x8_fixture",
+      "sources": [
+        "src/common/rtl/memory/n2a_tdp_ram_portable.sv",
+        "src/common/dv/memory/n2a_tdp_ram_16384x8_fixture.sv"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "test_module": "src.common.dv.memory.test_tdp_ram",
+      "testcase": "tdp_ram_contract",
+      "default_seed": 22,
+      "max_cycles": 26,
+      "level": "L0"
+    },
+    "common_tdp_ram_intel_stub": {
+      "kind": "cocotb",
+      "description": "Intel true-dual-port backend wiring through the DV altsyncram port stub",
+      "top": "n2a_tdp_ram",
+      "sources": [
+        "src/common/dv/memory/n2a_altsyncram_port_stub.sv",
+        "src/common/rtl/memory/n2a_tdp_ram_intel.sv"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "test_module": "src.common.dv.memory.test_tdp_ram",
+      "testcase": "tdp_ram_contract",
+      "default_seed": 22,
+      "max_cycles": 26,
+      "level": "L0"
+    },
+    "common_tdp_ram_invalid_addr_width": {
+      "kind": "native",
+      "description": "Common true-dual-port RAM address-width rejection",
+      "top": "n2a_tdp_ram_invalid_addr_width_fixture",
+      "sources": [
+        "src/common/rtl/memory/n2a_tdp_ram_portable.sv",
+        "src/common/dv/memory/n2a_tdp_ram_invalid_addr_width_fixture.sv"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "level": "L0",
+      "expected_fatal": {
+        "any_of": [
+          {
+            "file": "n2a_tdp_ram_portable.sv",
+            "hierarchy": "n2a_tdp_ram_invalid_addr_width_fixture.dut.g_invalid_addr_width",
+            "message": "n2a_tdp_ram ADDR_WIDTH must equal $clog2(DEPTH)"
+          }
+        ]
+      }
+    },
+    "common_tdp_ram_invalid_data_width": {
+      "kind": "native",
+      "description": "Common true-dual-port RAM zero data-width rejection",
+      "top": "n2a_tdp_ram_invalid_data_width_fixture",
+      "sources": [
+        "src/common/rtl/memory/n2a_tdp_ram_portable.sv",
+        "src/common/dv/memory/n2a_tdp_ram_invalid_data_width_fixture.sv"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "level": "L0",
+      "expected_fatal": {
+        "any_of": [
+          {
+            "file": "n2a_tdp_ram_portable.sv",
+            "hierarchy": "n2a_tdp_ram_invalid_data_width_fixture.dut.g_invalid_data_width",
+            "message": "n2a_tdp_ram DATA_WIDTH must be at least 1"
+          }
+        ]
+      }
+    },
+    "common_tdp_ram_invalid_depth": {
+      "kind": "native",
+      "description": "Common true-dual-port RAM illegal depth rejection",
+      "top": "n2a_tdp_ram_invalid_depth_fixture",
+      "sources": [
+        "src/common/rtl/memory/n2a_tdp_ram_portable.sv",
+        "src/common/dv/memory/n2a_tdp_ram_invalid_depth_fixture.sv"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "level": "L0",
+      "expected_fatal": {
+        "any_of": [
+          {
+            "file": "n2a_tdp_ram_portable.sv",
+            "hierarchy": "n2a_tdp_ram_invalid_depth_fixture.dut.g_invalid_depth",
+            "message": "n2a_tdp_ram DEPTH must be a power of two and at least 2"
+          }
+        ]
+      }
+    },
+    "common_sync_ram_512x141": {
+      "kind": "cocotb",
+      "description": "Common single-port RAM at the nand2doom packed I-cache way geometry",
+      "top": "n2a_sync_ram_512x141_fixture",
+      "sources": [
+        "src/common/rtl/memory/n2a_sync_ram.sv",
+        "src/common/dv/memory/n2a_sync_ram_512x141_fixture.sv"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "test_module": "src.common.dv.memory.test_sync_ram",
+      "testcase": "sync_ram_contract",
+      "default_seed": 20,
+      "max_cycles": 16,
+      "level": "L0"
+    },
+    "common_sync_ram_16384x8": {
+      "kind": "cocotb",
+      "description": "Common single-port RAM at the nand2doom framebuffer CPU bank geometry",
+      "top": "n2a_sync_ram_16384x8_fixture",
+      "sources": [
+        "src/common/rtl/memory/n2a_sync_ram.sv",
+        "src/common/dv/memory/n2a_sync_ram_16384x8_fixture.sv"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "test_module": "src.common.dv.memory.test_sync_ram",
+      "testcase": "sync_ram_contract",
+      "default_seed": 20,
+      "max_cycles": 16,
+      "level": "L0"
     }
   }
 }

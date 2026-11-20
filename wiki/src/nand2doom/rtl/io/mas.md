@@ -13,7 +13,7 @@ in one eight-entry FIFO. No path changes the ISA; the
 gating, manifest validation and acknowledged loading; the [DV plan](../../dv/io/dv-plan.md)
 owns verification.
 
-<!-- wiki-budget: three wire protocols (version 1, bulk, stream), the common endpoint adoption, their bounds and the input arbitration are register-level contracts for RTL and host tools -->
+<!-- wiki-budget: three wire protocols (version 1, bulk, stream), the common endpoint adoption, their bounds and the input arbitration are register-level contracts for RTL and host scripts -->
 
 ## Requirements
 
@@ -28,7 +28,7 @@ owns verification.
 | IO-R7 | [Bulk](#bulk-wire-extension) packets commit as ascending atomic eight-word transactions; any failure quarantines until hardware reset. |
 | IO-R8 | [Stream](#streaming-load-session) loads resynchronize, accept idempotent resends and digest stored memory. |
 | IO-R9 | Every input source produces `{extended, break, scan_code}` in one FIFO with fixed priority; UART, CPU INJECT and JTAG input are never silently lost. |
-| IO-R10 | Host tools refuse game assets without the manifest and provenance of the [software policy](../../sw/doom/spec.md#doom-source-and-assets). |
+| IO-R10 | Host scripts refuse game assets without the manifest and provenance of the [software policy](../../sw/doom/spec.md#doom-source-and-assets). |
 | IO-R11 | The common [UART memory endpoint](#uart-memory-endpoint) loads SDRAM while held and reads the displayed frame and palette while the CPU runs, costing it at most one framebuffer or palette port cycle per 64 clocks. |
 
 ## UART bridge
@@ -387,7 +387,7 @@ error with no effect; a CONTROL write with no lane is accepted with no effect.
 
 The common [Virtual JTAG keyboard endpoint](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/jtag/HAS.md) lets a
 host offer up to four raw Set-2 bytes per command through a held mailbox. The
-[host tool](../../scripts/n2d_jtag_keyboard/spec.md) sends Doom actions, raw
+[host script](../../scripts/n2d_jtag_keyboard/spec.md) sends Doom actions, raw
 events or text through the shared [JTAG transport](../../../common/scripts/jtag/spec.md).
 
 Scan-inject port (`scan_inject_valid_i`, `scan_inject_byte_i`,
