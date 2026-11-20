@@ -30,6 +30,6 @@ Checks are in the [software DV plan](../../dv/software/dv-plan.md#features).
 
 | Requirement | Check |
 | --- | --- |
-| SW-R5 | Seam and idempotence tests in `test_n2d_doom.py`; drawer, wall-loop, persistence and visplane equivalence against pinned upstream with whole-frame CRCs |
-| SW-R6 | No automated check is recorded; the opt-in Doom run needs the pinned inputs, fetched into the `workdir/downloads/nand2doom/` cache |
+| SW-R5 | Doom build unit tests: seam and idempotence; drawer, wall-loop, persistence and visplane equivalence against pinned upstream with whole-frame CRCs |
+| SW-R6 | No automated check is recorded; the opt-in Doom run needs the pinned inputs, fetched into the local download cache |
 | SW-R7 | `n2d_doom_clock` checks the production clock helper; the performance harness rejects a manifest of another variant |

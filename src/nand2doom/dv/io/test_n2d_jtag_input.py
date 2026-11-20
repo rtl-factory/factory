@@ -27,7 +27,7 @@ PS2_HALF_NS = 1370
 
 
 def set2(event: int) -> list[int]:
-    """Independent event -> Set-2 bytes (wiki/src/nand2doom/rtl/io/mas.md event format)."""
+    """Independent event -> Set-2 bytes (wiki/src/nand2doom/rtl/io/mas.md "JTAG keyboard")."""
     return [0xE0] * (event >> 9 & 1) + [0xF0] * (event >> 8 & 1) + [event & 0xFF]
 
 

@@ -20,7 +20,7 @@ python3 src/nand2doom/scripts/sw_build/n2d_image.py [--output workdir/software/n
 - **Checks.** `readelf` must report an ELF32 RISC-V file and the binary must be non-empty; it is padded with zeros to a whole word.
 - **Outputs.** `n2d_validation.elf`, `.bin`, `.map` (the output prefix replaced by `${OUTPUT}`) and `manifest.json`: schema 1, `rv32im`, `ilp32`, little endian, entry 0, memory-map revision `n2d-platform-v1`, the completion marker `0xD00D0035` at `0x00004000`, one segment at 0 with length and SHA-256, the ELF and map digests, the compiler and objcopy versions and the compiler contract. Existing outputs are deleted first; a link or a non-file in their place is an error.
 - **Plan.** `--plan` prints the architecture, ABI, output and every command, and writes nothing.
-- **Exit.** 0 on success; 2 on a confinement, tool, file or command failure, with the error on standard error.
+- **Exit.** 0 on success; 2 on a confinement, toolchain, file or command failure, with the error on standard error.
 - **Determinism.** Fixed flags, fixed object names, no build ID and the normalized map give the same bytes for any output directory.
 
 ## Doom build
@@ -51,7 +51,7 @@ python3 src/nand2doom/scripts/sw_build/n2d_doom.py build [--variant production|d
 
 Each download lands in `<output>/downloads/`. A file already there with the pinned digest is kept. Otherwise the copy in `workdir/downloads/nand2doom/` is used if present; it must be a regular file with the pinned digest, else the build stops ("cached input changed"). With no cached copy the input is fetched from its URL (60 s timeout) and, once its digest checks, copied into the cache. A destination or temporary that is a link is refused. Another variant's output first hard-links (or copies) the production output's `downloads/` and complete `toolchain/` trees, and every file is checked again.
 
-`--picolibc-prefix` uses an installed Picolibc instead of the package; it must hold the pinned consumed artifacts and include tree. The package is unpacked in Python (`ar`, then `data.tar`, `.gz`, `.xz` or, with Python 3.14, `.zst`), with no host package tools.
+`--picolibc-prefix` uses an installed Picolibc instead of the package; it must hold the pinned consumed artifacts and include tree. The package is unpacked in Python (`ar`, then `data.tar`, `.gz`, `.xz` or, with Python 3.14, `.zst`), with no host package manager.
 
 ### Prepare
 

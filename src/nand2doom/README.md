@@ -11,7 +11,7 @@ Its documents are in the wiki at the mirrored path, `wiki/src/nand2doom/`: the l
 | `dv/<block>/` | cocotb tests, models and native harnesses |
 | `cfg/` | Simulation targets, the Quartus board config, UART and showcase settings |
 | `sw/` | C runtime, validation program, Doom platform adaptation, third-party notices |
-| `scripts/` | Host scripts, one folder per script (`sw_build/`, `board/`, `host/`, `perf/`), each with its tests |
+| `scripts/` | Host scripts, one folder per script group (`sw_build/`, `board/`, `host/`, `perf/`), each with its tests |
 
 ```sh
 python3 tools/sim/sim.py test --project nand2doom --level L0

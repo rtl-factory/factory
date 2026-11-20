@@ -10,7 +10,7 @@ nand2doom runs Doom on a board whose only links to the host are the UART debug e
 2. Validate every argument and every manifest byte (schema, segments, lengths, SHA-256, the pinned Doom engine and game-data identity) before a port opens; a help or dry run needs neither pyserial nor hardware and writes nothing.
 3. Load an image by acknowledged writes, bulk writes with full readback, or a windowed stream with per-segment stored digests; set the entry and resume only on explicit request, and never after a failed load.
 4. Bound every transaction and every whole operation by a deadline; on failure or interrupt close the handle once, send no recovery, and print what the operator must do next.
-5. Play Doom on the DE2-115 with one command: refuse when a port or JTAG tool is already in use, check the cable and chain, program the image, stream-load only segments whose stored digest differs, start it and open the controls.
+5. Play Doom on the DE2-115 with one command: refuse when a port or the JTAG cable is already in use, check the cable and chain, program the image, stream-load only segments whose stored digest differs, start it and open the controls.
 6. Deliver held host keys to Doom as make on press and break on release, over UART or JTAG, from a window or a terminal; release every held key on focus loss, close, failure or interrupt; never drop a break.
 7. Send Doom actions, raw Set-2 events or typed text over the JTAG keyboard only with explicit confirmation and an exact cable; resolve the device name by the board's IDCODE when none is given, and refuse zero or several matches before any transfer.
 8. Capture one completed gameplay framebuffer and its displayed palette coherently through firmware cooperation, within a fixed whole-operation bound that keeps the firmware's clock samples continuous; write success artifacts with full provenance only after the complete release handshake, and failure records otherwise.
@@ -34,7 +34,7 @@ The scripts' tests check every requirement without hardware; the simulation targ
 | 2 | Pre-open rejection, both manifest formats, Doom metadata and asset validation; help and dry run without site packages for the UART, controls, JTAG keyboard, capture and decoder commands |
 | 3 | All tail lengths, readback, explicit resume; the stream tests against an independent device model (dropped frame, lost reply, noise, retry bound, digest mismatch, wrong identity) |
 | 4 | Deadline, short write and read, handle cleanup, failed-load stop; play tests: Ctrl-C ends the stream session without reset-PC or Resume |
-| 5 | Play tests with fake `jtagconfig`, `quartus_pgm` and `/proc`: holder refusal, exact programmer command, step order, digest skip and fallback, `--skip-program`, `--skip-load` |
+| 5 | Play tests with fake `jtagconfig`, `quartus_pgm` and the process table: holder refusal, exact programmer command, step order, digest skip and fallback, `--skip-program`, `--skip-load` |
 | 6 | Controls tests: ownership, repeats, combined holds, Release All, focus loss, bounded queue, close and failure latching; terminal parser tests; JTAG delivery through the common session |
 | 7 | JTAG keyboard tests: translation of every event and action, dry run opens nothing, resolution from both listing forms, zero and ambiguous matches, refusal before opening |
 | 8 | Capture tests running the real client on a byte transport: exact addresses and counts, foreign state, no sample progress, header changes, poison without cleanup, deadline release |

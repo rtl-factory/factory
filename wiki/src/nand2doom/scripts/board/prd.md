@@ -30,7 +30,7 @@ The script's tests check every requirement without Quartus, on fixture reports; 
 | Requirement | Check |
 |---|---|
 | 1 | Pins cover every bit once on both boards; the DE10-Lite resolution is the unchanged top level; the DE2-115 closure swaps only the board files; unknown boards and override keys refused; missing source and duplicate pin refused |
-| 2 | Output escape and links refused; a concurrent build is refused before touching the output; a stale image cannot satisfy a successful tool exit |
+| 2 | Output escape and links refused; a concurrent build is refused before touching the output; a stale image cannot satisfy a successful Quartus exit |
 | 3 | The board timeout reaches compile and audit; timeout fails and kills the child; the launcher's child identity is recorded |
 | 4 | Timing, clock, SDRAM-path, fitted-RAM, `check_timing`, connectivity, electrical-advisory and warning-identity gates accept the reviewed reports and reject each deviation on both boards |
 | 5 | The hardware gate requires artifacts, timing and reviewed warnings and keeps raw warning order |
