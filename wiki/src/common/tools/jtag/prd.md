@@ -16,6 +16,10 @@ A design under test on a board often needs keyboard input: a console to type int
 8. Bound every step by a deadline: opening the connection, each scan, each batch and the whole delivery.
 9. Be usable as a library by any project's board flow, with no dependency on the rest of the repository.
 
+## Blocks
+
+The other end of the protocol is the `common` JTAG keyboard block: a command register the host writes (up to four scan codes with a sequence number) and a status register it reads (busy, error, result, count accepted, last sequence, running total), offered to the design as a PS/2 byte stream it accepts or refuses byte by byte. The block exists; its spec is not ported yet.
+
 ## Out of scope
 
 - Programming the board, building the image, or choosing which board is attached: the board flow of each project owns those.
@@ -24,7 +28,7 @@ A design under test on a board often needs keyboard input: a console to type int
 
 ## Acceptance
 
-Every requirement except 7 on Windows is checked without hardware by the tool's own tests; the endpoint's side of the format is checked by the JTAG keyboard block's simulation test.
+Every requirement except 7 on Windows and 9 is checked without hardware by the tool's own tests; the endpoint's side of the format is checked by the JTAG keyboard block's simulation test.
 
 | Requirement | Check |
 |---|---|
@@ -36,4 +40,4 @@ Every requirement except 7 on Windows is checked without hardware by the tool's 
 | 6 | Validating settings starts no process and opens no device; missing or partial settings fail |
 | 7 | Real Tcl process test: the connection is opened once, used for many scans and closed with confirmation; errors and end of input close it. Windows: the native worker is the only path from WSL |
 | 8 | Separate start-up and per-operation deadlines both fire |
-| 9 | The tool imports nothing from the repository |
+| 9 | Review: the tool imports only the standard library, and the Windows worker runs it in isolated mode from its own file |

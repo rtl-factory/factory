@@ -123,8 +123,9 @@ class Session:
 def send_all(session, codes, *, deadline, sleep=time.sleep):
     """Deliver every scan code through `session` in batches of at most four,
     resubmitting only a proven refused suffix until `deadline`. Returns the
-    number of codes accepted; raises TransferError (and poisons the session)
-    on uncertainty or when the bound expires with codes still unsent."""
+    number of codes accepted; raises TransferError on uncertainty (which
+    poisons the session) or when the bound expires with codes still unsent
+    (which does not: the refused codes are known)."""
     codes, sent = bytes(codes), 0
     while codes:
         if time.monotonic() >= deadline:

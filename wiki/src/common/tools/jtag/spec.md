@@ -27,7 +27,7 @@ Any other identity, a set error bit, an unknown result code or an inconsistent c
 2. Before each batch, read the status again; if it differs from the last one seen, stop (a reset or another host). Then send one command of at most four codes and poll until not busy.
 3. Accept the result only if the sequence matches, the count is no more than sent, "all accepted" means every code, and the total grew by exactly the count. Advance the sequence and total.
 4. `send_all` resends only the refused suffix, pausing 10 ms after a batch that accepted nothing, until every code is accepted or the delivery deadline passes.
-5. Any failure marks the session poisoned: every later send raises until the caller recovers explicitly (closes and reattaches after checking the design).
+5. Any uncertain outcome of a batch marks the session poisoned: every later send raises until the caller recovers explicitly (closes and reattaches after checking the design). `send_all` reaching its delivery deadline raises without poisoning, because which codes were refused is known.
 
 `type_text` sends each key's make codes, waits `hold` (default 50 ms), then its break codes, all under one deadline (default 20 s).
 

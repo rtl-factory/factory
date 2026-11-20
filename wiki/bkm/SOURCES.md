@@ -19,7 +19,7 @@ Which topic sources each BKM used, and why the others were rejected, is recorded
 | `design/grilling.md`, `design/domain-modeling.md`, `design/glossary-format.md`, `design/adr-format.md` | Skills for Real Engineers: `grilling`, `grill-me`, `grill-with-docs`, `domain-modeling` |
 | `writing/writing-for-agents.md`, `writing/skill-mechanics.md` | Skills for Real Engineers: `writing-for-agents` |
 | `workflow/first-mate.md` | firstmate: roles, principles, crewmate brief; topic #34 for orchestration, sources in its front matter |
-| `fpga/fpga.md`; the install method in `tools/toolchain/spec.md` | nand2anything: host routing, bitstream handoff, Quartus build gates, native pinned Quartus install |
+| `fpga/fpga.md`; the install method in `wiki/tools/toolchain/spec.md` | nand2anything: host routing, bitstream handoff, Quartus build gates, native pinned Quartus install |
 | `principles/*.md` (23 files) | pstack: every `principle-*` skill except `principle-experience-first` |
 | `workflow/issues.md` | topic #33; sources used in its front matter |
 | `workflow/review.md` | topic #36; sources used in its front matter |
