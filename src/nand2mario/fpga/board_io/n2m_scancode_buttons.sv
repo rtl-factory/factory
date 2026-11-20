@@ -7,10 +7,10 @@
 // below names sets (make) or clears (break) its button; every other code is
 // consumed and ignored. The prefix state is cleared by the byte that
 // completes an event and by reset. Buttons are active-high in the joypad
-// order (wiki/src/nand2mario/joypad/HAS.md#button-input):
+// order (wiki/src/nand2mario/rtl/joypad/mas.md#button-input):
 //   Right/Left/Up/Down: the extended arrow keys; A: X; B: Z;
 //   Select: Space; Start: Enter.
-// Board mapping policy lives in wiki/src/nand2mario/fpga/HAS.md.
+// Board mapping policy lives in wiki/src/nand2mario/fpga/<board>/board-spec.md.
 module n2m_scancode_buttons (
   input  logic       clk_i,
   input  logic       reset_i,

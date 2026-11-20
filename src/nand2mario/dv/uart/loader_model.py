@@ -6,7 +6,7 @@ and the sticky status flags; the bench adds framing errors, timeouts and
 overruns through `event` and sets whether the display shows a frame
 (`available`) and the pinned frame's record. The host tool's CRC is a protocol fact shared with the encoder; its
 check value is pinned by the tool's unit test."""
-from ...scripts.cart_loader import (CMD_HOLD, CMD_READ, CMD_RELEASE, CMD_WRITE, CMD_PING, CMD_SNAP_PIN,
+from ...scripts.board.cart_loader import (CMD_HOLD, CMD_READ, CMD_RELEASE, CMD_WRITE, CMD_PING, CMD_SNAP_PIN,
                                   CMD_SNAP_READ, CMD_SNAP_RELEASE, SYNC, ADDRESS_RAM_BIT, RAM_BYTES, ROM_BYTES,
                                   STATUS_BAD_ADDRESS, STATUS_BAD_ARGUMENT, STATUS_BAD_COMMAND, STATUS_BAD_CRC,
                                   STATUS_NO_FRAME, STATUS_NOT_HELD, STATUS_NOT_PINNED, STATUS_OK, crc16)

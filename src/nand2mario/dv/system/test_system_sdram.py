@@ -15,9 +15,9 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
 
-from ...scripts.cart_loader import (CMD_HOLD, CMD_PING, CMD_READ, CMD_RELEASE, CMD_WRITE, STATUS_BAD_CRC, address_field,
+from ...scripts.board.cart_loader import (CMD_HOLD, CMD_PING, CMD_READ, CMD_RELEASE, CMD_WRITE, STATUS_BAD_CRC, address_field,
                                   chunks, decode_response, encode_request, response_total_length)
-from ...scripts.mbc1_image import bank_pattern
+from ...scripts.sw_build.mbc1_image import bank_pattern
 from ..core.cpu_model import CPU
 from ..core.test_cpu import unpack
 from ..memory.memory_model import GameBoyMemory

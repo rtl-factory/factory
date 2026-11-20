@@ -19,7 +19,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
 
-from ...scripts.cart_loader import (CMD_HOLD, CMD_PING, CMD_READ, CMD_WRITE, address_field, decode_response,
+from ...scripts.board.cart_loader import (CMD_HOLD, CMD_PING, CMD_READ, CMD_WRITE, address_field, decode_response,
                                   encode_request, response_total_length)
 from .test_system import CLOCK_PERIOD_NS, power_up
 from .test_system_sdram import SDRAM_INITIALIZED_CLOCK, Host, load_image, release_and_verify

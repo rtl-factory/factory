@@ -4,8 +4,8 @@
 // 21614b96fdd7ff0fa101c13a504ba15c533adf34 (SHA-256
 // 3180497b6542c323e236e23f1a2ccdf6822239ebb99ffa50cdd1ba37176c7f86), itself
 // ported from bui-bui src/rtl/mafia/sdram/mafia_sdram_ctrl.sv (MIT, adapted
-// from FPGA-MAFIA). Modification history: wiki/src/nand2mario/storage/HAS.md.
-// Contract: wiki/src/nand2mario/storage/HAS.md.
+// from FPGA-MAFIA). Modification history: wiki/src/nand2mario/rtl/storage/mas.md.
+// Contract: wiki/src/nand2mario/rtl/storage/mas.md.
 //
 // One requester, one outstanding 16-bit access, fixed 25 MHz, CL2, burst
 // length one, explicit precharge after every access. Every register is in

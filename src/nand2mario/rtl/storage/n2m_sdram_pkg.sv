@@ -4,10 +4,10 @@
 // 21614b96fdd7ff0fa101c13a504ba15c533adf34 (SHA-256
 // 2682a7a28943a40f75b29940eea8206f1501cc4ae21e3d5e83f52500b3df0cdf), itself
 // ported from bui-bui src/rtl/mafia/sdram/mafia_sdram_pkg.sv (MIT, adapted
-// from FPGA-MAFIA). Modification history: wiki/src/nand2mario/storage/HAS.md
+// from FPGA-MAFIA). Modification history: wiki/src/nand2mario/rtl/storage/mas.md
 // (single x16 beat per access instead of a 128-bit eight-beat line, byte
 // enables, write completion, deadline parameter). The constants are the
-// contract in wiki/src/nand2mario/storage/HAS.md.
+// contract in wiki/src/nand2mario/rtl/storage/mas.md.
 `default_nettype none
 
 package n2m_sdram_pkg;

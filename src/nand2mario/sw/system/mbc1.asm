@@ -1,5 +1,5 @@
 ; Original bounded MBC1 program for the n2m_system cartridge test. The direct
-; 32 KiB image this assembles to is expanded by src/nand2mario/scripts/mbc1_image.py
+; 32 KiB image this assembles to is expanded by src/nand2mario/scripts/sw_build/mbc1_image.py
 ; into a 1 MiB (64 bank) MBC1+RAM+BATTERY image with 32 KiB of cartridge RAM:
 ; bank 1 ($4000-$7FFF here) is the template of every switched bank, each copy
 ; carrying its bank number at $7ffe and a per-bank data pattern at $7f00-$7ffd.

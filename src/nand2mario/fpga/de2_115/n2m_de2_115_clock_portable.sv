@@ -2,7 +2,7 @@
 
 // Portable backend of the nand2mario DE2-115 clock contract: the same
 // 25 MHz output and lock status as the Intel PLL backend, produced without a
-// vendor model (wiki/src/nand2mario/fpga/HAS.md).
+// vendor model (wiki/src/nand2mario/fpga/de2_115/board-spec.md).
 //
 // This file and n2m_de2_115_clock_intel.sv define the same module name.
 // Simulation targets list this file; the Quartus source list selects the

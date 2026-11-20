@@ -24,7 +24,7 @@ from ..video.ppu_model import write_png
 async def sdram_load(dut, image):
     """Only public UART HOLD/WRITE/READ/RELEASE; no device-model deposits."""
     from ..system.test_system_sdram import Host
-    from ...scripts.cart_loader import CMD_HOLD, CMD_WRITE, CMD_READ, CMD_RELEASE, encode_request
+    from ...scripts.board.cart_loader import CMD_HOLD, CMD_WRITE, CMD_READ, CMD_RELEASE, encode_request
     host = Host(dut)
     tasks = [cocotb.start_soon(host.ticker()), cocotb.start_soon(host.receiver())]
     started = time.monotonic()

@@ -20,7 +20,7 @@ A Game Boy-compatible system (LR35902 CPU, memory map, cartridge mapper, timer, 
 | video | `rtl/video/` | The PPU (registers, timing, window, objects, background, mix) and the display tier that stores complete frames and scans them out 3x scaled on 640x480 VGA through the common raster timing and RAM; also the frame snapshot |
 | dma | `rtl/dma/` | OAM DMA |
 | storage | `rtl/storage/` | The SDRAM controller and package (adapted under their MIT notice) and the SDRAM cartridge backing |
-| uart | `rtl/uart/` | The UART cartridge loader over the common byte PHY; its host side is the script `scripts/cart_loader.py` |
+| uart | `rtl/uart/` | The UART cartridge loader over the common byte PHY; its host side is the script `scripts/board/cart_loader.py` |
 | audio | `rtl/audio/` | The APU: the full DMG sound register behaviour (power control, channel status, length counters, wave RAM) but **no audio output**; the system is silent by design |
 
 The PPU and the DMA are independent rewrites from public Game Boy documentation.
@@ -60,11 +60,11 @@ python3 tools/sim/sim.py test --project nand2mario --level L0
 python3 tools/sim/sim.py test n2m_system
 ```
 
-`python3 src/nand2mario/scripts/game_qualification.py run <game>`, run from the repository root, runs one pinned game scenario ([nand2anything #395](https://github.com/amichai-bd/nand2anything/issues/395)).
+`python3 src/nand2mario/scripts/regression/game_qualification.py run <game>`, run from the repository root, runs one pinned game scenario ([nand2anything #395](https://github.com/amichai-bd/nand2anything/issues/395)).
 
 ## Boards
 
-`fpga/de10_lite/` holds the DE10-Lite board top (SDRAM backing and UART loader on the board pins; the host keyboard through the common JTAG endpoint), its clock backends, the Quartus settings fragment and the SDC; `fpga/de2_115/` holds the DE2-115 top and its files; `fpga/board_io/` holds the shared Set-2-to-joypad decoder, board-input debouncer and seven-segment decoder. `cfg/n2m_quartus.json` and `cfg/n2m_de2_115_quartus.json` hold the pins and the Quartus source lists, and the scripts `scripts/n2m_quartus.py` and `scripts/n2m_board.py` build, program, load images and send joypad keys. Board specs are not written yet.
+`fpga/de10_lite/` holds the DE10-Lite board top (SDRAM backing and UART loader on the board pins; the host keyboard through the common JTAG endpoint), its clock backends, the Quartus settings fragment and the SDC; `fpga/de2_115/` holds the DE2-115 top and its files; `fpga/board_io/` holds the shared Set-2-to-joypad decoder, board-input debouncer and seven-segment decoder. `cfg/n2m_quartus.json` and `cfg/n2m_de2_115_quartus.json` hold the pins and the Quartus source lists, and the scripts `scripts/board/n2m_quartus.py` and `scripts/board/n2m_board.py` build, program, load images and send joypad keys. Board specs are not written yet.
 
 ## Software
 

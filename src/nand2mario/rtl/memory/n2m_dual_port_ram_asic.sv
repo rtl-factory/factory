@@ -1,5 +1,5 @@
 // ASIC backend of the nand2mario dual-port RAM contract owned by
-// wiki/src/nand2mario/memory/HAS.md ("ASIC backend"). It defines the same
+// wiki/src/nand2mario/rtl/memory/mas.md ("ASIC backend"). It defines the same
 // module and ports as n2m_dual_port_ram.sv; only an ASIC source list (and
 // the DV targets that prove this mapping) selects it.
 //

@@ -1,4 +1,4 @@
-# nand2mario DE2-115 timing constraints (wiki/src/nand2mario/fpga/HAS.md).
+# nand2mario DE2-115 timing constraints (wiki/src/nand2mario/fpga/de2_115/board-spec.md).
 create_clock -name reference -period 20.000 [get_ports CLOCK_50]
 derive_pll_clocks
 # JTAG keyboard endpoint (n2a_jtag_keyboard in the board top): the Virtual

@@ -5,6 +5,7 @@ A Game Boy-compatible system (LR35902 CPU, memory map, cartridge mapper, timer, 
 | Discipline | Documents |
 |---|---|
 | [RTL](rtl/README.md) | The [HAS](rtl/has.md): blocks, boards, software and how to run the simulations |
+| [Scripts](scripts/README.md) | The host scripts' PRDs and specs: board flow, regression, software build, showcase |
 
 !!! note "Not ported yet"
-    Its MASes, DV plans and the specs of its software and scripts live in nand2anything and are not ported yet. The scripts' PRDs and specs are issue #74.
+    Its MASes, DV plans, board specs and the specs of its software live in nand2anything and are not ported yet; code headers already name their standard paths.

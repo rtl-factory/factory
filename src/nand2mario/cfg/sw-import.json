@@ -5,7 +5,7 @@
     {
       "source": "tools/sw/assets.py",
       "sha256": "8262f87d66c0615b2548652a383661d7020581551f4e65e462ae2659a62fcc1e",
-      "destination": "src/nand2mario/scripts/sw/assets.py",
+      "destination": "src/nand2mario/scripts/sw_build/asm/assets.py",
       "action": "owner-adapt: docstring provenance header only; encoder and validation unchanged"
     },
     {
@@ -323,7 +323,7 @@
     {
       "source": "tools/n2m/host/library.py",
       "sha256": "8bbd5d133947ecc42f4e38c078ed4cb893dde6b35c1325f10e1ef15b3d5120af",
-      "destination": "src/nand2mario/scripts/game_library.py",
+      "destination": "src/nand2mario/scripts/sw_build/game_library.py",
       "action": "contract-adapt: catalogue byte layout and slot/profile/CRC rules; native local-source packer, no donor host transport copied"
     },
     {

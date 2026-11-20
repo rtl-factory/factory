@@ -1,5 +1,5 @@
 ; Original bounded program for the n2m_system SDRAM boot test. The direct
-; 32 KiB image this assembles to is expanded by src/nand2mario/scripts/mbc1_image.py
+; 32 KiB image this assembles to is expanded by src/nand2mario/scripts/sw_build/mbc1_image.py
 ; into a 128 KiB (8 bank) MBC1+RAM+BATTERY image with 32 KiB of cartridge RAM
 ; that the UART loader writes into the SDRAM backing; bank 1 ($4000-$7FFF
 ; here) is the template of every switched bank, each copy carrying its bank

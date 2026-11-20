@@ -1,6 +1,6 @@
 // Intel MAX 10 backend of the nand2mario DE10-Lite clock contract: one
 // altpll (u_pll) dividing the 50 MHz board reference to the 25 MHz system
-// clock, with its lock status (wiki/src/nand2mario/fpga/HAS.md).
+// clock, with its lock status (wiki/src/nand2mario/fpga/de10_lite/board-spec.md).
 //
 // This file and n2m_de10_lite_clock_portable.sv define the same module name.
 // Only the Quartus source list selects this file; simulation targets list
