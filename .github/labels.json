@@ -35,14 +35,9 @@
     "description": "Parent issue whose sub-issues land together through an epic branch"
   },
   {
-    "name": "area:arch",
-    "color": "5319e7",
-    "description": "Architecture models"
-  },
-  {
     "name": "area:rtl",
     "color": "5319e7",
-    "description": "Hardware implementation"
+    "description": "Hardware implementation and its HAS and MAS"
   },
   {
     "name": "area:dv",
@@ -58,6 +53,16 @@
     "name": "area:fpga",
     "color": "5319e7",
     "description": "FPGA implementation: Quartus, pins, timing, boards"
+  },
+  {
+    "name": "area:scripts",
+    "color": "5319e7",
+    "description": "Host scripts bound to a project or a common block"
+  },
+  {
+    "name": "area:sw",
+    "color": "5319e7",
+    "description": "Software that runs on the design's own CPU"
   },
   {
     "name": "area:workflow",
