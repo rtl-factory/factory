@@ -25,7 +25,7 @@ Format a round like so:
 
 Word each question so "yes" accepts your recommended answer.
 
-**Factory-local:** in this repo "the user" is the captain, and a "sub-agent" sent to find facts is a read-only helper inside the grilling session, not a crewmate: it takes no issue, writes nothing and reports only to the grilling agent. When the harness offers a multiple-choice question tool (Claude Code's `AskUserQuestion`), ask each round through it instead of as text, so the captain picks answers instead of typing them. Put your recommended answer first and mark it "(Recommended)". The tool takes at most four questions per call, so send a larger frontier as consecutive calls. Fall back to the text format above only where no such tool exists.
+**Factory-local:** in this repo "the user" is the captain, and a "sub-agent" sent to find facts is a read-only subagent inside the grilling session, not a crewmate: it takes no issue, writes nothing and reports only to the grilling agent. When the harness offers a multiple-choice question tool (Claude Code's `AskUserQuestion`), ask each round through it instead of as text, so the captain picks answers instead of typing them. Put your recommended answer first and mark it "(Recommended)". The tool takes at most four questions per call, so send a larger frontier as consecutive calls. Fall back to the text format above only where no such tool exists.
 
 Each round the user answers reshapes the tree: settled decisions push the frontier outward and unblock questions that depended on them. Recompute the frontier and ask the next round. A question whose answer depends on another question still open in this round belongs to a _later_ round, not this one.
 
