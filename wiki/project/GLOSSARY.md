@@ -92,7 +92,7 @@ An issue that delivers one narrow but complete behaviour, ending in a state a re
 _Avoid_: horizontal slice, layer, phase
 
 **PRD**:
-Product requirements document: what a tool we build must do, for whom, and how we will know it does, kept as `tools/<tool>/prd.md` next to the tool's spec.
+Product requirements document: what a tool we build must do, for whom, and how we will know it does, kept as `prd.md` next to the tool's `spec.md` in the tool's wiki folder, which mirrors its code folder (`wiki/bkm/workflow/repo-layout.md`).
 _Avoid_: requirements spec, MRD
 
 **Interface**:
@@ -112,7 +112,7 @@ Imagine removing a block and wiring its contents into its neighbours: if complex
 _Avoid_: inline test
 
 **Spec**:
-The specification of one block, in `wiki/src/<project>/<type>/<block>/`. It changes in the same pull request as the block's code.
+The specification of one block or tool, in the wiki folder that mirrors its code (`wiki/src/<project>/<type>/<block>/` for a block). It changes in the same pull request as the code.
 _Avoid_: design doc, documentation (for this meaning)
 
 **Pull request**:
@@ -169,6 +169,14 @@ _Avoid_: property list
 The commit at which a formal property was last confirmed to describe the RTL it covers.
 
 ## Hosts and tools
+
+**Repo tool**:
+A tool any project can use, such as the simulation runner or the toolchain; its code is in `tools/<tool>/` and its PRD and spec in `wiki/tools/<tool>/`.
+_Avoid_: global tool, factory script
+
+**Project tool**:
+A tool bound to one project, or to a block of the `common` project, that changes when that project or block changes; its code is in `src/<project>/tools/<tool>/` and its PRD and spec in `wiki/src/<project>/tools/<tool>/`.
+_Avoid_: project script, helper
 
 **Board host**:
 The Linux host a board is wired to; the only place that board is programmed and observed.

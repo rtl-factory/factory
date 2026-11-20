@@ -7,7 +7,7 @@ Captains and agents need to read the factory's BKMs, glossary, decisions, block 
 ## Requirements
 
 1. Every wiki page is published, with navigation that follows the wiki's folder structure.
-2. Each tool's requirements and spec are published under Tools, while staying next to the tool rather than in the wiki.
+2. Every tool's requirements and spec are published, at the place that mirrors the tool's code.
 3. The site is rebuilt and published on every merge to `main` that changes what it shows.
 4. A pull request that would break the site (a broken link, a missing page) fails before it merges.
 5. Pages are searchable, readable in light and dark mode, and link to their source file for editing.

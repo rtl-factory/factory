@@ -19,6 +19,8 @@ First choose the project, then the type of work, then the block (an IP or unit):
 src/<project>/<type>/<block>/
 ```
 
+Every document lives in `wiki/` at the path that mirrors its code: `src/<project>/<type>/<block>/` is documented in `wiki/src/<project>/<type>/<block>/`, and a tool in `tools/<tool>/` in `wiki/tools/<tool>/`. The rule, and how to tell a repo tool from a project tool, is in [wiki/bkm/workflow/repo-layout.md](wiki/bkm/workflow/repo-layout.md).
+
 ```
 factory/
 ├── src/                Projects: design, models and verification code
@@ -30,17 +32,17 @@ factory/
 │   │   ├── fpga/       Board tops, Quartus settings, pins, constraints (one folder per board)
 │   │   ├── cfg/        Simulation targets and per-board build config
 │   │   ├── sw/         Software that runs on the design
-│   │   └── tools/      Project-specific scripts
+│   │   └── tools/      Project tools: bound to this project or to one of its blocks
 │
 ├── wiki/               Documentation, published as the wiki site (mkdocs.yml)
-│   ├── src/            Specs and docs per project and block (mirrors src/)
+│   ├── src/            Specs, plans, PRDs per project, block and project tool (mirrors src/)
 │   ├── specs/          External reference specifications
 │   ├── bkm/            Best Known Methods, one directory per kind of work
 │   ├── project/        Glossary and decisions (ADRs)
-│   └── tools/          Tools we build: their requirements and specs, as shown on the site
+│   └── tools/          Repo tools' PRDs and specs (mirrors tools/)
 │
 ├── cfg/                Project settings and limits
-├── tools/              Tools we build, one folder each with its prd.md and spec.md
+├── tools/              Repo tools: tools any project can use, one folder each
 ├── .claude/            Agent skills that route to BKMs (source of truth)
 ├── .agents/skills      Symlink to .claude/skills, for Codex
 ├── .github/            CI workflows and issue/PR templates

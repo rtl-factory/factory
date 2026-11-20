@@ -1,7 +1,7 @@
 """Host side of the common Virtual JTAG keyboard endpoint (n2a_jtag_keyboard).
 
 Persistent quartus_stp transport with explicit configuration and no discovery,
-the IR1/IR2 command/status protocol (wiki/src/common/jtag/HAS.md), and the
+the IR1/IR2 command/status protocol (wiki/src/common/tools/jtag/spec.md), and the
 Set-2 scan-code translation shared by every consumer (nand2linux console and
 headless `type`, the nand2tetris console). This file is self-contained: it also
 runs under native Windows Python as the bounded Quartus owner, so it imports
@@ -123,8 +123,9 @@ class Session:
 def send_all(session, codes, *, deadline, sleep=time.sleep):
     """Deliver every scan code through `session` in batches of at most four,
     resubmitting only a proven refused suffix until `deadline`. Returns the
-    number of codes accepted; raises TransferError (and poisons the session)
-    on uncertainty or when the bound expires with codes still unsent."""
+    number of codes accepted; raises TransferError on uncertainty (which
+    poisons the session) or when the bound expires with codes still unsent
+    (which does not: the refused codes are known)."""
     codes, sent = bytes(codes), 0
     while codes:
         if time.monotonic() >= deadline:

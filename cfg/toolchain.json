@@ -1,5 +1,5 @@
 {
-  "_comment": "Pinned toolchain versions, install locations and checksums. Spec: tools/toolchain/spec.md. Change a pin only through an issue.",
+  "_comment": "Pinned toolchain versions, install locations and checksums. Spec: wiki/tools/toolchain/spec.md. Change a pin only through an issue.",
   "quartus": {
     "version": "25.1std.0 Build 1129",
     "edition": "Lite",

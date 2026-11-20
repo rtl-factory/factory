@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Cloud session hook: install the pinned Quartus Prime Lite at session start.
-# Spec: tools/toolchain/spec.md (Cloud session hook). Pins: cfg/toolchain.json.
+# Spec: wiki/tools/toolchain/spec.md (Cloud session hook). Pins: cfg/toolchain.json.
 #
 # Quartus files cannot be downloaded from Altera by script, so they are kept in
 # private Google Drive storage named by $QUARTUS_FILES_FOLDER (a link-shared
@@ -36,7 +36,7 @@ if [[ -x "$QBIN/quartus_sh" ]] && ready; then
 fi
 
 if [[ -z "${QUARTUS_FILES_FOLDER:-}" ]]; then
-  log "QUARTUS_FILES_FOLDER is not set: Quartus not installed (see tools/toolchain/spec.md)"
+  log "QUARTUS_FILES_FOLDER is not set: Quartus not installed (see wiki/tools/toolchain/spec.md)"
   exit 0
 fi
 
