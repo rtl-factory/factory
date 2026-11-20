@@ -59,7 +59,7 @@ Start every crewmate with a fresh context; the brief must stand alone. Point to 
 ## Pausing and handing over
 
 - Pause only on a captain's explicit word; "keep going" is not a pause. To pause: let each crewmate finish or back out of its current step, start nothing new, have each one commit its work as a `wip:` commit and push its branch, and post a checkpoint comment per [reporting.md](reporting.md) Decision trail. Take no irreversible step to pause. On a captain's stop, every crewmate makes no more writes and reports where it stands. Why: a cold-start agent resumes from GitHub, and unpushed work may be the only copy.
-- To hand your work to a fresh session (your context is full, or the work moves), post that checkpoint comment on the epic or issue: intent, what landed, what is in flight on which branch, waiting decisions, the next step, and the BKMs to follow. Point to issues and pull requests; don't copy them; leave secrets out. Why: the next session reads GitHub, not your context.
+- To hand your work to a fresh session (your context is full, or the work moves), post a checkpoint comment on the epic or issue per [reporting.md](reporting.md) Decision trail, naming the BKMs the next session must follow. Leave secrets out. Why: the next session reads GitHub, not your context.
 - To resume, follow [reporting.md](reporting.md) "Rebuild context after a restart": treat the trail as authoritative, redo nothing finished, and verify only claims you will act on. Why: re-deriving the trail wastes the work it records.
 
 ## Competing candidates
@@ -67,7 +67,7 @@ Start every crewmate with a fresh context; the brief must stand alone. Point to 
 When one attempt would lock in the wrong shape (a new block's microarchitecture, an arbiter or FSM structure, a testbench architecture), you may dispatch two to four candidate crewmates on the same issue and pick one. Use it only where the shape is costly to change later. Why: a second-guessed shape after review costs more than parallel attempts.
 
 1. **Frame.** Write one brief for all candidates, and a rubric of three to six gradeable criteria (spec coverage, area and timing, verification effort, ease of extension) that the candidates do not see. Why: the brief is the contract; a visible rubric gets gamed.
-2. **Dispatch.** Give each candidate its own worktree on a scratch branch `candidate/<number>-<n>` from the issue's base. Candidates open no pull request and report the result with a short rationale naming the alternatives they rejected. If one drops out, go on with the rest and note it.
+2. **Dispatch.** Give each candidate its own worktree `worktrees/candidate-<number>-<n>/` on a scratch branch `candidate/<number>-<n>` from the issue's base. Candidates open no pull request and report the result with a short rationale naming the alternatives they rejected. If one drops out, go on with the rest and note it.
 3. **Judge.** Read every candidate end to end and score it criterion by criterion. Dispatch a judge crewmate with a fresh context, on a different model where one is available, to score them too. Pick the base a later crewmate can extend most easily; on a tie, the smaller interface. If the candidates diverge wildly, the issue is under-specified: fix it before re-running.
 4. **Promote.** Create the issue branch `issue/<number>-<slug>` from the chosen candidate's head, and dispatch a crewmate on it to fold in at most one or two strong ideas from the others, reworked to fit rather than pasted. From here the issue follows [flow.md](flow.md) from step 5 as usual: one issue, one issue branch, one pull request.
 5. **Record.** Post a decision-trail comment on the issue: the rubric, scores, chosen base and why, each graft, and each rejected candidate with its head SHA. After the pull request lands, delete the candidate branches and worktrees. Why: the comment keeps the rejected work findable; the branches would only invite a second pull request.
@@ -80,5 +80,5 @@ When one attempt would lock in the wrong shape (a new block's microarchitecture,
 ## Exit criteria
 
 - Every issue handed over is closed by a landed pull request, or returned to the captain with the reason.
-- Every crewmate and candidate worktree is removed after its branch is merged or recorded as rejected.
+- Every crewmate worktree is removed after its branch is merged, and every candidate worktree and branch after the issue's pull request lands.
 - No crewmate is left running or waiting without an answer.
