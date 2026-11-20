@@ -53,6 +53,11 @@ jobs:
           echo "$HOME/verilator/bin" >> "$GITHUB_PATH"
           "$HOME/verilator/bin/verilator" --version
 
+      - name: Install simulation host packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq liblz4-dev gcc-riscv64-unknown-elf picolibc-riscv64-unknown-elf
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
