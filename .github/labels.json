@@ -55,9 +55,9 @@
     "description": "Formal verification"
   },
   {
-    "name": "area:syn",
+    "name": "area:fpga",
     "color": "5319e7",
-    "description": "Synthesis and constraints"
+    "description": "FPGA implementation: Quartus, pins, timing, boards"
   },
   {
     "name": "area:workflow",

@@ -4,4 +4,4 @@ nav:
   - RTL: rtl
   - DV: dv
   - FV: fv
-  - Synthesis: syn
+  - FPGA: fpga
