@@ -17,7 +17,7 @@
 // MEM_OWNER_* (87..91) name the owner of the one line transaction from its
 // acceptance clock through its response clock: exactly one while memory is
 // occupied, none otherwise, and never together with MEM_BACKPRESSURE. The
-// perf harness splits D-miss waits by them (platform/DV.md).
+// perf harness splits D-miss waits by them (wiki/src/nand2doom/dv/platform/dv-plan.md).
 module n2d_pmon_platform_events (
     input  logic         clk_i,
     input  logic         rst_i,
@@ -25,7 +25,7 @@ module n2d_pmon_platform_events (
     input  logic         instruction_miss_event_i,
     input  logic         data_hit_event_i,
     input  logic         data_miss_event_i,
-    // Registered D-cache prefetch pulses (memory/HAS.md).
+    // Registered D-cache prefetch pulses (wiki/src/nand2doom/rtl/memory/mas.md).
     input  logic         data_prefetch_issue_event_i,
     input  logic         data_prefetch_useful_event_i,
     input  logic         data_prefetch_drop_event_i,

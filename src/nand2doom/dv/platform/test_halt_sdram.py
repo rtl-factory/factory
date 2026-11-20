@@ -18,7 +18,7 @@ from src.nand2doom.scripts.host.n2d_uart_debug_host import (
 BASE = 0x10000
 # D-cache geometry of the fixture, set by _geometry() at test start: dirty
 # lines that fill every way of every set, their byte span, and the
-# memory/HAS.md "Maintained Halt bound" for that many dirty lines: a 24-clock
+# wiki/src/nand2doom/rtl/memory/mas.md "Maintained Halt bound" for that many dirty lines: a 24-clock
 # slot per line plus CPU drain 256, victim buffer drain 24 (serial: the walk
 # starts only after the buffer empties), I-cache walk 514 and coordination 16.
 HALT_FIXED = 256 + 24 + 514 + 16
@@ -345,7 +345,7 @@ async def halt_boundaries_contract(dut):
             # Removing the simulated fault is not another Halt command.
             await Timer(100, unit="us")
             # The permanent stall holds an instruction refill (master 1) with
-            # nothing in execute. Under the drain contract (core/HAS.md "Reset
+            # nothing in execute. Under the drain contract (wiki/src/nand2doom/rtl/core/mas.md "Reset
             # and debug behavior") a fetched instruction that has not entered
             # execute is discarded: releasing the refill completes the drain
             # with no retirement, and Resume refetches it from the retained PC.

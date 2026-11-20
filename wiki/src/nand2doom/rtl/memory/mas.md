@@ -1,7 +1,6 @@
-# nand2doom memory architecture
+# memory MAS
 
-!!! note "Ported, not yet in the standard template"
-    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
+## Purpose
 
 The memory system joins the core's instruction and data ports to external
 SDRAM, keeping framebuffer traffic outside the caches. It owns the I-cache,
@@ -15,7 +14,7 @@ verification.
 
 <!-- wiki-budget: cache, arbiter and SDRAM command/latency tables plus the maintained Halt budget are cycle contracts the RTL and DV check -->
 
-## Requirements
+### Requirements
 
 | ID | Requirement |
 | --- | --- |
@@ -29,7 +28,32 @@ verification.
 | MEM-R8 | SDRAM refresh gaps never exceed 195 clocks (7.8 µs) under any traffic ([controller](#sdram-controller)). |
 | MEM-R9 | Maintained Halt completes in under 65,536 clocks for either D-cache geometry on a healthy controller. |
 
-## Cache and line contracts
+## Interface
+
+### Ports
+
+Every port is in the `clk_i` domain; the SDRAM pins are bound by the board top
+([composition](../../fpga/de10_lite/board-spec.md#composition)). Parameters:
+`n2d_dcache` `WAYS` (2 or 4, default 4) and `PREFETCH_LINES` (0, 1 or 2,
+default 0); `n2d_cached_rv32im` `DCACHE_WAYS` (default 4);
+`n2d_sdram_controller` `POWERUP_CYCLES` (5,000), `REFRESH_CYCLES` (195) and
+`REFRESH_RESERVE_CYCLES` (32); `n2d_debug_memory_adapter` `MAX_WORDS` (8).
+
+| Module | Port group | Ports (direction, width) | Contract |
+| --- | --- | --- | --- |
+| `n2d_icache` | CPU | `cpu_request_valid_i`, `cpu_request_address_i` (32) in, `cpu_request_ready_o` out; `cpu_response_valid_o`, `cpu_response_data_o` (32), `cpu_response_error_o` out | [CPU port handshake](#cpu-port-handshake) |
+| `n2d_dcache` | CPU | as the I-cache plus `cpu_request_write_i`, `cpu_request_write_data_i` (32), `cpu_request_byte_enable_i` (4) in | [CPU port handshake](#cpu-port-handshake) |
+| both caches | Line | `line_request_valid_o`, `line_request_write_o`, `line_request_address_o` (26), `line_request_write_data_o` (128), `line_request_byte_enable_o` (16) out, `line_request_ready_i` in; `line_response_valid_i`, `line_response_data_i` (128), `line_response_error_i` in; D-cache also `line_request_prefetch_o`, `line_request_background_o` out | [Line port](#line-port) |
+| both caches | Maintenance | `maintenance_valid_i` in, `maintenance_ready_o`, `maintenance_done_o` out; D-cache also `maintenance_error_o` | [Maintenance](#maintenance) |
+| both caches | Events | `hit_event_o`, `miss_event_o`; D-cache also `prefetch_issue_event_o`, `prefetch_useful_event_o`, `prefetch_drop_event_o`, `prefetch_deferred_event_o`, `prefetch_cancel_event_o`, `write_buffer_pending_o`, `write_buffer_wait_o` out | [Pipeline](#pipeline), [prefetch](#next-line-prefetch), [victim buffer](#dirty-victim-buffer) |
+| `n2d_memory_arbiter` | Masters | `master_request_valid_i`, `master_request_prefetch_i`, `master_request_write_i` (3 each), `master_request_address_i` (78), `master_request_write_data_i` (384), `master_request_byte_enable_i` (48) in, `master_request_ready_o` (3) out; `master_response_valid_o` (3), `master_response_data_o` (384), `master_response_error_o` (3) out | Three packed line ports, owner order instruction, data, debug ([arbitration](#arbitration-and-debug-adaptation)) |
+| `n2d_memory_arbiter` | Memory | one line port (`memory_request_*` out, `memory_request_ready_i` in, `memory_response_*` in) | [Line port](#line-port) |
+| `n2d_memory_controller` | Owners | `instruction_request_valid_i`, `instruction_request_address_i` (26) in, `instruction_request_ready_o` out, `instruction_response_valid_o`, `instruction_response_data_o` (128), `instruction_response_error_o` out; `data_request_*` with `data_request_prefetch_i` and `debug_request_*` as full line ports | The instruction owner is read-only: it has no write or byte-enable input |
+| `n2d_memory_controller`, `n2d_sdram_controller` | SDRAM | `init_done_o` out; `sdram_address_o` (13), `sdram_bank_o` (2), `sdram_cke_o`, `sdram_cs_n_o`, `sdram_ras_n_o`, `sdram_cas_n_o`, `sdram_we_n_o`, `sdram_dqm_o` (2), `sdram_dq_o` (16), `sdram_dq_oe_o` out; `sdram_dq_i` (16) in | [SDRAM controller](#sdram-controller); `n2d_sdram_controller` takes one line port (`request_*`, `response_*`) |
+| `n2d_debug_memory_adapter` | Transaction and word | `transaction_begin_i`, `transaction_commit_i`, `transaction_abort_i` in, `transaction_done_o`, `transaction_error_o` out; `word_request_valid_i`, `word_request_write_i`, `word_request_address_i` (32), `word_request_write_data_i` (32), `word_request_byte_enable_i` (4) in, `word_request_ready_o` out; `word_response_valid_o`, `word_response_data_o` (32), `word_response_error_o` out; one line port out | [Debug adapter](#arbitration-and-debug-adaptation), driven per the [host-memory transaction boundary](../io/mas.md#host-memory-transaction-boundary) |
+| `n2d_cached_rv32im` | Composition | `enable_i` in; instruction and data line ports, both maintenance handshakes, I/D hit and miss events, the core observation record and `halt_ack_o` | [Arbitration and debug adaptation](#arbitration-and-debug-adaptation) |
+
+### Cache and line contracts
 
 The D-cache way count (`n2d_system` `DCACHE_WAYS`) is the only geometry
 parameter; four-way 32 KiB won the trace study of
@@ -79,6 +103,32 @@ pulse returns to the captured owner. Reads use zero enables; writebacks all
 Lines must be 16-byte aligned within `0x0000_0000..0x03ff_ffff`; violations
 return an error without an SDRAM command. An error response has no write side
 effect. Each cache owns one outstanding line transaction.
+
+### Maintained Halt bound
+
+The platform budgets **65,536 clocks (2.62144 ms)** for core drain plus
+maintenance, separate from the 4,096-clock debug-memory watchdogs. It assumes
+an initialized, progressing controller, no injected errors and completing MMIO.
+A blocked peripheral or repeated errors produce a bounded Halt failure; a
+deadline never discards dirty data.
+
+| Contribution | Clocks | Reason |
+| --- | ---: | --- |
+| CPU drain | 256 | Owed fetch, owed data operation and one execute-stage access: five 24-clock line services plus 16 pipeline clocks (136); a divide (34) excludes the second data access; a presented prefetch adds one service (160). |
+| Victim buffer drain | 24 | One full-line write; serial, since the walk starts only once the buffer is empty. |
+| D-cache walk | 2,048 x 24 = 49,152 (two-way 1,024 x 24 = 24,576) | One slot per way and set. |
+| I-cache walk | 514 | 512 steps plus handshake; added although concurrent. |
+| Coordination | 16 | Edge detection, RAM startup, completion. A Halt during the 512-clock post-reset sweep sees a clean cache. |
+| **Total** | **49,962 (two-way 25,386)** | D-cache slots x 24 + 810; below 65,536; no serial time charged. |
+
+A slot is 24 clocks: the slowest [SDRAM line](#sdram-controller) (row-miss
+read 11, write 10), plus 4 for a refresh before acceptance and 5 for
+sequencing. 2,048 dirty writes alone need ≥16,384 controller clocks, so a
+4,096-clock allowance cannot work. After core acknowledgement no CPU request
+competes. Ping reports only core acknowledgement; an expired Halt leaves
+maintenance active and sends no late success.
+
+## Microarchitecture
 
 ### Pipeline
 
@@ -197,31 +247,7 @@ ones after a successful full-line write. An error ends the walk with done and
 error, preserving the entry; a retry rescans. The platform completes both
 caches before reporting precise halt.
 
-## Maintained Halt bound
-
-The platform budgets **65,536 clocks (2.62144 ms)** for core drain plus
-maintenance, separate from the 4,096-clock debug-memory watchdogs. It assumes
-an initialized, progressing controller, no injected errors and completing MMIO.
-A blocked peripheral or repeated errors produce a bounded Halt failure; a
-deadline never discards dirty data.
-
-| Contribution | Clocks | Reason |
-| --- | ---: | --- |
-| CPU drain | 256 | Owed fetch, owed data operation and one execute-stage access: five 24-clock line services plus 16 pipeline clocks (136); a divide (34) excludes the second data access; a presented prefetch adds one service (160). |
-| Victim buffer drain | 24 | One full-line write; serial, since the walk starts only once the buffer is empty. |
-| D-cache walk | 2,048 x 24 = 49,152 (two-way 1,024 x 24 = 24,576) | One slot per way and set. |
-| I-cache walk | 514 | 512 steps plus handshake; added although concurrent. |
-| Coordination | 16 | Edge detection, RAM startup, completion. A Halt during the 512-clock post-reset sweep sees a clean cache. |
-| **Total** | **49,962 (two-way 25,386)** | D-cache slots x 24 + 810; below 65,536; no serial time charged. |
-
-A slot is 24 clocks: the slowest [SDRAM line](#sdram-controller) (row-miss
-read 11, write 10), plus 4 for a refresh before acceptance and 5 for
-sequencing. 2,048 dirty writes alone need ≥16,384 controller clocks, so a
-4,096-clock allowance cannot work. After core acknowledgement no CPU request
-competes. Ping reports only core acknowledgement; an expired Halt leaves
-maintenance active and sends no late success.
-
-## Arbitration and debug adaptation
+### Arbitration and debug adaptation
 
 `n2d_memory_controller` connects the I-cache, D-cache and debug line ports to
 `n2d_memory_arbiter` and the SDRAM controller. Debug traffic enters only while
@@ -249,7 +275,7 @@ halted.
   exposes independent line ports, both maintenance handshakes and hit/miss
   events; bypass policy is outside it.
 
-## SDRAM controller
+### SDRAM controller
 
 `n2d_sdram_controller`: one transaction, open row, 25 MHz, one burst of eight
 x16 beats per line. The board top binds commands, DQ output enable and the
@@ -320,7 +346,7 @@ simulation-only reset-time preload writes up to 256 byte-enabled bytes per
 clock; only the simulation platform wrapper connects it, and it is absent from
 every product closure.
 
-## Register style
+### Register style
 
 Each controller keeps its state in one packed `regs_q` of the type-only
 `n2d_ls_types_pkg`, computed in a blocking `always_comb` and registered
@@ -330,7 +356,7 @@ adapter staged counts and indices) are separate zero-reset registers. The
 adapter's staged words and saved lines use the reset-clearing indexed write.
 Pulse outputs default low each clock.
 
-## Files
+### Files
 
 | Path | Role |
 | --- | --- |
@@ -342,7 +368,29 @@ Pulse outputs default low each clock.
 | `src/nand2doom/rtl/memory/n2d_ls_types_pkg.sv` | State records |
 | `src/nand2doom/dv/memory/n2d_sdram_fast_model.sv` | Fast model |
 
-## Framebuffer placement
+## Clocks and resets
+
+One clock, `clk_i` (25 MHz). The SDRAM receives the inverted clock from the
+board top, and read data is captured on controller edges from that inverted
+device clock: the controller owns this half-cycle relationship
+([read capture](#sdram-controller)). Reset is synchronous; after reset the
+D-cache sweeps its 512 sets with ready low, data RAMs are not reset, and a
+second reset forgets resident and buffered dirty lines
+([data cache](#data-cache), [dirty-victim buffer](#dirty-victim-buffer)). The
+SDRAM controller initializes the device after reset and its init-done output
+releases the platform ([SDRAM controller](#sdram-controller)).
+
+## Design choices
+
+- **D-cache geometry.** Four-way 32 KiB won the trace study of
+  [#74](https://github.com/amichai-bd/nand2anything/issues/74); the DE10-Lite
+  keeps two ways for M9K capacity ([cache and line contracts](#cache-and-line-contracts)).
+- **Separate D-cache metadata RAM**, because maintenance and the next request
+  read a set other than the one written ([data cache](#data-cache)).
+- **XOR bank map**, so a victim and its refill usually go to different banks
+  ([SDRAM controller](#sdram-controller)).
+
+### Framebuffer placement
 
 The framebuffer is on chip, not SDRAM scanout DMA, which keeps display
 traffic and coherence out of the controller. DE10-Lite logical budget
@@ -354,3 +402,11 @@ framebuffer to 1,048,576 physical bits. A second full-width bank does not
 fit, hence [half width](../video/mas.md#framebuffer-and-palette). If packing
 ever fails, moving the framebuffer to SDRAM needs a new decision covering line
 buffers, display priority, coherence and underrun.
+
+## Verification
+
+The [memory DV plan](../../dv/memory/dv-plan.md) owns verification. Specific
+to this microarchitecture: the metadata forward on the write edge, the
+512-clock reset sweep, tree pseudo-LRU victim order, the victim buffer and
+prefetch coherence cases, and the SDRAM read-capture phase on the board
+targets ([FPGA DV](../../dv/fpga/dv-plan.md)).

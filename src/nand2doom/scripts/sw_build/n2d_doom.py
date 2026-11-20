@@ -65,7 +65,7 @@ PICOLIBC_INCLUDE_TREE_SHA256 = (
 # instructions (minstret) and pauses it across video waits. This defines a
 # reproducible time policy, not a cross-architecture frame/state guarantee.
 # Render verification fixes one game tic per display and requires state witnesses.
-# Each variant has a default engine compiler profile (software/HAS.md, #75):
+# Each variant has a default engine compiler profile (wiki/src/nand2doom/sw/doom/spec.md, #75):
 # production and deterministic build the engine -O2 with engine-only LTO, the
 # measured speed winner; render verification stays -Os because LTO inlines
 # away the G_Ticker/D_Display call witnesses it needs.
@@ -245,7 +245,7 @@ def _adapt_scene(text: str) -> str:
     return text
 
 
-# Doom draws straight into the back framebuffer bank (video/HAS.md); the
+# Doom draws straight into the back framebuffer bank (wiki/src/nand2doom/rtl/video/mas.md); the
 # platform requests a bank swap at frame end and, before the next frame's first
 # screen access, waits for it and copies the displayed bank into the back bank.
 BACK_FRAMEBUFFER = "(pixel_t *)0x10000000u"
@@ -254,7 +254,7 @@ ACQUIRE_DECLARATION = ("extern void N2D_FramebufferAcquire(void);\n"
 DISPLAY_SEAM = ("    if (nodrawers)\n"
                 "    \treturn;                    // for comparative timing / profiling\n")
 WIPE_SEAM = "\twipestart = nowtime;\n"
-# Status-bar-only persistence (software/HAS.md): a full-width level view with
+# Status-bar-only persistence (wiki/src/nand2doom/sw/doom/spec.md): a full-width level view with
 # no wipe, resize, menu or automap redraws every row above viewheight, so only
 # the rows below it need the displayed image. Everything else copies it all.
 DISPLAY_ACQUIRE = (
@@ -317,7 +317,7 @@ def _adapt_direct_video(text: str) -> str:
     return text
 
 
-# Register-resident drawers (software/HAS.md). Upstream reloads dc_source,
+# Register-resident drawers (wiki/src/nand2doom/sw/doom/spec.md). Upstream reloads dc_source,
 # dc_colormap (ds_*) from globals after every byte store, which may alias them.
 # These bodies hold them in locals, consume the remainder first and unroll 4x.
 # Columns encode the original 23 relevant bits modulo32, shifted by nine;
@@ -509,7 +509,7 @@ def _adapt_wall_loop(text: str) -> str:
     return text[:match.start()] + _wall_loop_body(source) + text[match.end():]
 
 
-# Lazy visplane fill (software/HAS.md). Upstream sets all 320 top[] bytes of
+# Lazy visplane fill (wiki/src/nand2doom/sw/doom/spec.md). Upstream sets all 320 top[] bytes of
 # every new visplane to 0xff (unused). Only top[minx..maxx] is ever read, so
 # these bodies mark just the columns a plane gains when it is created or grows;
 # plane selection, ranges and every value read are unchanged.

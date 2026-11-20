@@ -390,7 +390,7 @@ async def _actual_frame_contract(dut, full: bool) -> None:
     await _check(dut, model, 0, front=True)
 
     # The palette bank that became inactive is independently writable. Its
-    # never-written entries are undefined after reset (video/HAS.md).
+    # never-written entries are undefined after reset (wiki/src/nand2doom/rtl/video/mas.md).
     await _palette_request(dut, index=17, write_data=0x123, write_strobe=0x3)
     assert await _palette_request(dut, index=17) == 0x123
 

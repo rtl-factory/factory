@@ -1,11 +1,18 @@
-# nand2doom software verification
-
-!!! note "Ported, not yet in the standard template"
-    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
+# software DV plan
 
 <!-- wiki-budget: the opt-in Doom gate's input-witness and playability rules are its acceptance contract -->
 
-## Strategy
+## Scope
+
+The software that runs on the core: the runtime and validation image, checked
+against the [runtime PRD](../../sw/runtime/prd.md) and [spec](../../sw/runtime/spec.md),
+and the Doom port, checked against the [Doom port PRD](../../sw/doom/prd.md)
+and [spec](../../sw/doom/spec.md). The core and platform under it are verified
+by the [core](../core/dv-plan.md) and [platform](../platform/dv-plan.md)
+plans; cycle and IPC measurement uses the
+[native performance harness](../platform/dv-plan.md#native-performance-harness).
+
+## Testbench
 
 | Tier | Evidence | Regression |
 | --- | --- | --- |
@@ -20,23 +27,28 @@ cross-toolchain and records its version. Engine adaptations are host-tested
 against the pinned upstream archive, which the tests fetch into the
 `workdir/downloads/nand2doom/` cache on first use.
 
-## Test map
+## Features
 
-| Requirement | Test (seed, bounds) | Checks |
-| --- | --- | --- |
-| SW-R2, R3, validation image | `n2d_c_runtime_system` (35; 1,600,000 cycles) | Every image word by UART `LOAD` in groups of at most eight, each acknowledged; Reset-PC and Resume by wire, no preload; trap-free retirement; I/D hits and misses; every framebuffer byte with CRC-32 vs `(3*x + 5*y) & 0xff`; Halt with maintenance; Peek of signature words one to eight (call/stack, multiply, divide, remainder, odd-sized data and BSS, guards, heap); an injected D-cache writeback error gives Halt timeout and a rejected Peek with no memory request, then retry, Halt and coherent Peek; PS/2 and UART make/release digest in word nine, identity and tick in word ten, Poke/readback. Logs image digest, compiler, retirements, CRC, cache events, simulator, seed, bound. The fast integrated target adds a VGA CRC ([platform DV](../platform/dv-plan.md)). |
-| Keyboard map | `test_n2d_doom_keymap.py` | Compiles `keymap.h` with the archive's `doomkeys.h` (SHA-256 checked); probes all 1,024 events against Doom values and the common JTAG host's independent Set-2 table; break equals make; every local-control action maps; Y/N/Tab/weapon bindings; E0 multimedia keys are not letters. |
-| Keyboard in game | `n2d_perf.py --input` | `--input 0x016` gives `DG_GetKey` marker `0xd00d3931`, ticcmd marker `0xd00d4008` and a switch to the fist; `0x016 0x076 0x275 0x05a 0x035` gives markers `0xd00d3931`, `391b`, `39ad`, `390d`, `3979`, Up wrapping to Quit Game, then exit marker `0xd00de000`; no input passes the pinned scene CRCs. These goldens belong to their firmware and script. |
-| Doom time contract | `n2d_doom_clock` (67; 300,000 cycles, 90 s) | Production helper and callbacks at `-Os` on `n2d_rv32im_core` via the public runner with an `N2D_CLOCK_TRACE` timestamp source; results at `0x8000`; only terminal ebreak. `clock_vectors.py` oracle: nonzero init, zero elapsed, 24,999/25,000 cycles, repeated fractions, hardware wrap, >172 s, repeated wraps, `UINT32_MAX` deltas, ms rollover from a seeded state; the old fixed-origin formula agrees before a full period and fails at it; zero, fractional, wrapping and 172 s chunked sleeps with exact timestamp-read counts. A host unit test runs the same C probe as a shared library. |
-| Doom gate | `n2d_doom_system` (37) | See [actual Doom selectable gate](#actual-doom-selectable-gate). |
-| Gate observer | `n2d_doom_observer` (67; 128 cycles, 30 s) | Byte initialization, contiguous and repeated stores, invalid/trapping/non-memory cases, load/control retirements through the dispatcher with nonzero MAKE/BREAK slots, latched MAKE chain, direct BREAK return; a falling-edge-only driver must fail strict ordering while rising-then-falling succeeds; monitors stopped through `stop_monitors` (cocotb cancels twice). Host tests: `test_input_witness.py`, `test_gameplay_retirement_dispatch.py`. |
-| Coherent capture | `n2d_capture`, `n2d_capture_system`, host tests | See [coherent capture](#coherent-capture). |
-| SW-R5 drawers | [Drawer equivalence](#register-resident-drawer-equivalence) | |
-| SW-R5 wall loop | `test_n2d_wall_loop.py` (370) | See [wall loop](#wall-loop-consumer-state-equivalence). |
-| SW-R5 persistence, visplanes | `test_n2d_doom.py` | See [persistence](#persistence-and-visplane-equivalence). |
-| Compiler profiles | Planner tests, builds | See [profiles](#engine-compiler-profile-acceptance). |
+Spec section names the requirement in the software PRDs (SW-R1..R4 and SW-R6 in the
+[runtime PRD](../../sw/runtime/prd.md), SW-R5..R7 in the [Doom port PRD](../../sw/doom/prd.md))
+or the spec section it checks. Level is the target's level in
+`src/nand2doom/cfg/targets.json` where the test is a simulation target.
 
-## Actual Doom selectable gate
+| ID | Spec section | Stimulus | Checker | Coverage point | Test | Level |
+|---|---|---|---|---|---|---|
+| SW-F01 | SW-R2, R3, validation image | Every image word by UART `LOAD` in groups of at most eight, each acknowledged; Reset-PC and Resume by wire, no preload; trap-free retirement; I/D hits and misses; every framebuffer byte with CRC-32 vs `(3*x + 5*y) & 0xff`; Halt with maintenance; Peek of signature words one to eight (call/stack, multiply, divide, remainder, odd-sized data and BSS, guards, heap); an injected D-cache writeback error gives Halt timeout and a rejected Peek with no memory request, then retry, Halt and coherent Peek; PS/2 and UART make/release digest in word nine, identity and tick in word ten, Poke/readback. Logs image digest, compiler, retirements, CRC, cache events, simulator, seed, bound. The fast integrated target adds a VGA CRC ([platform DV](../platform/dv-plan.md)). | Retirement scoreboard; framebuffer CRC-32 against the pattern; Peek of the signature words | none defined | `n2d_c_runtime_system` (35; 1,600,000 cycles) | L1 |
+| SW-F02 | Keyboard map | Compiles `keymap.h` with the archive's `doomkeys.h` (SHA-256 checked); probes all 1,024 events against Doom values and the common JTAG host's independent Set-2 table; break equals make; every local-control action maps; Y/N/Tab/weapon bindings; E0 multimedia keys are not letters. | Doom values from the archive's `doomkeys.h` and the common JTAG host's independent Set-2 table | none defined | `test_n2d_doom_keymap.py` | host test (`src/nand2doom/scripts/tests/`) |
+| SW-F03 | Keyboard in game | `--input 0x016` gives `DG_GetKey` marker `0xd00d3931`, ticcmd marker `0xd00d4008` and a switch to the fist; `0x016 0x076 0x275 0x05a 0x035` gives markers `0xd00d3931`, `391b`, `39ad`, `390d`, `3979`, Up wrapping to Quit Game, then exit marker `0xd00de000`; no input passes the pinned scene CRCs. These goldens belong to their firmware and script. | Firmware markers and the pinned scene CRCs | none defined | `n2d_perf.py --input` | script run (`n2d_perf.py`), not in a level |
+| SW-F04 | Doom time contract | Production helper and callbacks at `-Os` on `n2d_rv32im_core` via the public runner with an `N2D_CLOCK_TRACE` timestamp source; results at `0x8000`; only terminal ebreak. `clock_vectors.py` oracle: nonzero init, zero elapsed, 24,999/25,000 cycles, repeated fractions, hardware wrap, >172 s, repeated wraps, `UINT32_MAX` deltas, ms rollover from a seeded state; the old fixed-origin formula agrees before a full period and fails at it; zero, fractional, wrapping and 172 s chunked sleeps with exact timestamp-read counts. A host unit test runs the same C probe as a shared library. | `clock_vectors.py` oracle | none defined | `n2d_doom_clock` (67; 300,000 cycles, 90 s) | L0 |
+| SW-F05 | Doom gate | See [actual Doom selectable gate](#actual-doom-selectable-gate). | Pinned scene CRCs, input witness and playability bounds | none defined | `n2d_doom_system` (37) | manual |
+| SW-F06 | Gate observer | Byte initialization, contiguous and repeated stores, invalid/trapping/non-memory cases, load/control retirements through the dispatcher with nonzero MAKE/BREAK slots, latched MAKE chain, direct BREAK return; a falling-edge-only driver must fail strict ordering while rising-then-falling succeeds; monitors stopped through `stop_monitors` (cocotb cancels twice). Host tests: `test_input_witness.py`, `test_gameplay_retirement_dispatch.py`. | Strict-ordering observer checks | none defined | `n2d_doom_observer` (67; 128 cycles, 30 s) | L0; host tests |
+| SW-F07 | Coherent capture | See [coherent capture](#coherent-capture). | Production capture helper against fake devices and expected patterns | none defined | `n2d_capture`, `n2d_capture_system`, host tests | L1 (`n2d_capture`), L2 (`n2d_capture_system`); host tests |
+| SW-F08 | SW-R5 drawers | See [Drawer equivalence](#register-resident-drawer-equivalence). | Pinned upstream and an independent scalar form | none defined | `test_n2d_doom.py` | host test (`src/nand2doom/scripts/tests/`) |
+| SW-F09 | SW-R5 wall loop | See [wall loop](#wall-loop-consumer-state-equivalence). | Pinned upstream loop | none defined | `test_n2d_wall_loop.py` (370) | host test (`src/nand2doom/scripts/tests/`) |
+| SW-F10 | SW-R5 persistence, visplanes | See [persistence](#persistence-and-visplane-equivalence). | Pinned upstream bodies; whole-frame CRCs | none defined | `test_n2d_doom.py` | host test (`src/nand2doom/scripts/tests/`) |
+| SW-F11 | Compiler profiles | See [profiles](#engine-compiler-profile-acceptance). | Planner tests; pinned digests, CRC equality and the render-verification oracle | none defined | Planner tests, builds | host test (`src/nand2doom/scripts/tests/`); builds |
+
+### Actual Doom selectable gate
 
 `n2d_doom_system` (seed 37, outside the fast regression) rebuilds the pinned
 production manifest, preloads its two sparse segments under reset and runs
@@ -82,7 +94,7 @@ the product CPU/cache/device path.
 Cycle and IPC measurement uses the
 [native performance harness](../platform/dv-plan.md#native-performance-harness).
 
-## Coherent capture
+### Coherent capture
 
 The production C helper is shared by the Doom adapter, host probe, core probe
 and the UART/cache fixture; no test reimplements the handshake.
@@ -118,7 +130,7 @@ and the UART/cache fixture; no test reimplements the handshake.
   capability; cleanup between 105 and 120 s; standard-library planning on
   Linux and Windows.
 
-## Register-resident drawer equivalence
+### Register-resident drawer equivalence
 
 `test_n2d_doom.py` checks the pinned seams, idempotence and rejection of
 modified or partial rewrites. A host harness compares 20,000 seeded columns
@@ -133,7 +145,7 @@ witnesses, strict alignment controls; then the render-verification oracle.
 ISS results qualify state and pixels only. Production comparisons qualify
 start/end game state before claiming savings.
 
-## Wall-loop consumer-state equivalence
+### Wall-loop consumer-state equivalence
 
 `test_n2d_wall_loop.py` (seed 370) compares the pinned upstream loop and the
 adaptation over 2,048 combinations of texture tiers, masked columns, plane
@@ -146,7 +158,7 @@ acceptance adds 24 fixed-time scripted frames plus scene, wipe, menu and
 automap, full and half render oracles, and a state-qualified production
 measurement with a twenty-frame extension.
 
-## Persistence and visplane equivalence
+### Persistence and visplane equivalence
 
 - The `D_Display` hook copies everything unless every status-bar-only
   condition holds; wipe steps copy everything; an earlier full-copy tree is
@@ -163,7 +175,7 @@ measurement with a twenty-frame extension.
   `viewheight`, 0 (wipe, automap, menu, resize, smaller views) and 200
   (full screen). Then the render-verification oracle.
 
-## Engine compiler profile acceptance
+### Engine compiler profile acceptance
 
 Planner tests cover `Os`/`O2`/`O3` with and without LTO, each variant's
 default, overrides including `--no-engine-lto`, local objects at `-Os`
@@ -176,7 +188,15 @@ measurement of cycles per frame, IPC, I-cache misses and image size. Render
 verification resolves witnesses from each ELF and fails closed if `G_Ticker`
 or `D_Display` is gone.
 
-## Gaps
+## Coverage
+
+No functional coverage points or code coverage numbers were recorded when the
+plan came over from nand2anything, so every coverage point above is "none
+defined". The equivalence checks keep their mutation controls (a changed
+shift, a removed guard, an omitted publication, a dropped fill), each of which
+must fail.
+
+## Status
 
 `n2d_doom_system` and physical validation for simulation-only PRs stay with
 the board milestone [#126](https://github.com/amichai-bd/nand2anything/issues/126).

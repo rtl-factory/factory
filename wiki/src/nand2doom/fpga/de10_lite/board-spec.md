@@ -1,7 +1,13 @@
-# nand2doom DE10-Lite board spec (shared board contracts)
+# DE10-Lite board spec
 
-!!! note "Ported, not yet in the standard template"
-    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
+## Board
+
+The Terasic DE10-Lite (**10M50DAF484C7G**, MAX 10), with the board top
+`n2d_de10_lite` (`src/nand2doom/fpga/de10_lite/`). The design uses its 50 MHz
+oscillator, KEY0 as reset, the one IS42S16320D 16-bit SDRAM, the 4-bit
+resistor VGA DAC, Arduino D0/D1 for the UART, GPIO0/1 for an external PS/2
+connector, `LEDR[3:0]` for status, and the USB-Blaster for the host JTAG
+keyboard ([board contracts](#board-contracts)).
 
 Two thin board tops bind the portable [platform](../../rtl/has.md)
 `n2d_system` and `n2d_memory_controller` to the Terasic DE10-Lite
@@ -10,9 +16,23 @@ Cyclone IV E, the primary physical target). Both run at 25 MHz and share the
 source closure, address map, serial protocol and RAM roles; only board files
 differ. This page is the DE10-Lite board spec and owns the contracts both boards share, the way `cfg/n2d_quartus.json` makes the DE10-Lite the base board and the DE2-115 a set of overrides; the [DE2-115 board spec](../de2_115/board-spec.md) holds what is specific to the DE2-115. The [DV plan](../../dv/fpga/dv-plan.md) owns verification.
 
+### Why this page holds the shared contracts
+
+Both board tops share one source closure, one Quartus script (`quartus.py`)
+with one report gate, and one config, `cfg/n2d_quartus.json`, in which the
+DE10-Lite is the base board and the DE2-115 a set of overrides under
+`boards.de2_115`. The shared contracts (the requirements, the board contracts
+table, the composition, the memory implementation, the constraints both SDCs
+share, the tool rules and report gate, and the earlier fits of both boards)
+therefore have one home, here on the base board's page, as the config has;
+splitting them would give each fact two copies. The DE2-115 page holds what
+only the DE2-115 has (its pins and electrical rules, its SDC differences, its
+budget and its bring-up) and links here for the rest. The script tests also
+read the FPGA timing tables from this page (`src/nand2doom/scripts/tests/test_n2d_timing.py`).
+
 <!-- wiki-budget: the Quartus report gate (warning, RAM, clock and timing contract) and recorded fits are acceptance criteria the Quartus script and tests enforce -->
 
-## Requirements
+### Requirements
 
 | ID | Requirement |
 | --- | --- |
@@ -24,7 +44,7 @@ differ. This page is the DE10-Lite board spec and owns the contracts both boards
 | FPGA-R6 | Each board's [Quartus command](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/tools/build/SPEC.md#quartus-hardware-build) completes synthesis, fit, timing and assembly with the [report gate](#report-gate) passing; outputs stay under `workdir/`; at most two compile workers. |
 | FPGA-R7 | Every RTL change needs a new fitted closure and SOF; an older image is not evidence. Verilator needs no vendor libraries; simulation and compilation never claim physical operation; programming needs separate authorization. |
 
-## Board contracts
+### Board contracts
 
 | Area | DE10-Lite (`n2d_de10_lite`) | DE2-115 (`n2d_de2_115`) |
 | --- | --- | --- |
@@ -42,6 +62,11 @@ Keyboard input on both boards is PS/2 and the host
 [JTAG keyboard](../../rtl/io/mas.md#jtag-keyboard) through the unified Set-2 FIFO;
 each board top binds the common `n2a_jtag_virtual` to the endpoint inside
 `n2d_system`.
+
+## Top level
+
+`n2d_de10_lite` wraps `n2d_system` and `n2d_memory_controller` and binds them
+to the board pins.
 
 ### Composition
 
@@ -62,24 +87,18 @@ each board top binds the common `n2a_jtag_virtual` to the endpoint inside
 - The Quartus script resolves the DE2-115 from the shared manifest by swapping
   the clock backend and the board top.
 
-## Electrical interfaces
+### Vendor primitives
 
-### DE10-Lite electrical interfaces
+| Primitive | Where | Simulation stand-in |
+| --- | --- | --- |
+| `altpll` (`u_pll`) | `n2d_de10_lite_clock_intel.sv` | `n2d_de10_lite_clock_portable.sv`: divide by two, lock three reference edges after reset release |
+| `altsyncram` | `n2a_sync_ram_intel.sv`, `n2a_sdp_ram_intel.sv`, `n2a_tdp_ram_intel.sv` (Quartus list) | the portable common RAMs (simulation list) |
+| `sld_virtual_jtag` | inside the common `n2a_jtag_virtual` (`u_jtag_virtual`) | the common `sld_virtual_jtag` stub |
 
-The top level of `n2d_quartus.json`
-owns every DE10-Lite pin and the source manifest. UART and PS/2 are **3.3 V
-logic**; a 5 V keyboard needs level conversion; the board has no native PS/2
-connector or USB-UART. RX and PS/2 inputs have weak pull-ups. KEY0 uses
-Schmitt trigger, other pins 3.3-V LVTTL. SDRAM and VGA outputs 8 mA; UART TX
-and LEDs 4 mA. Unused pins are inputs. Pins follow the Terasic DE10-Lite User
-Manual tables 3-2, 3-3, 3-5, 3-7, 3-8, 3-10 and 3-12
-([manual](https://e2e.ti.com/cfs-file/__key/communityserver-discussions-components-files/73/DE10_2D00_Lite_5F00_User_5F00_Manual.pdf)).
+The Quartus and simulation source lists in `n2d_quartus.json` never name both
+backends of a pair ([tool compatibility](#tool-compatibility-and-warnings)).
 
-### DE2-115 electrical interfaces
-
-In the [DE2-115 board spec](../de2_115/board-spec.md#electrical-interfaces), with its [bring-up](../de2_115/board-spec.md#bring-up).
-
-## Memory implementation
+### Memory implementation
 
 | Array | Geometry | DE10-Lite M9Ks | DE2-115 M9Ks | Mode |
 | --- | --- | ---: | ---: | --- |
@@ -127,7 +146,34 @@ LEs, 11,712 → 11,089 registers, 1,979 → 1,894 LABs, 171 M9Ks, setup 4.728 �
 registers, 2,114 → 2,013 LABs, 317 M9Ks, setup 6.341 → 6.759 ns, hold 0.125 →
 0.130 ns. Worst setup paths are SDRAM `DRAM_DQ` captures, not BTB paths.
 
-## Timing
+### Files
+
+| Path | Role |
+| --- | --- |
+| `src/nand2doom/fpga/de10_lite/n2d_de10_lite.sv`, `src/nand2doom/fpga/de2_115/n2d_de2_115.sv` | Board tops |
+| `src/nand2doom/fpga/de10_lite/n2d_de10_lite_clock_{intel,portable}.sv`, `src/nand2doom/fpga/de2_115/n2d_de2_115_clock_{intel,portable}.sv` | Clock backends |
+| `src/nand2doom/cfg/n2d_quartus.json` | Pins, sources, RAM requirements, reviewed diagnostics |
+| `src/nand2doom/fpga/de10_lite/de10_lite.sdc`, `src/nand2doom/fpga/de2_115/n2d_de2_115.sdc` | Constraints |
+
+## Pins and I/O
+
+### DE10-Lite electrical interfaces
+
+The top level of `n2d_quartus.json`
+owns every DE10-Lite pin and the source manifest. UART and PS/2 are **3.3 V
+logic**; a 5 V keyboard needs level conversion; the board has no native PS/2
+connector or USB-UART. RX and PS/2 inputs have weak pull-ups. KEY0 uses
+Schmitt trigger, other pins 3.3-V LVTTL. SDRAM and VGA outputs 8 mA; UART TX
+and LEDs 4 mA. Unused pins are inputs. Pins follow the Terasic DE10-Lite User
+Manual tables 3-2, 3-3, 3-5, 3-7, 3-8, 3-10 and 3-12
+([manual](https://e2e.ti.com/cfs-file/__key/communityserver-discussions-components-files/73/DE10_2D00_Lite_5F00_User_5F00_Manual.pdf)).
+
+The DE2-115 pins are in the [DE2-115 board spec](../de2_115/board-spec.md#electrical-interfaces).
+
+## Clocks and constraints
+
+`MAX10_CLK1_50` feeds the `altpll` (divide by two) whose 25 MHz output is the
+system, VGA and SDRAM clock; the SDRAM receives it inverted (FPGA-R2).
 
 ### Constraints
 
@@ -144,11 +190,6 @@ registers, 2,114 → 2,013 LABs, 317 M9Ks, setup 6.341 → 6.759 ns, hold 0.125 
 - DE10-Lite `DRAM_CLK` is fixed at L14, bank 6 I/O/DPCLK3
   ([pin table](https://cdrdv2-public.intel.com/748245/10m50da.pdf)), not a
   PLL output, so the inverted clock reaches it through fabric.
-- `n2d_de2_115.sdc`: the
-  same set on `CLOCK_50`, with `sdram_clock` on `DRAM_CLK` and `vga_dac_clock`
-  on `VGA_CLK` as inverted `clk[0]`; SDRAM delays apply to `DRAM_DQM[*]`; RGB
-  against `vga_dac_clock` with ADV7123 0.2 ns setup / 1.5 ns hold plus 0.5 ns
-  skew (max 0.7, min −2.0 ns).
 - JTAG (both boards): remove the vendor hub's asynchronous TCK group, create
   `jtag_tck` (100 ns) on `altera_reserved_tck`, time the mailbox buses (80 ns
   and 100 ns max, 0 ns min), cut only the first synchronizer stages, bound
@@ -160,6 +201,31 @@ registers, 2,114 → 2,013 LABs, 317 M9Ks, setup 6.341 → 6.759 ns, hold 0.125 
 - The Quartus launcher deadline (1800 s DE10-Lite, 5400 s DE2-115, for
   compile and audit) is owned by the
   [build specification](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/tools/build/SPEC.md#quartus-hardware-build).
+
+The DE2-115 SDC differences are in the [DE2-115 board spec](../de2_115/board-spec.md#clocks-and-constraints).
+
+## Budget
+
+Last passing build in the factory (Quartus Prime Lite 25.1std, `python3 src/nand2doom/scripts/board/quartus.py --board de10_lite`, issue #78): the full report gate passed with 7 reviewed warning occurrences.
+
+| Resource or check | Result |
+|---|---|
+| Logic elements | 27,241 of 49,760 (55%) |
+| M9K blocks | 174 of 182 (8 left) |
+| PLLs | 1 of 4 |
+| Minimum slack, any clock, check and corner | 0.141 ns |
+
+System clock (25 MHz PLL output) slack per corner, in ns:
+
+| Corner | Setup | Hold |
+|---|---|---|
+| Slow 1200mV 85C | 4.263 | 0.324 |
+| Slow 1200mV 0C | 4.978 | 0.283 |
+| Fast 1200mV 0C | 8.493 | 0.155 |
+
+Built from commit `c3ed333` (the RTL, settings and constraints are unchanged at the head of #96).
+
+The earlier fits of both boards, from nand2anything, follow.
 
 ### Fitted results
 
@@ -264,7 +330,21 @@ cache timing of [#124](https://github.com/amichai-bd/nand2anything/issues/124),
 together 1 to 1.3 ns at Slow 85 C; (4) the near-zero paths and 10 ns output
 budgets.
 
-## Tool compatibility and warnings
+## Build and program
+
+```sh
+python3 src/nand2doom/scripts/board/quartus.py --board de10_lite
+python3 src/nand2doom/scripts/board/quartus.py --board de10_lite --elaborate-only
+```
+
+The full build must pass the [report gate](#report-gate) (FPGA-R6); the
+elaboration-only check runs on every RTL change ([tool compatibility](#tool-compatibility-and-warnings)).
+Outputs stay under `workdir/`. No programming or bring-up procedure is
+written for the DE10-Lite; the DE2-115 is the primary physical target
+([DE2-115 bring-up](../de2_115/board-spec.md#bring-up)), and programming needs
+separate authorization (FPGA-R7).
+
+### Tool compatibility and warnings
 
 Quartus Standard needs explicit generate blocks and separate genvars; a type
 inside a generate block may not size itself from a generate-local parameter
@@ -353,33 +433,3 @@ port geometries, mode and Single Clock. I-cache, framebuffer CPU and staging
 need Single Port with Port A RDW `Old data`; D-cache, framebuffer scan, stream
 payload and BTB need Simple Dual Port with Mixed Width RDW `Old data`. Unused
 RDW fields may report `Don't care` or `New data with NBE Read`.
-
-## Budget
-
-Last passing build in the factory (Quartus Prime Lite 25.1std, `python3 src/nand2doom/scripts/board/quartus.py --board de10_lite`, issue #78): the full report gate passed with 7 reviewed warning occurrences.
-
-| Resource or check | Result |
-|---|---|
-| Logic elements | 27,241 of 49,760 (55%) |
-| M9K blocks | 174 of 182 (8 left) |
-| PLLs | 1 of 4 |
-| Minimum slack, any clock, check and corner | 0.141 ns |
-
-System clock (25 MHz PLL output) slack per corner, in ns:
-
-| Corner | Setup | Hold |
-|---|---|---|
-| Slow 1200mV 85C | 4.263 | 0.324 |
-| Slow 1200mV 0C | 4.978 | 0.283 |
-| Fast 1200mV 0C | 8.493 | 0.155 |
-
-Built from commit `c3ed333` (the RTL, settings and constraints are unchanged at the head of #96).
-
-## Files
-
-| Path | Role |
-| --- | --- |
-| `src/nand2doom/fpga/de10_lite/n2d_de10_lite.sv`, `src/nand2doom/fpga/de2_115/n2d_de2_115.sv` | Board tops |
-| `src/nand2doom/fpga/de10_lite/n2d_de10_lite_clock_{intel,portable}.sv`, `src/nand2doom/fpga/de2_115/n2d_de2_115_clock_{intel,portable}.sv` | Clock backends |
-| `src/nand2doom/cfg/n2d_quartus.json` | Pins, sources, RAM requirements, reviewed diagnostics |
-| `src/nand2doom/fpga/de10_lite/de10_lite.sdc`, `src/nand2doom/fpga/de2_115/n2d_de2_115.sdc` | Constraints |

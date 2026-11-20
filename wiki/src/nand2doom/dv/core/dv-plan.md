@@ -1,11 +1,18 @@
-# nand2doom RV32IM core verification
-
-!!! note "Ported, not yet in the standard template"
-    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
+# core DV plan
 
 <!-- wiki-budget: exact per-program PMON prediction counts are the regression oracle and must stay with their programs -->
 
-## Strategy
+## Scope
+
+The RV32IM core block (`n2d_rv32im_core`, its stages and `n2d_muldiv`, the
+RV32I slice `n2d_rv32i_decode_alu`, the step core and its smoke composition,
+the common register file as the core uses it) and the platform PMON event
+derivation, checked against the [core MAS](../../rtl/core/mas.md). Caches and
+uncached platform events are verified in the [memory](../memory/dv-plan.md)
+and [platform](../platform/dv-plan.md) plans; Doom-level performance in the
+[native performance harness](../platform/dv-plan.md#native-performance-harness).
+
+## Testbench
 
 Every target is cocotb on Verilator with assertions and `--Wall`, driving only
 public ports; models never read RTL hierarchy or Verilator internals. Waves
@@ -26,7 +33,7 @@ after resume is the model's next PC (zero after Reset-PC). Every core run
 holds `enable_i` low for the `BTB_ENTRIES`-clock reset sweep, so all
 architecture cases run with the fetch BTB active.
 
-## Targets
+### Targets
 
 Run `python3 tools/sim/sim.py test <target> [--seed N]` (`python3 tools/sim/sim.py list` lists the targets and their levels).
 
@@ -40,24 +47,53 @@ Run `python3 tools/sim/sim.py test <target> [--seed N]` (`python3 tools/sim/sim.
 | `n2d_muldiv` | Seed 70, 60,000 cycles, 120 s |
 | `n2d_pmon_platform_events` | Seed 71 |
 
-## Test map
+### Production comparison
 
-| Requirement | Test | Cases |
-| --- | --- | --- |
-| Register file (common) | `n2d_rv32_regfile` | 32×32 read cross after reset; five `x0` writes; distinct `x1..x31` values and a second cross; same-edge old/new on both ports; reset beats an enabled write, third cross; 128 seeded operations checked before and after each edge. |
-| Decode/ALU | `n2d_rv32i_decode_alu` | 4,174 vectors: ten `OP` functions × 64 operand pairs; six `OP-IMM` × 8 operands × 7 immediates (−2048..2047); 32 shift amounts × six shifts × 8 patterns; 256 seeded legal; all 126 unsupported opcodes; all 1,024 `OP` `funct3`/`funct7` pairs; all 256 shift-immediate pairs. One ns settle, no clock. |
-| Step core | `n2d_rv32i_core_step` | Eleven-word program (ADDI, ADD, SUB, SW, LW, taken BEQ over poison, not-taken BNE): ten retirements, word 0 = 12, word 1 = 36; then an all-zero illegal at PC 44 gives one cause-2 trap and halt. |
-| Smoke composition | `n2d_rv32i_program_smoke` | Same program through the preload port; signature `0x0000_0024` read through the debug port. |
-| CORE-R1, CORE-R7 | `n2d_rv32im_core` directed | Every RV32I class, all loads/stores, FENCE, six CSR encodings, ECALL, EBREAK, MRET; shift 0/31, compare limits, `x0`, byte lanes, sign extension, misaligned jump/load/store, illegal, instruction/load/store access faults; field-shape checks on every observation. |
-| CORE-R2, R3, R8 | `n2d_rv32im_core` CSR | Old/new values for all six ops, zero-source read-only access, read-only/unsupported traps, counter progress, encoded `x0` vs zero-valued `x1` on MISA, MINSTRET half precedence for CSRRW/S/C, ECALL handler: `mepc`, `mcause`, `mtval`, MIE/MPIE, MPP WARL. |
-| RV32M | `n2d_rv32im_core` | Eight M ops × twelve pairs (zero divisor, overflow, extrema, all ones, mixed; four from seed 29). Corner sweep: every ordered pair of twelve corners (0, 1, −1, 2, −2, `INT_MIN`, `INT_MAX`, `INT_MIN+1`, `0xFFFF`, `0x10000`, mixed, −7) plus 48 seeded pairs (a third with 4- to 16-bit divisors), DIV→REM and DIVU→REMU pairs, MUL→MUL and MULH→ADD at distance one. |
-| Compiled C | `n2d_rv32im_core` | Generated factorial signature (five MULs, 127, EBREAK); `programs/rv32im_signature.c` built with `riscv64-unknown-elf-gcc -march=rv32im -mabi=ilp32 -O1 -ffreestanding -fno-builtin -fno-pic -mno-relax -nostdlib -nostartfiles`, linked at 0, must store 127 at `0x80`. `N2D_RISCV_GCC`/`N2D_RISCV_OBJCOPY` select tools; missing tools fail. |
-| Doom arithmetic | `n2d_rv32im_core` | `programs/doom_math.c` (`-Os`, libgcc, stack `0x2000`): `FixedMul`, `FixedDiv` via `__divdi3`, `SlopeDiv` over 24 distances/angles; signature `0xA17419B9`. Reports IPC, retirements and divide holds. |
-| CORE-R9, CORE-R10, pipeline | `pipeline_cases.py` | See [pipeline cases](#pipeline-cases). |
-| Reset and debug | `n2d_rv32im_core` | Halt on the first data request; halt and reset during DIV/DIVU/REM/REMU (~30 iterations) with backpressured fetch; halt at every cycle offset; double halts; Reset-PC at several offsets keeps registers and CSRs. |
-| Multiply/divide unit | `n2d_muldiv` | See [multiply/divide unit](#multiplydivide-unit). |
-| PMON | `n2d_rv32im_core` | See [PMON](#pmon). |
-| Platform PMON events | `n2d_pmon_platform_events` | See [PMON](#pmon). |
+Performance-affecting core changes run the
+[native performance harness](../platform/dv-plan.md#native-performance-harness)
+sequentially at base and head with identical image, ELF and capture identity:
+
+```sh
+python3 src/nand2doom/scripts/perf/n2d_perf.py --backend sdram --variant production --frames 2
+python3 src/nand2doom/scripts/perf/n2d_perf.py --backend <sdram|fast> --variant render-verification --frames 2
+```
+
+Compare gameplay IPC, cycles per frame (moving in 420,000-cycle rasters;
+`swap_wait_cycles_per_frame` is the slack), FPS and the affected PMON
+classes. Production must match the pinned scene CRCs; render verification's
+oracle must pass at both.
+
+### Fixed-point fixture provenance
+
+`programs/doom_math.c` adapts `FixedMul`, `FixedDiv` (`doomgeneric/m_fixed.c`)
+and `SlopeDiv` (`doomgeneric/tables.c`) from the pinned DoomGeneric archive in
+the third-party manifest (`src/nand2doom/sw/third_party/manifest.json`),
+keeping the Id Software and Simon Howard notices under GPL-2.0-or-later
+(license (`src/nand2doom/sw/third_party/DOOMGENERIC-LICENSE`)). The
+loop and signature store are project-owned.
+
+## Features
+
+Spec section names the requirement in the [core MAS](../../rtl/core/mas.md#requirements)
+or the block it checks. Level is the target's level in `src/nand2doom/cfg/targets.json`.
+
+| ID | Spec section | Stimulus | Checker | Coverage point | Test | Level |
+|---|---|---|---|---|---|---|
+| CORE-F01 | Register file (common) | 32×32 read cross after reset; five `x0` writes; distinct `x1..x31` values and a second cross; same-edge old/new on both ports; reset beats an enabled write, third cross; 128 seeded operations checked before and after each edge. | Common register-file oracle | none defined | `n2d_rv32_regfile` | L0 |
+| CORE-F02 | Decode/ALU | 4,174 vectors: ten `OP` functions × 64 operand pairs; six `OP-IMM` × 8 operands × 7 immediates (−2048..2047); 32 shift amounts × six shifts × 8 patterns; 256 seeded legal; all 126 unsupported opcodes; all 1,024 `OP` `funct3`/`funct7` pairs; all 256 shift-immediate pairs. One ns settle, no clock. | Decode/ALU model | none defined | `n2d_rv32i_decode_alu` | L0 |
+| CORE-F03 | Step core | Eleven-word program (ADDI, ADD, SUB, SW, LW, taken BEQ over poison, not-taken BNE): ten retirements, word 0 = 12, word 1 = 36; then an all-zero illegal at PC 44 gives one cause-2 trap and halt. | `rv32i_smoke_model.py` | none defined | `n2d_rv32i_core_step` | L0 |
+| CORE-F04 | Smoke composition | Same program through the preload port; signature `0x0000_0024` read through the debug port. | `rv32i_smoke_model.py`; signature read through the debug port | none defined | `n2d_rv32i_program_smoke` | L0 |
+| CORE-F05 | CORE-R1, CORE-R7 | Every RV32I class, all loads/stores, FENCE, six CSR encodings, ECALL, EBREAK, MRET; shift 0/31, compare limits, `x0`, byte lanes, sign extension, misaligned jump/load/store, illegal, instruction/load/store access faults; field-shape checks on every observation. | `Rv32imModel` in lockstep through `core_runner.py` | none defined | `n2d_rv32im_core` directed | L1 |
+| CORE-F06 | CORE-R2, R3, R8 | Old/new values for all six ops, zero-source read-only access, read-only/unsupported traps, counter progress, encoded `x0` vs zero-valued `x1` on MISA, MINSTRET half precedence for CSRRW/S/C, ECALL handler: `mepc`, `mcause`, `mtval`, MIE/MPIE, MPP WARL. | `Rv32imModel` in lockstep through `core_runner.py` | none defined | `n2d_rv32im_core` CSR | L1 |
+| CORE-F07 | RV32M | Eight M ops × twelve pairs (zero divisor, overflow, extrema, all ones, mixed; four from seed 29). Corner sweep: every ordered pair of twelve corners (0, 1, −1, 2, −2, `INT_MIN`, `INT_MAX`, `INT_MIN+1`, `0xFFFF`, `0x10000`, mixed, −7) plus 48 seeded pairs (a third with 4- to 16-bit divisors), DIV→REM and DIVU→REMU pairs, MUL→MUL and MULH→ADD at distance one. | `Rv32imModel` in lockstep through `core_runner.py` | none defined | `n2d_rv32im_core` | L1 |
+| CORE-F08 | Compiled C | Generated factorial signature (five MULs, 127, EBREAK); `programs/rv32im_signature.c` built with `riscv64-unknown-elf-gcc -march=rv32im -mabi=ilp32 -O1 -ffreestanding -fno-builtin -fno-pic -mno-relax -nostdlib -nostartfiles`, linked at 0, must store 127 at `0x80`. `N2D_RISCV_GCC`/`N2D_RISCV_OBJCOPY` select tools; missing tools fail. | `Rv32imModel` in lockstep through `core_runner.py`; stored signature | none defined | `n2d_rv32im_core` | L1 |
+| CORE-F09 | Doom arithmetic | `programs/doom_math.c` (`-Os`, libgcc, stack `0x2000`): `FixedMul`, `FixedDiv` via `__divdi3`, `SlopeDiv` over 24 distances/angles; signature `0xA17419B9`. Reports IPC, retirements and divide holds. | `Rv32imModel` in lockstep through `core_runner.py`; stored signature | none defined | `n2d_rv32im_core` | L1 |
+| CORE-F10 | CORE-R9, CORE-R10, pipeline | See [pipeline cases](#pipeline-cases). | `Rv32imModel` in lockstep through `core_runner.py` | none defined | `pipeline_cases.py` | L1 (in `n2d_rv32im_core`) |
+| CORE-F11 | CORE-R6, [fetch BTB](../../rtl/core/mas.md#fetch-branch-target-buffer) | See [fetch BTB capacity](#fetch-btb-capacity). | Event counts (92, 93, 78, 79) per site layout | none defined | `btb_capacity_contract` on `n2d_rv32im_core_btb0`, `_btb512`, `_btb2048`; inside the full contract on `n2d_rv32im_core` and `_btb256` | L0 (`_btb0`, `_btb512`), L1 (others) |
+| CORE-F12 | Reset and debug | Halt on the first data request; halt and reset during DIV/DIVU/REM/REMU (~30 iterations) with backpressured fetch; halt at every cycle offset; double halts; Reset-PC at several offsets keeps registers and CSRs. | `Rv32imModel` in lockstep through `core_runner.py`; boundary-based halt checks | none defined | `n2d_rv32im_core` | L1 |
+| CORE-F13 | Multiply/divide unit | See [multiply/divide unit](#multiplydivide-unit). | `m_result` in `rv32im_model.py` with an independent latency and reuse model | none defined | `n2d_muldiv` | L0 |
+| CORE-F14 | PMON | See [PMON](#pmon). | Values derived from the [PMON rules](../../rtl/core/mas.md#performance-monitor) | none defined | `n2d_rv32im_core` | L1 |
+| CORE-F15 | Platform PMON events | See [PMON](#pmon). | Transaction model over the real `n2d_memory_arbiter` | none defined | `n2d_pmon_platform_events` | L0 |
 
 ### Pipeline cases
 
@@ -181,32 +217,15 @@ transaction model.
 - reset during iterations cancels; reuse latency before reset, fresh latency
   after; multiplies issue back to back while a divide iterates.
 
-## Production comparison
+## Coverage
 
-Performance-affecting core changes run the
-[native performance harness](../platform/dv-plan.md#native-performance-harness)
-sequentially at base and head with identical image, ELF and capture identity:
+No functional coverage points or code coverage numbers were recorded when the
+plan came over from nand2anything, so every coverage point above is "none
+defined". The adequacy evidence kept instead is the mutants each contract
+kills: five `n2d_if` mutants for the [fetch BTB capacity](#fetch-btb-capacity)
+and six for the [PMON](#pmon) prediction counts.
 
-```sh
-python3 src/nand2doom/scripts/perf/n2d_perf.py --backend sdram --variant production --frames 2
-python3 src/nand2doom/scripts/perf/n2d_perf.py --backend <sdram|fast> --variant render-verification --frames 2
-```
-
-Compare gameplay IPC, cycles per frame (moving in 420,000-cycle rasters;
-`swap_wait_cycles_per_frame` is the slack), FPS and the affected PMON
-classes. Production must match the pinned scene CRCs; render verification's
-oracle must pass at both.
-
-## Fixed-point fixture provenance
-
-`programs/doom_math.c` adapts `FixedMul`, `FixedDiv` (`doomgeneric/m_fixed.c`)
-and `SlopeDiv` (`doomgeneric/tables.c`) from the pinned DoomGeneric archive in
-the third-party manifest (`src/nand2doom/sw/third_party/manifest.json`),
-keeping the Id Software and Simon Howard notices under GPL-2.0-or-later
-(license (`src/nand2doom/sw/third_party/DOOMGENERIC-LICENSE`)). The
-loop and signature store are project-owned.
-
-## Gaps
+## Status
 
 - Cache hit/miss and uncached platform events have no focused test; the
   performance baseline cross-checks them.

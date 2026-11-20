@@ -6,7 +6,7 @@ module n2d_memory_arbiter (
 
     input  logic [2:0]   master_request_valid_i,
     // A valid request marked prefetch competes only when no other master
-    // presents a demand request (D-cache next-line prefetch, memory/HAS.md).
+    // presents a demand request (D-cache next-line prefetch, wiki/src/nand2doom/rtl/memory/mas.md).
     input  logic [2:0]   master_request_prefetch_i,
     output logic [2:0]   master_request_ready_o,
     input  logic [2:0]   master_request_write_i,

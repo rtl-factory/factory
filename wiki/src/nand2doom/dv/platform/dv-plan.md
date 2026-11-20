@@ -1,11 +1,19 @@
-# nand2doom platform verification
-
-!!! note "Ported, not yet in the standard template"
-    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
+# platform DV plan
 
 <!-- wiki-budget: the native performance harness CLI, CPI classification and stall split are the measurement contract every performance record cites -->
 
-## Strategy
+## Scope
+
+The platform block `n2d_system` through its simulation wrappers and the
+product closure, checked against the [platform MAS](../../rtl/platform/mas.md)
+and the platform requirements of the [HAS](../../rtl/has.md#purpose); this
+plan also owns the system-level evidence tiers and the native performance
+harness. Each block inside is verified by its own plan ([core](../core/dv-plan.md),
+[memory](../memory/dv-plan.md), [video](../video/dv-plan.md), [I/O](../io/dv-plan.md)),
+the board tops by the [FPGA plan](../fpga/dv-plan.md) and the programs by the
+[software plan](../software/dv-plan.md).
+
+## Testbench
 
 | Tier | Required evidence | Speed policy |
 | --- | --- | --- |
@@ -21,47 +29,19 @@ retirement, protocol instability, signature or frame-hash mismatch. Seeds are
 printed. Fast targets preload exact manifest bytes; one distinct UART target
 proves serial loading.
 
-## Test map
+### Simulation wrappers
 
-| Requirement | Target (seed) | Checks |
+| Wrapper | Memory | Loading |
 | --- | --- | --- |
-| PLAT-R2..R4, R6 | `n2d_integrated_system` (36) | Preload while reset, UART Reset-PC/Resume, owned C image through the real core, caches, arbiter, fast SDRAM, decoder, framebuffer, palette, VGA and PS/2. A PS/2 `0x1c` make/release then the same pair via `CMD_INPUT`: four pops in order, digest in SDRAM, no debug-memory request. Ten-word signature via Peek (identity, advancing tick); Poke/readback of the input word, two framebuffer words and an inactive palette entry. Software swaps, waits, copies the front view into the back bank. I/D hits and misses; all 64,000 bytes; framebuffer write-stream CRC `0x8f603e6e` and displayed 800x525 RGB444 CRC `0xc1e70079`. |
-| PLAT-R3, R5 | `n2d_video_control` (37; 1,000,000 clocks) | 14-instruction program: front-view read retires; front-view store and a byte store to `0x2000_1009` are store access faults with no swap; word write 3 to `0x2000_1008` sets pending and swaps at the next blank. |
-| Serial load, PLAT-R6 | `n2d_c_runtime_system` (35) | Real UART Load of the manifest; maintenance-error timeout, debug exclusion, automatic retry, coherent signature, Poke/readback; the same input and framebuffer result. |
-| PLAT-R7 | `n2d_system_product`, `n2d_system_product_synthesis` | Warning-clean compile of the synthesizable closure, without and with `SYNTHESIS`; registry unit-checked free of fast-memory and preload sources. |
+| `n2d_c_runtime_system` | Fast model | Serial UART Load of the manifest |
+| `n2d_integrated_system` | Fast model | Simulation-only 256-byte byte-enabled preload of the exact manifest while product reset is asserted; excluded under `SYNTHESIS`; assertion rejects use after release |
+| `n2d_sdram_system` | Product `n2d_memory_controller` and `n2d_sdram_device_model` | Preload; system held in reset until SDRAM initialization |
 
-The integrated and serial targets use Verilator 5.052, warning-fatal, 2,400,000
-clocks and 480 s wall.
+Both fast wrappers run the same generated RV32IM/ILP32 image.
+`n2d_system_product` compiles only the synthesizable closure and structurally
+excludes every wrapper. The wrappers are in `src/nand2doom/dv/platform/`.
 
-### Neutral ASIC core
-
-| Target | Evidence |
-| --- | --- |
-| `n2d_asic_soc` | Warning-clean full source closure without PLL, inert TAP, simulation memory or external SDRAM model. |
-| `n2d_asic_soc_integration` (59) | Reuses the unchanged DE2-115 external-pin/software oracle against the ASIC core through a DV-only board-shaped clock/pin adapter: UART load, CPU/cache execution, four-bank burst-eight SDRAM, masks and refresh, PS/2 delivery, framebuffer/palette swaps and VGA. Split DQ output-enable is checked against BFM drive. |
-| `n2d_asic_soc_scan` (59) | Neutral scan signals reach the live keyboard endpoint inside the full SoC; status, delivery count and replay-safe sequence are checked. |
-| `test_asic_core.py` | Required blocks and fixed full geometry, no vendor clock/TAP in the source closure, reproducible source hashes and fail-closed backend selection. |
-
-The full-core targets initially select portable RAMs. Memory-mapped ASIC
-runs require the same oracle with the qualified macro models, plus the
-common memory contract matrix; a synthesis black box without verified
-physical/timing views is not a qualified memory. No board behavior is
-inferred from these simulations.
-
-### Structure and macro compatibility checks
-
-- Source moves: byte-compare moved files and validate source lists, header
-  staging, links and plans; not hardware evidence.
-- Macro adoption: expand the common definitions and compare token sequences
-  with the pre-conversion RTL, normal and `SYNTHESIS`, covering synchronous
-  and asynchronous processes, array writes, multiple writes and the debug
-  response macro; keep assertion sampling and failure actions; empty macros
-  must leave valid syntax.
-- Run the smallest asserted compile/elaboration checks for the board closure
-  and retained compositions, each within 30 s. Macro behavior belongs to the
-  [common DV](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/clock_reset/DV.md).
-
-## Native performance harness
+### Native performance harness
 
 `n2d_perf_tb` runs Doom on the unchanged `n2d_system` as native Verilator
 targets: it preloads the pinned manifest's sparse segments under reset,
@@ -96,7 +76,7 @@ CRC over the doubled 320x200 image).
   [bank map](../../rtl/memory/mas.md#sdram-controller). A traced line read takes 10,
   9 or 11 clocks plus one arbiter cycle.
 
-### Command line
+#### Command line
 
 `src/nand2doom/scripts/perf/n2d_perf.py` builds or reuses the image, compiles and
 runs the target, and writes `report.txt`, `summary.json` and VGA PPM/PNG
@@ -118,7 +98,7 @@ under `workdir/perf/<backend>/` (`<backend>-half/`).
 Verification throughput is `verification_fps_at_25mhz`, never ordinary or
 physical FPS.
 
-### Render verification
+#### Render verification
 
 ```sh
 python3 src/nand2doom/scripts/perf/n2d_perf.py --variant render-verification --backend fast --geometry full --frames 2
@@ -153,7 +133,7 @@ backends and core generations):
 | Gameplay frame 1 | `53dfbd59` | `d4cec909` |
 | Gameplay frame 2 | `a4c3aa79` | `855eb305` |
 
-### Reports and CPI classification
+#### Reports and CPI classification
 
 The harness counts every supported PMON event from `u_system.pmon_events`
 ([PMON](../../rtl/core/mas.md#performance-monitor)) with no firmware support.
@@ -190,7 +170,7 @@ traps). Occurrence events, MEM_READ_SERVICE, MEM_BACKPRESSURE,
 MEM_MASTER_WAIT and write-buffer events 94/95 overlap and are reported as
 totals only.
 
-### Stall split
+#### Stall split
 
 Each `ifetch_wait` and `dmiss_wait` clock falls in exactly one split class
 from the same delayed sample; each split must sum exactly to its parent in the
@@ -213,3 +193,61 @@ total and every interval, or the check fails.
 
 Framebuffer stores are `uncached_wait` and never queue a D-miss; the fast
 backend has no refresh, so `dmiss_refresh` is zero there.
+
+## Features
+
+Spec section names the requirement in the [HAS](../../rtl/has.md#purpose).
+Level is the target's level in `src/nand2doom/cfg/targets.json`.
+
+| ID | Spec section | Stimulus | Checker | Coverage point | Test | Level |
+|---|---|---|---|---|---|---|
+| PLAT-F01 | PLAT-R2..R4, R6 | Preload while reset, UART Reset-PC/Resume, owned C image through the real core, caches, arbiter, fast SDRAM, decoder, framebuffer, palette, VGA and PS/2. A PS/2 `0x1c` make/release then the same pair via `CMD_INPUT`: four pops in order, digest in SDRAM, no debug-memory request. Ten-word signature via Peek (identity, advancing tick); Poke/readback of the input word, two framebuffer words and an inactive palette entry. Software swaps, waits, copies the front view into the back bank. I/D hits and misses; all 64,000 bytes; framebuffer write-stream CRC `0x8f603e6e` and displayed 800x525 RGB444 CRC `0xc1e70079`. | Retirement scoreboard, Peek signature, framebuffer write-stream and displayed RGB444 CRCs | none defined | `n2d_integrated_system` (36) | L1 |
+| PLAT-F02 | PLAT-R3, R5 | 14-instruction program: front-view read retires; front-view store and a byte store to `0x2000_1009` are store access faults with no swap; word write 3 to `0x2000_1008` sets pending and swaps at the next blank. | Retirement and trap observation; swap state | none defined | `n2d_video_control` (37; 1,000,000 clocks) | L1 |
+| PLAT-F03 | Serial load, PLAT-R6 | Real UART Load of the manifest; maintenance-error timeout, debug exclusion, automatic retry, coherent signature, Poke/readback; the same input and framebuffer result. | Retirement scoreboard, coherent signature, Peek readback | none defined | `n2d_c_runtime_system` (35) | L1 |
+| PLAT-F04 | PLAT-R7 | Warning-clean compile of the synthesizable closure, without and with `SYNTHESIS`; registry unit-checked free of fast-memory and preload sources. | Warning-fatal compile; source registry unit check | none defined | `n2d_system_product`, `n2d_system_product_synthesis` | L0 |
+
+The integrated and serial targets use Verilator 5.052, warning-fatal, 2,400,000
+clocks and 480 s wall.
+
+### Neutral ASIC core
+
+The ASIC flow stayed in nand2anything, so these targets are not in this
+repository's `targets.json`; they are kept as the contract
+[`n2d_system`](../../rtl/has.md#padless-asic-core) serves.
+
+| Target | Evidence |
+| --- | --- |
+| `n2d_asic_soc` | Warning-clean full source closure without PLL, inert TAP, simulation memory or external SDRAM model. |
+| `n2d_asic_soc_integration` (59) | Reuses the unchanged DE2-115 external-pin/software oracle against the ASIC core through a DV-only board-shaped clock/pin adapter: UART load, CPU/cache execution, four-bank burst-eight SDRAM, masks and refresh, PS/2 delivery, framebuffer/palette swaps and VGA. Split DQ output-enable is checked against BFM drive. |
+| `n2d_asic_soc_scan` (59) | Neutral scan signals reach the live keyboard endpoint inside the full SoC; status, delivery count and replay-safe sequence are checked. |
+| `test_asic_core.py` | Required blocks and fixed full geometry, no vendor clock/TAP in the source closure, reproducible source hashes and fail-closed backend selection. |
+
+The full-core targets initially select portable RAMs. Memory-mapped ASIC
+runs require the same oracle with the qualified macro models, plus the
+common memory contract matrix; a synthesis black box without verified
+physical/timing views is not a qualified memory. No board behavior is
+inferred from these simulations.
+
+### Structure and macro compatibility checks
+
+- Source moves: byte-compare moved files and validate source lists, header
+  staging, links and plans; not hardware evidence.
+- Macro adoption: expand the common definitions and compare token sequences
+  with the pre-conversion RTL, normal and `SYNTHESIS`, covering synchronous
+  and asynchronous processes, array writes, multiple writes and the debug
+  response macro; keep assertion sampling and failure actions; empty macros
+  must leave valid syntax.
+- Run the smallest asserted compile/elaboration checks for the board closure
+  and retained compositions, each within 30 s. Macro behavior belongs to the
+  [common DV](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/clock_reset/DV.md).
+
+## Coverage
+
+No functional coverage points or code coverage numbers were recorded when the
+plan came over from nand2anything, so every coverage point above is "none
+defined". The pinned framebuffer and VGA CRCs cover every pixel of their
+frames.
+
+## Status
+
+No open gaps with an issue are recorded for this plan.

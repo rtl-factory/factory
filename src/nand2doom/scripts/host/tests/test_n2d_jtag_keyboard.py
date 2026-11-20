@@ -26,7 +26,7 @@ LISTING_10CL = BANNER + "N2D_DEVICE @1: 10CL120(Y|Z)/EP3C120/.. (0x020F70DD)\n"
 
 
 def decode(stream: bytes) -> list[int]:
-    """Independent Set-2 fold: E0/F0 qualify the next byte (io/HAS.md)."""
+    """Independent Set-2 fold: E0/F0 qualify the next byte (wiki/src/nand2doom/rtl/io/mas.md)."""
     events, extended, release = [], 0, 0
     for byte in stream:
         if byte == 0xE0:

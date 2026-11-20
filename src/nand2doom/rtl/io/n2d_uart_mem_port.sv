@@ -1,6 +1,6 @@
 `include "src/common/rtl/pkg/macros.vh"
 
-// Bus adapter of the common UART memory endpoint in nand2doom (io/HAS.md
+// Bus adapter of the common UART memory endpoint in nand2doom (wiki/src/nand2doom/rtl/io/mas.md
 // "UART memory endpoint"). Screen addresses (the front framebuffer view and
 // the scanned palette view) become one-cycle platform screen reads; every
 // other address, SDRAM inside the endpoint's held-only window, becomes one

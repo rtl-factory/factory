@@ -4,22 +4,22 @@ Bare-metal Doom on our own RV32IM CPU: a six-stage pipelined core with I and D c
 
 ## Pages
 
-Each page sits at the wiki path that mirrors its code ([repository layout](../../bkm/workflow/repo-layout.md)). The [HAS](rtl/has.md) owns the block decomposition, address map, clocks and resets, the composition of `n2d_system` and the reuse boundaries with `common`.
+Each page sits at the wiki path that mirrors its code ([repository layout](../../bkm/workflow/repo-layout.md)). The [HAS](rtl/has.md) owns the block decomposition, the seams, the address map, clocks and resets and the reuse boundaries with `common`; each block's interface is in its MAS, and the [platform MAS](rtl/platform/mas.md) owns the composition of `n2d_system`.
 
 | Block | Spec | Verification plan | Code |
 |---|---|---|---|
-| Platform (`n2d_system`) | [HAS](rtl/has.md) | [DV plan](dv/platform/dv-plan.md) | `rtl/platform/`, `dv/platform/` |
+| Platform (`n2d_system`) | [MAS](rtl/platform/mas.md) | [DV plan](dv/platform/dv-plan.md) | `rtl/platform/`, `dv/platform/` |
 | Core | [MAS](rtl/core/mas.md) | [DV plan](dv/core/dv-plan.md) | `rtl/core/`, `dv/core/` |
 | Memory | [MAS](rtl/memory/mas.md) | [DV plan](dv/memory/dv-plan.md) | `rtl/memory/`, `dv/memory/` |
 | Video | [MAS](rtl/video/mas.md) | [DV plan](dv/video/dv-plan.md) | `rtl/video/`, `dv/video/` |
 | I/O | [MAS](rtl/io/mas.md) | [DV plan](dv/io/dv-plan.md) | `rtl/io/`, `dv/io/` |
-| DE10-Lite board (and the contracts both boards share) | [board spec](fpga/de10_lite/board-spec.md) | [DV plan](dv/fpga/dv-plan.md) | `fpga/de10_lite/`, `dv/fpga/` |
+| DE10-Lite board (and the contracts both boards share, as the base board of the config) | [board spec](fpga/de10_lite/board-spec.md) | [DV plan](dv/fpga/dv-plan.md) | `fpga/de10_lite/`, `dv/fpga/` |
 | DE2-115 board | [board spec](fpga/de2_115/board-spec.md) | [DV plan](dv/fpga/dv-plan.md) | `fpga/de2_115/`, `dv/fpga/` |
 | Runtime and validation image | [PRD](sw/runtime/prd.md), [spec](sw/runtime/spec.md) | [DV plan](dv/software/dv-plan.md) | `sw/runtime/`, `dv/software/` |
 | Doom port | [PRD](sw/doom/prd.md), [spec](sw/doom/spec.md) | [DV plan](dv/software/dv-plan.md) | `sw/doom/`, `sw/third_party/`, `dv/software/` |
 | Scripts | [scripts](scripts/README.md) | | `scripts/` |
 
-The pages came over from nand2anything (its per-area HAS and DV pages and tool specs, now script specs), with paths rewritten to this layout; links to pages that were not ported (the shared RISC-V ownership page, the build specification, the performance studies, the RTL diagram, the `common` block specs) point at nand2anything.
+The pages came over from nand2anything (its per-area HAS and DV pages and tool specs, now script specs), with paths rewritten to this layout and, except the script pages, rearranged into the standard templates (#91); links to pages that were not ported (the shared RISC-V ownership page, the build specification, the performance studies, the RTL diagram, the `common` block specs) point at nand2anything.
 
 ## Layout
 

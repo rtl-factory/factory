@@ -132,7 +132,7 @@ def btb_entries(dut) -> int:
 async def reset_core(dut, settle_cycles: int | None = None) -> None:
     """Reset, then hold enable_i low for ``settle_cycles`` clocks so the
     program starts with the fetch BTB swept, as in the product. The default
-    is the sweep length, one clock per entry (core/HAS.md "Reset sweep");
+    is the sweep length, one clock per entry (wiki/src/nand2doom/rtl/core/mas.md "Reset sweep");
     products hold the core stopped far longer (SDRAM initialization and
     host resume)."""
     if settle_cycles is None:

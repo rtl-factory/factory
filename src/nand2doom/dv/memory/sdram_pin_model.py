@@ -1,6 +1,6 @@
 """Strict x16 SDRAM pin model shared by the n2d controller pin-level tests.
 
-The model follows the memory HAS, not the controller RTL: mode register
+The model follows the memory MAS (wiki/src/nand2doom/rtl/memory/mas.md), not the controller RTL: mode register
 burst length eight, sequential, CAS latency two; byte address bits [25:13]
 select the row, [10:1] the x16 column and [12:11] XOR [14:13] the bank. Callers decode
 one command per device edge and pass the controller's DQ/DQM pins.

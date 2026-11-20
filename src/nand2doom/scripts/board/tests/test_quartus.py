@@ -44,7 +44,7 @@ AGGREGATE = "Warning (12241): 1 hierarchies have connectivity warnings - see the
 
 
 def warning_fixture(config):
-    """Synthetic diagnostics for the FPGA HAS board contract, with movable source lines."""
+    """Synthetic diagnostics for the board-spec report gate, with movable source lines."""
     top = config["top"]
     source = f"/staged/src/nand2doom/fpga/{top.removeprefix('n2d_')}/{top}.sv"
     warnings = []

@@ -1,41 +1,16 @@
-# nand2doom high-level architecture (HAS)
+# nand2doom HAS
 
-!!! note "Ported, not yet in the standard template"
-    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../bkm/design/standard-docs.md) is #91.
+## Purpose
 
 nand2doom is a 25 MHz RV32IM machine-mode system without MMU or TLB whose
-product milestone is freestanding C Doom with VGA video and keyboard input.
-The [RISC-V ownership boundary](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/riscv/ownership.md) owns neutral
+product milestone is freestanding C Doom with VGA video and keyboard input,
+on the DE10-Lite and DE2-115 boards. The
+[RISC-V ownership boundary](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/riscv/ownership.md) owns neutral
 execution ports and observation; nand2doom owns the trap adapter, physical
 address map, caches, precise debug stop and every Doom device. nand2linux
 privilege, MMU, interrupt, firmware and address-map policy are not parameters
-of this platform. The [DV plan](../dv/platform/dv-plan.md) owns verification.
-
-| Owner | Responsibility | Primary interfaces |
-| --- | --- | --- |
-| [RV32IM core](core/mas.md) | Six-stage in-order pipelined execution, traps, retirement, precise debug stop by drain | instruction/data word ports, retirement, debug control |
-| [Memory](memory/mas.md) | I-cache, D-cache, line arbitration, SDRAM, coherence at debug halt | core word ports, 128-bit SDRAM lines, physical SDRAM pins |
-| [Video](video/mas.md) | Double-buffered 8bpp framebuffer, palette, 2x scanout, RGB/sync | uncached CPU/host port, VGA RGB444/HSYNC/VSYNC |
-| [I/O](io/mas.md) | UART packet debug and unified PS/2/host Set-2 input | serial pins, host-memory master, Virtual JTAG keyboard, input MMIO |
-| Software ([runtime](../sw/runtime/spec.md), [Doom port](../sw/doom/spec.md)) | `ilp32` runtime, linker/image format, Doom platform shim | SDRAM image, MMIO, framebuffer, external game-data manifest |
-| [FPGA](../fpga/de10_lite/board-spec.md) | Board tops, clocks, pins, Quartus gate | board pins |
-
-Shared blocks are reused only through project-neutral contracts; decode,
-cacheability, boot and error policy stay thin nand2doom integration.
-
-## Common reuse boundaries
-
-| Boundary | Ownership and compatibility obligation |
-| --- | --- |
-| UART byte PHY | Common RX/TX; Doom keeps the debug parser, transactions, bulk routing, timeouts and framing. |
-| VGA timing | Common timing generator; Doom keeps the framebuffer, palette, MMIO and scanout. |
-| Reset and CDC | Common reset and bit synchronizers; keep asynchronous PHY reset, synchronized release and 25 MHz. |
-| Register file and staging RAM | Common RV32 register file and RAMs; keep reset, old-data latency, masks and capacity. |
-| PS/2 | Doom combines filtering, receive, FIFO and injection; a common receiver needs its own contract and consumer tests. |
-| SDRAM | Doom owns its controller. Linux also uses burst-eight CAS-two lines, but Doom's open-row policy, bank map, refresh reserve and capture differ; the Linux BL8 controller is not a drop-in backend. |
-| Cache/framebuffer arrays | Shared wrappers need identical latency, enables, masks, collision and initialization plus synthesis evidence. |
-
-## Requirements
+of this platform. The software requirements are in the
+[runtime PRD](../sw/runtime/prd.md) and the [Doom port PRD](../sw/doom/prd.md).
 
 | ID | Requirement |
 | --- | --- |
@@ -47,9 +22,82 @@ cacheability, boot and error policy stay thin nand2doom integration.
 | PLAT-R6 | Precise Halt succeeds only when I-cache invalidation and D-cache maintenance both succeed; a writeback error keeps debug memory closed, times out the Halt and retries while halt stays requested. Timeout never resumes. |
 | PLAT-R7 | The product top has no preload, fault-injection, direct-array or fast-memory port. |
 
-## Address map
+## Block diagram
 
-32-bit byte addresses. Subsystem pages own register offsets.
+```text
+       UART pins     PS/2 pins    JTAG scan ports                 VGA pins
+           |             |              |                             ^
++----------|-------------|--------------|-----------------------------|----+
+| n2d_system (platform)  v              v                             |    |
+|          |      +--------------------------------+   +----------------+ |
+|          |      | io: PS/2 receiver, JTAG        |   | video: frame-  | |
+|          v      | keyboard, unified Set-2 FIFO   |   | buffer, palette| |
+|  +-----------+  +--------------------------------+   | VGA scanout    | |
+|  | io: UART  |-- CMD_INPUT -->^   ^ MMIO             +----------------+ |
+|  | debug     |                    |                     ^ uncached ports |
+|  +-----------+   +-----------+  +-------------------------------------+ |
+|    | debug       | core      |--| platform data decoder, system and   | |
+|    | control --->| RV32IM    |  | video-control registers             | |
+|    | host memory +-----------+  +-------------------------------------+ |
+|    v               | instr  | data (SDRAM)                              |
+|  debug memory     v        v                                            |
+|  adapters      I-cache   D-cache          (memory)                      |
++----|-------------|--------|---------------------------------------------+
+     v             v        v        three line masters (memory_request_*)
+  n2d_memory_controller: arbiter + SDRAM controller (memory) --> SDRAM pins
+```
+
+The board top (`fpga/<board>/`) wraps `n2d_system` and `n2d_memory_controller`
+and supplies the clock, reset and pins.
+
+| Block | Responsibility | Primary interfaces | MAS |
+| --- | --- | --- | --- |
+| Platform (`n2d_system`) | Integration top: data decode, system and video-control registers, halt-time cache maintenance, debug routing, PMON platform events | core data port, device ports, three line masters, board pins | [platform](platform/mas.md) |
+| RV32IM core | Six-stage in-order pipelined execution, traps, retirement, precise debug stop by drain | instruction/data word ports, retirement, debug control | [core](core/mas.md) |
+| Memory | I-cache, D-cache, line arbitration, SDRAM, coherence at debug halt | core word ports, 128-bit SDRAM lines, physical SDRAM pins | [memory](memory/mas.md) |
+| Video | Double-buffered 8bpp framebuffer, palette, 2x scanout, RGB/sync | uncached CPU/host port, VGA RGB444/HSYNC/VSYNC | [video](video/mas.md) |
+| I/O | UART packet debug and unified PS/2/host Set-2 input | serial pins, host-memory master, Virtual JTAG keyboard, input MMIO | [io](io/mas.md) |
+| Software ([runtime](../sw/runtime/spec.md), [Doom port](../sw/doom/spec.md)) | `ilp32` runtime, linker/image format, Doom platform shim | SDRAM image, MMIO, framebuffer, external game-data manifest | none (software, not RTL) |
+| FPGA ([DE10-Lite](../fpga/de10_lite/board-spec.md), [DE2-115](../fpga/de2_115/board-spec.md)) | Board tops, clocks, pins, Quartus gate | board pins | none (board specs) |
+
+## Seams
+
+| Seam | Blocks | Protocol | Interface owner |
+| --- | --- | --- | --- |
+| Instruction and data word ports | core, memory caches | Pipelined 32-bit word ready/valid: one request outstanding per port, the next accepted on the edge that samples the response, hits one edge after acceptance | [memory MAS](memory/mas.md#cpu-port-handshake) (requester obligations in the [core MAS](core/mas.md#pipelined-memory-handshake)) |
+| Uncached data decode | core, platform, video, io | The same word handshake; one registered owner per outstanding data response | [platform MAS](platform/mas.md#data-decode-and-response) |
+| Line port | I-cache, D-cache, debug adapter, memory controller | 128-bit ready/valid line request, one response pulse to the captured owner, one transaction outstanding | [memory MAS](memory/mas.md#line-port) |
+| Three-master line boundary | platform, memory controller (board top) | The line port, packed as `memory_request_*` / `memory_response_*` with masters 0 I-cache, 1 D-cache, 2 debug | [platform MAS](platform/mas.md#ports) |
+| Framebuffer and palette ports | platform, video | Always ready, one response one clock after every accepted request; swap and commit pulses | [video MAS](video/mas.md#framebuffer-and-palette) |
+| Debug port groups | io, platform | Packed one-direction groups: debug control and status, input event, transaction request and status, debug word request and response, screen read | [io MAS](io/mas.md#port-groups) |
+| Host-memory transaction | io, memory debug adapter | Grant, begin, one word at a time, commit or abort, done/error after publication or rollback | [io MAS](io/mas.md#host-memory-transaction-boundary) (adapter behaviour in the [memory MAS](memory/mas.md#arbitration-and-debug-adaptation)) |
+| Debug control | platform, core | `halt_request_i`, `resume_i`, `reset_pc_request_i`, `halt_ack_o` | [core MAS](core/mas.md#reset-and-debug-behavior) |
+| Cache maintenance | platform, caches | Valid/ready request and a completion pulse per cache | [memory MAS](memory/mas.md#maintenance) |
+| Input MMIO and injection | platform, io | 12-bit-offset ready/valid MMIO; UART injection and JTAG scan-inject producers | [io MAS](io/mas.md#ps2-mmio-registers) |
+| JTAG scan ports | board top, io | Neutral scan signals into the common `n2a_jtag_keyboard` | [io MAS](io/mas.md#jtag-keyboard-composition) |
+| PMON platform events | platform, core | One bit per event ID, registered by the core before counting | [core MAS](core/mas.md#performance-monitor) |
+| Board binding | board top, platform, memory controller | Clock, synchronized reset, SDRAM, UART, PS/2, VGA and LED pins | [DE10-Lite board spec](../fpga/de10_lite/board-spec.md#composition) |
+
+### Common reuse boundaries
+
+Shared blocks are reused only through project-neutral contracts; decode,
+cacheability, boot and error policy stay thin nand2doom integration.
+
+| Boundary | Ownership and compatibility obligation |
+| --- | --- |
+| UART byte PHY | Common RX/TX; Doom keeps the debug parser, transactions, bulk routing, timeouts and framing. |
+| VGA timing | Common timing generator; Doom keeps the framebuffer, palette, MMIO and scanout. |
+| Reset and CDC | Common reset and bit synchronizers; keep asynchronous PHY reset, synchronized release and 25 MHz. |
+| Register file and staging RAM | Common RV32 register file and RAMs; keep reset, old-data latency, masks and capacity. |
+| PS/2 | Doom combines filtering, receive, FIFO and injection; a common receiver needs its own contract and consumer tests. |
+| SDRAM | Doom owns its controller. Linux also uses burst-eight CAS-two lines, but Doom's open-row policy, bank map, refresh reserve and capture differ; the Linux BL8 controller is not a drop-in backend. |
+| Cache/framebuffer arrays | Shared wrappers need identical latency, enables, masks, collision and initialization plus synthesis evidence. |
+
+## Memory and register map
+
+### Address map
+
+32-bit byte addresses. Each block's MAS owns its register offsets.
 
 | Inclusive range | Owner | Behavior |
 | --- | --- | --- |
@@ -57,64 +105,113 @@ cacheability, boot and error policy stay thin nand2doom integration.
 | `0x1000_0000`-`0x1000_ffff` | Framebuffer | Uncached 64 KiB back-bank window; first 64,000 bytes are 320x200 indices. |
 | `0x1001_0000`-`0x1001_0fff` | Palette | Uncached inactive-bank entries and defined readback; 256 32-bit entries. |
 | `0x1002_0000`-`0x1002_ffff` | Framebuffer front view | Uncached read-only view of the displayed bank in the same layout; a write is an access error. |
-| `0x2000_0000`-`0x2000_0fff` | System | Identification, completion/failure marker, monotonic tick, reset/halt status. |
-| `0x2000_1000`-`0x2000_1fff` | Video control | Palette commit, framebuffer swap, active banks, frame sequence, and video status. |
+| `0x2000_0000`-`0x2000_0fff` | System | Identification, completion/failure marker, monotonic tick, reset/halt status ([registers](platform/mas.md#system-and-video-control-registers)). |
+| `0x2000_1000`-`0x2000_1fff` | Video control | Palette commit, framebuffer swap, active banks, frame sequence, and video status ([registers](platform/mas.md#system-and-video-control-registers)). |
 | `0x2000_2000`-`0x2000_2fff` | Input | Unified FIFO data/status/control/inject for PS/2, UART and JTAG events ([registers](io/mas.md#ps2-mmio-registers)). |
-| `0x2000_3000`-`0x2000_3fff` | UART application/status | Optional software byte queues and transport diagnostics; not the host debug master. |
+| `0x2000_3000`-`0x2000_3fff` | UART application/status | Optional software byte queues and transport diagnostics; not the host debug master. `n2d_system` does not decode this window yet, so an access returns an access error. |
 | all other addresses | Platform decoder | Access error with no side effect. |
 
-### System and video-control registers
+The UART memory endpoint has its own host-side map, including a scanned
+palette view at `0x1003_0000` that the CPU map does not have
+([endpoint windows](io/mas.md#uart-memory-endpoint)).
 
-| Window | Offset | Access | Definition |
-| --- | ---: | --- | --- |
-| System | `0x000` | read | Identity |
-| System | `0x004` | read/write, byte strobes | Software completion/failure marker |
-| System | `0x008` | read | Wrapping 25 MHz tick |
-| System | `0x00c` | read | Halt and maintenance status |
-| Video | `0x000` | write lane 0 | Bit 0 requests a palette commit |
-| Video | `0x004` | read | Active palette bank, pending commit, frame sequence |
-| Video | `0x008` | read/write lane 0 | Write: bit 0 swap, bit 1 palette commit, armed the same clock. Read `{30'b0, swap_pending, front_bank}`. No lane 0 is an access error. |
+## Clocks and resets
 
-## Composition
+- **One clock.** `clk_i` is the 25 MHz system, pixel and SDRAM controller
+  clock (PLAT-R1). On the boards a PLL divides the 50 MHz oscillator by two;
+  the portable Verilator clock backends divide by two with no vendor library
+  ([board composition](../fpga/de10_lite/board-spec.md#composition)). The
+  SDRAM (and on the DE2-115 the VGA DAC) receive the inverted system clock.
+- **Reset.** The board key or loss of PLL lock asserts reset asynchronously
+  through the common `n2a_reset_sync`, which releases it on a 25 MHz edge;
+  `n2d_system` stays in reset until the SDRAM controller reports
+  initialization done (≥200 µs) (PLAT-R2, [board requirements](../fpga/de10_lite/board-spec.md#requirements)).
+  Inside `n2d_system` the UART and PS/2 PHYs use the reset level
+  asynchronously, the datapaths synchronously ([platform MAS](platform/mas.md#clocks-and-resets)).
+- **Crossings.** UART RX, the PS/2 pins and the reset key are asynchronous
+  inputs into synchronizers: the PS/2 pins each pass an `n2a_cdc_bit_sync`
+  ([io MAS](io/mas.md#ps2-keyboard-receiver)). The JTAG TCK to system crossing
+  is inside the common `n2a_jtag_keyboard` ([io MAS](io/mas.md#jtag-keyboard-composition)).
+  SDRAM read data is captured from the inverted device clock
+  ([memory MAS](memory/mas.md#sdram-controller)). The constraints are in each
+  board's SDC ([constraints](../fpga/de10_lite/board-spec.md#constraints)).
 
-`src/nand2doom/rtl/platform/n2d_system.sv` is the
-synthesizable single-clock integration top: core, both caches, UART debug,
-framebuffer/palette/VGA and the unified Set-2 FIFO behind an external
-three-master line-memory boundary (I-cache, D-cache, halted UART SDRAM
-adapter). `FRAMEBUFFER_FULL_WIDTH` selects the
-[bank geometry](video/mas.md#framebuffer-and-palette): full width by default
-and on the DE2-115, half width on the DE10-Lite.
+## Top-level behaviour
 
-- Instruction traffic always enters the I-cache. Data addresses select
-  exactly one of SDRAM via the D-cache, the back-bank window, the front view,
-  palette, system/video control or input; a front-view write decodes as
-  unmapped.
-- Both framebuffer windows share one always-ready port with a one-clock
-  response landing in the core's memory-completion slot, so framebuffer
-  accesses complete without a hold (UNCACHED_WAIT zero), stores are
-  effectively posted, and program order holds against swap requests.
-- One registered owner routes the single outstanding data response; a
-  request accepted on the response-sampling edge takes ownership on that
-  edge, so the core can issue back to back across devices.
-- Framebuffer and palette debug transactions pass through a second atomic
-  staging adapter and a line-to-word bridge
-  (`n2d_debug_device_line_bridge`) into their published ports, so an aborted
-  multiword device command has no side effect.
-- PS/2, UART `CMD_INPUT` and the JTAG byte stream meet only at the FIFO;
-  input never enters a debug-memory adapter or maintenance control.
-- `framebuffer_front_bank_o` and `framebuffer_swap_pending_o` let monitors
-  attribute writes to the back bank and take frames at swaps; debug
-  framebuffer requests always use the back bank.
-- Assertions: one-hot decode, framebuffer bounds, debug exclusion after
-  maintenance failure, reset-only use of simulation preload.
+- **Boot.** Reset clears every block (PLAT-R2); the core is held at PC
+  `0x0000_0000` and the UART engine starts with halt requested. After SDRAM
+  initialization the host loads the image over UART (Load, bulk or the stream
+  session), sets the PC with Reset-PC and starts it with Resume, which
+  invalidates both caches first ([io MAS](io/mas.md#version-1-wire-protocol)).
+  There is no boot ROM.
+- **Instruction flow.** Instruction traffic always enters the I-cache; a miss
+  becomes a line read through the arbiter and the SDRAM controller.
+- **Data flow.** Each data address selects exactly one of SDRAM via the
+  D-cache, the back-bank window, the front view, palette, system/video
+  control or input; anything else is an access error (PLAT-R3,
+  [decode](platform/mas.md#data-decode-and-response)).
+- **Drawing.** Software draws directly into the back bank with uncached
+  stores that never miss in or evict from the D-cache, writes the inactive
+  palette, then arms a swap and palette commit in one video-control write;
+  both flip at the next vertical blank (PLAT-R5,
+  [video MAS](video/mas.md#storage)). Scanout uses embedded RAM, so SDRAM
+  bandwidth is shared only by instruction fills, data fills/writebacks and
+  halted-host traffic.
+- **Input.** PS/2, UART `CMD_INPUT` and the JTAG byte stream meet only at the
+  input FIFO; software polls it through the input window
+  ([io MAS](io/mas.md#ps2-keyboard-receiver)).
+- **Host debug.** Halt drains the core, writes back every dirty line and
+  invalidates both caches before it succeeds (PLAT-R6); Peek, Poke and Load
+  run only in that maintained Halt. The
+  [maintained Halt bound](memory/mas.md#maintained-halt-bound) gives
+  65,536 clocks; short debug watchdogs stay 4,096.
+- **Errors and recovery.** Every accepted operation completes or errors
+  (PLAT-R4). A failed D-cache writeback keeps the dirty line, keeps debug
+  memory closed and times out the Halt; maintenance retries while halt stays
+  requested, and a timeout never resumes (PLAT-R6). A bulk transfer failure
+  quarantines the UART until hardware reset ([bulk](io/mas.md#bulk-wire-extension)).
 
-Scanout uses embedded RAM, so SDRAM bandwidth is shared only by instruction
-fills, data fills/writebacks and halted-host traffic. Software draws directly
-into the back bank with uncached stores that never miss in or evict from the
-D-cache. The [maintained Halt bound](memory/mas.md#maintained-halt-bound)
-gives 65,536 clocks; short debug watchdogs stay 4,096.
+## Decisions
+
+- **Framebuffer on chip.** The framebuffer is embedded RAM, not SDRAM scanout
+  DMA, which keeps display traffic and coherence out of the SDRAM controller;
+  the DE10-Lite stores half-width banks to fit
+  ([framebuffer placement](memory/mas.md#framebuffer-placement)).
+- **Per-board geometry.** `FRAMEBUFFER_FULL_WIDTH` selects the
+  [bank geometry](video/mas.md#framebuffer-and-palette): full width by default
+  and on the DE2-115, half width on the DE10-Lite. `DCACHE_WAYS` is four on the
+  DE2-115 and two on the DE10-Lite ([cache contracts](memory/mas.md#cache-and-line-contracts)).
+- **Thin integration.** Shared blocks are reused only through
+  project-neutral contracts ([common reuse boundaries](#common-reuse-boundaries)).
+- **No boot ROM, filesystem or monitor**; the host loads every image (PLAT-R2).
+
+### RTL style
+
+All product files keep the `n2d_` prefix
+([project layout](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/nand2doom/README.md#product-source-layout-and-compatibility));
+in this repository they live under `src/nand2doom/rtl/{core,memory,video,io,platform}/`
+(nand2anything's `rtl/{core,ls,other}/`).
+Product RTL writes no clocked process of its own: each register group is a
+packed struct (or a few scalars) computed in a blocking `always_comb` from
+`_q` values and registered through one canonical
+[common register macro](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/clock_reset/HAS.md); asynchronous-reset
+blocks use the asynchronous forms. Flop arrays use the common array and
+indexed-write macros; RAMs use `n2a_sync_ram`/`n2a_sdp_ram`/`n2a_tdp_ram`.
+Nets are `logic` with separate `assign`s; `DRAM_DQ` is the only `tri`.
+Assertions use the common clocked, property, initial and parameter forms; no
+product file has an `` `ifdef SYNTHESIS ``. Vendor-versus-portable selection
+is only by source lists naming one backend per pair. Pure helpers live in
+`n2d_pkg`; every state record and enum is a package type
+([RTL BKM](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/bkm/bkm_rtl.md#types-and-shared-constants-live-in-packages)):
+core-stage records in `n2d_core_pkg`, others in the type-only
+`n2d_core_types_pkg`, `n2d_ls_types_pkg` and `n2d_types_pkg`. A
+parameter-sized field is its own zero-reset register beside the record. Each
+source list names a package before its first user.
 
 ### Padless ASIC core
+
+The ASIC flow stayed in nand2anything (`n2d_asic_soc` is not in this
+repository); its contract is kept here because `n2d_system` serves it.
 
 `n2d_asic_soc` reconnects the full DE2-115 logical profile with
 `n2d_memory_controller`: RV32IM, both caches and predictor, full-width
@@ -149,40 +246,7 @@ from the independent physical layout in
 [#589](https://github.com/amichai-bd/nand2anything/issues/589). A padless
 floorplan is neither an IO/package implementation nor foundry signoff.
 
-### Simulation wrappers
-
-| Wrapper | Memory | Loading |
-| --- | --- | --- |
-| `n2d_c_runtime_system` | Fast model | Serial UART Load of the manifest |
-| `n2d_integrated_system` | Fast model | Simulation-only 256-byte byte-enabled preload of the exact manifest while product reset is asserted; excluded under `SYNTHESIS`; assertion rejects use after release |
-| `n2d_sdram_system` | Product `n2d_memory_controller` and `n2d_sdram_device_model` | Preload; system held in reset until SDRAM initialization |
-
-Both fast wrappers run the same generated RV32IM/ILP32 image.
-`n2d_system_product` compiles only the synthesizable closure and structurally
-excludes every wrapper.
-
-## RTL style
-
-All product files keep the `n2d_` prefix under `src/nand2doom/rtl/{core,ls,other}/`
-([project layout](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/nand2doom/README.md#product-source-layout-and-compatibility)).
-Product RTL writes no clocked process of its own: each register group is a
-packed struct (or a few scalars) computed in a blocking `always_comb` from
-`_q` values and registered through one canonical
-[common register macro](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/clock_reset/HAS.md); asynchronous-reset
-blocks use the asynchronous forms. Flop arrays use the common array and
-indexed-write macros; RAMs use `n2a_sync_ram`/`n2a_sdp_ram`/`n2a_tdp_ram`.
-Nets are `logic` with separate `assign`s; `DRAM_DQ` is the only `tri`.
-Assertions use the common clocked, property, initial and parameter forms; no
-product file has an `` `ifdef SYNTHESIS ``. Vendor-versus-portable selection
-is only by source lists naming one backend per pair. Pure helpers live in
-`n2d_pkg`; every state record and enum is a package type
-([RTL BKM](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/bkm/bkm_rtl.md#types-and-shared-constants-live-in-packages)):
-core-stage records in `n2d_core_pkg`, others in the type-only
-`n2d_core_types_pkg`, `n2d_ls_types_pkg` and `n2d_types_pkg`. A
-parameter-sized field is its own zero-reset register beside the record. Each
-source list names a package before its first user.
-
-## Milestones
+### Milestones
 
 In order: (1) build/DV, reset and RAM foundations; (2) register file,
 decode/ALU, load/store, retirement; (3) RV32I program, RV32M, compiled C;
@@ -195,3 +259,21 @@ Cache geometry or M-unit latency changes need preserved behavior and a
 measured need. Reference designs are interface and test evidence only; code
 is adapted only with the provenance record AGENTS.md requires. Proprietary
 game assets and commercial build output are excluded.
+
+## Verification strategy
+
+The [platform DV plan](../dv/platform/dv-plan.md) owns the system-level
+evidence tiers and checks the platform requirements:
+
+| Requirement | Where it is checked |
+| --- | --- |
+| PLAT-R1 | Board tops in Verilator with their portable clock models ([FPGA DV plan](../dv/fpga/dv-plan.md#features)) |
+| PLAT-R2, R3, R4, R6 | `n2d_integrated_system`, `n2d_c_runtime_system` ([platform DV plan](../dv/platform/dv-plan.md#features)); maintained Halt in `n2d_halt_sdram` and `n2d_halt_boundaries` ([I/O DV plan](../dv/io/dv-plan.md#features)) |
+| PLAT-R3, R5 | `n2d_video_control` ([platform DV plan](../dv/platform/dv-plan.md#features)); vertical-blank flips in the [video DV plan](../dv/video/dv-plan.md) |
+| PLAT-R7 | `n2d_system_product`, `n2d_system_product_synthesis` ([platform DV plan](../dv/platform/dv-plan.md#features)) |
+
+Each block is checked against its MAS by its own plan:
+[core](../dv/core/dv-plan.md), [memory](../dv/memory/dv-plan.md),
+[video](../dv/video/dv-plan.md), [I/O](../dv/io/dv-plan.md); the board tops by
+the [FPGA DV plan](../dv/fpga/dv-plan.md) and the software by the
+[software DV plan](../dv/software/dv-plan.md).

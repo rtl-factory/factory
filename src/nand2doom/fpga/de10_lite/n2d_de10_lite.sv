@@ -41,7 +41,7 @@ module n2d_de10_lite (
 
     // Host keyboard: the common Virtual JTAG wrapper presents the USB-Blaster
     // hub's scan ports to the keyboard endpoint inside n2d_system
-    // (io/HAS.md#jtag-keyboard-composition).
+    // (wiki/src/nand2doom/rtl/io/mas.md#jtag-keyboard-composition).
     n2a_jtag_virtual u_jtag_virtual (
         .tck_o(jtag_tck), .tdi_o(jtag_tdi), .tdo_i(jtag_tdo), .ir_o(jtag_ir),
         .capture_o(jtag_capture), .shift_o(jtag_shift), .update_o(jtag_update),
@@ -50,8 +50,8 @@ module n2d_de10_lite (
     // Architectural observation ports are simulation/debug monitors, not pins.
     /* verilator lint_off PINCONNECTEMPTY */
     // Half-width framebuffer banks keep both banks within the MAX 10 M9K
-    // budget of one full-width bank (video/HAS.md); the D-cache stays at
-    // 16 KiB two-way (memory/HAS.md).
+    // budget of one full-width bank (wiki/src/nand2doom/rtl/video/mas.md); the D-cache stays at
+    // 16 KiB two-way (wiki/src/nand2doom/rtl/memory/mas.md).
     n2d_system #(.FRAMEBUFFER_FULL_WIDTH(1'b0), .DCACHE_WAYS(2),
                  .DCACHE_PREFETCH_LINES(2)) u_system (
         .scan_tck_i(jtag_tck), .scan_tdi_i(jtag_tdi),

@@ -839,7 +839,7 @@ async def _check_pmon_btb_events(dut) -> None:
     })
 
 
-# Fetch-BTB capacity checks (core/DV.md "Fetch BTB capacity"). Events:
+# Fetch-BTB capacity checks (wiki/src/nand2doom/dv/core/dv-plan.md "Fetch BTB capacity"). Events:
 # FETCH_PREDICT_TAKEN 92, FETCH_PREDICT_STALE 93, BRANCH_PREDICT_TAKEN 78,
 # BRANCH_MISPREDICT 79.
 _BTB_SITE_EVENTS = (92, 93, 78, 79)
@@ -922,7 +922,7 @@ async def _check_btb_index_tag_boundaries(dut) -> None:
 
 async def _check_btb_reset_sweep(dut) -> None:
     """The reset sweep clears the whole table and no lookup hits before it
-    ends (core/HAS.md "Reset sweep"). Sites at index N - 1 and index 0 are
+    ends (wiki/src/nand2doom/rtl/core/mas.md "Reset sweep"). Sites at index N - 1 and index 0 are
     trained (their second calls predicted at fetch); after a reset and the
     N-clock sweep the same program sees cold entries again. A loop at the
     top indices is predicted at fetch after the sweep; run again from reset

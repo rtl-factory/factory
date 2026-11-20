@@ -109,7 +109,7 @@ PMON_EVENTS = {
 CYCLE_CLASSES = ("retire", "divide", "uncached_wait", "dmiss_wait", "load_use",
                "mul_use", "data_admission", "serialize", "ifetch_wait", "halted",
                "other")
-# Root-cause split of two stall classes (platform/DV.md "Stall split"): each
+# Root-cause split of two stall classes (wiki/src/nand2doom/dv/platform/dv-plan.md "Stall split"): each
 # clock of the parent class is in exactly one of its split classes.
 STALL_SPLIT = {
     "ifetch_wait": ("ifetch_predict", "ifetch_mispredict", "ifetch_redirect", "ifetch_miss",
@@ -300,7 +300,7 @@ def cycle_breakdown(events: dict[str, int], classes: dict[str, int],
     stack["uncached_wait_per_access"] = ratio(
         events.get("UNCACHED_WAIT", 0),
         events.get("UNCACHED_FB_STORE", 0) + events.get("UNCACHED_MMIO_ACCESS", 0), 2)
-    # Next-line D-prefetch (memory/HAS.md): share of issued lines a miss used.
+    # Next-line D-prefetch (wiki/src/nand2doom/rtl/memory/mas.md): share of issued lines a miss used.
     stack["dcache_prefetch_accuracy"] = ratio(events.get("DCACHE_PREFETCH_USEFUL", 0),
                                               events.get("DCACHE_PREFETCH_ISSUE", 0), 4)
     return stack

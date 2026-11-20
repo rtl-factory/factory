@@ -1,9 +1,6 @@
 # nand2doom Doom port: spec
 
-!!! note "Ported, not yet in the standard template"
-    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
-
-How the Doom port meets its [requirements](prd.md), on the [runtime](../runtime/spec.md).
+How the Doom port meets its [requirements](prd.md), on the [runtime](../runtime/spec.md). Code: `src/nand2doom/sw/doom/`.
 
 ## Doom source and assets
 

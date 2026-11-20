@@ -1,7 +1,6 @@
-# nand2doom host-debug and input architecture
+# io MAS
 
-!!! note "Ported, not yet in the standard template"
-    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
+## Purpose
 
 Three external transports: one 25 MHz UART endpoint for host control, image
 loading, memory peek/poke and bounded debug; one receive-only PS/2 Set-2
@@ -15,7 +14,7 @@ owns verification.
 
 <!-- wiki-budget: three wire protocols (version 1, bulk, stream), the common endpoint adoption, their bounds and the input arbitration are register-level contracts for RTL and host scripts -->
 
-## Requirements
+### Requirements
 
 | ID | Requirement |
 | --- | --- |
@@ -31,16 +30,29 @@ owns verification.
 | IO-R10 | Host scripts refuse game assets without the manifest and provenance of the [software policy](../../sw/doom/spec.md#doom-source-and-assets). |
 | IO-R11 | The common [UART memory endpoint](#uart-memory-endpoint) loads SDRAM while held and reads the displayed frame and palette while the CPU runs, costing it at most one framebuffer or palette port cycle per 64 clocks. |
 
-## UART bridge
+## Interface
 
-`src/nand2doom/rtl/io/n2d_uart_debug.sv` owns the shared PHY and routes
-bytes through four routers in fixed order: the common
-[UART memory endpoint](#uart-memory-endpoint), the
-[stream session](#streaming-load-session), the
-[bulk framer](#bulk-wire-extension) and the version-1 engine
-(`n2d_uart_debug_engine`). No software UART, GDB protocol or board policy.
-Reset is asynchronous active high: it clears packet and transaction state and
-asserts `halt_req`. Everything else advances on `clk_i`.
+### Ports
+
+`n2d_uart_debug` parameters: `CLOCK_HZ` (`N2D_SYSTEM_CLOCK_HZ`, 25 MHz),
+`BAUD` (`N2D_UART_BAUD`, 1 Mbaud), `CLKS_PER_BIT`, `FRAC_NUM` and `FRAC_DEN`
+(derived, [link rate](#link-rate)), `INTERBYTE_TIMEOUT_CYCLES` (512),
+`OP_TIMEOUT_CYCLES` (1,024), `HALT_TIMEOUT_CYCLES` (`OP_TIMEOUT_CYCLES`),
+`MAX_WORDS` (8), `STREAM_GAP_TIMEOUT_CYCLES` (`CLOCK_HZ / 25`, 40 ms) and
+`STREAM_IDLE_CYCLES` (`2 * CLOCK_HZ`, 2 s); the platform sets
+`OP_TIMEOUT_CYCLES` 4,096 and `HALT_TIMEOUT_CYCLES` 65,536
+([parser and bounded progress](#parser-and-bounded-progress)).
+`n2d_ps2_keyboard` parameter: `FRAME_TIMEOUT_CYCLES` (5,000). Every port is in
+the `clk_i` domain except the PS/2 pins, which are asynchronous.
+
+| Module | Port group | Ports (direction, width) | Contract |
+| --- | --- | --- | --- |
+| `n2d_uart_debug` | Serial | `uart_rx_i` in, `uart_tx_o` out | 8-N-1 at the [link rate](#link-rate) |
+| `n2d_uart_debug` | Packed groups | `debug_control_o`, `debug_status_i`, `input_event_o`, `input_event_ready_i`, `txn_req_o`, `txn_status_i`, `mem_req_o`, `mem_rsp_i`, `screen_req_o`, `screen_rsp_i` | [Port groups](#port-groups) |
+| `n2d_ps2_keyboard` | PS/2 pins | `ps2_clk_i`, `ps2_data_i` in | [PS/2 keyboard receiver](#ps2-keyboard-receiver) |
+| `n2d_ps2_keyboard` | UART injection | `inject_valid_i`, `inject_event_i` (10) in, `inject_ready_o` out | Held valid until ready |
+| `n2d_ps2_keyboard` | Scan inject | `scan_inject_valid_i`, `scan_inject_byte_i` (8) in, `scan_inject_ready_o` out | [JTAG keyboard](#jtag-keyboard) |
+| `n2d_ps2_keyboard` | MMIO | `mmio_request_valid_i`, `mmio_request_write_i`, `mmio_request_address_i` (12), `mmio_request_write_data_i` (32), `mmio_request_write_strobe_i` (4) in, `mmio_request_ready_o` out; `mmio_response_valid_o`, `mmio_response_read_data_o` (32), `mmio_response_error_o` out, `mmio_response_ready_i` in | [PS/2 MMIO registers](#ps2-mmio-registers) |
 
 ### Port groups
 
@@ -70,7 +82,7 @@ fields (payload images sized by `MAX_WORDS`, indices, timeout counters) are
 separate registers. The response-start bundle is last in the executor's
 next-state block, so it wins over the serializer advance.
 
-## Version-1 wire protocol
+### Version-1 wire protocol
 
 Little-endian. CRC-8/ATM: polynomial `0x07`, init 0, no reflection, no final
 XOR. Codec: `src/nand2doom/scripts/host/n2d_uart_debug_host.py`.
@@ -104,25 +116,6 @@ alignment `0x04`, range `0x05`, length/byte-enable `0x06`, not halted `0x07`,
 timeout `0x08`, memory `0x09`, UART framing `0x0a`, grant `0x0b`, busy `0x0c`,
 internal protocol failure `0x0d` (bulk only).
 
-### Parser and bounded progress
-
-- The parser waits for `0xa5`, collects the nine-byte header, at most 32
-  payload bytes and the CRC; nothing happens before the CRC passes. A framing
-  error discards the request; a 512-cycle gap inside a packet returns timeout
-  with the command and sequence captured so far.
-- A discard-only parser consumes one complete CRC-valid frame arriving while
-  an operation or response is active into a one-entry rejection slot; a
-  same-sequence BUSY follows the active response. Malformed overlap frames
-  are discarded.
-- `OP_TIMEOUT_CYCLES` is 1,024 standalone and 4,096 in the platform.
-  `HALT_TIMEOUT_CYCLES` follows it standalone and is **65,536** in the
-  platform ([maintained Halt bound](../memory/mas.md#maintained-halt-bound)).
-  Halt expiry returns one timeout and sends nothing later.
-- The platform asserts `cache_maint_done_i` only after both caches'
-  maintenance succeeds, retries failures while halted (Peek/Poke/Load get
-  `ST_NOT_HALTED` until then) and acknowledges no host transaction during the
-  pre-resume invalidation.
-
 ### Host-memory transaction boundary
 
 Legal bursts are 1..8 aligned words inside one window: SDRAM
@@ -146,7 +139,7 @@ halt and grant, simultaneous commit and abort, unknown PHY busy state and
 resume invalidation while halted; the bulk framer's two history properties use
 `N2A_ASSERT_AFTER_RESET`.
 
-## Bulk wire extension
+### Bulk wire extension
 
 `n2d_uart_bulk` owns version-2 framing over the shared PHY and issues internal
 eight-word legacy requests to the unchanged engine. Clients must discover it
@@ -196,7 +189,7 @@ CRC32 is IEEE reflected `0xedb88320`, init and final XOR `0xffffffff`
   is not a frame/palette capture handshake; the capture owner reads its SDRAM
   palette shadow.
 
-## Link rate
+### Link rate
 
 `n2d_uart_debug` derives the bit period from `CLOCK_HZ` (default
 `N2D_SYSTEM_CLOCK_HZ`, 25 MHz) and `BAUD` (default `N2D_UART_BAUD`, 1 Mbaud) as
@@ -213,32 +206,7 @@ accepts a board name.
 2.083 Mbaud sit 4.2% from the nearest FT232R rate, too close to the last-bit
 edge.
 
-### Bit-timing error budget
-
-Each frame resynchronizes on its start edge. Assumptions: FT232R internal
-oscillator ±1667 ppm
-([datasheet](https://ftdichip.com/wp-content/uploads/2020/08/DS_FT232R.pdf)
-§5.4-5.5); device oscillator ±100 ppm (<0.4 ns effect); FT232R sampler
-(undocumented) 0..20.8 ns detection, centre sample, ±20.8 ns vote. At
-3 Mbaud the device samples bit k (start 0, stop 9) at `4, 12, 20, 29, 37, 45,
-54, 62, 70, 79` clocks after capturing the start edge and transmits bit k at
-`0, 8, 16, 25, 33, 41, 50, 58, 66, 75` (frame end 83); at 2 Mbaud
-`6, 18, 31, 43, 56, 68, 81, 93, 106, 118` and `0, 12, 25, ..., 112` (end 125). Worst case over all
-four tolerance corners:
-
-| Rate | Path | Margin, ideal clocks | Margin with tolerances | Share of a bit |
-| --- | --- | ---: | ---: | ---: |
-| 3 Mbaud (333.3 ns) | Device receive | 133.3 ns | 127.5 ns | 38% |
-| 3 Mbaud | Host receive | 98.3 ns | **93.9 ns** | **28%** |
-| 2 Mbaud (500 ns) | Device receive | 220.0 ns | 212.0 ns | 42% |
-| 2 Mbaud | Host receive | 188.3 ns | 180.8 ns | 36% |
-
-The load rate stays 3 Mbaud (Doom manifest wire time 98.9 s, plus USB
-scheduling and one 7.3-million-word digest scan). If bring-up shows errors
-resends cannot absorb, the fallback is exactly 2 Mbaud by changing
-`N2D_UART_LOAD_BAUD` alone (148 s wire time).
-
-## Streaming load session
+### Streaming load session
 
 `src/nand2doom/rtl/io/n2d_uart_stream.sv` is the first router. A `0xa7`
 arriving while the bulk framer (`idle_o`), the engine (`idle_o`,
@@ -292,7 +260,7 @@ CRC-32.
   access outside maintained Halt, simultaneous commit and abort, a write into
   an occupied slot, and an engine memory request during a session.
 
-## UART memory endpoint
+### UART memory endpoint
 
 `n2d_uart_debug` instantiates the common
 [`n2a_uart_mem`](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/uart_mem/HAS.md) as its outermost router, on
@@ -345,7 +313,71 @@ The scanned palette view exists only for the endpoint; the CPU map has no
   No other path requests memory while the port is busy. A release never
   arrives while the engine owns a frame.
 
-## PS/2 keyboard receiver
+### PS/2 MMIO registers
+
+12-bit offset in window `0x2000_2000`; single-outstanding ready/valid channel;
+responses stable under backpressure.
+
+| Offset | Access | Definition |
+| ---: | --- | --- |
+| `0x000` DATA | read | Bit 31 valid; bit 9 extended; bit 8 break; bits 7:0 scan code. A valid read pops one event; empty reads zero. |
+| `0x004` STATUS | read | Bit 0 valid, 1 empty, 2 full, 6:3 count, 8/9/10/11 sticky overflow/parity/frame/timeout, 12 receiver enabled. |
+| `0x008` CONTROL | read/write | Read bit 0 enabled. A lane-0 write sets enable from bit 0, clears the FIFO with bit 1, clears diagnostics with bit 2; clears beat simultaneous receive. |
+| `0x00c` INJECT | write | Full-word only; bits 31:10 zero, bits 9:0 one event. Backpressures until it owns a slot. Reads and malformed writes error. |
+
+Writes to DATA or STATUS, unmapped offsets and CONTROL writes to upper lanes
+error with no effect; a CONTROL write with no lane is accepted with no effect.
+
+### JTAG keyboard
+
+The common [Virtual JTAG keyboard endpoint](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/jtag/HAS.md) lets a
+host offer up to four raw Set-2 bytes per command through a held mailbox. The
+[host script](../../scripts/host/spec.md#jtag-keyboard) sends Doom actions, raw
+events or text through the shared [JTAG transport](../../../common/scripts/jtag/spec.md).
+
+Scan-inject port (`scan_inject_valid_i`, `scan_inject_byte_i`,
+`scan_inject_ready_o`): an offer lasts one cycle and is accepted only when
+ready. `E0`/`F0` set the port's own pending qualifiers and are always ready.
+Any other byte is ready only when no CONTROL, physical completion, UART valid
+or accepted INJECT owns the edge and a slot is free (a same-edge pop counts);
+acceptance clears the qualifiers, refusal keeps them, so the host resubmits
+only the refused suffix (the endpoint reports the accepted prefix). Only reset
+and the completing byte clear these qualifiers; CONTROL, disable and physical
+errors do not, and a refusal never sets overflow.
+
+## Microarchitecture
+
+### UART bridge
+
+`src/nand2doom/rtl/io/n2d_uart_debug.sv` owns the shared PHY and routes
+bytes through four routers in fixed order: the common
+[UART memory endpoint](#uart-memory-endpoint), the
+[stream session](#streaming-load-session), the
+[bulk framer](#bulk-wire-extension) and the version-1 engine
+(`n2d_uart_debug_engine`). No software UART, GDB protocol or board policy.
+Reset is asynchronous active high: it clears packet and transaction state and
+asserts `halt_req`. Everything else advances on `clk_i`.
+
+### Parser and bounded progress
+
+- The parser waits for `0xa5`, collects the nine-byte header, at most 32
+  payload bytes and the CRC; nothing happens before the CRC passes. A framing
+  error discards the request; a 512-cycle gap inside a packet returns timeout
+  with the command and sequence captured so far.
+- A discard-only parser consumes one complete CRC-valid frame arriving while
+  an operation or response is active into a one-entry rejection slot; a
+  same-sequence BUSY follows the active response. Malformed overlap frames
+  are discarded.
+- `OP_TIMEOUT_CYCLES` is 1,024 standalone and 4,096 in the platform.
+  `HALT_TIMEOUT_CYCLES` follows it standalone and is **65,536** in the
+  platform ([maintained Halt bound](../memory/mas.md#maintained-halt-bound)).
+  Halt expiry returns one timeout and sends nothing later.
+- The platform asserts `cache_maint_done_i` only after both caches'
+  maintenance succeeds, retries failures while halted (Peek/Poke/Load get
+  `ST_NOT_HALTED` until then) and acknowledges no host transaction during the
+  pre-resume invalidation.
+
+### PS/2 keyboard receiver
 
 `src/nand2doom/rtl/io/n2d_ps2_keyboard.sv`, receive-only at 25 MHz. Board
 tops wire `PS2_CLK`/`PS2_DAT` straight through `n2d_system`; no pin adapter.
@@ -368,38 +400,6 @@ tops wire `PS2_CLK`/`PS2_DAT` straight through `n2d_system`; no pin adapter.
   clears everything.
 - Excluded: transmit, layout translation, typematic, interrupts, hot plug.
 
-### PS/2 MMIO registers
-
-12-bit offset in window `0x2000_2000`; single-outstanding ready/valid channel;
-responses stable under backpressure.
-
-| Offset | Access | Definition |
-| ---: | --- | --- |
-| `0x000` DATA | read | Bit 31 valid; bit 9 extended; bit 8 break; bits 7:0 scan code. A valid read pops one event; empty reads zero. |
-| `0x004` STATUS | read | Bit 0 valid, 1 empty, 2 full, 6:3 count, 8/9/10/11 sticky overflow/parity/frame/timeout, 12 receiver enabled. |
-| `0x008` CONTROL | read/write | Read bit 0 enabled. A lane-0 write sets enable from bit 0, clears the FIFO with bit 1, clears diagnostics with bit 2; clears beat simultaneous receive. |
-| `0x00c` INJECT | write | Full-word only; bits 31:10 zero, bits 9:0 one event. Backpressures until it owns a slot. Reads and malformed writes error. |
-
-Writes to DATA or STATUS, unmapped offsets and CONTROL writes to upper lanes
-error with no effect; a CONTROL write with no lane is accepted with no effect.
-
-## JTAG keyboard
-
-The common [Virtual JTAG keyboard endpoint](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/jtag/HAS.md) lets a
-host offer up to four raw Set-2 bytes per command through a held mailbox. The
-[host script](../../scripts/host/spec.md#jtag-keyboard) sends Doom actions, raw
-events or text through the shared [JTAG transport](../../../common/scripts/jtag/spec.md).
-
-Scan-inject port (`scan_inject_valid_i`, `scan_inject_byte_i`,
-`scan_inject_ready_o`): an offer lasts one cycle and is accepted only when
-ready. `E0`/`F0` set the port's own pending qualifiers and are always ready.
-Any other byte is ready only when no CONTROL, physical completion, UART valid
-or accepted INJECT owns the edge and a slot is free (a same-edge pop counts);
-acceptance clears the qualifiers, refusal keeps them, so the host resubmits
-only the refused suffix (the endpoint reports the accepted prefix). Only reset
-and the completing byte clear these qualifiers; CONTROL, disable and physical
-errors do not, and a refusal never sets overflow.
-
 ### JTAG keyboard composition
 
 `n2d_system` instantiates `n2a_jtag_keyboard` (`u_jtag_keyboard`) on
@@ -412,7 +412,7 @@ last 64 bits) ([common HAS](https://github.com/amichai-bd/nand2anything/blob/aee
 compositions tie them idle, so the scan domain stays in reset. The SDCs
 constrain the hub TCK and mailbox buses ([FPGA timing](../../fpga/de10_lite/board-spec.md#constraints)).
 
-## Files
+### Files
 
 | Path | Role |
 | --- | --- |
@@ -424,3 +424,53 @@ constrain the hub TCK and mailbox buses ([FPGA timing](../../fpga/de10_lite/boar
 | `src/nand2doom/rtl/io/n2d_ps2_keyboard.sv` | PS/2 receiver, FIFO, MMIO |
 | `src/nand2doom/rtl/platform/n2d_pkg.sv`, `n2d_types_pkg.sv` | Codes, helpers, state records |
 | `src/nand2doom/scripts/host/n2d_uart_debug_host.py` | Host codec |
+
+## Clocks and resets
+
+One clock, `clk_i` (25 MHz). The UART bridge reset is asynchronous and active
+high and asserts `halt_req` ([UART bridge](#uart-bridge)); everything else
+advances on `clk_i`. The PS/2 pins each pass an `n2a_cdc_bit_sync`, and the
+JTAG TCK to system crossings are inside the common `n2a_jtag_keyboard`
+([JTAG keyboard composition](#jtag-keyboard-composition)); the scan domain
+stays in reset where the scan ports are tied idle.
+
+## Design choices
+
+- **3 Mbaud load rate on the DE2-115**, the FT232R maximum and an exactly
+  generated rate, with 2 Mbaud as the fallback ([link rate](#link-rate),
+  budget below).
+- **Bulk and stream as routers in front of the unchanged version-1 engine**,
+  so the engine and its atomic transactions are reused
+  ([bulk](#bulk-wire-extension), [stream](#streaming-load-session)).
+- Other candidates compared when this block was designed in nand2anything
+  were not recorded with it.
+
+### Bit-timing error budget
+
+Each frame resynchronizes on its start edge. Assumptions: FT232R internal
+oscillator ±1667 ppm
+([datasheet](https://ftdichip.com/wp-content/uploads/2020/08/DS_FT232R.pdf)
+§5.4-5.5); device oscillator ±100 ppm (<0.4 ns effect); FT232R sampler
+(undocumented) 0..20.8 ns detection, centre sample, ±20.8 ns vote. At
+3 Mbaud the device samples bit k (start 0, stop 9) at `4, 12, 20, 29, 37, 45,
+54, 62, 70, 79` clocks after capturing the start edge and transmits bit k at
+`0, 8, 16, 25, 33, 41, 50, 58, 66, 75` (frame end 83); at 2 Mbaud
+`6, 18, 31, 43, 56, 68, 81, 93, 106, 118` and `0, 12, 25, ..., 112` (end 125). Worst case over all
+four tolerance corners:
+
+| Rate | Path | Margin, ideal clocks | Margin with tolerances | Share of a bit |
+| --- | --- | ---: | ---: | ---: |
+| 3 Mbaud (333.3 ns) | Device receive | 133.3 ns | 127.5 ns | 38% |
+| 3 Mbaud | Host receive | 98.3 ns | **93.9 ns** | **28%** |
+| 2 Mbaud (500 ns) | Device receive | 220.0 ns | 212.0 ns | 42% |
+| 2 Mbaud | Host receive | 188.3 ns | 180.8 ns | 36% |
+
+The load rate stays 3 Mbaud (Doom manifest wire time 98.9 s, plus USB
+scheduling and one 7.3-million-word digest scan). If bring-up shows errors
+resends cannot absorb, the fallback is exactly 2 Mbaud by changing
+`N2D_UART_LOAD_BAUD` alone (148 s wire time).
+
+## Verification
+
+The [I/O DV plan](../../dv/io/dv-plan.md) owns verification: serial targets
+drive the real UART pins, and the host codec is an independent wire oracle.

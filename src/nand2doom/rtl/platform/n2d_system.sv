@@ -8,15 +8,15 @@ module n2d_system
     import n2d_pkg::*;
 #(
     // Debug/load UART rate; a board top selects N2D_UART_LOAD_BAUD for fast
-    // streaming loads (io/HAS.md "Link rate").
+    // streaming loads (wiki/src/nand2doom/rtl/io/mas.md "Link rate").
     parameter int unsigned UART_BAUD = N2D_UART_BAUD,
     // Framebuffer bank geometry: 320x200 banks, or 160x200 half-width banks
-    // (video/HAS.md). Board tops select it.
+    // (wiki/src/nand2doom/rtl/video/mas.md). Board tops select it.
     parameter bit FRAMEBUFFER_FULL_WIDTH = 1'b1,
     // D-cache ways over 512 sets of 16-byte lines: 4 (32 KiB) on the DE2-115,
-    // 2 (16 KiB) on the DE10-Lite (memory/HAS.md). Board tops select it.
+    // 2 (16 KiB) on the DE10-Lite (wiki/src/nand2doom/rtl/memory/mas.md). Board tops select it.
     parameter int unsigned DCACHE_WAYS = 4,
-    // D-cache next-line prefetch buffer lines (memory/HAS.md); 0 disables
+    // D-cache next-line prefetch buffer lines (wiki/src/nand2doom/rtl/memory/mas.md); 0 disables
     // the prefetch. Board tops select it.
     parameter int unsigned DCACHE_PREFETCH_LINES = 2
 ) (
@@ -214,7 +214,7 @@ module n2d_system
     logic [31:0] debug_palette_request_write_data;
     logic [3:0] debug_palette_request_write_strobe;
     logic cpu_framebuffer_request_valid, cpu_palette_request_valid;
-    // Screen reads of the UART memory endpoint (io/HAS.md "UART memory
+    // Screen reads of the UART memory endpoint (wiki/src/nand2doom/rtl/io/mas.md "UART memory
     // endpoint"): the front bank and the scanned palette, while the CPU runs.
     n2d_screen_req_t screen_request;
     n2d_screen_rsp_t screen_response;
@@ -394,7 +394,7 @@ module n2d_system
     `N2A_DFF_RST_VAL(data_owner_q, data_owner_d, clk_i, reset_i, DATA_NONE)
     `N2A_DFF_RST(invalid_response_q, invalid_response_d, clk_i, reset_i)
 
-    // Platform PMON event sources (core/HAS.md "Performance monitor"),
+    // Platform PMON event sources (wiki/src/nand2doom/rtl/core/mas.md "Performance monitor"),
     // derived from existing handshakes. pmon_events is the core's registered
     // vector of all events, observed hierarchically by simulation harnesses.
     logic [127:0] pmon_platform_events;
@@ -580,7 +580,7 @@ module n2d_system
         .mmio_response_error_o(ps2_response_error)
     );
 
-    // Host keyboard over Virtual JTAG (io/HAS.md): the common mailbox endpoint
+    // Host keyboard over Virtual JTAG (wiki/src/nand2doom/rtl/io/mas.md): the common mailbox endpoint
     // offers raw Set-2 bytes as the input FIFO's lowest-priority producer.
     // The enclosing top supplies the neutral scan ports: board tops bind the
     // common n2a_jtag_virtual, the ASIC its own pins, DV fixtures tie them idle.
@@ -606,7 +606,7 @@ module n2d_system
     // Offset 0x000 bit 0 commits the palette alone. Offset 0x008 bit 0
     // requests a framebuffer swap and bit 1 commits the palette with it: one
     // write arms both on the same clock, so they flip at the same vertical
-    // blank (video/HAS.md).
+    // blank (wiki/src/nand2doom/rtl/video/mas.md).
     logic video_control_write_lane0;
     assign video_control_write_lane0 = system_request_valid && data_request_ready &&
         data_request_write && video_control_address_selected &&
@@ -720,7 +720,7 @@ module n2d_system
     assign debug_memory_request_valid_o = debug_line_valid;
 
     // Full-cache writeback uses a separately derived bound; short memory
-    // transactions retain their original watchdog (memory/HAS.md).
+    // transactions retain their original watchdog (wiki/src/nand2doom/rtl/memory/mas.md).
     n2d_uart_debug #(.BAUD(UART_BAUD), .OP_TIMEOUT_CYCLES(4096),
                      .HALT_TIMEOUT_CYCLES(65536)) u_debug (
         .clk_i, .reset_i, .uart_rx_i, .uart_tx_o,

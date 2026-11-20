@@ -1,9 +1,6 @@
 # nand2doom runtime: spec
 
-!!! note "Ported, not yet in the standard template"
-    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
-
-How the runtime meets its [requirements](prd.md). Freestanding little-endian RV32IM `ilp32` software: the owned runtime and
+How the runtime meets its [requirements](prd.md). Code: `src/nand2doom/sw/runtime/`. Freestanding little-endian RV32IM `ilp32` software: the owned runtime and
 validation image, and the pinned DoomGeneric port with its platform adapter,
 clock, keyboard map, direct framebuffer rendering, engine adaptations and
 capture mailbox. The [build specification](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/tools/build/SPEC.md) owns

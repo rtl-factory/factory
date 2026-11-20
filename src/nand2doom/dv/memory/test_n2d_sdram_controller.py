@@ -15,7 +15,7 @@ from src.nand2doom.dv.memory.sdram_pin_model import (
 
 MAX_CYCLES = int(os.environ.get("DV_MAX_CYCLES", "12000"))
 POISON = 0xD15A
-# Line service from acceptance edge to registered response (memory HAS).
+# Line service from acceptance edge to registered response (wiki/src/nand2doom/rtl/memory/mas.md).
 LATENCY = {("read", "closed"): 10, ("read", "hit"): 9, ("read", "miss"): 11,
            ("write", "closed"): 9, ("write", "hit"): 8, ("write", "miss"): 10}
 

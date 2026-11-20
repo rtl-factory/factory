@@ -628,7 +628,7 @@ def verify_reports(output: Path, config: dict) -> dict:
                           "clock_assignments_on_output_ports input_delay_assigned_to_clock".split())
     # All I/O is related to real clocks. Each forwarded clock pin is its
     # generated clock's target, not a data output requiring set_output_delay
-    # (FPGA HAS).
+    # (wiki/src/nand2doom/fpga/de10_lite/board-spec.md).
     forwarded_ports = config["forwarded_clocks"].values()
     allowed = {"no_clock": 1, "virtual_clock": 1, "no_output_delay": len(forwarded_ports)}
     if (set(counts) != expected_checks or any(int(count) != allowed.get(name, 0)
