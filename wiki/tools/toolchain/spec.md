@@ -6,7 +6,7 @@ How the toolchain is built, against its [requirements](prd.md). Decisions: ADR 0
 
 | Part | Role |
 |---|---|
-| Versions file (`cfg/toolchain.json`) | The single source of every pinned version, install location and checksum |
+| Versions file (`cfg/toolchain.json`) | The single source of every pinned tool version, install location and checksum; Python packages are pinned in `tools/sim/requirements.txt` |
 | Readiness check (`tools/toolchain/check.py`) | Reads the versions file; prints PASS, WARN or FAIL per tool with the fix; exit code is nonzero on any FAIL; never changes the host |
 | Install procedure (this spec, Install) | Verbatim, checksum-pinned steps per tool for a Linux host |
 | Cloud session hook (`.claude/hooks/session-start.sh`) | Installs the pinned Quartus at session start in a cloud agent session, fetched from private storage named by an environment variable |
@@ -53,7 +53,7 @@ Known host issues: a `setlocale` warning needs an `en_US.UTF-8` locale; on Arch,
 
 ## Install (Verilator, CI)
 
-The `l0` CI job ([ci-levels.md](../../bkm/workflow/ci-levels.md)) builds Verilator from the pinned tag on Ubuntu 24.04 (`flex`, `libfl-dev`, `help2man`, `zlib1g-dev`; `autoconf`, `./configure --prefix=~/verilator`, `make`, `make install`) and caches the install by version, so only the first run after a pin change rebuilds it. The same steps install it on a Linux host.
+The `l0` CI job ([ci-levels.md](../../bkm/workflow/ci-levels.md)) builds Verilator from the pinned tag on Ubuntu 24.04 (`bison`, `flex`, `libfl-dev`, `help2man`, `zlib1g-dev`; `autoconf`, `./configure --prefix=~/verilator`, `make`, `make install`) and caches the install by version, so only the first run after a pin change rebuilds it. The same steps install it on a Linux host.
 
 The other tools' install steps are written by the build issue that installs them.
 
