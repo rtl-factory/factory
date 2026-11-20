@@ -221,8 +221,12 @@ async def doom_boot_render_contract(dut) -> None:
 async def _run_doom_contract(dut, evidence, artifact) -> None:
     seed = int(os.environ["DV_SEED"])
     maximum = int(os.environ["DV_MAX_CYCLES"])
-    output = REPO_ROOT / "workdir/software/n2d_doom"
-    manifest = build_doom(output, REPO_ROOT, None)
+    # The input witness matches fixed call sites in I_StartTic, I_GetEvent and
+    # NetUpdate. The production profile (-O2, engine LTO) inlines them, so this
+    # gate builds the production variant with the -Os, no-LTO engine profile,
+    # as render verification does, into its own output (#100).
+    output = REPO_ROOT / "workdir/software/n2d_doom_gameplay"
+    manifest = build_doom(output, REPO_ROOT, None, engine_opt="Os", engine_lto=False)
     assert json.loads((output / "manifest.json").read_text()) == manifest
     gameplay = GameplayTrace(elf_symbols(output / "n2d_doom.elf"))
     input_armed, input_ready, input_boundary = Event(), Event(), Event()
