@@ -163,3 +163,13 @@ _Avoid_: property list
 
 **Sync commit**:
 The commit at which a formal property was last confirmed to describe the RTL it covers.
+
+## Hosts and tools
+
+**Board host**:
+The Linux host a board is wired to; the only place that board is programmed and observed.
+_Avoid_: lab machine, test PC
+
+**Readiness check**:
+The toolchain's check that reads the pinned versions and reports, per tool, pass, warning or fail with the fix, without changing the host.
+_Avoid_: doctor, env check

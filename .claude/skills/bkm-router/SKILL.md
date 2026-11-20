@@ -19,6 +19,7 @@ BKMs define how work is done here. Find the rows that match what you are doing, 
 | deciding where a check runs, or reading CI results | `wiki/bkm/workflow/ci-levels.md` |
 | verifying a block in simulation: test-first, verification plans, testbenches, seeds, coverage | `wiki/bkm/dv/verification.md` |
 | verifying a block formally: properties, assumptions, proofs, covers, counterexamples | `wiki/bkm/fv/formal.md` |
+| building an FPGA image with Quartus, handing it to a board host, or programming a board | `wiki/bkm/fpga/fpga.md` |
 | writing or changing a wiki page, or the wiki site build | `wiki/bkm/workflow/wiki-site.md` |
 | configuring or auditing GitHub repository settings | `wiki/bkm/workflow/github-settings.md` |
 | stress-testing a plan or decision with a captain | `wiki/bkm/design/grilling.md`, with `wiki/bkm/design/domain-modeling.md` |
@@ -61,4 +62,4 @@ Engineering principles, one per file. Follow each one whose trigger matches what
 
 ## Not yet written
 
-No BKMs yet for writing RTL or for FPGA implementation. They will live in `wiki/bkm/rtl/` and `wiki/bkm/fpga/`.
+No BKM yet for writing RTL. It will live in `wiki/bkm/rtl/`.
