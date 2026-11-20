@@ -150,3 +150,16 @@ _Avoid_: light CI, full CI, test tier, suite
 **Code owner**:
 A person or team listed in `.github/CODEOWNERS`; GitHub requests their review on every pull request.
 _Avoid_: maintainer
+
+## Verification
+
+**Verification plan**:
+The per-block document in `wiki/src/dv/<block>/` that maps each spec feature and acceptance criterion to its stimulus, checker, coverage points, tests and regression level.
+_Avoid_: test plan (for this meaning)
+
+**Formal plan**:
+The per-block document in `wiki/src/fv/<block>/` that records each property's statement, spec source, assumptions, result, command and sync commit.
+_Avoid_: property list
+
+**Sync commit**:
+The commit at which a formal property was last confirmed to describe the RTL it covers.

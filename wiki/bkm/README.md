@@ -13,6 +13,9 @@ The list of every BKM and when to follow it lives in the `bkm-router` skill (`.c
 | `arch/` | designing blocks and their interfaces, refactoring, explaining how a block works |
 | `principles/` | engineering principles, one per file |
 
-Planned, created with their first BKM: `rtl/`, `dv/`, `fv/`, `syn/`.
+| `dv/` | simulation-based verification |
+| `fv/` | formal verification |
+
+Planned, created with their first BKM: `rtl/`, `syn/`.
 
 Many BKMs are adapted from outside packs under the MIT license; their front matter names the upstream file and commit. [SOURCES.md](SOURCES.md) maps which pack feeds which BKM.

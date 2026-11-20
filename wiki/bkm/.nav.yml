@@ -4,6 +4,8 @@ nav:
   - Design: design
   - Architecture: arch
   - Writing: writing
+  - DV: dv
+  - FV: fv
   - Debug: debug
   - Principles: principles
   - Sources: SOURCES.md

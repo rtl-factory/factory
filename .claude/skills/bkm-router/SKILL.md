@@ -17,6 +17,8 @@ BKMs define how work is done here. Find the rows that match what you are doing, 
 | debugging a failing simulation, formal check, lint, synthesis run, test or tool | `wiki/bkm/debug/debugging.md` |
 | designing a block or where its interface goes, finding where structure should change, refactoring a block, or explaining how and why a block works | `wiki/bkm/arch/architecture.md` |
 | deciding where a check runs, or reading CI results | `wiki/bkm/workflow/ci-levels.md` |
+| verifying a block in simulation: test-first, verification plans, testbenches, seeds, coverage | `wiki/bkm/dv/verification.md` |
+| verifying a block formally: properties, assumptions, proofs, covers, counterexamples | `wiki/bkm/fv/formal.md` |
 | writing or changing a wiki page, or the wiki site build | `wiki/bkm/workflow/wiki-site.md` |
 | configuring or auditing GitHub repository settings | `wiki/bkm/workflow/github-settings.md` |
 | stress-testing a plan or decision with a captain | `wiki/bkm/design/grilling.md`, with `wiki/bkm/design/domain-modeling.md` |
@@ -59,4 +61,4 @@ Engineering principles, one per file. Follow each one whose trigger matches what
 
 ## Not yet written
 
-No BKMs yet for planning, architecture, RTL, DV, FV or synthesis. They will live in `wiki/bkm/design/` and `wiki/bkm/{arch,rtl,dv,fv,syn}/`; open topic issues track them.
+No BKMs yet for writing RTL or for synthesis. They will live in `wiki/bkm/rtl/` and `wiki/bkm/syn/`.
