@@ -58,7 +58,8 @@
       "test_module": "src.nand2doom.dv.platform.test_halt_sdram",
       "testcase": "halt_boundaries_contract",
       "default_seed": 82,
-      "max_cycles": 1500000
+      "max_cycles": 1500000,
+      "level": "L1"
     },
     "n2d_halt_sdram": {
       "kind": "cocotb",
@@ -117,7 +118,8 @@
       "test_module": "src.nand2doom.dv.platform.test_halt_sdram",
       "testcase": "full_dirty_halt_contract",
       "default_seed": 82,
-      "max_cycles": 500000
+      "max_cycles": 500000,
+      "level": "L1"
     },
     "n2d_de10_lite": {
       "kind": "cocotb",
@@ -181,7 +183,8 @@
       "test_module": "src.nand2doom.dv.fpga.test_n2d_de10_lite",
       "testcase": "board_serial_sdram_contract",
       "default_seed": 59,
-      "max_cycles": 200000
+      "max_cycles": 200000,
+      "level": "L1"
     },
     "n2d_de10_lite_uart_mem": {
       "kind": "cocotb",
@@ -245,7 +248,8 @@
       "test_module": "src.nand2doom.dv.fpga.test_n2d_de10_lite",
       "testcase": "board_uart_mem_endpoint",
       "default_seed": 59,
-      "max_cycles": 4000000
+      "max_cycles": 4000000,
+      "level": "L1"
     },
     "n2d_de2_115": {
       "kind": "cocotb",
@@ -309,7 +313,8 @@
       "test_module": "src.nand2doom.dv.fpga.test_n2d_de2_115",
       "testcase": "board_serial_sdram_video_contract",
       "default_seed": 59,
-      "max_cycles": 200000
+      "max_cycles": 200000,
+      "level": "L1"
     },
     "n2d_de2_115_uart_mem": {
       "kind": "cocotb",
@@ -373,7 +378,8 @@
       "test_module": "src.nand2doom.dv.fpga.test_n2d_de2_115",
       "testcase": "board_uart_mem_endpoint",
       "default_seed": 59,
-      "max_cycles": 4000000
+      "max_cycles": 4000000,
+      "level": "L1"
     },
     "n2d_c_runtime_system": {
       "kind": "cocotb",
@@ -433,7 +439,8 @@
       "test_module": "src.nand2doom.dv.platform.test_n2d_c_runtime_system",
       "testcase": "uart_loaded_c_runtime_contract",
       "default_seed": 35,
-      "max_cycles": 2400000
+      "max_cycles": 2400000,
+      "level": "L1"
     },
     "n2d_integrated_system": {
       "kind": "cocotb",
@@ -493,7 +500,8 @@
       "test_module": "src.nand2doom.dv.platform.test_n2d_c_runtime_system",
       "testcase": "preloaded_integrated_system_contract",
       "default_seed": 36,
-      "max_cycles": 2400000
+      "max_cycles": 2400000,
+      "level": "L1"
     },
     "n2d_video_control": {
       "kind": "cocotb",
@@ -553,7 +561,8 @@
       "test_module": "src.nand2doom.dv.platform.test_n2d_video_control",
       "testcase": "video_control_decode_contract",
       "default_seed": 37,
-      "max_cycles": 1000000
+      "max_cycles": 1000000,
+      "level": "L1"
     },
     "n2d_bulk_frame": {
       "kind": "cocotb",
@@ -613,7 +622,8 @@
       "test_module": "src.nand2doom.dv.platform.test_n2d_bulk_frame",
       "testcase": "serial_bulk_frame_and_shadow",
       "default_seed": 81,
-      "max_cycles": 25000000
+      "max_cycles": 25000000,
+      "level": "L2"
     },
     "n2d_doom_system": {
       "kind": "cocotb",
@@ -673,7 +683,8 @@
       "test_module": "src.nand2doom.dv.platform.test_n2d_doom_system",
       "testcase": "doom_boot_render_contract",
       "default_seed": 37,
-      "max_cycles": 200000000
+      "max_cycles": 200000000,
+      "level": "L2"
     },
     "n2d_system_product": {
       "regression_action": "compile",
@@ -726,7 +737,8 @@
         "src/nand2doom/dv/io/n2d_jtag_system_lint.v"
       ],
       "clock_hz": 25000000,
-      "timeout_seconds": 60
+      "timeout_seconds": 60,
+      "level": "L0"
     },
     "n2d_system_product_synthesis": {
       "regression_action": "compile",
@@ -782,7 +794,8 @@
         "src/nand2doom/dv/io/n2d_jtag_system_lint.v"
       ],
       "clock_hz": 25000000,
-      "timeout_seconds": 60
+      "timeout_seconds": 60,
+      "level": "L0"
     },
     "n2d_framebuffer_vga": {
       "kind": "cocotb",
@@ -801,7 +814,8 @@
       "test_module": "src.nand2doom.dv.video.test_n2d_framebuffer_vga",
       "testcase": "framebuffer_cpu_palette_contract",
       "default_seed": 32,
-      "max_cycles": 128
+      "max_cycles": 128,
+      "level": "L0"
     },
     "n2d_framebuffer_vga_half": {
       "kind": "cocotb",
@@ -823,7 +837,8 @@
       "max_cycles": 128,
       "parameters": {
         "FULL_WIDTH": 0
-      }
+      },
+      "level": "L0"
     },
     "n2d_framebuffer_vga_frame": {
       "kind": "cocotb",
@@ -842,7 +857,8 @@
       "test_module": "src.nand2doom.dv.video.test_n2d_framebuffer_vga",
       "testcase": "framebuffer_actual_frame_crc_contract",
       "default_seed": 32,
-      "max_cycles": 2300000
+      "max_cycles": 2300000,
+      "level": "L1"
     },
     "n2d_framebuffer_vga_half_frame": {
       "kind": "cocotb",
@@ -864,7 +880,8 @@
       "max_cycles": 2300000,
       "parameters": {
         "FULL_WIDTH": 0
-      }
+      },
+      "level": "L1"
     },
     "n2d_framebuffer_vga_vblank": {
       "kind": "cocotb",
@@ -883,7 +900,8 @@
       "test_module": "src.nand2doom.dv.video.test_n2d_framebuffer_vga",
       "testcase": "framebuffer_swap_palette_vblank_contract",
       "default_seed": 32,
-      "max_cycles": 1800000
+      "max_cycles": 1800000,
+      "level": "L1"
     },
     "n2d_framebuffer_vga_half_vblank": {
       "kind": "cocotb",
@@ -905,7 +923,8 @@
       "max_cycles": 1800000,
       "parameters": {
         "FULL_WIDTH": 0
-      }
+      },
+      "level": "L1"
     },
     "n2d_memory_fast": {
       "kind": "cocotb",
@@ -921,7 +940,8 @@
       "test_module": "src.nand2doom.dv.memory.test_n2d_memory_subsystem",
       "testcase": "memory_arbiter_fast_model_contract",
       "default_seed": 31,
-      "max_cycles": 4096
+      "max_cycles": 4096,
+      "level": "L0"
     },
     "n2d_debug_memory": {
       "kind": "cocotb",
@@ -938,7 +958,8 @@
       "test_module": "src.nand2doom.dv.memory.test_n2d_memory_subsystem",
       "testcase": "debug_transaction_atomic_contract",
       "default_seed": 31,
-      "max_cycles": 4096
+      "max_cycles": 4096,
+      "level": "L0"
     },
     "n2d_sdram_controller": {
       "kind": "cocotb",
@@ -953,7 +974,8 @@
       "test_module": "src.nand2doom.dv.memory.test_n2d_sdram_controller",
       "testcase": "sdram_pin_timing_contract",
       "default_seed": 31,
-      "max_cycles": 12000
+      "max_cycles": 12000,
+      "level": "L0"
     },
     "n2d_icache": {
       "kind": "cocotb",
@@ -970,7 +992,8 @@
       "test_module": "src.nand2doom.dv.memory.test_n2d_icache",
       "testcase": "icache_contract",
       "default_seed": 30,
-      "max_cycles": 2048
+      "max_cycles": 2048,
+      "level": "L0"
     },
     "n2d_dcache": {
       "kind": "cocotb",
@@ -987,7 +1010,8 @@
       "test_module": "src.nand2doom.dv.memory.test_n2d_dcache",
       "testcase": "dcache_contract",
       "default_seed": 30,
-      "max_cycles": 4096
+      "max_cycles": 4096,
+      "level": "L0"
     },
     "n2d_dcache_2way": {
       "kind": "cocotb",
@@ -1007,7 +1031,8 @@
       "max_cycles": 4096,
       "parameters": {
         "WAYS": 2
-      }
+      },
+      "level": "L0"
     },
     "n2d_dcache_prefetch": {
       "kind": "cocotb",
@@ -1028,7 +1053,8 @@
       "parameters": {
         "WAYS": 4,
         "PREFETCH_LINES": 2
-      }
+      },
+      "level": "L0"
     },
     "n2d_cached_rv32im": {
       "kind": "cocotb",
@@ -1061,7 +1087,8 @@
       "test_module": "src.nand2doom.dv.memory.test_n2d_cached_rv32im",
       "testcase": "cached_rv32im_memory_traffic",
       "default_seed": 30,
-      "max_cycles": 4096
+      "max_cycles": 4096,
+      "level": "L0"
     },
     "n2d_pmon_platform_events": {
       "kind": "cocotb",
@@ -1078,7 +1105,8 @@
       "test_module": "src.nand2doom.dv.platform.test_n2d_pmon_events",
       "testcase": "pmon_platform_line_events",
       "default_seed": 71,
-      "max_cycles": 8192
+      "max_cycles": 8192,
+      "level": "L0"
     },
     "n2d_uart_debug": {
       "kind": "cocotb",
@@ -1107,7 +1135,8 @@
       "test_module": "src.nand2doom.dv.io.test_n2d_uart_debug",
       "testcase": "serial_debug_protocol_contract",
       "default_seed": 33,
-      "max_cycles": 220000
+      "max_cycles": 220000,
+      "level": "L0"
     },
     "n2d_uart_bulk": {
       "kind": "cocotb",
@@ -1136,7 +1165,8 @@
       "test_module": "src.nand2doom.dv.io.test_n2d_uart_bulk",
       "testcase": "bulk_smoke",
       "default_seed": 81,
-      "max_cycles": 5000000
+      "max_cycles": 5000000,
+      "level": "L1"
     },
     "n2d_uart_bulk_negative": {
       "kind": "cocotb",
@@ -1165,7 +1195,8 @@
       "test_module": "src.nand2doom.dv.io.test_n2d_uart_bulk",
       "testcase": "bulk_fail_closed",
       "default_seed": 81,
-      "max_cycles": 5000000
+      "max_cycles": 5000000,
+      "level": "L1"
     },
     "n2d_uart_debug_memory": {
       "kind": "cocotb",
@@ -1196,7 +1227,8 @@
       "test_module": "src.nand2doom.dv.io.test_n2d_uart_debug_memory",
       "testcase": "serial_commit_rollback_contract",
       "default_seed": 31,
-      "max_cycles": 220000
+      "max_cycles": 220000,
+      "level": "L0"
     },
     "n2d_uart_bulk_memory": {
       "kind": "cocotb",
@@ -1227,7 +1259,8 @@
       "test_module": "src.nand2doom.dv.io.test_n2d_uart_bulk_memory",
       "testcase": "bulk_partial_commit_rollback",
       "default_seed": 81,
-      "max_cycles": 220000
+      "max_cycles": 220000,
+      "level": "L0"
     },
     "n2d_uart_stream": {
       "kind": "cocotb",
@@ -1258,7 +1291,8 @@
       "test_module": "src.nand2doom.dv.io.test_n2d_uart_stream",
       "testcase": "stream_load_contract",
       "default_seed": 125,
-      "max_cycles": 3000000
+      "max_cycles": 3000000,
+      "level": "L1"
     },
     "n2d_uart_bulk_router": {
       "kind": "cocotb",
@@ -1276,7 +1310,8 @@
       "test_module": "src.nand2doom.dv.io.test_n2d_uart_bulk_router",
       "testcase": "router_maximum_discard_and_drain",
       "default_seed": 81,
-      "max_cycles": 150000
+      "max_cycles": 150000,
+      "level": "L0"
     },
     "n2d_ps2_keyboard": {
       "kind": "cocotb",
@@ -1292,7 +1327,8 @@
       "test_module": "src.nand2doom.dv.io.test_n2d_ps2_keyboard",
       "testcase": "ps2_keyboard_serial_mmio_contract",
       "default_seed": 34,
-      "max_cycles": 50000
+      "max_cycles": 50000,
+      "level": "L0"
     },
     "n2d_jtag_input": {
       "kind": "cocotb",
@@ -1312,7 +1348,8 @@
       "test_module": "src.nand2doom.dv.io.test_n2d_jtag_input",
       "testcase": "jtag_input_mixed_contract",
       "default_seed": 128,
-      "max_cycles": 1500000
+      "max_cycles": 1500000,
+      "level": "L0"
     },
     "n2d_rv32_regfile": {
       "kind": "cocotb",
@@ -1326,7 +1363,8 @@
       "test_module": "src.common.dv.riscv.test_rv32_regfile",
       "testcase": "register_file_contract",
       "default_seed": 20260917,
-      "max_cycles": 192
+      "max_cycles": 192,
+      "level": "L0"
     },
     "n2d_rv32i_decode_alu": {
       "kind": "cocotb",
@@ -1340,7 +1378,8 @@
       "test_module": "src.nand2doom.dv.core.test_n2d_rv32i_decode_alu",
       "testcase": "decode_alu_contract",
       "default_seed": 25,
-      "max_cycles": 4608
+      "max_cycles": 4608,
+      "level": "L0"
     },
     "n2d_rv32i_core_step": {
       "kind": "cocotb",
@@ -1357,7 +1396,8 @@
       "test_module": "src.nand2doom.dv.core.test_n2d_rv32i_core_step",
       "testcase": "rv32i_core_step_contract",
       "default_seed": 26,
-      "max_cycles": 96
+      "max_cycles": 96,
+      "level": "L0"
     },
     "n2d_rv32i_program_smoke": {
       "kind": "cocotb",
@@ -1376,7 +1416,8 @@
       "test_module": "src.nand2doom.dv.core.test_n2d_rv32i_program_smoke",
       "testcase": "rv32i_program_smoke",
       "default_seed": 26,
-      "max_cycles": 80
+      "max_cycles": 80,
+      "level": "L0"
     },
     "n2d_rv32im_core": {
       "kind": "cocotb",
@@ -1404,7 +1445,8 @@
       "test_module": "src.nand2doom.dv.core.test_n2d_rv32im_core",
       "testcase": "rv32im_architecture_contract",
       "default_seed": 29,
-      "max_cycles": 4096
+      "max_cycles": 4096,
+      "level": "L1"
     },
     "n2d_rv32im_core_btb256": {
       "kind": "cocotb",
@@ -1435,7 +1477,8 @@
       "max_cycles": 4096,
       "parameters": {
         "BTB_ENTRIES": 256
-      }
+      },
+      "level": "L1"
     },
     "n2d_rv32im_core_btb0": {
       "kind": "cocotb",
@@ -1466,7 +1509,8 @@
       "max_cycles": 4096,
       "parameters": {
         "BTB_ENTRIES": 0
-      }
+      },
+      "level": "L0"
     },
     "n2d_rv32im_core_btb512": {
       "kind": "cocotb",
@@ -1497,7 +1541,8 @@
       "max_cycles": 4096,
       "parameters": {
         "BTB_ENTRIES": 512
-      }
+      },
+      "level": "L0"
     },
     "n2d_rv32im_core_btb2048": {
       "kind": "cocotb",
@@ -1528,7 +1573,8 @@
       "max_cycles": 4096,
       "parameters": {
         "BTB_ENTRIES": 2048
-      }
+      },
+      "level": "L1"
     },
     "n2d_muldiv": {
       "kind": "cocotb",
@@ -1543,7 +1589,8 @@
       "test_module": "src.nand2doom.dv.core.test_n2d_muldiv",
       "testcase": "muldiv_contract",
       "default_seed": 70,
-      "max_cycles": 60000
+      "max_cycles": 60000,
+      "level": "L0"
     },
     "n2d_doom_observer": {
       "kind": "cocotb",
@@ -1557,7 +1604,8 @@
       "test_module": "src.nand2doom.dv.software.test_doom_observer",
       "testcase": "retirement_observer_contract",
       "default_seed": 67,
-      "max_cycles": 128
+      "max_cycles": 128,
+      "level": "L0"
     },
     "n2d_doom_clock": {
       "kind": "cocotb",
@@ -1585,7 +1633,8 @@
       "test_module": "src.nand2doom.dv.software.test_n2d_doom_clock",
       "testcase": "compiled_doom_clock_contract",
       "default_seed": 67,
-      "max_cycles": 300000
+      "max_cycles": 300000,
+      "level": "L0"
     },
     "n2d_capture": {
       "kind": "cocotb",
@@ -1613,7 +1662,8 @@
       "test_module": "src.nand2doom.dv.software.test_n2d_capture",
       "testcase": "compiled_capture_contract",
       "default_seed": 68,
-      "max_cycles": 1500000
+      "max_cycles": 1500000,
+      "level": "L1"
     },
     "n2d_capture_system": {
       "kind": "cocotb",
@@ -1673,7 +1723,8 @@
       "test_module": "src.nand2doom.dv.software.test_capture_system",
       "testcase": "capture_system_contract",
       "default_seed": 68,
-      "max_cycles": 62500000
+      "max_cycles": 62500000,
+      "level": "L2"
     },
     "n2d_perf_fast": {
       "kind": "native",
@@ -1731,7 +1782,8 @@
         "src/nand2doom/dv/platform/n2d_memory_fast_preload_subsystem.sv",
         "src/nand2doom/dv/platform/n2d_integrated_system.sv",
         "src/nand2doom/dv/platform/n2d_perf_tb.sv"
-      ]
+      ],
+      "level": "L0"
     },
     "n2d_perf_fast_half": {
       "kind": "native",
@@ -1792,7 +1844,8 @@
       ],
       "defines": [
         "N2D_PERF_HALF_WIDTH"
-      ]
+      ],
+      "level": "L0"
     },
     "n2d_perf_sdram": {
       "kind": "native",
@@ -1854,7 +1907,8 @@
       ],
       "defines": [
         "N2D_PERF_SDRAM"
-      ]
+      ],
+      "level": "L0"
     },
     "n2d_perf_sdram_half": {
       "kind": "native",
@@ -1917,7 +1971,8 @@
       "defines": [
         "N2D_PERF_SDRAM",
         "N2D_PERF_HALF_WIDTH"
-      ]
+      ],
+      "level": "L0"
     },
     "n2d_perf_fast_fst": {
       "kind": "native",
@@ -1979,7 +2034,8 @@
       "defines": [
         "N2D_PERF_FST"
       ],
-      "trace_fst": true
+      "trace_fst": true,
+      "level": "L0"
     },
     "n2d_perf_sdram_fst": {
       "kind": "native",
@@ -2043,7 +2099,8 @@
         "N2D_PERF_SDRAM",
         "N2D_PERF_FST"
       ],
-      "trace_fst": true
+      "trace_fst": true,
+      "level": "L0"
     },
     "n2d_sdram_board_timing": {
       "kind": "cocotb",
@@ -2059,7 +2116,8 @@
       "test_module": "src.nand2doom.dv.fpga.test_n2d_sdram_board_timing",
       "testcase": "board_capture_window",
       "default_seed": 166,
-      "max_cycles": 12000
+      "max_cycles": 12000,
+      "level": "L0"
     },
     "n2d_dcache_write_buffer": {
       "kind": "cocotb",
@@ -2076,7 +2134,8 @@
       "test_module": "src.nand2doom.dv.memory.test_n2d_dcache",
       "testcase": "dcache_write_buffer_contract",
       "default_seed": 30,
-      "max_cycles": 20000
+      "max_cycles": 20000,
+      "level": "L0"
     },
     "n2d_dcache_write_buffer_2way": {
       "kind": "cocotb",
@@ -2096,7 +2155,8 @@
       "max_cycles": 20000,
       "parameters": {
         "WAYS": 2
-      }
+      },
+      "level": "L0"
     },
     "n2a_uart_mem_load_readback": {
       "kind": "cocotb",
@@ -2117,7 +2177,8 @@
       "test_module": "src.common.dv.uart_mem.test_uart_mem",
       "testcase": "uart_mem_load_readback",
       "default_seed": 61,
-      "max_cycles": 1500000
+      "max_cycles": 1500000,
+      "level": "L2"
     },
     "n2a_uart_mem_contract": {
       "kind": "cocotb",
@@ -2138,7 +2199,8 @@
       "test_module": "src.common.dv.uart_mem.test_uart_mem",
       "testcase": "uart_mem_contract",
       "default_seed": 62,
-      "max_cycles": 1500000
+      "max_cycles": 1500000,
+      "level": "L2"
     }
   }
 }

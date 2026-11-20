@@ -50,3 +50,14 @@ interrupted stream needs no reprogramming (partial frame dropped after 40 ms,
 session closed after 2 s idle); a killed legacy bulk transfer can latch
 quarantine until `KEY[0]` or reprogramming.
 
+## Budget
+
+Last passing build in the factory (Quartus Prime Lite 25.1std, `python3 src/nand2doom/scripts/quartus.py --board de2_115`, issue #78): the full report gate passed.
+
+| Resource or check | Result |
+|---|---|
+| Logic elements | 29,181 of 114,480 (25%) |
+| M9K blocks | 320 of 432 |
+| PLLs | 1 of 4 |
+| Worst setup slack, any corner | 5.413 ns at 25 MHz |
+| Minimum slack (hold), any check and corner | 0.123 ns |

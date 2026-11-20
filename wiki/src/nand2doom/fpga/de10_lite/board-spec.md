@@ -354,6 +354,18 @@ need Single Port with Port A RDW `Old data`; D-cache, framebuffer scan, stream
 payload and BTB need Simple Dual Port with Mixed Width RDW `Old data`. Unused
 RDW fields may report `Don't care` or `New data with NBE Read`.
 
+## Budget
+
+Last passing build in the factory (Quartus Prime Lite 25.1std, `python3 src/nand2doom/scripts/quartus.py --board de10_lite`, issue #78): the full report gate passed with 7 reviewed warning occurrences.
+
+| Resource or check | Result |
+|---|---|
+| Logic elements | 27,241 of 49,760 (55%) |
+| M9K blocks | 174 of 182 (8 left) |
+| PLLs | 1 of 4 |
+| Worst setup slack (system clock, Slow 1200mV 85C) | 4.263 ns at 25 MHz |
+| Minimum slack, any check and corner | 0.141 ns |
+
 ## Files
 
 | Path | Role |
