@@ -20,7 +20,7 @@ src/<project>/<discipline>/<name>/      disciplines: arch, rtl, dv, fv, fpga, sc
 tools/<tool>/                           tools any project can use
 ```
 
-The wiki mirrors both trees down to the same folder, so every document sits at the path of the code it describes: a block's spec and plans, a script's or a tool's PRD and spec. A **tool** is only something in `tools/`; code bound to one project, or to a block of `common`, is a **script** in that project's `scripts` discipline. The rules are in [wiki/bkm/workflow/repo-layout.md](wiki/bkm/workflow/repo-layout.md).
+The wiki mirrors both trees down to the same folder, so every document sits at the path of the code it describes: a block's spec and plans, a script's or a tool's PRD and spec. The rules are in [wiki/bkm/workflow/repo-layout.md](wiki/bkm/workflow/repo-layout.md).
 
 ```
 factory/
