@@ -124,7 +124,10 @@ def run_target(name: str, target: dict, workdir: Path, seed: int | None, waves: 
         try:
             code, verdict = proc.wait(timeout=timeout), None
         except subprocess.TimeoutExpired:
-            os.killpg(proc.pid, signal.SIGKILL)
+            if direct:
+                proc.kill()  # the wrapper's group kill covers its children
+            else:
+                os.killpg(proc.pid, signal.SIGKILL)
             proc.wait()
             code, verdict = 124, f"TIMEOUT after {timeout}s"
     text = "".join(p.read_text(errors="replace") for p in (log, base / "build.log", base / "test.log") if p.exists())
