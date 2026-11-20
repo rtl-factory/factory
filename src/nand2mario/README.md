@@ -10,8 +10,7 @@ they live in nand2anything under `wiki/src/nand2mario/`.
 
 The LR35902 CPU lives in `rtl/core/n2m_cpu.sv` with focused control, execute,
 bus, retirement and STOP-policy blocks. It reuses the accepted timebase and
-ALU. Its architecture and verification
-cover the compact bus/retirement interfaces and 25 MHz clock enables.
+ALU, with compact bus/retirement interfaces and 25 MHz clock enables.
 
 Original smoke software is in `sw/cpu/` (CPU smoke) and `sw/system/` (system
 smoke with the timer, joypad and serial interrupts, the background frame
@@ -71,8 +70,7 @@ UART loader on the board pins; the host keyboard through the common
 the DE2-115 top and its files; `fpga/board_io/` holds the shared
 Set-2-to-joypad decoder, board-input debouncer and seven-segment decoder; `cfg/n2m_quartus.json` and `cfg/n2m_de2_115_quartus.json` own the pins and the Quartus
 source list, `tools/n2m_quartus.py` and `tools/n2m_board.py` build, program,
-load images and send joypad keys, and `dv/fpga/` holds the board smoke
-(FPGA HAS).
+load images and send joypad keys, and `dv/fpga/` holds the board smoke.
 
 ## Audio (APU)
 

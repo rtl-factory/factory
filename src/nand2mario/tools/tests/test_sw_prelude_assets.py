@@ -2,6 +2,7 @@
 import hashlib
 import json
 import re
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -89,6 +90,7 @@ class CliTests(unittest.TestCase):
     def setUp(self):
         (ROOT / 'workdir').mkdir(exist_ok=True)
         self.tmp = Path(tempfile.mkdtemp(dir=ROOT / 'workdir'))
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         (self.tmp / 'art.json').write_text(json.dumps(
             {'schema_version': 1, 'width': 8, 'height': 8, 'pixels': [[3] * 8] * 8}))
         (self.tmp / 'prog.asm').write_text(
