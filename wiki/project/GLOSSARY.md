@@ -16,6 +16,20 @@ _Avoid_: guide, how-to, process doc, playbook
 A thin, rarely-changing entry point under `.claude/skills/` that routes an agent to the BKM it should follow. Skills hold no method of their own.
 _Avoid_: prompt, command, plugin
 
+## Crew
+
+**Captain**:
+A human who directs the work: writes and assigns issues, makes the decisions only a human can make, and approves what lands on `main`. Captains talk to the first mate, not to crewmates.
+_Avoid_: user, operator, owner (for this role)
+
+**First mate**:
+The agent a captain talks to. It turns the captain's intent into dispatched work, spawns and supervises crewmates, and reports outcomes and decisions back. It orchestrates; it does not do the work itself.
+_Avoid_: orchestrator, lead agent, manager, chief of staff
+
+**Crewmate**:
+An agent spawned by the first mate to do one issue, in its own worktree on its own issue branch. It reports only to the first mate.
+_Avoid_: worker, subagent, teammate
+
 ## Work flow
 
 **Issue**:
