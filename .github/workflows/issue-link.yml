@@ -1,4 +1,4 @@
-# L0 gate: every pull request must close an issue (wiki/bkm/workflow/flow.md).
+# Workflow rule: every pull request must close an issue (wiki/bkm/workflow/flow.md, ADR 0003).
 name: issue-link
 
 on:

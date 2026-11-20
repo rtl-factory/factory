@@ -112,6 +112,6 @@
   {
     "name": "authority:needs-captain",
     "color": "b60205",
-    "description": "A captain must say the pull request is ready before it merges (default is full send)"
+    "description": "A captain must say the pull request is ready before it lands; set only by a captain"
   }
 ]

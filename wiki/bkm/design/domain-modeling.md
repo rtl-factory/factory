@@ -17,8 +17,8 @@ factory/
 │   └── project/
 │       ├── GLOSSARY.md
 │       └── adr/
-│           ├── 0001-vendor-agent-skills.md
-│           └── 0002-bkms-steer-agents.md
+│           ├── 0001-<slug>.md
+│           └── 0002-<slug>.md
 └── src/
 ```
 

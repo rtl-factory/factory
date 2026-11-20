@@ -1,15 +1,15 @@
 ---
 name: bkm-router
-description: List of every BKM and principle and when to follow it. Use before any work in this repo, and whenever the kind of work changes: issues, branches, pull requests, CI, orchestrating crewmates, grilling, glossary terms, ADRs, writing BKMs or skills, debugging, testing, measuring, refactoring, RTL, DV, FV, synthesis, architecture.
+description: The list of every BKM and principle, and when to follow each. Use whenever you start a piece of work or the kind of work changes.
 ---
 
-BKMs define how work is done here. Find the rows that match your work, read those BKMs, and follow them. If none fits, say so and propose a new BKM in an issue instead of improvising a method.
+BKMs define how work is done here. Find the rows that match what you are doing, read those BKMs, and follow them. If none fits, say so and propose a new BKM in an issue instead of improvising a method.
 
 | When you are | Follow |
 |---|---|
-| doing any work on an issue, from alignment to merge | `wiki/bkm/workflow/flow.md` |
+| doing any work on an issue, from alignment to landing, or deciding who may merge | `wiki/bkm/workflow/flow.md` |
 | the first mate: dispatching, supervising and landing crewmates' work | `wiki/bkm/workflow/first-mate.md` |
-| opening, labelling or dispatching an issue, or deciding whether you may merge | `wiki/bkm/workflow/labels.md` |
+| opening, labelling or dispatching an issue | `wiki/bkm/workflow/labels.md` |
 | deciding where a check runs, or reading CI results | `wiki/bkm/workflow/ci-levels.md` |
 | configuring or auditing GitHub repository settings | `wiki/bkm/workflow/github-settings.md` |
 | stress-testing a plan or decision with a captain | `wiki/bkm/design/grilling.md`, with `wiki/bkm/design/domain-modeling.md` |
@@ -50,4 +50,4 @@ Engineering principles, one per file. Follow each one whose trigger matches what
 
 ## Not yet written
 
-Work types without BKMs yet: architecture, RTL, DV, FV, synthesis. Their BKMs will live in `wiki/bkm/<type>/`.
+No BKMs yet for architecture, RTL, DV, FV, synthesis or debugging. They will live in `wiki/bkm/{arch,rtl,dv,fv,syn,debug}/`; topic issues #32–#42 track them.

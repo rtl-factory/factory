@@ -32,14 +32,14 @@ factory/
 │   ├── src/            Documentation for the hardware blocks (mirrors src/)
 │   ├── specs/          External reference specifications
 │   ├── bkm/            Best Known Methods, one directory per kind of work
-│   ├── project/        Repository layout and design decisions
+│   ├── project/        Glossary and decisions (ADRs)
 │   ├── tools/          Documentation for the tools
 │   └── tracker/        Metrics and dashboards
 │
 ├── cfg/                Project settings and limits
 ├── tools/              Scripts and shared automation
 ├── .claude/            Agent skills that route to BKMs (source of truth)
-├── .agents/            Symlink to .claude/skills for Codex
+├── .agents/skills      Symlink to .claude/skills, for Codex
 ├── .github/            CI workflows and issue/PR templates
 └── worktrees/          Separate checkouts for development
 ```
