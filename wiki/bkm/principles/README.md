@@ -18,7 +18,7 @@ Engineering principles, one per file. Follow each one whose trigger matches what
 - [Model the Domain](model-the-domain.md): Apply when writing stateful logic, or when code branches a lot or repeats a shape assumption across files.
 - [Never Block on the Human](never-block-on-the-human.md): Apply when tempted to ask 'should I do X?' on reversible work.
 - [Outcome-Oriented Execution](outcome-oriented-execution.md): Apply during planned rewrites and migrations with explicit phase boundaries.
-- [Prove It Works](prove-it-works.md): Apply after completing a task, before declaring done.
+- [Prove It Works](prove-it-works.md): Apply after completing a piece of work, before declaring done.
 - [Redesign From First Principles](redesign-from-first-principles.md): Apply when integrating a new requirement into an existing design.
 - [Separate Before Serializing Shared State](separate-before-serializing-shared-state.md): Apply when concurrent actors might write to the same file, branch, key, or state object.
 - [Sequence work into verifiable units](sequence-verifiable-units.md): Apply to multi-step work (sweeps, migrations, runs of similar edits) and to how you stack commits and PRs.

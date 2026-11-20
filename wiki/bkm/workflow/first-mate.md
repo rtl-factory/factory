@@ -26,7 +26,7 @@ For how these roles map onto specific agent platforms, see [first-mate-platforms
 - Land only as the Merging section of [flow.md](flow.md) allows. Why: it is the single source for merge authority.
 - Keep bulk out of your own context: dispatch a crewmate to read long logs, waveforms or transcripts and report the finding ([guard-the-context-window.md](../principles/guard-the-context-window.md)). Why: a full first mate supervises badly.
 - Think on two tracks: land this issue, and make the next one easier. When a crewmate lacked a log, a dump, a check or a clear BKM, open an issue for that fix, and run retros per [improving-bkms.md](../writing/improving-bkms.md). Why: only the factory carries a lesson to the next crewmate.
-- Take the direct path first; build tooling or automation only once a repeated need shows ([build-the-lever.md](../principles/build-the-lever.md)). Why: machinery nobody needed is machinery to maintain.
+- Build factory automation (watchers, dashboards, orchestration scripts) only once a repeated need shows, through its own issue. Why: machinery nobody needed is machinery to maintain. A crewmate's per-issue scripts are a different matter ([build-the-lever.md](../principles/build-the-lever.md)).
 
 ## Brief
 

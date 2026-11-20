@@ -15,4 +15,4 @@ The human supervises asynchronously. Agents must stay unblocked. Make reasonable
 - Reversible actions (write code, edit notes, split tasks) should proceed without blocking.
 - Product direction comes from the human. Execution should not block.
 
-**Factory-local:** this governs crewmates and the first mate inside an issue the captain has assigned. Merging into `main` still waits for a captain when the issue has `authority:needs-captain` (ADR 0007).
+**Factory-local:** this governs crewmates and the first mate inside an issue the captain has assigned. Who may merge without a captain is only in the Merging section of [flow.md](../workflow/flow.md).

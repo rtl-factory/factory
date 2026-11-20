@@ -9,7 +9,7 @@ Every change runs this loop. The rules for each step are in `wiki/bkm/workflow/f
 2. **Issue**: the goal becomes labelled GitHub issues, or an epic of sub-issues (`to-issues`). No issue, no change.
 3. **Branch**: `issue/<number>-<slug>` from `main`, or from the epic branch.
 4. **Worktree**: `worktrees/issue-<number>/`, one crewmate each.
-5. **Change loop**: change the code and its block spec together, run L0, fix, repeat until code, spec and issue agree and L0 passes (`debug` when stuck).
+5. **Change loop**: change the code and its documents at the mirrored wiki path together, run L0, fix, repeat until code, spec and issue agree and L0 passes (`debug` when stuck).
 6. **Commit, push, pull request**: the pull request says `Closes #<number>` (`land` covers how to write it).
 7. **Review**: a reviewer crewmate with a fresh context reviews it (`review`); fix and return to step 5 until it passes.
 8. **Approve**: the reviewer's pass, plus a captain's word when the pull request needs captain.
