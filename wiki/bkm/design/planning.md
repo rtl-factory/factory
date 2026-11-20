@@ -41,7 +41,7 @@ How to turn an aligned idea into a written plan (a PRD, an interface sketch for 
 1. Write the one question it answers ("does this arbiter starve a port under back-to-back requests?", "does this FIFO depth meet the throughput target?", "does this pipeline close timing at the target clock?"). No question, no prototype.
 2. Build the smallest thing that answers it, outside `src/` and never in a pull request: a Python or cycle-level behavioural model, a tiny RTL experiment run through simulation, lint, a formal check or synthesis. Keep the decision logic in a pure function or FSM that could be lifted into the real design; skip tests, polish and generality.
 3. Print the full relevant state at each step, or the measured number with its baseline ([explain-the-number](../principles/explain-the-number.md)). Drive the hard cases: the normal path, the edge case, the case that should be impossible.
-4. Post on the issue: the question, the verdict, the evidence (output, waveform, report line) and any decision-rich snippet. If the code is worth rerunning, push it to a branch `proto/<issue>-<slug>`, never merged, and link it.
+4. Post on the issue: the question, the verdict, the evidence (output, waveform, report line) and any decision-rich snippet. If the code is worth rerunning, push it to a branch `proto/<issue>-<slug>`, never merged, and link it; delete the branch when the issue it answers closes.
 5. Fold the decision into the plan; the prototype itself is throwaway.
 
 ## Steps: ask someone who is not present
@@ -53,11 +53,11 @@ How to turn an aligned idea into a written plan (a PRD, an interface sketch for 
 ## Steps: plan work too large for one session
 
 1. Name the destination with the captain: the PRD, the decision or the change this effort is finding its way to. It fixes the scope.
-2. Open a map issue (`type:spec`): **Destination**; **Notes** (BKMs to follow, standing preferences); **Decisions so far**, one line per closed decision issue with its link; **Not yet specified**, the in-scope questions you cannot yet state sharply; **Out of scope**.
-3. Open a decision issue for each question you can state sharply now, even if you cannot act on it yet; leave the rest in Not yet specified. Label it per [labels.md](../workflow/labels.md) (`type:research` for research and prototypes). Make the map issue blocked by each, and link order between them with "blocked by". Do not make them sub-issues: the map is not an epic, since decisions land nothing together (ADR 0004).
-4. Resolve one decision issue per session (research issues may run in parallel): assign it to yourself first, resolve it by grilling, prototype, research or the work it waits on, post the answer as a comment, close it, and add its line to Decisions so far.
+2. Open a planning issue (`type:spec`): **Destination**; **Notes** (BKMs to follow, standing preferences); **Decisions so far**, one line per closed issue with its link; **Not yet specified**, the in-scope questions you cannot yet state sharply; **Out of scope**.
+3. Open an issue for each question you can state sharply now, even if you cannot act on it yet; leave the rest in Not yet specified. Label it per [labels.md](../workflow/labels.md) (`type:research` for research and prototypes). Make the planning issue blocked by each, and link order between them with "blocked by". Do not make them sub-issues: the planning issue is not an epic, since decisions land nothing together (ADR 0004).
+4. Resolve one issue per session (research issues may run in parallel): move it to `status:in-progress` per [labels.md](../workflow/labels.md), resolve it by grilling, prototype, research or the work it waits on, post the answer as a comment, close it, and add its line to Decisions so far.
 5. After each, open issues for questions that became sharp, remove them from Not yet specified, and close any issue the answer moved past the destination, with a line in Out of scope.
-6. When no decision issue is open, write the plan (Steps: write a plan) from the map.
+6. When none of those issues is open, write the plan (Steps: write a plan) from the planning issue.
 
 ## Exit criteria
 
