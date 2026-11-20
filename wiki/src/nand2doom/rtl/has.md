@@ -1,4 +1,7 @@
-# nand2doom platform architecture
+# nand2doom high-level architecture (HAS)
+
+!!! note "Ported, not yet in the standard template"
+    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../bkm/design/standard-docs.md) is #91.
 
 nand2doom is a 25 MHz RV32IM machine-mode system without MMU or TLB whose
 product milestone is freestanding C Doom with VGA video and keyboard input.
@@ -6,19 +9,31 @@ The [RISC-V ownership boundary](https://github.com/amichai-bd/nand2anything/blob
 execution ports and observation; nand2doom owns the trap adapter, physical
 address map, caches, precise debug stop and every Doom device. nand2linux
 privilege, MMU, interrupt, firmware and address-map policy are not parameters
-of this platform. The [DV plan](../../dv/platform/plan.md) owns verification.
+of this platform. The [DV plan](../dv/platform/dv-plan.md) owns verification.
 
 | Owner | Responsibility | Primary interfaces |
 | --- | --- | --- |
-| [RV32IM core](../core/spec.md) | Six-stage in-order pipelined execution, traps, retirement, precise debug stop by drain | instruction/data word ports, retirement, debug control |
-| [Memory](../memory/spec.md) | I-cache, D-cache, line arbitration, SDRAM, coherence at debug halt | core word ports, 128-bit SDRAM lines, physical SDRAM pins |
-| [Video](../video/spec.md) | Double-buffered 8bpp framebuffer, palette, 2x scanout, RGB/sync | uncached CPU/host port, VGA RGB444/HSYNC/VSYNC |
-| [I/O](../io/spec.md) | UART packet debug and unified PS/2/host Set-2 input | serial pins, host-memory master, Virtual JTAG keyboard, input MMIO |
-| [Software](../../sw/spec.md) | `ilp32` runtime, linker/image format, Doom platform shim | SDRAM image, MMIO, framebuffer, external game-data manifest |
-| [FPGA](../../fpga/spec.md) | Board tops, clocks, pins, Quartus gate | board pins |
+| [RV32IM core](core/mas.md) | Six-stage in-order pipelined execution, traps, retirement, precise debug stop by drain | instruction/data word ports, retirement, debug control |
+| [Memory](memory/mas.md) | I-cache, D-cache, line arbitration, SDRAM, coherence at debug halt | core word ports, 128-bit SDRAM lines, physical SDRAM pins |
+| [Video](video/mas.md) | Double-buffered 8bpp framebuffer, palette, 2x scanout, RGB/sync | uncached CPU/host port, VGA RGB444/HSYNC/VSYNC |
+| [I/O](io/mas.md) | UART packet debug and unified PS/2/host Set-2 input | serial pins, host-memory master, Virtual JTAG keyboard, input MMIO |
+| Software ([runtime](../sw/runtime/spec.md), [Doom port](../sw/doom/spec.md)) | `ilp32` runtime, linker/image format, Doom platform shim | SDRAM image, MMIO, framebuffer, external game-data manifest |
+| [FPGA](../fpga/de10_lite/board-spec.md) | Board tops, clocks, pins, Quartus gate | board pins |
 
 Shared blocks are reused only through project-neutral contracts; decode,
 cacheability, boot and error policy stay thin nand2doom integration.
+
+## Common reuse boundaries
+
+| Boundary | Ownership and compatibility obligation |
+| --- | --- |
+| UART byte PHY | Common RX/TX; Doom keeps the debug parser, transactions, bulk routing, timeouts and framing. |
+| VGA timing | Common timing generator; Doom keeps the framebuffer, palette, MMIO and scanout. |
+| Reset and CDC | Common reset and bit synchronizers; keep asynchronous PHY reset, synchronized release and 25 MHz. |
+| Register file and staging RAM | Common RV32 register file and RAMs; keep reset, old-data latency, masks and capacity. |
+| PS/2 | Doom combines filtering, receive, FIFO and injection; a common receiver needs its own contract and consumer tests. |
+| SDRAM | Doom owns its controller. Linux also uses burst-eight CAS-two lines, but Doom's open-row policy, bank map, refresh reserve and capture differ; the Linux BL8 controller is not a drop-in backend. |
+| Cache/framebuffer arrays | Shared wrappers need identical latency, enables, masks, collision and initialization plus synthesis evidence. |
 
 ## Requirements
 
@@ -44,7 +59,7 @@ cacheability, boot and error policy stay thin nand2doom integration.
 | `0x1002_0000`-`0x1002_ffff` | Framebuffer front view | Uncached read-only view of the displayed bank in the same layout; a write is an access error. |
 | `0x2000_0000`-`0x2000_0fff` | System | Identification, completion/failure marker, monotonic tick, reset/halt status. |
 | `0x2000_1000`-`0x2000_1fff` | Video control | Palette commit, framebuffer swap, active banks, frame sequence, and video status. |
-| `0x2000_2000`-`0x2000_2fff` | Input | Unified FIFO data/status/control/inject for PS/2, UART and JTAG events ([registers](../io/spec.md#ps2-mmio-registers)). |
+| `0x2000_2000`-`0x2000_2fff` | Input | Unified FIFO data/status/control/inject for PS/2, UART and JTAG events ([registers](io/mas.md#ps2-mmio-registers)). |
 | `0x2000_3000`-`0x2000_3fff` | UART application/status | Optional software byte queues and transport diagnostics; not the host debug master. |
 | all other addresses | Platform decoder | Access error with no side effect. |
 
@@ -67,7 +82,7 @@ synthesizable single-clock integration top: core, both caches, UART debug,
 framebuffer/palette/VGA and the unified Set-2 FIFO behind an external
 three-master line-memory boundary (I-cache, D-cache, halted UART SDRAM
 adapter). `FRAMEBUFFER_FULL_WIDTH` selects the
-[bank geometry](../video/spec.md#framebuffer-and-palette): full width by default
+[bank geometry](video/mas.md#framebuffer-and-palette): full width by default
 and on the DE2-115, half width on the DE10-Lite.
 
 - Instruction traffic always enters the I-cache. Data addresses select
@@ -96,7 +111,7 @@ and on the DE2-115, half width on the DE10-Lite.
 Scanout uses embedded RAM, so SDRAM bandwidth is shared only by instruction
 fills, data fills/writebacks and halted-host traffic. Software draws directly
 into the back bank with uncached stores that never miss in or evict from the
-D-cache. The [maintained Halt bound](../memory/spec.md#maintained-halt-bound)
+D-cache. The [maintained Halt bound](memory/mas.md#maintained-halt-bound)
 gives 65,536 clocks; short debug watchdogs stay 4,096.
 
 ### Padless ASIC core
@@ -123,7 +138,7 @@ RGB remains four bits per channel before an external DAC/pad adapter.
 `n2d_system` always takes the neutral JTAG scan interface from its `scan_*`
 ports, so the ASIC top passes them to its pins and keeps the live keyboard
 function; FPGA board tops bind the common `n2a_jtag_virtual` there
-([JTAG keyboard composition](../io/spec.md#jtag-keyboard-composition)).
+([JTAG keyboard composition](io/mas.md#jtag-keyboard-composition)).
 
 All memories preserve depth, ports and cycle/collision semantics. An IHP
 backend is eligible only after its common contract and full-core tests pass;

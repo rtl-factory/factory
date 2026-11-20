@@ -78,7 +78,7 @@ PACKET_GAP = 0x100  # list token: wait before the next packet
 INPUT_LIMIT = 8     # the unified input FIFO depth; nothing drains it while halted
 CLOCK_HZ = 25_000_000
 
-# PMON event names by ID (wiki/src/nand2doom/rtl/core/spec.md "Performance monitor").
+# PMON event names by ID (wiki/src/nand2doom/rtl/core/mas.md "Performance monitor").
 PMON_EVENTS = {
     1: "CYCLES", 2: "INSTRET", 3: "IFETCH_WAIT", 4: "DATA_HOLD", 5: "LOAD_USE_HOLD",
     6: "MULDIV_HOLD", 8: "DATA_ADMISSION_HOLD", 9: "BRANCH_REDIRECT", 10: "TRAP_ENTRY",

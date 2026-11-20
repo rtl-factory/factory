@@ -31,6 +31,6 @@ The explicit no-input rendering correctness workload is built with
 `python3 src/nand2doom/scripts/n2d_doom.py build --variant render-verification`.
 It uses the typed upstream single-tic mode before engine startup and is gated
 by state, call and raw pixel witnesses described in the
-[software HAS](../../../../wiki/src/nand2doom/sw/spec.md#deterministic-time-verification-build).
+[software HAS](../../../../wiki/src/nand2doom/sw/doom/spec.md#deterministic-time-verification-build).
 Default builds still produce production and ordinary deterministic images.
 Verification FPS is not production performance evidence.

@@ -45,8 +45,8 @@ capture. Missing pyserial or Quartus is an actionable error. Exit 2 arguments,
 ## Supported logical actions
 
 The GUI binding policy; the firmware
-[keyboard map](../../sw/spec.md#doom-keyboard-map) maps every
-make code; events use the [ten-bit Set-2 contract](../../rtl/io/spec.md#ps2-keyboard-receiver).
+[keyboard map](../../sw/doom/spec.md#doom-keyboard-map) maps every
+make code; events use the [ten-bit Set-2 contract](../../rtl/io/mas.md#ps2-keyboard-receiver).
 Break ORs 0x100, preserving extended bit 0x200.
 
 | Action | Keyboard keys | Make | Break |

@@ -1,5 +1,8 @@
 # nand2doom platform verification
 
+!!! note "Ported, not yet in the standard template"
+    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
+
 <!-- wiki-budget: the native performance harness CLI, CPI classification and stall split are the measurement contract every performance record cites -->
 
 ## Strategy
@@ -90,7 +93,7 @@ CRC over the doubled 320x200 image).
   (1+k)th edge); WRITE takes eight beats with per-beat DQM; per-bank open row;
   single or all-bank precharge; spacing, interruption, turnaround and row
   violations are fatal. Storage is indexed by `[25:1]` and inverts the
-  [bank map](../../rtl/memory/spec.md#sdram-controller). A traced line read takes 10,
+  [bank map](../../rtl/memory/mas.md#sdram-controller). A traced line read takes 10,
   9 or 11 clocks plus one arbiter cycle.
 
 ### Command line
@@ -153,7 +156,7 @@ backends and core generations):
 ### Reports and CPI classification
 
 The harness counts every supported PMON event from `u_system.pmon_events`
-([PMON](../../rtl/core/spec.md#performance-monitor)) with no firmware support.
+([PMON](../../rtl/core/mas.md#performance-monitor)) with no firmware support.
 `report.txt` has `pmon`, `cycles` and `split` lines for `scope=total` and each
 swap interval (`scope=frame` or `scope=gameplay`), and a final `swap` line
 (geometry, count, total `wait` and `spin`, guard violations, which fail).

@@ -1,6 +1,6 @@
 """Host keyboard through a nand2doom board top: the common Virtual JTAG
 wrapper (on its Verilator stub) and the common endpoint inside n2d_system feed
-the Set-2 input FIFO (wiki/src/nand2doom/rtl/io/spec.md#jtag-keyboard).
+the Set-2 input FIFO (wiki/src/nand2doom/rtl/io/mas.md#jtag-keyboard).
 
 The host plays the hub through the stub's scan variables; a monitor records
 every input-FIFO write. With PS/2 idle, no UART input event and the CPU

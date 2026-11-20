@@ -1,6 +1,6 @@
 `include "src/common/rtl/pkg/macros.vh"
 
-// Platform PMON event sources by event ID (wiki/src/nand2doom/rtl/core/spec.md
+// Platform PMON event sources by event ID (wiki/src/nand2doom/rtl/core/mas.md
 // "Performance monitor"), derived from the existing cache, line-memory and
 // uncached-data handshakes of n2d_system without changing those blocks.
 // The output is combinational; the core's PMON registers it before counting.
@@ -8,7 +8,7 @@
 // Line masters are indexed 0 = I-cache, 1 = D-cache, 2 = debug, as on the
 // n2d_system memory_request_* boundary. The downstream memory request is not
 // visible here, so MEM_BACKPRESSURE (33) is reconstructed from the shared
-// line-memory contract (wiki/src/nand2doom/rtl/memory/spec.md): with one
+// line-memory contract (wiki/src/nand2doom/rtl/memory/mas.md): with one
 // outstanding transaction, the controller presents a downstream request
 // exactly when it is idle and some master is valid, and grants `ready` to
 // one master exactly when that downstream request is accepted. Contention

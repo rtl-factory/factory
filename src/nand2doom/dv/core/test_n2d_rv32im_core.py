@@ -984,7 +984,7 @@ def _configure_window(elf_path: Path) -> tuple[int, int]:
 async def _check_pmon_accessor(dut) -> None:
     """n2d_pmon.h configure stops the counter across its selector and half
     writes, then restores the previous inhibit mask."""
-    sw_dir = Path(__file__).resolve().parents[2] / "sw"
+    sw_dir = Path(__file__).resolve().parents[2] / "sw" / "runtime"
     words, provenance, elf_path = compile_c_program(
         "c_pmon_configure", "pmon_configure", (sw_dir,))
     low, high = _configure_window(elf_path)

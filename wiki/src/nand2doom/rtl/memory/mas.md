@@ -1,13 +1,16 @@
 # nand2doom memory architecture
 
+!!! note "Ported, not yet in the standard template"
+    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
+
 The memory system joins the core's instruction and data ports to external
 SDRAM, keeping framebuffer traffic outside the caches. It owns the I-cache,
 D-cache, line arbiter, debug adapter, SDRAM controller, cache maintenance and
 the portable fast memory model, all at 25 MHz. The
-[platform address map](../platform/spec.md#address-map) owns region values;
+[platform address map](../has.md#address-map) owns region values;
 this page owns their cacheability and transactions. Framebuffer storage is
-owned by [video](../video/spec.md); M9K packing and fits by the
-[FPGA page](../../fpga/spec.md#memory-implementation). The [DV plan](../../dv/memory/plan.md) owns
+owned by [video](../video/mas.md); M9K packing and fits by the
+[FPGA page](../../fpga/de10_lite/board-spec.md#memory-implementation). The [DV plan](../../dv/memory/dv-plan.md) owns
 verification.
 
 <!-- wiki-budget: cache, arbiter and SDRAM command/latency tables plus the maintained Halt budget are cycle contracts the RTL and DV check -->
@@ -45,7 +48,7 @@ Address bits `[3:0]` select within a line, `[12:4]` the set, `[25:13]` the
 
 The caches implement the pipelined extension of the
 [shared boundary](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/riscv/ownership.md#request-and-response-boundary); the
-[core](../core/spec.md#pipelined-memory-handshake) owns the requester side.
+[core](../core/mas.md#pipelined-memory-handshake) owns the requester side.
 Requests are 32-bit word transactions with byte address and byte enables.
 
 - A request is accepted on a rising edge with reset low and valid and ready
@@ -181,7 +184,7 @@ transfers the victim; a refill error leaves it valid and dirty in the array.
   `prefetch_useful_event_o` per buffer refill, `prefetch_drop_event_o` per
   line dropped unused (several per clock drain from a backlog counter): PMON
   80..82. Canceled intent is event 97; deferred clocks event 96
-  ([PMON](../core/spec.md#performance-monitor)).
+  ([PMON](../core/mas.md#performance-monitor)).
 
 ### Maintenance
 
@@ -240,7 +243,7 @@ halted.
   later error or abort it writes the saved lines back in reverse order,
   retrying a failed restore, and pulses done/error only after rollback. The
   UART bridge holds its grant through that pulse
-  ([bulk](../io/spec.md#bulk-wire-extension) composes these transactions and
+  ([bulk](../io/mas.md#bulk-wire-extension) composes these transactions and
   is not globally atomic).
 - **Composition.** `n2d_cached_rv32im` wires the core to both caches and
   exposes independent line ports, both maintenance handshakes and hit/miss
@@ -250,7 +253,7 @@ halted.
 
 `n2d_sdram_controller`: one transaction, open row, 25 MHz, one burst of eight
 x16 beats per line. The board top binds commands, DQ output enable and the
-inverted clock to pins ([FPGA](../../fpga/spec.md#composition)).
+inverted clock to pins ([FPGA](../../fpga/de10_lite/board-spec.md#composition)).
 
 | SDRAM field | Byte-address bits |
 | --- | --- |
@@ -348,6 +351,6 @@ traffic and coherence out of the controller. DE10-Lite logical budget
 D-cache data 131,072 bits each, tags and state under 48,000, palette 6,144:
 under 841,000 bits (51%). Read-port replication for scanout doubles the
 framebuffer to 1,048,576 physical bits. A second full-width bank does not
-fit, hence [half width](../video/spec.md#framebuffer-and-palette). If packing
+fit, hence [half width](../video/mas.md#framebuffer-and-palette). If packing
 ever fails, moving the framebuffer to SDRAM needs a new decision covering line
 buffers, display priority, coherence and underrun.

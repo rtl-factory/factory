@@ -1,11 +1,14 @@
 # nand2doom RV32IM core architecture
 
+!!! note "Ported, not yet in the standard template"
+    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
+
 The nand2doom CPU is the first implementation of the
 [shared-candidate RV32IM contract](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/riscv/ownership.md): a single-hart,
 machine-mode-only, in-order processor for freestanding C at the 25 MHz system
 clock. This page owns the composition around that neutral contract: machine
 trap state, debug stop, fetch prediction, the PMON, and the RTL decomposition.
-The [platform](../platform/spec.md) is the system consumer; the [DV plan](../../dv/core/plan.md)
+The [platform](../has.md) is the system consumer; the [DV plan](../../dv/core/dv-plan.md)
 maps every requirement to tests.
 
 <!-- wiki-budget: the PMON event-ID table and pipeline timing are the canonical register and cycle contract for RTL, firmware and n2d_perf -->
@@ -39,7 +42,7 @@ active high; the platform synchronizes its release.
 
 ### Pipelined memory handshake
 
-The [memory architecture](../memory/spec.md#cpu-port-handshake) owns the
+The [memory architecture](../memory/mas.md#cpu-port-handshake) owns the
 handshake (one request outstanding per port, next request accepted on the
 edge that samples the response, hits sampled one edge after acceptance).
 Core obligations: an instruction request may be withdrawn or re-addressed
@@ -227,7 +230,7 @@ Signed `0x80000000 / -1` returns `0x80000000`, remainder 0.
   signed `*`; the next edge registers the low 64 product bits and word
   select. Operand registers have only the issue enable, the product register
   is free running, neither is reset: the Quartus embedded-multiplier
-  inference form. The [fitted images](../../fpga/spec.md#fitted-results) use four
+  inference form. The [fitted images](../../fpga/de10_lite/board-spec.md#fitted-results) use four
   18x18 multipliers on both boards with the path outside the 400 worst.
 - **Divider.** Issue registers raw operands and signedness; a setup cycle
   forms magnitudes and leading-one indices and preloads `{remainder,
@@ -247,9 +250,9 @@ Every stage register is a flop. The long paths are the Q102H operand path
 and the response → Q102H advance → queue take → request-valid path;
 prediction adds the bypassed response → flush path and ends the next fetch PC
 at the BTB RAM address register (loop B of the
-[FPGA timing baseline](../../fpga/spec.md#timing-baseline-and-50-mhz-analysis)).
+[FPGA timing baseline](../../fpga/de10_lite/board-spec.md#timing-baseline-and-50-mhz-analysis)).
 `BTB_ENTRIES = 0` and `RAS_DEPTH = 0` remove the lookups without an RTL
-change; fitted slack is in [BTB storage](../../fpga/spec.md#btb-storage).
+change; fitted slack is in [BTB storage](../../fpga/de10_lite/board-spec.md#btb-storage).
 
 ## Reset and debug behavior
 
@@ -263,12 +266,12 @@ enters a drain. Q102H..Q105H complete, including a divide, a memory operation
 and any redirect or trap; an owed fetch response is received and dropped.
 When Q102H..Q105H are empty and no response is owed, `halt_ack_o` rises. The
 platform combines it with cache-maintenance completion
-([memory](../memory/spec.md)). The resume PC is the `next_pc` of the last
+([memory](../memory/mas.md)). The resume PC is the `next_pc` of the last
 Q105H record; `reset_pc_request_i` while halted sets it to zero without
 changing registers or CSRs (a simultaneous resume fetches from zero). A halt
 withdrawn before acknowledgement continues without acknowledging. The worst
 drain (data miss with dirty victim, instruction refill, divide) is inside the
-256-clock allowance of the [maintained Halt bound](../memory/spec.md#maintained-halt-bound).
+256-clock allowance of the [maintained Halt bound](../memory/mas.md#maintained-halt-bound).
 
 ## Performance monitor
 
@@ -306,7 +309,7 @@ inside `n2d_system`, derived from cache, line-memory and uncached handshakes
 plus flops for the in-flight store flag, outstanding I/D read, outstanding
 transaction and one-hot owner; `n2d_cached_rv32im` ties the input to zero.
 MEM_BACKPRESSURE is reconstructed from the one-outstanding
-[line-memory contract](../memory/spec.md#line-port): no
+[line-memory contract](../memory/mas.md#line-port): no
 transaction outstanding, a master valid, none accepted. A controller with
 more than one outstanding transaction must supply it directly.
 
@@ -349,7 +352,7 @@ stack is a priority classifier over `pmon_events_o`, not a counter sum.
 | 77 | MEM_MASTER_WAIT | clocks | platform | Any line master valid without `ready` |
 | 78 | BRANCH_PREDICT_TAKEN | occ | core | Slot enters execute predicted taken (92, or a Q101H static/return redirect) |
 | 79 | BRANCH_MISPREDICT | occ | core | Retired transfer that left the fetched path; two refill clocks each |
-| 80 | DCACHE_PREFETCH_ISSUE | occ | platform | Next-line prefetch started ([memory](../memory/spec.md#next-line-prefetch)) |
+| 80 | DCACHE_PREFETCH_ISSUE | occ | platform | Next-line prefetch started ([memory](../memory/mas.md#next-line-prefetch)) |
 | 81 | DCACHE_PREFETCH_USEFUL | occ | platform | Miss refilled from the prefetch buffer |
 | 82 | DCACHE_PREFETCH_DROP | lines | platform | Prefetched line dropped unused (failed, replaced, written back, cleared) |
 | 83 | IFETCH_PREDICT_BUBBLE | clocks | core | IFETCH_WAIT the clock after a Q101H redirect not followed by a mispredict |

@@ -2,7 +2,7 @@
 #define N2D_PMON_H
 
 /* Bare-metal accessor for the nand2doom machine-mode performance monitor.
- * The CSR layout and event IDs are owned by wiki/src/nand2doom/rtl/core/spec.md
+ * The CSR layout and event IDs are owned by wiki/src/nand2doom/rtl/core/mas.md
  * ("Performance monitor"). Counters 3..6 are programmable; mcycle and
  * minstret are the fixed CY and IR counters. */
 

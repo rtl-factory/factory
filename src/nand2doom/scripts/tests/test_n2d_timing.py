@@ -133,7 +133,7 @@ class TimingTests(unittest.TestCase):
 
     def test_mas_table_rows_match_their_headers(self):
         # GFM splits table cells on every unescaped pipe, inside backticks too.
-        mas = (ROOT / "wiki/src/nand2doom/fpga/spec.md").read_text().splitlines()
+        mas = (ROOT / "wiki/src/nand2doom/fpga/de10_lite/board-spec.md").read_text().splitlines()
         width = None
         for line in mas:
             if not line.startswith("|"):
@@ -146,7 +146,7 @@ class TimingTests(unittest.TestCase):
     def test_mas_tables_render_code_cells(self):
         if MarkdownIt is None:
             self.skipTest("markdown-it-py is not installed")
-        mas = (ROOT / "wiki/src/nand2doom/fpga/spec.md").read_text()
+        mas = (ROOT / "wiki/src/nand2doom/fpga/de10_lite/board-spec.md").read_text()
         rendered = MarkdownIt().enable("table").render(mas)
         self.assertIn("<td>C. SDRAM DQ read capture</td>\n"
                       "<td><code>DRAM_DQ</code> input (7 ns external delay after inverted "

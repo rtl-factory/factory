@@ -4,7 +4,7 @@
 // counters (mhpmcounter3..6 and their high halves), their event selectors
 // (mhpmevent3..6) and mcountinhibit. The CSR layout and the event ID scheme
 // follow the nand2linux PMON; the event table is owned by
-// wiki/src/nand2doom/rtl/core/spec.md ("Performance monitor").
+// wiki/src/nand2doom/rtl/core/mas.md ("Performance monitor").
 //
 // events_i carries one combinational occurrence bit per event ID. Each
 // counter registers its selected, non-inhibited event in a pending bit and

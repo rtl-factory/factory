@@ -81,7 +81,7 @@ def compiler_flags(root: Path, output: Path) -> list[str]:
 def image_commands(
     root: Path, output: Path, gcc: str, objcopy: str
 ) -> tuple[tuple[str, ...], ...]:
-    source = Path("src/nand2doom/sw")
+    source = Path("src/nand2doom/sw/runtime")
     try:
         output_path = output.resolve().relative_to(root.resolve())
     except ValueError as error:

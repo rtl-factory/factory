@@ -4,20 +4,22 @@ Bare-metal Doom on our own RV32IM CPU: a six-stage pipelined core with I and D c
 
 ## Pages
 
-Each page sits at the wiki path that mirrors its code ([repository layout](../../bkm/workflow/repo-layout.md)).
+Each page sits at the wiki path that mirrors its code ([repository layout](../../bkm/workflow/repo-layout.md)). The [HAS](rtl/has.md) owns the block decomposition, address map, clocks and resets, the composition of `n2d_system` and the reuse boundaries with `common`.
 
 | Block | Spec | Verification plan | Code |
 |---|---|---|---|
-| Core | [spec](rtl/core/spec.md) | [plan](dv/core/plan.md) | `rtl/core/`, `dv/core/` |
-| Memory | [spec](rtl/memory/spec.md) | [plan](dv/memory/plan.md) | `rtl/memory/`, `dv/memory/` |
-| Video | [spec](rtl/video/spec.md) | [plan](dv/video/plan.md) | `rtl/video/`, `dv/video/` |
-| I/O | [spec](rtl/io/spec.md) | [plan](dv/io/plan.md) | `rtl/io/`, `dv/io/` |
-| Platform | [spec](rtl/platform/spec.md) | [plan](dv/platform/plan.md) | `rtl/platform/`, `dv/platform/` |
-| FPGA (both boards) | [spec](fpga/spec.md) | [plan](dv/fpga/plan.md) | `fpga/de10_lite/`, `fpga/de2_115/`, `dv/fpga/` |
-| Software | [spec](sw/spec.md) | [plan](dv/software/plan.md) | `sw/`, `dv/software/` |
+| Platform (`n2d_system`) | [HAS](rtl/has.md) | [DV plan](dv/platform/dv-plan.md) | `rtl/platform/`, `dv/platform/` |
+| Core | [MAS](rtl/core/mas.md) | [DV plan](dv/core/dv-plan.md) | `rtl/core/`, `dv/core/` |
+| Memory | [MAS](rtl/memory/mas.md) | [DV plan](dv/memory/dv-plan.md) | `rtl/memory/`, `dv/memory/` |
+| Video | [MAS](rtl/video/mas.md) | [DV plan](dv/video/dv-plan.md) | `rtl/video/`, `dv/video/` |
+| I/O | [MAS](rtl/io/mas.md) | [DV plan](dv/io/dv-plan.md) | `rtl/io/`, `dv/io/` |
+| DE10-Lite board (and the contracts both boards share) | [board spec](fpga/de10_lite/board-spec.md) | [DV plan](dv/fpga/dv-plan.md) | `fpga/de10_lite/`, `dv/fpga/` |
+| DE2-115 board | [board spec](fpga/de2_115/board-spec.md) | [DV plan](dv/fpga/dv-plan.md) | `fpga/de2_115/`, `dv/fpga/` |
+| Runtime and validation image | [PRD](sw/runtime/prd.md), [spec](sw/runtime/spec.md) | [DV plan](dv/software/dv-plan.md) | `sw/runtime/`, `dv/software/` |
+| Doom port | [PRD](sw/doom/prd.md), [spec](sw/doom/spec.md) | [DV plan](dv/software/dv-plan.md) | `sw/doom/`, `sw/third_party/`, `dv/software/` |
 | Scripts | [scripts](scripts/README.md) | | `scripts/` |
 
-The block pages came over as they were in nand2anything, with paths rewritten to this layout; links to pages that were not ported (the shared RISC-V ownership page, the performance studies, the RTL diagram, the `common` block specs) point at nand2anything.
+The pages came over from nand2anything (its per-area HAS and DV pages and tool specs), with paths rewritten to this layout; links to pages that were not ported (the shared RISC-V ownership page, the build specification, the performance studies, the RTL diagram, the `common` block specs) point at nand2anything.
 
 ## Layout
 
@@ -30,7 +32,7 @@ The block pages came over as they were in nand2anything, with paths rewritten to
 | `rtl/platform/` | `n2d_system` (the product top shared by both boards), `n2d_pkg`, `n2d_types_pkg`, `n2d_debug_device_line_bridge`, `n2d_pmon_platform_events`. |
 | `fpga/de10_lite/`, `fpga/de2_115/` | Each board's top, its Intel and portable clock backends, its Quartus settings fragment and SDC. Pins and the source list are in `cfg/n2d_quartus.json` (DE2-115 as overrides under `boards`). |
 | `dv/<block>/` | cocotb tests, models and native harnesses; targets in `cfg/targets.json`. |
-| `sw/` | C runtime, validation program, the Doom platform adaptation and the third-party notices and pinned-input manifest. |
+| `sw/runtime/`, `sw/doom/`, `sw/third_party/` | Software that runs on the design's CPU: the C runtime and validation program, the Doom platform adaptation, and the third-party notices and pinned-input manifest. |
 | `scripts/` | Host scripts: image and Doom builds, UART host, board play and control, capture, performance, Quartus build. |
 
 The ASIC flow (`n2d_asic_soc`, its OpenROAD files and IHP models) stayed in nand2anything, as it did for nand2mario.

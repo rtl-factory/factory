@@ -1,5 +1,5 @@
 // Exact n2d_system composition diagnostics of the common JTAG keyboard
-// endpoint (wiki/src/nand2doom/dv/io/plan.md#jtag-keyboard-input). Listed by every
+// endpoint (wiki/src/nand2doom/dv/io/dv-plan.md#jtag-keyboard-input). Listed by every
 // target that elaborates n2d_system; never by the standalone input fixture.
 // Each endpoint reset synchronizer (system clock and TCK) asserts
 // asynchronously and releases in its own domain: bit0 shifts into bit1 and

@@ -74,7 +74,7 @@ prints before the controls open.
 
 ## Stream load with digest skip
 
-One [stream session](../../rtl/io/spec.md#streaming-load-session)
+One [stream session](../../rtl/io/mas.md#streaming-load-session)
 ([streaming loader](../n2d_uart/spec.md#streaming-load)): Hello, then per
 segment in address order:
 

@@ -12,7 +12,7 @@ module n2d_ps2_keyboard #(
   input  logic [9:0]  inject_event_i,
   // Raw Set-2 byte stream (Virtual JTAG keyboard endpoint): one-cycle offer,
   // accepted only on the edge where ready is high; the producer retries a
-  // refused byte (wiki/src/nand2doom/rtl/io/spec.md#ps2-keyboard-receiver).
+  // refused byte (wiki/src/nand2doom/rtl/io/mas.md#ps2-keyboard-receiver).
   input  logic        scan_inject_valid_i,
   output logic        scan_inject_ready_o,
   input  logic [7:0]  scan_inject_byte_i,

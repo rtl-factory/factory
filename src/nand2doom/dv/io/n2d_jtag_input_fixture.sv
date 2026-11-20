@@ -3,7 +3,7 @@
 // offers host Set-2 bytes to the keyboard's scan-inject port beside the
 // physical PS/2 pins, the UART input-event producer port and the CPU MMIO
 // channel. The test drives the endpoint's neutral scan ports directly and
-// observes the offer link (wiki/src/nand2doom/dv/io/plan.md).
+// observes the offer link (wiki/src/nand2doom/dv/io/dv-plan.md).
 module n2d_jtag_input_fixture (
     input  logic        clk_i,
     input  logic        reset_i,

@@ -13,7 +13,7 @@ and publication.
 ## Format
 
 `n2d_frame_decode.py` is a
-pure API with a small CLI. The [video HAS](../../rtl/video/spec.md#framebuffer-and-palette)
+pure API with a small CLI. The [video HAS](../../rtl/video/mas.md#framebuffer-and-palette)
 owns the format: 320x200, one row-major index byte per pixel (exactly 64,000
 bytes, no reserved tail), 256 little-endian uint32 palette entries (exactly
 1,024 bytes) with only the low 12 bits (RGB444) set. Expansion: `R = ((word >>

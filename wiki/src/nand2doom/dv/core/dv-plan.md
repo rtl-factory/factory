@@ -1,5 +1,8 @@
 # nand2doom RV32IM core verification
 
+!!! note "Ported, not yet in the standard template"
+    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
+
 <!-- wiki-budget: exact per-program PMON prediction counts are the regression oracle and must stay with their programs -->
 
 ## Strategy
@@ -114,7 +117,7 @@ sweep.
 ### PMON
 
 CSR reads are compared with values derived from the
-[HAS rules](../../rtl/core/spec.md#performance-monitor):
+[HAS rules](../../rtl/core/mas.md#performance-monitor):
 
 - selector legalization on all four selectors; `mcountinhibit` mask `0x7d`;
   legal IDs 94..97 with ten input pulses each, ID 98 rejected;
@@ -182,7 +185,7 @@ transaction model.
 ## Production comparison
 
 Performance-affecting core changes run the
-[native performance harness](../platform/plan.md#native-performance-harness)
+[native performance harness](../platform/dv-plan.md#native-performance-harness)
 sequentially at base and head with identical image, ELF and capture identity:
 
 ```sh

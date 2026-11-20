@@ -1,62 +1,9 @@
-# nand2doom software architecture
+# nand2doom Doom port: spec
 
-Freestanding little-endian RV32IM `ilp32` software: the owned runtime and
-validation image, and the pinned DoomGeneric port with its platform adapter,
-clock, keyboard map, direct framebuffer rendering, engine adaptations and
-capture mailbox. The [build specification](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/tools/build/SPEC.md) owns
-toolchain names and build recipes; the [DV plan](../dv/software/plan.md) owns verification.
+!!! note "Ported, not yet in the standard template"
+    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
 
-<!-- wiki-budget: the Doom platform contract spans the runtime, clock, keymap, direct rendering, engine adaptations and the capture mailbox ABI that host tools read -->
-
-## Requirements
-
-| ID | Requirement |
-| --- | --- |
-| SW-R1 | Flags `-march=rv32im -mabi=ilp32 -O2 -ffreestanding`; no host runtime or syscall ABI. |
-| SW-R2 | Startup sets the stack, global pointer when needed, copies data, zeroes BSS, then calls `main`. Framebuffer and MMIO windows are never RAM. |
-| SW-R3 | Every image has a manifest: architecture, ABI, entry, load segments, lengths, SHA-256, memory-map revision, completion marker. Harness preload and serial UART load of the same segments are separate evidence. |
-| SW-R4 | The runtime supplies only what the Doom port needs: startup, memory primitives, SDRAM heap, monotonic ticks, keyboard polling, framebuffer/palette access, completion/failure markers, a read-only game-data view. No filesystem, processes, VM, dynamic linking, sockets, audio or OS. |
-| SW-R5 | Engine adaptations never change a pixel or game state at matching time; each patch checks its pinned seam and count, is idempotent and fails the build on an ambiguous or modified seam. |
-| SW-R6 | Upstream archives, WAD data, libc packages and generated firmware are never committed; missing optional game data skips the opt-in Doom run. |
-| SW-R7 | Production firmware uses the cycle tick; only verification variants change the time source. |
-
-## Runtime and validation image
-
-| Path | Responsibility |
-| --- | --- |
-| `crt0.S` | Reset stack, initialized-data copy, BSS clear, and `main` entry. |
-| `n2d_runtime.ld` | SDRAM load/run addresses, heap, stack, and overlap assertions. |
-| `runtime.c` | Byte-exact memory primitives and a 16-byte-aligned bounded bump allocator (null on exhaustion; no free). |
-| `n2d_pmon.h` | Header-only access to the machine-mode [performance monitor](../rtl/core/spec.md#performance-monitor): event IDs, counter configuration, 64-bit reads and a stopped-group snapshot. |
-| `validation.c` | Owned ABI, RV32M, memory, and indexed-framebuffer acceptance workload. |
-| [`doom/`](https://github.com/amichai-bd/nand2anything/blob/aeebe92/src/nand2doom/sw/doom) | Actual-Doom startup/link layout, fixed-memory WAD, platform callbacks, and fail-closed host calls. |
-
-`n2d_image.py` builds the
-validation image with `riscv64-unknown-elf-gcc` and
-`-march=rv32im -mabi=ilp32 -O2 -ffreestanding -fno-builtin`, no PIC,
-relaxation, hosted startup or libraries, deterministic object names:
-
-```text
-python3 src/nand2doom/scripts/n2d_image.py --output workdir/software/n2d_validation
-```
-
-Outputs `n2d_validation.elf`, `.bin`, `.map` and `manifest.json` under
-`workdir/`. Layout: text at `0x0000_0000`, data run address `0x0000_8000`
-with a compact load image, heap from the end of BSS through `0x000e_ffff`,
-stack at `0x0010_0000`, completion marker at `0x0000_4000`. Startup copies and
-clears byte by byte; the link ends data and BSS at odd addresses with one-byte
-guards that the signature checks.
-
-The program makes non-inlined calls, reads copied data, observes zeroed BSS,
-moves heap data, and uses volatile operands so GCC emits multiply, divide and
-remainder. It writes all 64,000 framebuffer bytes as words in the pattern
-`(3*x + 5*y) & 0xff`, programs 256 RGB444 palette entries with a frame commit,
-and consumes a PS/2 make/release pair then the same pair by UART through one
-translator: their digest is signature word nine, the first make keeps its
-pixel-zero effect, and word ten proves identity and tick reads. It writes nine
-result words plus completion `0xd00d0035` at `0x0000_4000` (last), then the
-same marker to system MMIO `0x2000_0004`, and spins in one resident cache line
-with no device request.
+How the Doom port meets its [requirements](prd.md), on the [runtime](../runtime/spec.md).
 
 ## Doom source and assets
 
@@ -101,7 +48,7 @@ Local adapters (platform, capture, startup, clock, memory, identity) stay
 `-Os` outside LTO; the mailbox stays a 1,120-byte aligned BSS symbol and its
 identity a 32-byte read-only symbol (post-link checks). Options enter the
 pre-link identity and manifest. At fixed game time `-O2`+LTO and `-Os` draw
-identical frames ([DV](../dv/software/plan.md#engine-compiler-profile-acceptance)); production
+identical frames ([DV](../../dv/software/dv-plan.md#engine-compiler-profile-acceptance)); production
 time follows the cycle clock, so faster images reach different tics.
 
 ## Doom platform contract
@@ -109,7 +56,7 @@ time follows the cycle clock, so faster images reach different tics.
 ### Direct framebuffer rendering
 
 The engine uses `CMAP256` at 320x200 and draws directly into the back
-[framebuffer bank](../rtl/video/spec.md#framebuffer-and-palette). `n2d_doom.py`
+[framebuffer bank](../../rtl/video/mas.md#framebuffer-and-palette). `n2d_doom.py`
 patches the extracted engine:
 
 - `doomgeneric.c`: `DG_ScreenBuffer` is the back window `0x1000_0000`.
@@ -221,7 +168,7 @@ with one adjacent marker. Measurements and audit:
 
 `src/nand2doom/sw/doom/keymap.h`: `DG_GetKey` pops
 one `{extended, break, scan_code}` event from the
-[input FIFO](../rtl/io/spec.md#ps2-keyboard-receiver), looks up
+[input FIFO](../../rtl/io/mas.md#ps2-keyboard-receiver), looks up
 `{extended, scan_code}` in a 512-entry static byte table (plain, then `E0`),
 reports press when break is clear, and consumes and ignores zero entries.
 Values are the pinned `doomkeys.h` constants and lowercase ASCII.
@@ -242,7 +189,7 @@ Values are the pinned `doomkeys.h` constants and lowercase ASCII.
 | `a`-`z` | standard Set-2 letter codes | `'a'`-`'z'` | Y/N prompts, automap f/g/m/c, cheats |
 
 Other E0 keys, including multimedia keys sharing a letter's low byte, map to
-nothing. Every [local control](../scripts/n2d_control/spec.md) action has
+nothing. Every [local control](../../scripts/n2d_control/spec.md) action has
 a nonzero entry.
 
 ## Deterministic-time verification build
@@ -274,7 +221,7 @@ inputs.
 
 Input arrival is set by the test bench, so frames after injected input stay
 timing dependent; the cocotb gate accepts post-input gameplay on
-[playability](../dv/software/plan.md#actual-doom-selectable-gate).
+[playability](../../dv/software/dv-plan.md#actual-doom-selectable-gate).
 
 ## Coherent capture
 
@@ -287,9 +234,9 @@ stores, settles the bank, waits two VGA sequence increments and publishes
 READY sequence last, then permits no tick, framebuffer write, palette upload
 or commit until release, while still sampling the clock. Only a successful
 maintained Halt makes cached mailbox writes durable and host writes visible on
-resume. The [host SPEC](../scripts/n2d_capture/spec.md) owns deadlines,
+resume. The [host SPEC](../../scripts/n2d_capture/spec.md) owns deadlines,
 continuity, provenance and the
-[identity and addresses](../scripts/n2d_capture/spec.md#identity-and-exact-addresses).
+[identity and addresses](../../scripts/n2d_capture/spec.md#identity-and-exact-addresses).
 
 ### Capture mailbox
 

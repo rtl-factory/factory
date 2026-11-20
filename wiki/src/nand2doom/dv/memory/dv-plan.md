@@ -1,5 +1,8 @@
 # nand2doom memory verification
 
+!!! note "Ported, not yet in the standard template"
+    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
+
 ## Strategy
 
 All targets are cocotb 2.1.0 on Verilator at 25 MHz with logs under
@@ -10,7 +13,7 @@ All targets are cocotb 2.1.0 on Verilator at 25 MHz with logs under
 | `cache_model.py` | Two or four ways over an independent byte array: set, tag, word, invalid-first then tree pseudo-LRU, writeback, refill, byte merge, maintenance. |
 | Line responders | Deterministic or seeded random readiness and two- to six-edge latency; check held payloads; record every line transaction. |
 | `cache_driver.py` | `run_stream`: one-outstanding pipelined requester presenting the next request on the response cycle, seeded gaps, records accept-to-response edges; every oracle hit must take one edge. |
-| `sdram_pin_model.py` | Independent x16 pin model from the [address map and command rules](../../rtl/memory/spec.md#sdram-controller); reused by `n2d_halt_sdram` and both board targets. |
+| `sdram_pin_model.py` | Independent x16 pin model from the [address map and command rules](../../rtl/memory/mas.md#sdram-controller); reused by `n2d_halt_sdram` and both board targets. |
 
 ## Targets
 
@@ -38,10 +41,10 @@ All targets are cocotb 2.1.0 on Verilator at 25 MHz with logs under
 | Prefetch | `n2d_dcache_prefetch` | See [prefetch](#prefetch). |
 | Composition | `n2d_cached_rv32im` | Factorial-five with `MUL` plus seven stores 127 at `0x80`, loaded twice from one allocated line; I and D hits and misses required; maintenance writes the signature to memory; one-edge completions equal each cache's hit events. |
 | MEM-R6 | `n2d_memory_fast` | Three continuously active masters, six lines each with readback, partial-line write, ownership and bounded progress; a D read marked prefetch loses to every demand regardless of pointer and is granted alone. |
-| MEM-R7 | `n2d_debug_memory`; `n2d_uart_debug_memory` ([I/O DV](../io/plan.md)) | Two staged writes visible only after commit; a later abort keeps both originals; byte-mask placement; serial second-publication failure with reverse rollback and retained grant. |
+| MEM-R7 | `n2d_debug_memory`; `n2d_uart_debug_memory` ([I/O DV](../io/dv-plan.md)) | Two staged writes visible only after commit; a later abort keeps both originals; byte-mask placement; serial second-publication failure with reverse rollback and retained grant. |
 | MEM-R8 | `n2d_sdram_controller` | See [SDRAM](#sdram). |
-| MEM-R9 | `n2d_halt_sdram`, `n2d_halt_boundaries` | Owned by the [I/O DV](../io/plan.md#test-map). |
-| Board capture | `n2d_sdram_board_timing`, board targets ([FPGA DV](../fpga/plan.md)) | See [SDRAM](#sdram). |
+| MEM-R9 | `n2d_halt_sdram`, `n2d_halt_boundaries` | Owned by the [I/O DV](../io/dv-plan.md#test-map). |
+| Board capture | `n2d_sdram_board_timing`, board targets ([FPGA DV](../fpga/dv-plan.md)) | See [SDRAM](#sdram). |
 
 ### Prefetch
 

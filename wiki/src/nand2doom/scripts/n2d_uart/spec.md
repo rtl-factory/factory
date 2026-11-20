@@ -3,10 +3,10 @@
 A small native Windows or POSIX Python CLI and client for the N2D1 debug
 endpoint: status, halt, bounded memory inspection and modification, image
 loading, entry selection, explicit resume and Set-2 input. The
-[wire protocol](../../rtl/io/spec.md#version-1-wire-protocol), its
-[bulk extension](../../rtl/io/spec.md#bulk-wire-extension) and
-[streaming session](../../rtl/io/spec.md#streaming-load-session), and
-the [image/asset contract](../../sw/spec.md) are
+[wire protocol](../../rtl/io/mas.md#version-1-wire-protocol), its
+[bulk extension](../../rtl/io/mas.md#bulk-wire-extension) and
+[streaming session](../../rtl/io/mas.md#streaming-load-session), and
+the [image/asset contract](../../sw/doom/spec.md) are
 authoritative. Every argument and manifest byte is validated before opening a
 port; help and dry run need neither pyserial nor hardware; live use names a port
 explicitly and verifies N2D1 identity before any mutation (the operator
@@ -47,7 +47,7 @@ python src/nand2doom/scripts/n2d_uart.py --baud de2_115 --dry-run load workdir/s
 
 | Option | Contract |
 | --- | --- |
-| `--port` | Required live; no default, enumeration or trial writes. Board identity per the [FPGA contract](../../fpga/spec.md); a different protocol is never probed. |
+| `--port` | Required live; no default, enumeration or trial writes. Board identity per the [FPGA contract](../../fpga/de10_lite/board-spec.md); a different protocol is never probed. |
 | `--baud` | The image's link rate: integer or `uart.json` `board_baudrates` name (`de10_lite` 1,000,000; `de2_115` 3,000,000, the FT232R maximum); default `baudrate` 1 Mbaud. `n2d_capture.py` and `n2d_control.py` take the same option and pass it to the shared `open_serial`. |
 | `--timeout` | 0.01..60 s (default 1) for request write plus response read. |
 | `--budget` | Whole operation 1800 s default (finite, ≥ one timeout, ≤ 86400), from after open including the identity check. |
@@ -73,7 +73,7 @@ resynchronization or flushing; sequences wrap modulo 256 within a session (no
 cross-invocation replay guard). Any failure poisons the client: no further
 command or retry. The 65,536-clock Halt allowance is 2.62144 ms, within the 1 s
 timeout; a Halt timeout may leave the CPU stopped with maintenance active, and
-the [Halt contract](../../rtl/memory/spec.md#maintained-halt-bound)
+the [Halt contract](../../rtl/memory/mas.md#maintained-halt-bound)
 authorizes no retry, reset, Resume or capture reuse.
 
 **Bulk API.** `Client.capabilities()` sends the non-mutating query once and
@@ -150,7 +150,7 @@ python tools/build/build.py test n2d_uart_stream --verilator VERILATOR_PATH --se
 | `test_n2d_uart.py` | Fragmenting transport and fake memory: every command, identity gating, sequence wrap, CRC/header/count/status failures, deadlines, short writes and reads, no retries, handle cleanup, pre-open rejection, both manifest formats, Doom metadata and asset validation, multiple segments, all tail lengths, sentinels, explicit resume, failed-load stop; help and dry run without site packages. |
 | `test_n2d_uart_stream.py` | Independent in-order device model with fragmented reads and fake clock: frame alignment and coverage, command order, a silently dropped frame, checksum reply, lost reply, reply noise, memory status, lost final reply (window timeout), protocol rejection, retry bound, digest mismatch, wrong identity, malformed frames and replies, chained digest identity, the Doom wire-time model, dry-run plan, live CLI through an injected opener, `--baud` parsing and delivery to `n2d_control` and `n2d_capture`. |
 
-The Verilator targets keep the serial-pin [DV contract](../../dv/io/plan.md);
+The Verilator targets keep the serial-pin [DV contract](../../dv/io/dv-plan.md);
 mocks and Verilator are not physical Windows/USB/FPGA acceptance.
 Provenance: the bulk design inspected (read-only, nothing copied) the owner's
 Linux baseline `tools/fpga/n2l_uart_load.py` at

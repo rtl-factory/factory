@@ -1,13 +1,16 @@
 # nand2doom host-debug and input architecture
 
+!!! note "Ported, not yet in the standard template"
+    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
+
 Three external transports: one 25 MHz UART endpoint for host control, image
 loading, memory peek/poke and bounded debug; one receive-only PS/2 Set-2
 keyboard; and a host keyboard over the USB-Blaster Virtual JTAG cable. PS/2,
 UART `CMD_INPUT`, CPU INJECT and JTAG all produce the same ten-bit Set-2 event
 in one eight-entry FIFO. No path changes the ISA; the
-[platform](../platform/spec.md#address-map) owns address decode. The
+[platform](../has.md#address-map) owns address decode. The
 [host CLI](../../scripts/n2d_uart/spec.md) owns serial transport, identity
-gating, manifest validation and acknowledged loading; the [DV plan](../../dv/io/plan.md)
+gating, manifest validation and acknowledged loading; the [DV plan](../../dv/io/dv-plan.md)
 owns verification.
 
 <!-- wiki-budget: three wire protocols (version 1, bulk, stream), the common endpoint adoption, their bounds and the input arbitration are register-level contracts for RTL and host tools -->
@@ -25,7 +28,7 @@ owns verification.
 | IO-R7 | [Bulk](#bulk-wire-extension) packets commit as ascending atomic eight-word transactions; any failure quarantines until hardware reset. |
 | IO-R8 | [Stream](#streaming-load-session) loads resynchronize, accept idempotent resends and digest stored memory. |
 | IO-R9 | Every input source produces `{extended, break, scan_code}` in one FIFO with fixed priority; UART, CPU INJECT and JTAG input are never silently lost. |
-| IO-R10 | Host tools refuse game assets without the manifest and provenance of the [software policy](../../sw/spec.md#doom-source-and-assets). |
+| IO-R10 | Host tools refuse game assets without the manifest and provenance of the [software policy](../../sw/doom/spec.md#doom-source-and-assets). |
 | IO-R11 | The common [UART memory endpoint](#uart-memory-endpoint) loads SDRAM while held and reads the displayed frame and palette while the CPU runs, costing it at most one framebuffer or palette port cycle per 64 clocks. |
 
 ## UART bridge
@@ -113,7 +116,7 @@ internal protocol failure `0x0d` (bulk only).
   are discarded.
 - `OP_TIMEOUT_CYCLES` is 1,024 standalone and 4,096 in the platform.
   `HALT_TIMEOUT_CYCLES` follows it standalone and is **65,536** in the
-  platform ([maintained Halt bound](../memory/spec.md#maintained-halt-bound)).
+  platform ([maintained Halt bound](../memory/mas.md#maintained-halt-bound)).
   Halt expiry returns one timeout and sends nothing later.
 - The platform asserts `cache_maint_done_i` only after both caches'
   maintenance succeeds, retries failures while halted (Peek/Poke/Load get
@@ -304,7 +307,7 @@ hardware reset, as it does the stream.
 | Entry | exactly `0x0000_0000`: the reset vector |
 | Max payload | 4096 bytes |
 | Request gap | 40 ms (`STREAM_GAP_TIMEOUT_CYCLES`) |
-| Hold timeout | `HALT_TIMEOUT_CYCLES`, the [maintained Halt bound](../memory/spec.md#maintained-halt-bound) |
+| Hold timeout | `HALT_TIMEOUT_CYCLES`, the [maintained Halt bound](../memory/mas.md#maintained-halt-bound) |
 | Bus timeout | `OP_TIMEOUT_CYCLES` |
 | Live gap | 64 clocks |
 
@@ -407,7 +410,7 @@ last 64 bits) ([common HAS](https://github.com/amichai-bd/nand2anything/blob/aee
 (`n2d_de10_lite`, `n2d_de2_115`) binds the common `n2a_jtag_virtual`
 (`u_jtag_virtual`) to those ports; the ASIC top passes its own pins and DV
 compositions tie them idle, so the scan domain stays in reset. The SDCs
-constrain the hub TCK and mailbox buses ([FPGA timing](../../fpga/spec.md#constraints)).
+constrain the hub TCK and mailbox buses ([FPGA timing](../../fpga/de10_lite/board-spec.md#constraints)).
 
 ## Files
 

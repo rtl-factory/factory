@@ -40,7 +40,11 @@ module n2d_uart_debug
     logic [7:0] rx_byte, tx_byte, engine_rx_byte, engine_tx_byte;
     logic [7:0] phy_rx_byte, phy_tx_byte;
     logic phy_rx_valid, phy_rx_error, phy_tx_valid, phy_tx_ready;
-    logic ep_owner, ep_hold, ep_release, ep_entry_valid, port_busy;
+    // ep_owner is read only by an assertion, which SYNTHESIS builds compile out.
+    /* verilator lint_off UNUSEDSIGNAL */
+    logic ep_owner;
+    /* verilator lint_on UNUSEDSIGNAL */
+    logic ep_hold, ep_release, ep_entry_valid, port_busy;
     logic ep_req_valid, ep_req_ready, ep_req_write, ep_rsp_valid, ep_rsp_error;
     logic [31:0] ep_entry_addr, ep_req_addr, ep_req_wdata, ep_rsp_rdata;
     n2d_debug_control_t    engine_control;

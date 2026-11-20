@@ -13,7 +13,7 @@ import stat
 import struct
 import sys
 
-# Fixed wire-image format owned by wiki/src/nand2doom/rtl/video/spec.md.
+# Fixed wire-image format owned by wiki/src/nand2doom/rtl/video/mas.md.
 WIDTH, HEIGHT = 320, 200
 INDEX_BYTES = WIDTH * HEIGHT
 PALETTE_BYTES = 256 * 4

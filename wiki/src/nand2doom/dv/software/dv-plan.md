@@ -1,5 +1,8 @@
 # nand2doom software verification
 
+!!! note "Ported, not yet in the standard template"
+    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
+
 <!-- wiki-budget: the opt-in Doom gate's input-witness and playability rules are its acceptance contract -->
 
 ## Strategy
@@ -21,7 +24,7 @@ absent).
 
 | Requirement | Test (seed, bounds) | Checks |
 | --- | --- | --- |
-| SW-R2, R3, validation image | `n2d_c_runtime_system` (35; 1,600,000 cycles) | Every image word by UART `LOAD` in groups of at most eight, each acknowledged; Reset-PC and Resume by wire, no preload; trap-free retirement; I/D hits and misses; every framebuffer byte with CRC-32 vs `(3*x + 5*y) & 0xff`; Halt with maintenance; Peek of signature words one to eight (call/stack, multiply, divide, remainder, odd-sized data and BSS, guards, heap); an injected D-cache writeback error gives Halt timeout and a rejected Peek with no memory request, then retry, Halt and coherent Peek; PS/2 and UART make/release digest in word nine, identity and tick in word ten, Poke/readback. Logs image digest, compiler, retirements, CRC, cache events, simulator, seed, bound. The fast integrated target adds a VGA CRC ([platform DV](../platform/plan.md)). |
+| SW-R2, R3, validation image | `n2d_c_runtime_system` (35; 1,600,000 cycles) | Every image word by UART `LOAD` in groups of at most eight, each acknowledged; Reset-PC and Resume by wire, no preload; trap-free retirement; I/D hits and misses; every framebuffer byte with CRC-32 vs `(3*x + 5*y) & 0xff`; Halt with maintenance; Peek of signature words one to eight (call/stack, multiply, divide, remainder, odd-sized data and BSS, guards, heap); an injected D-cache writeback error gives Halt timeout and a rejected Peek with no memory request, then retry, Halt and coherent Peek; PS/2 and UART make/release digest in word nine, identity and tick in word ten, Poke/readback. Logs image digest, compiler, retirements, CRC, cache events, simulator, seed, bound. The fast integrated target adds a VGA CRC ([platform DV](../platform/dv-plan.md)). |
 | Keyboard map | `test_n2d_doom_keymap.py` | Compiles `keymap.h` with the archive's `doomkeys.h` (SHA-256 checked); probes all 1,024 events against Doom values and the common JTAG host's independent Set-2 table; break equals make; every local-control action maps; Y/N/Tab/weapon bindings; E0 multimedia keys are not letters. |
 | Keyboard in game | `n2d_perf.py --input` | `--input 0x016` gives `DG_GetKey` marker `0xd00d3931`, ticcmd marker `0xd00d4008` and a switch to the fist; `0x016 0x076 0x275 0x05a 0x035` gives markers `0xd00d3931`, `391b`, `39ad`, `390d`, `3979`, Up wrapping to Quit Game, then exit marker `0xd00de000`; no input passes the pinned scene CRCs. These goldens belong to their firmware and script. |
 | Doom time contract | `n2d_doom_clock` (67; 300,000 cycles, 90 s) | Production helper and callbacks at `-Os` on `n2d_rv32im_core` via the public runner with an `N2D_CLOCK_TRACE` timestamp source; results at `0x8000`; only terminal ebreak. `clock_vectors.py` oracle: nonzero init, zero elapsed, 24,999/25,000 cycles, repeated fractions, hardware wrap, >172 s, repeated wraps, `UINT32_MAX` deltas, ms rollover from a seeded state; the old fixed-origin formula agrees before a full period and fails at it; zero, fractional, wrapping and 172 s chunked sleeps with exact timestamp-read counts. A host unit test runs the same C probe as a shared library. |
@@ -77,7 +80,7 @@ the product CPU/cache/device path.
   4-core host. Cycle bounds define acceptance.
 
 Cycle and IPC measurement uses the
-[native performance harness](../platform/plan.md#native-performance-harness).
+[native performance harness](../platform/dv-plan.md#native-performance-harness).
 
 ## Coherent capture
 

@@ -4,7 +4,7 @@ Captures one completed gameplay framebuffer and its matching RGB444 palette
 through the existing N2D1 endpoint, for the sole authorized operator after the
 exact capture-enabled Doom image is loaded. Capture pauses the game; VGA and
 the hardware clock keep running. Firmware side:
-[software HAS](../../sw/spec.md#coherent-capture). Excluded:
+[software HAS](../../sw/doom/spec.md#coherent-capture). Excluded:
 discovery, image loading, CPU reset, programming, palette commits, input,
 cameras, publication, VGA electrical proof and native frame rate; simulation is
 never a physical capture.
@@ -141,5 +141,5 @@ produced here.
 Host byte-transport tests run the production Client: exact addresses and
 counts, fragmentation, initial and foreign state, no sample progress, wrong
 READY, bad palette, header changes, poison without cleanup, healthy deadline
-release. Firmware and public-port RTL coverage: [software DV](../../dv/software/plan.md).
+release. Firmware and public-port RTL coverage: [software DV](../../dv/software/dv-plan.md).
 No mock or Verilator result certifies USB latency or Windows serial behavior.

@@ -1,5 +1,8 @@
 # nand2doom indexed-framebuffer video verification
 
+!!! note "Ported, not yet in the standard template"
+    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
+
 ## Strategy
 
 Verilator and cocotb 2.1.0 at 25 MHz; every test runs in both geometries
@@ -18,7 +21,7 @@ development but never replace the 800x525 gate.
 | VID-R2, R3, R5 | `n2d_framebuffer_vga`, `_half` (128 cycles) | Reset front bank 0, nothing pending, black RGB; full-word and byte back-bank writes with read-first responses, half-width odd-byte drop and read doubling; last active word; zero-reading write-ignoring tail; a write on the front view changes nothing; inactive palette RGB444 write/read ignoring upper bits; commit and swap both pending before blank; a write while pending still targets the back bank. |
 | VID-R1..R5 | `n2d_framebuffer_vga_frame`, `_half_frame` (2,300,000 cycles, 600 s) | See [actual frame](#actual-frame). |
 | VID-R1, R4 | `n2d_framebuffer_vga_vblank`, `_half_vblank` (1,800,000 cycles) | Swap and commit armed together one clock before, on, and one clock after the first blank clock stay pending together and flip on the same edge: one clock later, that clock, one raster later. |
-| System frames | [Platform DV](../platform/plan.md) | Frames are taken at bank swaps; the front bank after a swap is the submitted frame. |
+| System frames | [Platform DV](../platform/dv-plan.md) | Frames are taken at bank swaps; the front bank after a swap is the submitted frame. |
 
 ### Actual frame
 
@@ -42,5 +45,5 @@ development but never replace the 800x525 gate.
 
 ## Gaps
 
-Packing and physical quality: [FPGA plan](../fpga/plan.md); half-width render
-oracle: [native rendering gate](../platform/plan.md#render-verification).
+Packing and physical quality: [FPGA plan](../fpga/dv-plan.md); half-width render
+oracle: [native rendering gate](../platform/dv-plan.md#render-verification).

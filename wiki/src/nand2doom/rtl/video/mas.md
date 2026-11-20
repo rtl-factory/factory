@@ -1,13 +1,16 @@
 # nand2doom indexed-framebuffer video architecture
 
+!!! note "Ported, not yet in the standard template"
+    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
+
 `n2d_framebuffer_vga` presents a double-buffered 320x200 framebuffer of
 eight-bit palette indices (stored at half horizontal resolution on the
 DE10-Lite) and a programmable RGB444 palette, scanned out 2x on a 640x480 VGA
 raster at the 25 MHz system clock. No character cells, glyphs or fonts. The
 common `n2a_vga_timing` block owns only counters and sync timing; this block
 owns geometry, storage, palette, scaling, borders and video control. The
-[platform](../platform/spec.md#address-map) owns the windows; the
-[DV plan](../../dv/video/plan.md) owns verification.
+[platform](../has.md#address-map) owns the windows; the
+[DV plan](../../dv/video/dv-plan.md) owns verification.
 
 ## Requirements
 
@@ -33,7 +36,7 @@ half width a bank keeps only even-x pixels: a write to an odd-x byte is
 dropped, an even-x byte (word bytes 0 and 2, each with its own strobe) stores
 the pixel shown at `x` and `x + 1`, and a read of any byte returns the pixel
 displayed there, so software always sees a doubled 320-wide image. The
-[memory budget](../memory/spec.md#framebuffer-placement) selects half width
+[memory budget](../memory/mas.md#framebuffer-placement) selects half width
 on the DE10-Lite.
 
 ### Interfaces
@@ -42,7 +45,7 @@ on the DE10-Lite.
 | --- | --- | --- |
 | CPU/host framebuffer port | input/output | Word-aligned 16-bit byte offset, 32-bit data, four strobes, front-view select; one response next clock. Writes and ordinary reads use the back bank, read-first; a front-view request reads the scanned bank and never writes. |
 | Bank control | input/output | One-clock swap request pulse; status front bank and swap pending. |
-| Palette port | input/output | Eight-bit index, one response next clock; strobes 0 and 1 update the twelve stored bits, 2 and 3 none; readback names the inactive bank, or the active bank with read-only `palette_request_active_i` (the [UART memory endpoint](../io/spec.md#uart-memory-endpoint) view); `{20'b0, high, low}` defined only while `palette_response_valid_o`. |
+| Palette port | input/output | Eight-bit index, one response next clock; strobes 0 and 1 update the twelve stored bits, 2 and 3 none; readback names the inactive bank, or the active bank with read-only `palette_request_active_i` (the [UART memory endpoint](../io/mas.md#uart-memory-endpoint) view); `{20'b0, high, low}` defined only while `palette_response_valid_o`. |
 | Palette control | input/output | `palette_commit_i` one-clock pulse; status active bank, commit pending, 32-bit frame sequence. |
 | VGA | output | RGB444, active-low HSYNC and VSYNC. |
 | Frame observation | output | Frame-start/end pulses and displayed-frame sequence for DV. |
@@ -61,7 +64,7 @@ Software writes all 256 inactive entries before each commit.
   `g_framebuffer[k].u_scan_ram`, simple-dual-port `n2a_sdp_ram`, both
   16,384x8 ([common contracts](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/memory/HAS.md#same-clock-cycle-model));
   `k` holds bank `k / LANES`, lane `k % LANES`. Sixteen RAMs at full width,
-  eight at half ([packing](../../fpga/spec.md#memory-implementation)).
+  eight at half ([packing](../../fpga/de10_lite/board-spec.md#memory-implementation)).
 - A lane is written for a back-bank write with its strobe set to a live
   word. The registered response selects the bank and lane `i` (full) or
   `i / 2` (half) per byte.

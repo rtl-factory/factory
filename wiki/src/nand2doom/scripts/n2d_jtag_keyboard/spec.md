@@ -10,7 +10,7 @@ proven refused suffix). Only the existing Set-2 format: the
 10-bit events and shared text translation; no new key mapping, discovery,
 programming or UART fallback. Sending needs `--yes` and the bench owner's JTAG
 access (shared with programming and other projects). Simulation evidence:
-[io DV](../../dv/io/plan.md#jtag-keyboard-input); physical evidence is
+[io DV](../../dv/io/dv-plan.md#jtag-keyboard-input); physical evidence is
 a board run.
 
 ## Command line

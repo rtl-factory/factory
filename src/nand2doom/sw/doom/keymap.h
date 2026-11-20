@@ -11,7 +11,7 @@
  * folded to {extended, scan code}; the break bit is the caller's press state.
  * Plain keys use the first 256 entries, E0-prefixed keys the second 256.
  * Zero means "no Doom key": the event is consumed and ignored.
- * Contract: wiki/src/nand2doom/sw/spec.md "Doom keyboard map".
+ * Contract: wiki/src/nand2doom/sw/doom/spec.md "Doom keyboard map".
  */
 #define N2D_KEY_E0 0x100u
 

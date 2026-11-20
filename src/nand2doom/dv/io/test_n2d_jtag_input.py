@@ -5,7 +5,7 @@ Intel hub's late-TDI padding where noted) on a free-running system clock while
 the physical PS/2 pins, the UART input-event port and the CPU MMIO channel run
 concurrently. Events are checked only through the public DATA/STATUS registers
 and the endpoint's wire status; a white-box monitor checks every offer against
-the documented arbitration rule (wiki/src/nand2doom/rtl/io/spec.md)."""
+the documented arbitration rule (wiki/src/nand2doom/rtl/io/mas.md)."""
 from __future__ import annotations
 
 import os
