@@ -6,3 +6,6 @@
 
 # Python bytecode
 __pycache__/
+
+# Scratch output of simulations, Quartus builds and tools
+/workdir/
