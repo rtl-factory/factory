@@ -1773,7 +1773,7 @@
         "CART_ROM_BYTES": 32768,
         "CART_RAM_BYTES": 8192
       },
-      "level": "L0"
+      "level": "manual"
     },
     "n2m_system_ppu_trace": {
       "kind": "cocotb",
