@@ -75,6 +75,10 @@ _Avoid_: feature branch, integration branch
 One hardware design unit, with its code under `src/<type>/<block>/` and its spec under `wiki/src/<type>/<block>/`.
 _Avoid_: module (for this meaning), IP, component
 
+**Vertical slice**:
+An issue that delivers one narrow but complete behaviour, ending in a state a reviewer crewmate can check; for a block, typically spec, RTL and a DV test for one feature.
+_Avoid_: horizontal slice, layer, phase
+
 **Spec**:
 The specification of one block, in `wiki/src/<type>/<block>/`. It changes in the same pull request as the block's code.
 _Avoid_: design doc, documentation (for this meaning)
@@ -82,6 +86,14 @@ _Avoid_: design doc, documentation (for this meaning)
 **Pull request**:
 The GitHub request to merge one branch into another; the only way changes reach `main` or an epic branch.
 _Avoid_: merge request, MR, diff
+
+**Decision trail**:
+The append-only comments on an issue or epic that record each decision point of long or unattended work: decision, why, evidence link, result.
+_Avoid_: log, journal, notes
+
+**Retro**:
+A review of past sessions or a landed epic that traces each mistake or slowdown to its cause in the factory and proposes a fix for each as an issue.
+_Avoid_: postmortem, reflection
 
 **Label**:
 A GitHub label named `kind:value`, defined in `.github/labels.json`. Labels are how work is tracked, grouped on dashboards and checked by agents.

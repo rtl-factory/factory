@@ -9,7 +9,12 @@ BKMs define how work is done here. Find the rows that match what you are doing, 
 |---|---|
 | doing any work on an issue, from alignment to landing, or deciding who may merge | `wiki/bkm/workflow/flow.md` |
 | the first mate: dispatching, supervising and landing crewmates' work | `wiki/bkm/workflow/first-mate.md` |
+| splitting a plan into issues or an epic, or triaging an issue | `wiki/bkm/workflow/issues.md` |
 | opening, labelling or dispatching an issue | `wiki/bkm/workflow/labels.md` |
+| reviewing a pull request as the reviewer crewmate | `wiki/bkm/workflow/review.md` |
+| writing a pull request or a GitHub comment, getting it landable, taking over a stalled one, or landing it | `wiki/bkm/workflow/landing.md` |
+| reporting to a captain, catching one up, resuming after a restart, or keeping a decision trail | `wiki/bkm/workflow/reporting.md` |
+| debugging a failing simulation, formal check, lint, synthesis run, test or tool | `wiki/bkm/debug/debugging.md` |
 | deciding where a check runs, or reading CI results | `wiki/bkm/workflow/ci-levels.md` |
 | configuring or auditing GitHub repository settings | `wiki/bkm/workflow/github-settings.md` |
 | stress-testing a plan or decision with a captain | `wiki/bkm/design/grilling.md`, with `wiki/bkm/design/domain-modeling.md` |
@@ -19,6 +24,7 @@ BKMs define how work is done here. Find the rows that match what you are doing, 
 | writing or changing a BKM | `wiki/bkm/writing/writing-bkms.md` |
 | writing anything an agent reads (BKM, skill, `AGENTS.md`) | `wiki/bkm/writing/writing-for-agents.md` |
 | writing or changing a skill | `wiki/bkm/writing/skill-mechanics.md` |
+| running a retro after a session or landed epic, or after a captain corrects an agent | `wiki/bkm/writing/improving-bkms.md` |
 
 ## Principles
 
@@ -40,7 +46,7 @@ Engineering principles, one per file. Follow each one whose trigger matches what
 - `wiki/bkm/principles/model-the-domain.md`: Apply when writing stateful logic, or when code branches a lot or repeats a shape assumption across files.
 - `wiki/bkm/principles/never-block-on-the-human.md`: Apply when tempted to ask 'should I do X?' on reversible work.
 - `wiki/bkm/principles/outcome-oriented-execution.md`: Apply during planned rewrites and migrations with explicit phase boundaries.
-- `wiki/bkm/principles/prove-it-works.md`: Apply after completing a task, before declaring done.
+- `wiki/bkm/principles/prove-it-works.md`: Apply after completing a piece of work, before declaring done.
 - `wiki/bkm/principles/redesign-from-first-principles.md`: Apply when integrating a new requirement into an existing design.
 - `wiki/bkm/principles/separate-before-serializing-shared-state.md`: Apply when concurrent actors might write to the same file, branch, key, or state object.
 - `wiki/bkm/principles/sequence-verifiable-units.md`: Apply to multi-step work (sweeps, migrations, runs of similar edits) and to how you stack commits and PRs.
@@ -50,4 +56,4 @@ Engineering principles, one per file. Follow each one whose trigger matches what
 
 ## Not yet written
 
-No BKMs yet for architecture, RTL, DV, FV, synthesis or debugging. They will live in `wiki/bkm/{arch,rtl,dv,fv,syn,debug}/`; topic issues #32–#42 track them.
+No BKMs yet for planning, architecture, RTL, DV, FV or synthesis. They will live in `wiki/bkm/design/` and `wiki/bkm/{arch,rtl,dv,fv,syn}/`; open topic issues track them.

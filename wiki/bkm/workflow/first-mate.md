@@ -16,7 +16,7 @@ How the first mate turns a captain's intent into landed work through crewmates. 
 - Give each crewmate exactly one issue, its own worktree and its own issue branch. Why: parallel crewmates never collide.
 - Dispatch every `status:ready` issue whose blockers are closed at once; serialize only on a real "blocked by" link, not because two issues touch the same files. Why: parallelism is the point of a crew.
 - Crewmates must not dispatch crewmates. Why: every layer between the captain and the work loses fidelity.
-- A crewmate must not review its own work; dispatch a reviewer crewmate with a fresh context. Why: the implementer is the worst judge of its own blind spots.
+- A crewmate must not review its own work; dispatch a reviewer crewmate with a fresh context. Why: the author is the worst judge of its own blind spots.
 - Keep every durable fact on GitHub: crewmates report to you directly and also comment on their issue and pull request. Why: a restart of any session loses nothing.
 - Treat a report, diagnosis or recommendation as evidence, not as authorization. Why: only a captain grants authority, and only explicitly.
 - Never discard unmerged work. Why: a crewmate's commits may be the only copy.
