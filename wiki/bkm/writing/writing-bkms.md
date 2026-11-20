@@ -14,7 +14,7 @@ How to write and change a BKM so an agent follows it predictably and a captain c
 - Follow each rule with one line of *why*.
 - Use **must** for gates (enforced by CI or review) and **should** for defaults (deviate only with a stated reason).
 - Use the terms in `wiki/project/GLOSSARY.md`.
-- Put the BKM in the `wiki/bkm/` subdirectory for its kind of work, never directly in `wiki/bkm/`, and add a line for it to that directory's `README.md` index. The index line is what routes an agent to the BKM, so word it as the situation that calls for it.
+- Put the BKM in the `wiki/bkm/` subdirectory for its kind of work, never directly in `wiki/bkm/`, and add a row for it to the `bkm-router` skill. The row is what routes an agent to the BKM, so word it as the situation that calls for it.
 - Keep method in BKMs, never in skills. Skills only route here (ADR 0002).
 - Start the file with front matter: `status: draft | active`, plus `upstream:` (source path and commit) when the BKM is adapted from outside.
 - Give every BKM this shape: a title, a one-line purpose, then **Rules** and/or **Steps**, then **Exit criteria** when the BKM ends in finished work. Add other sections only when they earn their place. BKMs copied from upstream keep their own shape.

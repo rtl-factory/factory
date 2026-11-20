@@ -1,13 +1,15 @@
 # BKMs
 
-Best Known Methods: how work is done in the factory. Agents follow them; humans tune them. Each directory has a `README.md` index that says when to use each BKM in it. Read the index of the directory that matches your work, then the BKM it points to.
+Best Known Methods: how work is done in the factory. Agents follow them; captains tune them.
 
-| Directory | Use it when you are |
+The list of every BKM and when to follow it lives in the `bkm-router` skill (`.claude/skills/bkm-router/SKILL.md`), so agents always have it in context. Add a row there whenever you add a BKM.
+
+| Directory | Holds |
 |---|---|
-| [workflow/](workflow/README.md) | moving work through issues, branches, pull requests and CI |
-| [design/](design/README.md) | deciding what to build: grilling a plan, sharpening terms, recording decisions |
-| [writing/](writing/README.md) | writing a BKM, a skill, `AGENTS.md`, or any document an agent will follow |
+| `workflow/` | how work moves: the flow, the first mate, CI levels, GitHub settings |
+| `design/` | deciding what to build: grilling, domain modeling, glossary and ADR formats |
+| `writing/` | writing BKMs, skills and anything else an agent reads |
 
-Planned, created when their first BKM is written: `arch/`, `rtl/`, `dv/`, `fv/`, `syn/` (one per work type, mirroring `src/`).
+Planned, created with their first BKM: `arch/`, `rtl/`, `dv/`, `fv/`, `syn/`.
 
-Some BKMs are adapted from [mattpocock/skills](https://github.com/mattpocock/skills) under the MIT license (`LICENSE-mattpocock-skills`). Their front matter names the upstream file and commit, so updates can be pulled by hand.
+Some BKMs are adapted from outside sources under the MIT license; their front matter names the upstream file and commit. See `LICENSE-mattpocock-skills`.

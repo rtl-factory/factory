@@ -1,3 +1,3 @@
-# Code owners: a pull request into main needs approval from one of them (wiki/bkm/workflow/github-settings.md).
-# A pull request author's own approval never counts, so the other captain approves.
+# Code owners: GitHub requests their review on every pull request (wiki/bkm/workflow/github-settings.md).
+# Their review is not required; approval is a step in wiki/bkm/workflow/flow.md (ADR 0007).
 * @amichai-bd @partomer

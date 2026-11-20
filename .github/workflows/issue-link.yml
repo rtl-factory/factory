@@ -1,4 +1,4 @@
-# L0 gate: every pull request must close an issue (wiki/bkm/workflow/issues-and-branches.md).
+# L0 gate: every pull request must close an issue (wiki/bkm/workflow/flow.md).
 name: issue-link
 
 on:
