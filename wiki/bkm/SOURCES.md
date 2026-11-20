@@ -26,6 +26,7 @@ Which topic sources each BKM used, and why the others were rejected, is recorded
 | `debug/debugging.md` | topic #38; sources used in its front matter |
 | `writing/improving-bkms.md` | topic #41; sources used in its front matter |
 | `workflow/first-mate.md` (orchestration) | topic #34; sources used in its front matter |
+| `design/planning.md` | topic #32; sources used in its front matter |
 
 ## Topics in progress
 
@@ -33,7 +34,6 @@ Each topic is one issue that produces one BKM from all the sources listed.
 
 | Topic | Issue | BKM | Sources |
 |---|---|---|---|
-| Planning and specs | #32 | `design/planning.md` | SRE `to-spec`, SRE `wayfinder`, SRE `loop-me`, SRE `to-questionnaire`, SRE `prototype`, pstack `architect`, pstack `sharpen`, pstack `in-your-own-words`, pstack `figure-it-out`, pstack `multi-phase-plan`, pstack `prototype` |
 | Verification, testing and measurement | #39 | `dv/ and fv/` | SRE `tdd`, pstack `tdd`, pstack `create-verification-skill`, pstack `maintain-verification-skill`, pstack `create-formal-verification-skill`, pstack `maintain-formal-verification-skill`, pstack `statechart`, pstack `benchmark-checklist`, pstack `perf-issue`, pstack `eval`, pstack `hillclimb` |
 | Architecture and design of blocks | #40 | `arch/` | SRE `codebase-design`, SRE `improve-codebase-architecture`, pstack `how`, pstack `why`, pstack `refactoring` |
 
