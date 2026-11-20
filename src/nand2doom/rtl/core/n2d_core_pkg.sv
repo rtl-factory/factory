@@ -29,7 +29,7 @@ package n2d_core_pkg;
     localparam logic [31:0] INSN_RET    = 32'h0000_8067;
     localparam logic [4:0]  REG_RA      = 5'd1;
 
-    // Fetch predictor sizes (core/HAS.md "Return-address stack" and
+    // Fetch predictor sizes (wiki/src/nand2doom/rtl/core/mas.md "Return-address stack" and
     // "Fetch branch target buffer"); n2d_rv32im_core parameters default to
     // these, and 0 removes either predictor.
     localparam int RAS_DEPTH_DEFAULT = 8;
@@ -70,7 +70,7 @@ package n2d_core_pkg;
     } t_run_state;
 
     // PMON-only record of why fetch was flushed on the previous edge, so the
-    // refill clocks that follow are attributed to it (core/HAS.md
+    // refill clocks that follow are attributed to it (wiki/src/nand2doom/rtl/core/mas.md
     // "Performance monitor", IDs 83..86). It never feeds control.
     typedef enum logic [1:0] {
         FETCH_REFILL_NONE       = 2'd0,

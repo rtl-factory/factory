@@ -5,7 +5,7 @@
 // sequential, CAS latency two). Each bank keeps its last row open: a row hit
 // issues READ/WRITE directly, a row miss precharges only that bank and then
 // activates, and refresh precharges all banks first. Command spacing follows
-// the IS42S16320D-7 minimums in whole 40 ns clocks (memory HAS): PRECHARGE to
+// the IS42S16320D-7 minimums in whole 40 ns clocks (wiki/src/nand2doom/rtl/memory/mas.md): PRECHARGE to
 // ACTIVE (tRP 15 ns), ACTIVE to READ/WRITE (tRCD 15 ns) and precharge-all to
 // REFRESH are one clock; REFRESH to the next ACTIVE (tRFC 60 ns) and ACTIVE to
 // ACTIVE of a bank (tRC 60 ns) are at least two. The byte-address map is row

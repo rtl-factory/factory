@@ -72,7 +72,7 @@ module n2d_de2_115
 
     // Host keyboard: the common Virtual JTAG wrapper presents the USB-Blaster
     // hub's scan ports to the keyboard endpoint inside n2d_system
-    // (io/HAS.md#jtag-keyboard-composition).
+    // (wiki/src/nand2doom/rtl/io/mas.md#jtag-keyboard-composition).
     n2a_jtag_virtual u_jtag_virtual (
         .tck_o(jtag_tck), .tdi_o(jtag_tdi), .tdo_i(jtag_tdo), .ir_o(jtag_ir),
         .capture_o(jtag_capture), .shift_o(jtag_shift), .update_o(jtag_update),
@@ -80,10 +80,10 @@ module n2d_de2_115
 
     // Architectural observation ports are simulation/debug monitors, not pins.
     /* verilator lint_off PINCONNECTEMPTY */
-    // The whole debug link runs at the 3 Mbaud load rate (io/HAS.md "Link
+    // The whole debug link runs at the 3 Mbaud load rate (wiki/src/nand2doom/rtl/io/mas.md "Link
     // rate"); two full-width 320x200 framebuffer banks fit the DE2-115 M9K
-    // budget (video/HAS.md), as does the 32 KiB four-way D-cache
-    // (memory/HAS.md).
+    // budget (wiki/src/nand2doom/rtl/video/mas.md), as does the 32 KiB four-way D-cache
+    // (wiki/src/nand2doom/rtl/memory/mas.md).
     n2d_system #(.UART_BAUD(N2D_UART_LOAD_BAUD),
                  .FRAMEBUFFER_FULL_WIDTH(1'b1), .DCACHE_WAYS(4),
                  .DCACHE_PREFETCH_LINES(2)) u_system (

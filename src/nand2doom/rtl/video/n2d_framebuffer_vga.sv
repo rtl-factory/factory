@@ -5,7 +5,7 @@
 // bank, VGA scans the front bank, and a swap request flips them at the next
 // vertical blank. FULL_WIDTH selects 320x200 banks; otherwise each bank holds
 // 160x200 pixels, stores only even-x bytes and scans each stored pixel as two
-// source pixels (video/HAS.md).
+// source pixels (wiki/src/nand2doom/rtl/video/mas.md).
 module n2d_framebuffer_vga #(
   parameter bit FULL_WIDTH = 1'b1
 ) (
@@ -218,7 +218,7 @@ module n2d_framebuffer_vga #(
   end
 
   // The inactive palette is software-visible; the active one is scanned.
-  // Neither bank is reset (video/HAS.md): until the first commit takes
+  // Neither bank is reset (wiki/src/nand2doom/rtl/video/mas.md): until the first commit takes
   // effect the active bank is bank 0, which software cannot have written, so
   // scanout is forced black instead, exactly the image of a black-reset bank.
   always_comb begin

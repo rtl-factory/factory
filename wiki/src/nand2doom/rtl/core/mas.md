@@ -1,7 +1,6 @@
-# nand2doom RV32IM core architecture
+# core MAS
 
-!!! note "Ported, not yet in the standard template"
-    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
+## Purpose
 
 The nand2doom CPU is the first implementation of the
 [shared-candidate RV32IM contract](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/riscv/ownership.md): a single-hart,
@@ -13,7 +12,7 @@ maps every requirement to tests.
 
 <!-- wiki-budget: the PMON event-ID table and pipeline timing are the canonical register and cycle contract for RTL, firmware and n2d_perf -->
 
-## Requirements
+### Requirements
 
 | ID | Requirement |
 | --- | --- |
@@ -40,6 +39,22 @@ field; machine CSR observations, when a test needs them, are a sideband keyed
 by `order`. Payloads stay stable under backpressure. Reset is synchronous,
 active high; the platform synchronizes its release.
 
+### Ports
+
+`n2d_rv32im_core` parameters: `RAS_DEPTH` (default `RAS_DEPTH_DEFAULT`, 8) and
+`BTB_ENTRIES` (default `BTB_ENTRIES_DEFAULT`, 1024, a power of two 2..2048); 0
+removes either predictor ([cores and slices](#cores-and-slices)). Every port is
+in the `clk_i` domain.
+
+| Group | Ports (direction, width) | Meaning |
+| --- | --- | --- |
+| Clock, reset, enable | `clk_i`, `rst_i`, `enable_i` in | Clock; synchronous active-high reset; `enable_i` gates new requests without creating a clock domain. |
+| Debug control | `halt_request_i`, `resume_i`, `reset_pc_request_i` in; `halt_ack_o` out | Precise stop by drain ([reset and debug behavior](#reset-and-debug-behavior)). |
+| Instruction port | `instruction_request_valid_o` out, `instruction_request_ready_i` in, `instruction_request_address_o` out (32); `instruction_response_valid_i`, `instruction_response_data_i` (32), `instruction_response_error_i` in | Fetch requests on the [pipelined handshake](#pipelined-memory-handshake). |
+| Data port | `data_request_valid_o` out, `data_request_ready_i` in, `data_request_write_o`, `data_request_address_o` (32), `data_request_write_data_o` (32), `data_request_byte_enable_o` (4) out; `data_response_valid_i`, `data_response_read_data_i` (32), `data_response_error_i` in | Loads and stores: effective byte address, aligned-word data and byte-lane masks. |
+| Observation | `observation_valid_o`, `observation_order_o` (64), `observation_pc_o`, `observation_instruction_o`, `observation_next_pc_o` (32 each), `observation_rd_address_o` (5), `observation_rd_write_o`, `observation_rd_write_data_o` (32), `observation_memory_valid_o`, `observation_memory_write_o`, `observation_memory_address_o`, `observation_memory_read_data_o`, `observation_memory_write_data_o` (32 each), `observation_memory_read_mask_o`, `observation_memory_write_mask_o` (4 each), `observation_trap_o`, `observation_cause_o`, `observation_trap_value_o` (32 each) out | One registered record per retirement or trap (CORE-R10), the [shared observation record](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/riscv/ownership.md). |
+| PMON | `pmon_platform_events_i` (128) in, `pmon_events_o` (128) out | Platform event sources and the registered vector of all legal events ([performance monitor](#performance-monitor)). |
+
 ### Pipelined memory handshake
 
 The [memory architecture](../memory/mas.md#cpu-port-handshake) owns the
@@ -52,6 +67,129 @@ might cancel. `n2d_rv32im_core` overlaps one instruction and one data
 transaction with back-to-back hits; `n2d_rv32i_core_step` never overlaps a
 request with a response. Loads and stores publish the effective byte address,
 aligned-word data and byte-lane masks.
+
+### Reset and debug behavior
+
+Reset clears valid state and writable CSRs, forces MPP=M, selects boot PC
+`0x0000_0000`, cancels both transaction epochs and emits no request or
+observation. The platform holds the core stopped until SDRAM initialization
+and a host resume.
+
+A halt request stops issue, discards the queue and any unaccepted fetch and
+enters a drain. Q102H..Q105H complete, including a divide, a memory operation
+and any redirect or trap; an owed fetch response is received and dropped.
+When Q102H..Q105H are empty and no response is owed, `halt_ack_o` rises. The
+platform combines it with cache-maintenance completion
+([memory](../memory/mas.md)). The resume PC is the `next_pc` of the last
+Q105H record; `reset_pc_request_i` while halted sets it to zero without
+changing registers or CSRs (a simultaneous resume fetches from zero). A halt
+withdrawn before acknowledgement continues without acknowledging. The worst
+drain (data miss with dirty victim, instruction refill, divide) is inside the
+256-clock allowance of the [maintained Halt bound](../memory/mas.md#maintained-halt-bound).
+
+### Performance monitor
+
+Four programmable 64-bit counters with the
+[nand2linux PMON](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/nand2linux/pmon/HAS.md) CSR layout and event IDs,
+reduced to machine mode (`src/nand2doom/rtl/core/n2d_pmon.sv`;
+accessor `n2d_pmon.h`).
+
+| Registers | Addresses | Contract |
+| --- | --- | --- |
+| `mhpmcounter3..6` | B03..B06 / B83..B86 | Writable low/high halves, 64 bits |
+| `mhpmevent3..6` | 323..326 | Event ID; any unsupported value reads 0 |
+| `mcountinhibit` | 320 | Writable mask `0x7d`: CY, IR, HPM3..6 |
+
+No user/supervisor aliases, `mcounteren`, `mhpmevent` high halves, counters
+7..31, sampling interrupts or filters: those addresses are illegal. All PMON
+state resets to zero. Each enabled counter adds one modulo 2^64 per clock its
+event is asserted.
+
+- An event is selected and inhibited by the controls current in its cycle.
+  CSR writes commit when the writer retires (on the serialized Q102H edge).
+- A counter-half write replaces that half, keeps the up-to-date other half
+  and drops that counter's event from the writer's cycle.
+- Inhibit and selector writes take effect next cycle: a stopping writer is
+  counted, a resuming one is not.
+- Each counter registers its event and adds it one clock later; serialization
+  makes a read observe every older event.
+- Coherent snapshot: set the group's inhibit bits, read, restore the mask.
+
+`pmon_events_o` is a registered 128-bit vector of the previous clock's legal
+events, one bit per ID, for simulation harnesses. The platform supplies its
+IDs through `pmon_platform_events_i` (same indexing) from
+`src/nand2doom/rtl/platform/n2d_pmon_platform_events.sv`
+inside `n2d_system`, derived from cache, line-memory and uncached handshakes
+plus flops for the in-flight store flag, outstanding I/D read, outstanding
+transaction and one-hot owner; `n2d_cached_rv32im` ties the input to zero.
+MEM_BACKPRESSURE is reconstructed from the one-outstanding
+[line-memory contract](../memory/mas.md#line-port): no
+transaction outstanding, a master valid, none accepted. A controller with
+more than one outstanding transaction must supply it directly.
+
+IDs 1..35 keep the nand2linux meaning; nand2doom IDs start at 64. Unsupported
+(read back 0): 0, 7, 11, 20..28, 31, 35, 70..75 (reserved: instruction
+prefetch and SDRAM row hit/miss/refresh) and above 97. Events overlap; a CPI
+stack is a priority classifier over `pmon_events_o`, not a counter sum.
+
+| ID | Name | Unit | Src | Definition |
+| -- | -- | -- | -- | -- |
+| 1 | CYCLES | clocks | core | Every clock |
+| 2 | INSTRET | instr | core | Every nontrap retirement, including counter writers |
+| 3 | IFETCH_WAIT | clocks | core | Execute can take an instruction and none arrives (including refill clocks) |
+| 4 | DATA_HOLD | clocks | core | Accepted data request without its response |
+| 5 | LOAD_USE_HOLD | clocks | core | Execute stalled on a load one stage ahead, outside a data hold |
+| 6 | MULDIV_HOLD | clocks | core | Divider busy (setup and iterations) |
+| 8 | DATA_ADMISSION_HOLD | clocks | core | Data request held without `ready` |
+| 9 | BRANCH_REDIRECT | occ | core | Retired taken branch, JAL or JALR, predicted or not |
+| 10 | TRAP_ENTRY | occ | core | Trap observation |
+| 12 | ICACHE_DEMAND_ACCESS | occ | platform | I-cache lookup |
+| 13 | ICACHE_DEMAND_MISS | occ | platform | I-cache miss |
+| 14 | ICACHE_REFILL | lines | platform | Error-free I-cache line response |
+| 15 | DCACHE_READ_ACCESS | occ | platform | D-cache load lookup |
+| 16 | DCACHE_READ_MISS | occ | platform | D-cache load miss |
+| 17 | DCACHE_WRITE_MISS | occ | platform | D-cache store miss |
+| 18 | DCACHE_REFILL | lines | platform | Error-free D-cache line read response, including prefetch |
+| 19 | DCACHE_WRITEBACK | lines | platform | Accepted dirty-line write |
+| 29 | MEM_FETCH_READ | lines | platform | Accepted I-cache line read |
+| 30 | MEM_DATA_READ | lines | platform | Accepted D-cache line read, including prefetch |
+| 32 | MEM_WRITE | lines | platform | Accepted line write (D-cache or debug) |
+| 33 | MEM_BACKPRESSURE | clocks | platform | Downstream request valid without `ready` |
+| 34 | MEM_READ_SERVICE | clocks | platform | Accepted I or D line read awaiting response |
+| 64 | DCACHE_WRITE_ACCESS | occ | platform | D-cache store lookup |
+| 65 | UNCACHED_FB_STORE | occ | platform | Accepted framebuffer store |
+| 66 | UNCACHED_MMIO_ACCESS | occ | platform | Other accepted non-SDRAM data request |
+| 67 | UNCACHED_WAIT | clocks | platform | Accepted non-SDRAM request without response |
+| 68 | SYSTEM_SERIALIZE_HOLD | clocks | core | Serialized instruction waiting for older work, outside a data hold |
+| 69 | MUL_USE_HOLD | clocks | core | Execute stalled on a multiply one stage ahead |
+| 76 | DEBUG_HALTED | clocks | core | Halt acknowledged |
+| 77 | MEM_MASTER_WAIT | clocks | platform | Any line master valid without `ready` |
+| 78 | BRANCH_PREDICT_TAKEN | occ | core | Slot enters execute predicted taken (92, or a Q101H static/return redirect) |
+| 79 | BRANCH_MISPREDICT | occ | core | Retired transfer that left the fetched path; two refill clocks each |
+| 80 | DCACHE_PREFETCH_ISSUE | occ | platform | Next-line prefetch started ([memory](../memory/mas.md#next-line-prefetch)) |
+| 81 | DCACHE_PREFETCH_USEFUL | occ | platform | Miss refilled from the prefetch buffer |
+| 82 | DCACHE_PREFETCH_DROP | lines | platform | Prefetched line dropped unused (failed, replaced, written back, cleared) |
+| 83 | IFETCH_PREDICT_BUBBLE | clocks | core | IFETCH_WAIT the clock after a Q101H redirect not followed by a mispredict |
+| 84 | IFETCH_MISPREDICT_REFILL | clocks | core | IFETCH_WAIT in a mispredict's redirect clock and the next |
+| 85 | IFETCH_REDIRECT_REFILL | clocks | core | IFETCH_WAIT in another late redirect's clock (trap, MRET, resume) and the next |
+| 86 | IFETCH_SUPPLY_WAIT | clocks | core | Other IFETCH_WAIT while a response is owed or a request not accepted |
+| 87 | MEM_OWNER_FETCH | clocks | platform | Line transaction is an I-cache read, acceptance through response |
+| 88 | MEM_OWNER_DATA_READ | clocks | platform | Same span, D-cache demand read |
+| 89 | MEM_OWNER_DATA_PREFETCH | clocks | platform | Same span, D-cache prefetch read |
+| 90 | MEM_OWNER_DATA_WRITE | clocks | platform | Same span, D-cache line write |
+| 91 | MEM_OWNER_DEBUG | clocks | platform | Same span, debug-master access |
+| 92 | FETCH_PREDICT_TAKEN | occ | core | Slot enters execute with its fetch-BTB prediction accepted |
+| 93 | FETCH_PREDICT_STALE | occ | core | Slot enters execute with its fetch prediction rejected (one refill clock) |
+| 94 | DCACHE_WRITE_BUFFER_PENDING | clocks | platform | Displaced dirty line occupies the buffer |
+| 95 | DCACHE_WRITE_BUFFER_WAIT | clocks | platform | D-miss waits for buffer space or same-line drain |
+| 96 | DCACHE_PREFETCH_DEFERRED | clocks | platform | Queued candidate not selected this clock |
+| 97 | DCACHE_PREFETCH_CANCEL | cands | platform | Queued intent canceled by same-line demand, replacement or maintenance |
+
+IDs 83..86 are mutually exclusive and each implies IFETCH_WAIT; the rest of
+IFETCH_WAIT is unattributed. A two-bit `refill_q` (`t_fetch_refill`) records
+each flush cause (mispredict over late redirect over predicted redirect) for
+one clock. IDs 87..91 are exclusive and never coincide with
+MEM_BACKPRESSURE. Assertions check both groups.
 
 ### Cores and slices
 
@@ -70,7 +208,9 @@ aligned-word data and byte-lane masks.
 | `instruction_i` | input | 32 | Candidate RV32 instruction bits |
 | `rs1_data_i`, `rs2_data_i` | input | 32 each | Current register-file operand values |
 
-## Pipeline
+## Microarchitecture
+
+### Pipeline
 
 Six in-order stages (nand2linux Q100H..Q105H without MMU, privilege or replay), one instruction per clock on hits.
 
@@ -254,130 +394,7 @@ at the BTB RAM address register (loop B of the
 `BTB_ENTRIES = 0` and `RAS_DEPTH = 0` remove the lookups without an RTL
 change; fitted slack is in [BTB storage](../../fpga/de10_lite/board-spec.md#btb-storage).
 
-## Reset and debug behavior
-
-Reset clears valid state and writable CSRs, forces MPP=M, selects boot PC
-`0x0000_0000`, cancels both transaction epochs and emits no request or
-observation. The platform holds the core stopped until SDRAM initialization
-and a host resume.
-
-A halt request stops issue, discards the queue and any unaccepted fetch and
-enters a drain. Q102H..Q105H complete, including a divide, a memory operation
-and any redirect or trap; an owed fetch response is received and dropped.
-When Q102H..Q105H are empty and no response is owed, `halt_ack_o` rises. The
-platform combines it with cache-maintenance completion
-([memory](../memory/mas.md)). The resume PC is the `next_pc` of the last
-Q105H record; `reset_pc_request_i` while halted sets it to zero without
-changing registers or CSRs (a simultaneous resume fetches from zero). A halt
-withdrawn before acknowledgement continues without acknowledging. The worst
-drain (data miss with dirty victim, instruction refill, divide) is inside the
-256-clock allowance of the [maintained Halt bound](../memory/mas.md#maintained-halt-bound).
-
-## Performance monitor
-
-Four programmable 64-bit counters with the
-[nand2linux PMON](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/nand2linux/pmon/HAS.md) CSR layout and event IDs,
-reduced to machine mode (`src/nand2doom/rtl/core/n2d_pmon.sv`;
-accessor `n2d_pmon.h`).
-
-| Registers | Addresses | Contract |
-| --- | --- | --- |
-| `mhpmcounter3..6` | B03..B06 / B83..B86 | Writable low/high halves, 64 bits |
-| `mhpmevent3..6` | 323..326 | Event ID; any unsupported value reads 0 |
-| `mcountinhibit` | 320 | Writable mask `0x7d`: CY, IR, HPM3..6 |
-
-No user/supervisor aliases, `mcounteren`, `mhpmevent` high halves, counters
-7..31, sampling interrupts or filters: those addresses are illegal. All PMON
-state resets to zero. Each enabled counter adds one modulo 2^64 per clock its
-event is asserted.
-
-- An event is selected and inhibited by the controls current in its cycle.
-  CSR writes commit when the writer retires (on the serialized Q102H edge).
-- A counter-half write replaces that half, keeps the up-to-date other half
-  and drops that counter's event from the writer's cycle.
-- Inhibit and selector writes take effect next cycle: a stopping writer is
-  counted, a resuming one is not.
-- Each counter registers its event and adds it one clock later; serialization
-  makes a read observe every older event.
-- Coherent snapshot: set the group's inhibit bits, read, restore the mask.
-
-`pmon_events_o` is a registered 128-bit vector of the previous clock's legal
-events, one bit per ID, for simulation harnesses. The platform supplies its
-IDs through `pmon_platform_events_i` (same indexing) from
-`src/nand2doom/rtl/platform/n2d_pmon_platform_events.sv`
-inside `n2d_system`, derived from cache, line-memory and uncached handshakes
-plus flops for the in-flight store flag, outstanding I/D read, outstanding
-transaction and one-hot owner; `n2d_cached_rv32im` ties the input to zero.
-MEM_BACKPRESSURE is reconstructed from the one-outstanding
-[line-memory contract](../memory/mas.md#line-port): no
-transaction outstanding, a master valid, none accepted. A controller with
-more than one outstanding transaction must supply it directly.
-
-IDs 1..35 keep the nand2linux meaning; nand2doom IDs start at 64. Unsupported
-(read back 0): 0, 7, 11, 20..28, 31, 35, 70..75 (reserved: instruction
-prefetch and SDRAM row hit/miss/refresh) and above 97. Events overlap; a CPI
-stack is a priority classifier over `pmon_events_o`, not a counter sum.
-
-| ID | Name | Unit | Src | Definition |
-| -- | -- | -- | -- | -- |
-| 1 | CYCLES | clocks | core | Every clock |
-| 2 | INSTRET | instr | core | Every nontrap retirement, including counter writers |
-| 3 | IFETCH_WAIT | clocks | core | Execute can take an instruction and none arrives (including refill clocks) |
-| 4 | DATA_HOLD | clocks | core | Accepted data request without its response |
-| 5 | LOAD_USE_HOLD | clocks | core | Execute stalled on a load one stage ahead, outside a data hold |
-| 6 | MULDIV_HOLD | clocks | core | Divider busy (setup and iterations) |
-| 8 | DATA_ADMISSION_HOLD | clocks | core | Data request held without `ready` |
-| 9 | BRANCH_REDIRECT | occ | core | Retired taken branch, JAL or JALR, predicted or not |
-| 10 | TRAP_ENTRY | occ | core | Trap observation |
-| 12 | ICACHE_DEMAND_ACCESS | occ | platform | I-cache lookup |
-| 13 | ICACHE_DEMAND_MISS | occ | platform | I-cache miss |
-| 14 | ICACHE_REFILL | lines | platform | Error-free I-cache line response |
-| 15 | DCACHE_READ_ACCESS | occ | platform | D-cache load lookup |
-| 16 | DCACHE_READ_MISS | occ | platform | D-cache load miss |
-| 17 | DCACHE_WRITE_MISS | occ | platform | D-cache store miss |
-| 18 | DCACHE_REFILL | lines | platform | Error-free D-cache line read response, including prefetch |
-| 19 | DCACHE_WRITEBACK | lines | platform | Accepted dirty-line write |
-| 29 | MEM_FETCH_READ | lines | platform | Accepted I-cache line read |
-| 30 | MEM_DATA_READ | lines | platform | Accepted D-cache line read, including prefetch |
-| 32 | MEM_WRITE | lines | platform | Accepted line write (D-cache or debug) |
-| 33 | MEM_BACKPRESSURE | clocks | platform | Downstream request valid without `ready` |
-| 34 | MEM_READ_SERVICE | clocks | platform | Accepted I or D line read awaiting response |
-| 64 | DCACHE_WRITE_ACCESS | occ | platform | D-cache store lookup |
-| 65 | UNCACHED_FB_STORE | occ | platform | Accepted framebuffer store |
-| 66 | UNCACHED_MMIO_ACCESS | occ | platform | Other accepted non-SDRAM data request |
-| 67 | UNCACHED_WAIT | clocks | platform | Accepted non-SDRAM request without response |
-| 68 | SYSTEM_SERIALIZE_HOLD | clocks | core | Serialized instruction waiting for older work, outside a data hold |
-| 69 | MUL_USE_HOLD | clocks | core | Execute stalled on a multiply one stage ahead |
-| 76 | DEBUG_HALTED | clocks | core | Halt acknowledged |
-| 77 | MEM_MASTER_WAIT | clocks | platform | Any line master valid without `ready` |
-| 78 | BRANCH_PREDICT_TAKEN | occ | core | Slot enters execute predicted taken (92, or a Q101H static/return redirect) |
-| 79 | BRANCH_MISPREDICT | occ | core | Retired transfer that left the fetched path; two refill clocks each |
-| 80 | DCACHE_PREFETCH_ISSUE | occ | platform | Next-line prefetch started ([memory](../memory/mas.md#next-line-prefetch)) |
-| 81 | DCACHE_PREFETCH_USEFUL | occ | platform | Miss refilled from the prefetch buffer |
-| 82 | DCACHE_PREFETCH_DROP | lines | platform | Prefetched line dropped unused (failed, replaced, written back, cleared) |
-| 83 | IFETCH_PREDICT_BUBBLE | clocks | core | IFETCH_WAIT the clock after a Q101H redirect not followed by a mispredict |
-| 84 | IFETCH_MISPREDICT_REFILL | clocks | core | IFETCH_WAIT in a mispredict's redirect clock and the next |
-| 85 | IFETCH_REDIRECT_REFILL | clocks | core | IFETCH_WAIT in another late redirect's clock (trap, MRET, resume) and the next |
-| 86 | IFETCH_SUPPLY_WAIT | clocks | core | Other IFETCH_WAIT while a response is owed or a request not accepted |
-| 87 | MEM_OWNER_FETCH | clocks | platform | Line transaction is an I-cache read, acceptance through response |
-| 88 | MEM_OWNER_DATA_READ | clocks | platform | Same span, D-cache demand read |
-| 89 | MEM_OWNER_DATA_PREFETCH | clocks | platform | Same span, D-cache prefetch read |
-| 90 | MEM_OWNER_DATA_WRITE | clocks | platform | Same span, D-cache line write |
-| 91 | MEM_OWNER_DEBUG | clocks | platform | Same span, debug-master access |
-| 92 | FETCH_PREDICT_TAKEN | occ | core | Slot enters execute with its fetch-BTB prediction accepted |
-| 93 | FETCH_PREDICT_STALE | occ | core | Slot enters execute with its fetch prediction rejected (one refill clock) |
-| 94 | DCACHE_WRITE_BUFFER_PENDING | clocks | platform | Displaced dirty line occupies the buffer |
-| 95 | DCACHE_WRITE_BUFFER_WAIT | clocks | platform | D-miss waits for buffer space or same-line drain |
-| 96 | DCACHE_PREFETCH_DEFERRED | clocks | platform | Queued candidate not selected this clock |
-| 97 | DCACHE_PREFETCH_CANCEL | cands | platform | Queued intent canceled by same-line demand, replacement or maintenance |
-
-IDs 83..86 are mutually exclusive and each implies IFETCH_WAIT; the rest of
-IFETCH_WAIT is unattributed. A two-bit `refill_q` (`t_fetch_refill`) records
-each flush cause (mispredict over late redirect over predicted redirect) for
-one clock. IDs 87..91 are exclusive and never coincide with
-MEM_BACKPRESSURE. Assertions check both groups.
-
-## Files
+### Files
 
 | Path | Role |
 | --- | --- |
@@ -388,3 +405,36 @@ MEM_BACKPRESSURE. Assertions check both groups.
 | `src/nand2doom/rtl/core/n2d_rv32i_decode_alu.sv`, `n2d_rv32i_core_step.sv` | RV32I slice and step core |
 | `src/nand2doom/rtl/platform/n2d_pmon_platform_events.sv` | Platform PMON sources |
 | `src/nand2doom/dv/core/n2d_rv32i_program_smoke.sv` | Flat-memory smoke composition |
+
+## Clocks and resets
+
+One clock, `clk_i`, the 25 MHz system clock; the core has no crossing.
+`rst_i` is synchronous and active high; the platform synchronizes its release
+and holds the core stopped until SDRAM initialization and a host resume
+([reset and debug behavior](#reset-and-debug-behavior)). `enable_i` gates new
+requests without creating a clock domain.
+
+## Design choices
+
+- **Fetch BTB size.** The [capacity study](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/nand2doom/performance-btb-capacity-364.md)
+  selected 1024 entries ([fetch branch target buffer](#fetch-branch-target-buffer));
+  `BTB_ENTRIES = 0` and `RAS_DEPTH = 0` remove the lookups without an RTL
+  change ([timing intent](#timing-intent)).
+- **Sticky stale mark.** The fetch stale mark is sticky, not a one-bit epoch,
+  because a predicted redirect and the Q102H mispredict of the same branch can
+  flush twice before one slow response ([fetch and instruction queue](#fetch-and-instruction-queue)).
+- **Multiplier form.** The operand and product registers follow the Quartus
+  embedded-multiplier inference form ([multiply and divide](#multiply-and-divide)).
+- **Divide reuse.** The divider keeps the last completed divide so REM after
+  DIV costs one bubble, the pairs libgcc's `__udiv_qrnnd_c` in `FixedDiv`
+  issues ([multiply and divide](#multiply-and-divide)).
+- Other candidates compared when the core was designed in nand2anything were
+  not recorded with it.
+
+## Verification
+
+The [core DV plan](../../dv/core/dv-plan.md) maps every requirement to tests.
+Specific to this microarchitecture: every core run holds `enable_i` low for the
+`BTB_ENTRIES`-clock reset sweep, the BTB capacity and alias cases need each
+`BTB_ENTRIES` target, and the IFETCH_WAIT cause events 83..86 are checked
+every clock by `n2d_ctrl` assertions.

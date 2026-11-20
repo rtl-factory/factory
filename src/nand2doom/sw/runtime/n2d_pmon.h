@@ -51,7 +51,7 @@ enum n2d_pmon_event {
 #define N2D_PMON_INHIBIT_ALL 0x7du
 
 /* Software builds with -march=rv32im; enable Zicsr for these instructions
- * only, since the core implements them as specified in core/HAS.md. */
+ * only, since the core implements them as specified in wiki/src/nand2doom/rtl/core/mas.md. */
 #define N2D_CSR_READ(csr) ({ uint32_t value_; \
     __asm__ volatile (".option push\n.option arch, +zicsr\n" \
                       "csrr %0, " #csr "\n.option pop" : "=r"(value_)); value_; })

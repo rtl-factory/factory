@@ -1,9 +1,11 @@
 # nand2doom Doom port: requirements
 
-!!! note "Ported, not yet in the standard template"
-    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
+## Problem
 
-The pinned DoomGeneric port (`src/nand2doom/sw/doom/`): its platform adapter, clock, keyboard map, direct framebuffer rendering, engine adaptations and capture mailbox. It builds on the [runtime](../runtime/prd.md) and inherits its requirements SW-R1 to SW-R4.
+The product milestone is Doom on the nand2doom CPU: the pinned DoomGeneric
+port with its platform adapter, clock, keyboard map, direct framebuffer
+rendering, engine adaptations and capture mailbox. It builds on the
+[runtime](../runtime/prd.md) and inherits its requirements SW-R1 to SW-R4.
 
 ## Requirements
 
@@ -13,3 +15,21 @@ The pinned DoomGeneric port (`src/nand2doom/sw/doom/`): its platform adapter, cl
 | SW-R6 | Upstream archives, WAD data, libc packages and generated firmware are never committed; missing optional game data skips the opt-in Doom run. |
 | SW-R7 | Production firmware uses the cycle tick; only verification variants change the time source. |
 
+## Out of scope
+
+- The runtime services themselves (startup, heap, primitives): the [runtime](../runtime/prd.md).
+- Audio and the other services the runtime does not supply (SW-R4).
+
+## Blocks
+
+None: this is software. The hardware it runs on is in the [HAS](../../rtl/has.md).
+
+## Acceptance
+
+Checks are in the [software DV plan](../../dv/software/dv-plan.md#features).
+
+| Requirement | Check |
+| --- | --- |
+| SW-R5 | Seam and idempotence tests in `test_n2d_doom.py`; drawer, wall-loop, persistence and visplane equivalence against pinned upstream with whole-frame CRCs |
+| SW-R6 | No automated check is recorded; the opt-in Doom run needs the pinned inputs, fetched into the `workdir/downloads/nand2doom/` cache |
+| SW-R7 | `n2d_doom_clock` checks the production clock helper; the performance harness rejects a manifest of another variant |

@@ -917,7 +917,7 @@ BTB_TAG_BITS = 8
 
 def btb_alias_span(entries: int) -> int:
     """Bytes of code one index plus partial tag covers: addresses this far
-    apart share an entry and its tag (core/HAS.md "Fetch branch target
+    apart share an entry and its tag (wiki/src/nand2doom/rtl/core/mas.md "Fetch branch target
     buffer"). Zero entries (no fetch BTB) has no aliasing; one word."""
     return max(entries, 1) * 4 << BTB_TAG_BITS
 

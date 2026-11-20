@@ -1,6 +1,6 @@
 create_clock -name reference -period 20.000 [get_ports MAX10_CLK1_50]
 derive_pll_clocks
-# JTAG keyboard endpoint (n2a_jtag_keyboard in n2d_system, io/HAS.md): the
+# JTAG keyboard endpoint (n2a_jtag_keyboard in n2d_system, wiki/src/nand2doom/rtl/io/mas.md): the
 # Virtual JTAG hub's TCK is the endpoint's scan clock. The command/response
 # mailbox buses between the TCK and system domains stay timed (the budget of
 # the other projects' JTAG keyboards); only the first stages of the explicitly

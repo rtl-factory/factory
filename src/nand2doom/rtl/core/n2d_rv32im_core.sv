@@ -20,7 +20,7 @@
 `include "src/common/rtl/pkg/macros.vh"
 
 module n2d_rv32im_core #(
-    // Fetch predictors (core/HAS.md); 0 removes either one
+    // Fetch predictors (wiki/src/nand2doom/rtl/core/mas.md); 0 removes either one
     parameter int RAS_DEPTH = n2d_core_pkg::RAS_DEPTH_DEFAULT,
     parameter int BTB_ENTRIES = n2d_core_pkg::BTB_ENTRIES_DEFAULT
 ) (
@@ -69,7 +69,7 @@ module n2d_rv32im_core #(
     output logic        halt_ack_o,
 
     // Performance monitor: platform event sources, one bit per event ID
-    // (core/HAS.md "Performance monitor"), and the registered vector of all
+    // (wiki/src/nand2doom/rtl/core/mas.md "Performance monitor"), and the registered vector of all
     // legal events for direct observation by simulation harnesses.
     input  logic [127:0] pmon_platform_events_i,
     output logic [127:0] pmon_events_o

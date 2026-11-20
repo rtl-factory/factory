@@ -1,7 +1,6 @@
-# nand2doom indexed-framebuffer video architecture
+# video MAS
 
-!!! note "Ported, not yet in the standard template"
-    Ported from nand2anything with paths rewritten (#78). Rearranging it into the [standard template](../../../../bkm/design/standard-docs.md) is #91.
+## Purpose
 
 `n2d_framebuffer_vga` presents a double-buffered 320x200 framebuffer of
 eight-bit palette indices (stored at half horizontal resolution on the
@@ -12,7 +11,7 @@ owns geometry, storage, palette, scaling, borders and video control. The
 [platform](../has.md#address-map) owns the windows; the
 [DV plan](../../dv/video/dv-plan.md) owns verification.
 
-## Requirements
+### Requirements
 
 | ID | Requirement |
 | --- | --- |
@@ -23,7 +22,24 @@ owns geometry, storage, palette, scaling, borders and video control. The
 | VID-R5 | The display is black from reset until the first palette commit takes effect, including after a warm reset. |
 | VID-R6 | Scanout uses only embedded RAM and never consumes SDRAM bandwidth. |
 
-## Framebuffer and palette
+## Interface
+
+### Ports
+
+Parameter `FULL_WIDTH` (default 1) selects the bank geometry below. Every port
+is in the `clk_i` domain; `reset_i` is synchronous and active high
+([reset and invariants](#reset-and-invariants)).
+
+| Group | Ports (direction, width) |
+| --- | --- |
+| Framebuffer port | `framebuffer_request_valid_i`, `framebuffer_request_write_i`, `framebuffer_request_front_i`, `framebuffer_request_address_i` (16), `framebuffer_request_write_data_i` (32), `framebuffer_request_write_strobe_i` (4) in; `framebuffer_request_ready_o`, `framebuffer_response_valid_o`, `framebuffer_response_read_data_o` (32) out |
+| Bank control | `swap_request_i` in; `swap_pending_o`, `front_bank_o` out |
+| Palette port | `palette_request_valid_i`, `palette_request_write_i`, `palette_request_active_i`, `palette_request_index_i` (8), `palette_request_write_data_i` (32), `palette_request_write_strobe_i` (4) in; `palette_request_ready_o`, `palette_response_valid_o`, `palette_response_read_data_o` (32) out |
+| Palette control | `palette_commit_i` in; `palette_commit_pending_o`, `active_palette_bank_o` out |
+| VGA | `vga_red_o`, `vga_green_o`, `vga_blue_o` (4 each), `vga_hsync_o`, `vga_vsync_o` out |
+| Frame observation | `pixel_x_o`, `pixel_y_o` (10 each), `visible_o`, `frame_start_o`, `frame_end_o`, `frame_sequence_o` (32) out |
+
+### Framebuffer and palette
 
 | Geometry | Bank contents | Board | Embedded RAM |
 | --- | --- | --- | --- |
@@ -39,8 +55,6 @@ displayed there, so software always sees a doubled 320-wide image. The
 [memory budget](../memory/mas.md#framebuffer-placement) selects half width
 on the DE10-Lite.
 
-### Interfaces
-
 | Interface | Direction from video | Contract |
 | --- | --- | --- |
 | CPU/host framebuffer port | input/output | Word-aligned 16-bit byte offset, 32-bit data, four strobes, front-view select; one response next clock. Writes and ordinary reads use the back bank, read-first; a front-view request reads the scanned bank and never writes. |
@@ -52,6 +66,8 @@ on the DE10-Lite.
 
 Palette entries are 32-bit words `{20'b0, red[3:0], green[3:0], blue[3:0]}`.
 Software writes all 256 inactive entries before each commit.
+
+## Microarchitecture
 
 ### Storage
 
@@ -86,7 +102,7 @@ Software writes all 256 inactive entries before each commit.
 - Control records are packed structs in `n2d_types_pkg`; the
   `FULL_WIDTH`-sized scan-lane select is its own zero-reset register.
 
-## VGA timing and scaling
+### VGA timing and scaling
 
 | Dimension | Active | Front porch | Active-low sync | Back porch | Total |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -112,7 +128,20 @@ Coordinates, visibility, syncs and frame events (and `committed`, with stage
 commit taken effect. The frame sequence increments when frame start enters
 stage 2 and wraps.
 
-## Reset and invariants
+### Files
+
+| Path | Role |
+| --- | --- |
+| `src/nand2doom/rtl/video/n2d_framebuffer_vga.sv` | Framebuffer, palette, scanout |
+| `src/nand2doom/dv/video/test_n2d_framebuffer_vga.py` | Python DV |
+| `src/nand2doom/cfg/targets.json` | `n2d_framebuffer_vga*` (full) and `n2d_framebuffer_vga_half*` (half) targets |
+
+## Clocks and resets
+
+One clock, `clk_i` (25 MHz); every rising edge advances one VGA position, with
+no derived clock or enable ([VGA timing and scaling](#vga-timing-and-scaling)).
+
+### Reset and invariants
 
 Synchronous active-high reset clears palette control (bank 0 active, nothing
 pending, not committed), response state, front bank 0, swap pending, the scan
@@ -120,10 +149,22 @@ pipeline and the frame sequence, not storage. Outputs are black with idle
 syncs while the pipeline refills. Assertions: the timing block's frame end
 coincides with a line end; every framebuffer request is word aligned.
 
-## Files
+## Design choices
 
-| Path | Role |
-| --- | --- |
-| `src/nand2doom/rtl/video/n2d_framebuffer_vga.sv` | Framebuffer, palette, scanout |
-| `src/nand2doom/dv/video/test_n2d_framebuffer_vga.py` | Python DV |
-| `src/nand2doom/cfg/targets.json` | `n2d_framebuffer_vga*` (full) and `n2d_framebuffer_vga_half*` (half) targets |
+- **Embedded RAM, no SDRAM scanout** (VID-R6); the
+  [memory budget](../memory/mas.md#framebuffer-placement) selects half width
+  on the DE10-Lite.
+- **A CPU copy and a scan copy per lane**, with identical writes, so the
+  front bank is never written by scanout and there is no collision or hold
+  register ([storage](#storage)).
+- **Palette ports split by bank**: software uses the inactive bank on port A,
+  scanout the active bank on port B, so the ports never collide.
+- **`committed` flag instead of resetting the palette RAM**, so the display is
+  black from reset without a reset port on the RAM (VID-R5).
+- Other candidates compared when this block was designed in nand2anything
+  were not recorded with it.
+
+## Verification
+
+The [video DV plan](../../dv/video/dv-plan.md) owns verification; every test
+runs in both geometries and the 800x525 frame is the gate.
