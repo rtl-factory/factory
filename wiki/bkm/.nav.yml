@@ -2,6 +2,7 @@ nav:
   - README.md
   - Workflow: workflow
   - Design: design
+  - Architecture: arch
   - Writing: writing
   - Debug: debug
   - Principles: principles

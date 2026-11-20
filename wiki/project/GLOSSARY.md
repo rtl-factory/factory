@@ -87,6 +87,18 @@ _Avoid_: horizontal slice, layer, phase
 Product requirements document: what a piece of hardware must do, for whom, and how we will know it does, in `wiki/prd/`. Blocks and their specs follow from it.
 _Avoid_: requirements spec, MRD
 
+**Interface**:
+Everything a neighbouring block or a test must know to use a block correctly: ports, parameters, handshake, ordering, latency and throughput, reset and error behaviour, clock domains and register map.
+_Avoid_: API (for a block), pinout
+
+**Seam**:
+The place where a block's interface sits; where to put it is a design decision separate from what goes behind it.
+_Avoid_: boundary, cut
+
+**Deep block**:
+A block whose small interface hides a lot of behaviour; a shallow block's interface is nearly as complex as what it contains.
+_Avoid_: wrapper (for a deep block)
+
 **Spec**:
 The specification of one block, in `wiki/src/<type>/<block>/`. It changes in the same pull request as the block's code.
 _Avoid_: design doc, documentation (for this meaning)
