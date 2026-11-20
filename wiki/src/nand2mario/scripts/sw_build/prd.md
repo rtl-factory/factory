@@ -17,7 +17,7 @@ The simulations and the boards need program images: CPU smoke tests, the system 
 
 ## Out of scope
 
-- The programs themselves: they are the `sw` discipline (`src/nand2mario/sw/`).
+- The programs themselves: they are the `sw` discipline.
 - Loading an image onto a board: the [board flow](../board/README.md) does that.
 - A general Game Boy toolchain: only what nand2mario's programs use.
 
