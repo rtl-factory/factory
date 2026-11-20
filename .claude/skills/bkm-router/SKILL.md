@@ -8,7 +8,7 @@ BKMs define how work is done here. Find the rows that match what you are doing, 
 | When you are | Follow |
 |---|---|
 | doing any work on an issue, from alignment to landing, or deciding who may merge | `wiki/bkm/workflow/flow.md` |
-| the first mate: dispatching, supervising and landing crewmates' work | `wiki/bkm/workflow/first-mate.md` |
+| the first mate: dispatching, supervising, pausing, handing over or landing crewmates' work, or running competing candidates on one issue | `wiki/bkm/workflow/first-mate.md` |
 | splitting a plan into issues or an epic, or triaging an issue | `wiki/bkm/workflow/issues.md` |
 | opening, labelling or dispatching an issue | `wiki/bkm/workflow/labels.md` |
 | reviewing a pull request as the reviewer crewmate | `wiki/bkm/workflow/review.md` |
@@ -20,6 +20,7 @@ BKMs define how work is done here. Find the rows that match what you are doing, 
 | writing or changing a wiki page, or the wiki site build | `wiki/bkm/workflow/wiki-site.md` |
 | configuring or auditing GitHub repository settings | `wiki/bkm/workflow/github-settings.md` |
 | stress-testing a plan or decision with a captain | `wiki/bkm/design/grilling.md`, with `wiki/bkm/design/domain-modeling.md` |
+| turning an aligned idea into a plan, a PRD or a block spec, prototyping to answer a design question, or planning work too large for one session | `wiki/bkm/design/planning.md` |
 | meeting a fuzzy term, or a decision that may deserve an ADR | `wiki/bkm/design/domain-modeling.md` |
 | writing a glossary entry | `wiki/bkm/design/glossary-format.md` |
 | writing an ADR | `wiki/bkm/design/adr-format.md` |
