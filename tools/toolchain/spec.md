@@ -36,6 +36,19 @@ Quartus files, downloaded in a browser from Altera's *Quartus Prime Lite 25.1 fo
 3. The installer picks up the MAX 10 file but not Cyclone IV: unzip `cyclone-25.1std.0.1129.qdz` into the install directory.
 4. Check that `quartus_sh --version` reports `25.1std.0 Build 1129` and that the device families include both `Cyclone IV E` and `MAX 10`.
 
+## Cloud sessions (Quartus)
+
+The captain keeps the three Quartus files in a private, link-shared Google Drive folder, split into parts under about 95 MB (`<file>.part00`, `.part01`, ...). The cloud environment's setting `QUARTUS_FILES_FOLDER` holds the folder's URL; `drive.google.com` and `drive.usercontent.google.com` must be on the environment's allowed hosts.
+
+At session start, `.claude/hooks/session-start.sh` (registered in `.claude/settings.json`, cloud sessions only):
+
+1. Exits early when the readiness check already passes.
+2. Lists the folder through its embedded view and downloads every `.partNN` file from `drive.usercontent.google.com`, outside the repository.
+3. Concatenates the parts of each file and checks every file against the SHA-1 pins in `cfg/toolchain.json`; it installs nothing on a mismatch, and never runs a script from the folder.
+4. Installs per the steps above, deletes the downloads, runs the readiness check and adds `PATH`, `QUARTUS_ROOTDIR` and `LC_ALL` to the session.
+
+A first install takes about three minutes (about 40 s download, 2 min install, 9.4 GB installed). Without `QUARTUS_FILES_FOLDER` the hook prints a note and the session starts without Quartus.
+
 Known host issues: a `setlocale` warning needs an `en_US.UTF-8` locale; on Arch, `quartus_map` and friends need `libxcrypt-compat`.
 
 The other tools' install steps are written by the build issue that installs them.
@@ -53,5 +66,4 @@ On the board host: a udev rule granting the Altera USB devices (vendor `09fb`) t
 
 - Which coverage library the cocotb testbenches use for functional coverage.
 - Which OSS CAD Suite release to pin.
-- Where the private Quartus files are stored for cloud sessions, and the environment variable that names it.
 - The mapping of each tool to regression levels, added to `wiki/bkm/workflow/ci-levels.md` once the tools are installed.
