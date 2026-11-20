@@ -13,3 +13,5 @@ When the work isn't trivial, build the tool that does it (a codemod, script, gen
 - A deterministic tool beats fan-out. When you do fan out, write the recipe, the verification contract, and the fences as one skill the delegates read and cannot edit.
 - Applying this produces a file. No script, codemod, generator, or delegate skill in the diff means you didn't apply it. Commit it when the work outlives the session.
 - Build the smallest script that does or proves the job, never a framework.
+
+**Factory-local:** this replaces the skill, diff and commit parts above. A lever for one issue lives in your scratch space or worktree and is linked from the issue or pull request as evidence; it is not committed. When it would outlive the issue, open an issue to make it a script or tool with its PRD and spec ([repo-layout.md](../workflow/repo-layout.md)). Put a recipe for subagents in the brief or the issue, never in a new skill: skills are fixed entry points (ADR 0002), and crewmates do not dispatch crewmates ([first-mate.md](../workflow/first-mate.md)).

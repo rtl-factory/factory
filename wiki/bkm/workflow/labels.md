@@ -31,7 +31,7 @@ Which labels issues and pull requests carry, and when agents set, change and che
 
 ## Dashboard
 
-A GitHub Project board for the repo shows the work, with views filtered and grouped by `status:`, `area:`, `block:` and `priority:` labels. The tracker tool (`tools/tracker/`) publishes generated status, regression and metric pages on the wiki site.
+A GitHub Project board for the repo shows the work, with views filtered and grouped by `status:`, `area:`, `block:` and `priority:` labels. The tracker tool will publish generated status, regression and metric pages on the wiki site; it is not built yet ([its PRD](../../tools/tracker/prd.md)).
 
 ## Exit criteria
 

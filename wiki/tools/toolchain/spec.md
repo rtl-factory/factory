@@ -9,7 +9,7 @@ How the toolchain is built, against its [requirements](prd.md). Decisions: ADR 0
 | Versions file (`cfg/toolchain.json`) | The single source of every pinned version, install location and checksum |
 | Readiness check (`tools/toolchain/check.py`) | Reads the versions file; prints PASS, WARN or FAIL per tool with the fix; exit code is nonzero on any FAIL; never changes the host |
 | Install procedure (this spec, Install) | Verbatim, checksum-pinned steps per tool for a Linux host |
-| Cloud session hook (`.claude/hooks/session-start.sh`) | Installs the pinned tools at session start in a cloud agent session; fetches Quartus from private storage named by an environment variable |
+| Cloud session hook (`.claude/hooks/session-start.sh`) | Installs the pinned Quartus at session start in a cloud agent session, fetched from private storage named by an environment variable |
 
 ## Versions
 

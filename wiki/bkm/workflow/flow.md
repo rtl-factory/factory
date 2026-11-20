@@ -34,7 +34,7 @@ This section is the single source for who may merge what.
 
 - Only the first mate lands pull requests. Why: one agent keeps track of what is in flight.
 - **Full send** is the default: land once the reviewer has passed it and the required checks are green. Why: most work is done by agents, so captains spend attention only where they ask to (ADR 0007).
-- A pull request **needs captain**, and must wait for a captain's explicit go-ahead, when its issue has `authority:needs-captain` or when it changes the factory's controls: `AGENTS.md`, `.claude/skills/`, `wiki/bkm/`, `wiki/project/` or `.github/`. Why: BKMs and settings are how captains steer agents; agents propose changes to them, captains accept them.
+- A pull request **needs captain**, and must wait for a captain's explicit go-ahead, when its issue has `authority:needs-captain` or when it changes the factory's controls: `AGENTS.md`, `CLAUDE.md`, `.claude/skills/`, `wiki/bkm/`, `wiki/project/` or `.github/`. Why: BKMs and settings are how captains steer agents; agents propose changes to them, captains accept them.
 - Issue branch → `main` or epic branch: squash merge. Why: one issue, one commit.
 - Epic branch → `main`: merge commit, never squash. Why: each issue stays its own commit on `main` (ADR 0008).
 
