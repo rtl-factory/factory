@@ -8,7 +8,7 @@ The repository settings that enforce the workflow. A repo admin applies them; ag
 
 ## Ruleset for `main`
 
-Settings → Rules → Rulesets → New branch ruleset, target the default branch, enforcement **Active**, no bypass list:
+Settings → Rules → Rulesets → New branch ruleset, target the default branch, enforcement **Active**, bypass list: **Repository admin**, set to *For pull requests only*:
 
 - **Restrict deletions** and **Block force pushes**.
 - **Require a pull request before merging**:

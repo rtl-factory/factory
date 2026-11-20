@@ -9,11 +9,17 @@ How a change moves from an issue to `main`.
 ## Rules
 
 - Every change must start with a GitHub issue. Why: the issue is the factory's record of what humans decided (ADR 0003).
-- An agent starts work when a human assigns the issue to it. Don't start on an unassigned issue. Why: assignment is the human's approval.
+- Work starts when a captain assigns the issue (or its epic) and hands it to a first mate. Don't start on an unassigned issue. Why: assignment is the captain's approval.
 - One issue → one issue branch → one pull request. Why: each pull request maps to exactly one decision.
 - Name branches `issue/<number>-<slug>` and `epic/<number>-<slug>`, e.g. `issue/12-rtl-lint-bkm`.
 - A pull request into `main` must close at least one issue (`Closes #<number>` in the body). Why: nothing lands without a decision behind it; CI enforces this.
 - Link related issues to each other ("blocked by", "relates to") without making them an epic. Why: an epic is for landing together, not for grouping.
+
+## Merging
+
+- Into an epic branch: the first mate merges once L0 passes.
+- Into `main`, by default: a code owner other than the author must approve. Agents act under their captain's account, so the other captain approves.
+- Into `main` with the `full-send` label on the issue: the first mate may merge once L1 passes, without waiting for approval. Never use admin bypass on a pull request whose issue lacks `full-send`. Why: GitHub can't check labels, so this rule is enforced here, not by settings.
 
 ## Epics
 

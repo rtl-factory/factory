@@ -1,0 +1,3 @@
+# Captains approve merges to main, unless an issue says full send
+
+A pull request into `main` needs approval from a code owner, enforced by GitHub. Agents act under their captain's account, and GitHub never counts an author's own approval, so a different captain approves. A captain can grant autonomy per issue with the `full-send` label; the first mate may then merge to `main` once L1 passes, using the repo-admin bypass. GitHub cannot tie a bypass to a label, so the label rule lives in the workflow BKM, not in settings: we accept trusting agents to follow it in exchange for keeping full send available. The first mate always merges into epic branches on its own once L0 passes.
