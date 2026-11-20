@@ -47,6 +47,10 @@ The branch where one issue's work is done. It merges into `main`, or into its ep
 The integration branch of an epic. Its issue branches merge into it; it merges into `main` through one pull request once it is healthy.
 _Avoid_: feature branch, integration branch
 
+**Full send**:
+An issue labelled `full-send`: its first mate may merge the pull request into `main` without a captain's approval. Without the label, a captain approves.
+_Avoid_: auto-merge, YOLO
+
 **Pull request**:
 The GitHub request to merge one branch into another; the only way changes reach `main` or an epic branch.
 _Avoid_: merge request, MR, diff
