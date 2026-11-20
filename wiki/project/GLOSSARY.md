@@ -35,11 +35,15 @@ The agent a captain talks to. It turns the captain's intent into issues, dispatc
 _Avoid_: orchestrator, lead agent, conductor, coordinator, manager, chief of staff
 
 **Crewmate**:
-An agent the first mate dispatches to do one issue, in its own worktree on its own issue branch. It reports only to the first mate.
+An agent the first mate dispatches to do one issue, in its own worktree on its own issue branch (a candidate crewmate works on a scratch branch instead). It reports only to the first mate.
 _Avoid_: worker, subagent, implementer, teammate
 
+**Candidate crewmate**:
+One of several crewmates the first mate dispatches on the same issue as competing attempts, each on a scratch branch `candidate/<number>-<n>` with no pull request; only the chosen candidate's branch becomes the issue branch.
+_Avoid_: arena entry, contestant
+
 **Reviewer crewmate**:
-A crewmate with a fresh context that reviews another crewmate's pull request against the issue, the spec and the BKMs. It never reviews its own work.
+A crewmate with a fresh context that reviews another crewmate's work (a pull request, or competing candidates) against the issue, the spec and the BKMs. It never reviews its own work.
 _Avoid_: verifier, checker
 
 **Brief**:
@@ -87,6 +91,22 @@ _Avoid_: horizontal slice, layer, phase
 Product requirements document: what a piece of hardware must do, for whom, and how we will know it does, in `wiki/prd/`. Blocks and their specs follow from it.
 _Avoid_: requirements spec, MRD
 
+**Interface**:
+Everything a neighbouring block or a test must know to use a block correctly: ports, parameters, handshake, ordering, latency and throughput, reset and error behaviour, clock domains and register map.
+_Avoid_: API (for a block), pinout
+
+**Seam**:
+The place where a block's interface sits; where to put it is a design decision separate from what goes behind it.
+_Avoid_: boundary, cut
+
+**Deep block**:
+A block whose small interface hides a lot of behaviour; a shallow block's interface is nearly as complex as what it contains.
+_Avoid_: wrapper (for a deep block)
+
+**Deletion test**:
+Imagine removing a block and wiring its contents into its neighbours: if complexity vanishes it was a pass-through; if it reappears in several places, the block earns its keep.
+_Avoid_: inline test
+
 **Spec**:
 The specification of one block, in `wiki/src/<type>/<block>/`. It changes in the same pull request as the block's code.
 _Avoid_: design doc, documentation (for this meaning)
@@ -130,3 +150,16 @@ _Avoid_: light CI, full CI, test tier, suite
 **Code owner**:
 A person or team listed in `.github/CODEOWNERS`; GitHub requests their review on every pull request.
 _Avoid_: maintainer
+
+## Verification
+
+**Verification plan**:
+The per-block document in `wiki/src/dv/<block>/` that maps each spec feature and acceptance criterion to its stimulus, checker, coverage points, tests and regression level.
+_Avoid_: test plan (for this meaning)
+
+**Formal plan**:
+The per-block document in `wiki/src/fv/<block>/` that records each property's statement, spec source, assumptions, result, command and sync commit.
+_Avoid_: property list
+
+**Sync commit**:
+The commit at which a formal property was last confirmed to describe the RTL it covers.
