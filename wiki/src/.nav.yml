@@ -1,0 +1,7 @@
+nav:
+  - README.md
+  - Architecture: arch
+  - RTL: rtl
+  - DV: dv
+  - FV: fv
+  - Synthesis: syn

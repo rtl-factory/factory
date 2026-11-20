@@ -1,0 +1,50 @@
+# Wiki site: builds wiki/ into a GitHub Pages site (wiki/bkm/workflow/wiki-site.md).
+site_name: RTL Factory wiki
+site_url: https://rtl-factory.github.io/factory/
+site_description: BKMs, glossary, decisions, requirements and specs of the RTL factory
+repo_url: https://github.com/rtl-factory/factory
+repo_name: rtl-factory/factory
+edit_uri: edit/main/wiki/
+docs_dir: wiki
+site_dir: site
+# Navigation follows the wiki/ folder structure; each folder's README.md is its landing page,
+# and a folder's .nav.yml sets its title and order (mkdocs-awesome-nav).
+
+theme:
+  name: material
+  features:
+    - navigation.indexes
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.action.edit
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
+
+plugins:
+  - search
+  - awesome-nav
+
+extra:
+  status:
+    draft: Draft, still being tuned
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.details

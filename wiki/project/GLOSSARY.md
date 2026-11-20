@@ -1,3 +1,7 @@
+---
+title: Glossary
+---
+
 # Factory
 
 The shared vocabulary for this repo: a hardware development factory where agents do the execution and humans make the decisions.
@@ -78,6 +82,10 @@ _Avoid_: module (for this meaning), IP, component
 **Vertical slice**:
 An issue that delivers one narrow but complete behaviour, ending in a state a reviewer crewmate can check; for a block, typically spec, RTL and a DV test for one feature.
 _Avoid_: horizontal slice, layer, phase
+
+**PRD**:
+Product requirements document: what a piece of hardware must do, for whom, and how we will know it does, in `wiki/prd/`. Blocks and their specs follow from it.
+_Avoid_: requirements spec, MRD
 
 **Spec**:
 The specification of one block, in `wiki/src/<type>/<block>/`. It changes in the same pull request as the block's code.

@@ -1,0 +1,17 @@
+# RTL Factory
+
+A hardware development factory: captains (humans) set direction and decide, a first mate (agent) orchestrates, crewmates (agents) do the work. Every change starts with a GitHub issue; how work is done lives in BKMs.
+
+| Section | What it holds |
+|---|---|
+| [BKMs](bkm/README.md) | Best Known Methods: how every kind of work is done, plus the engineering principles |
+| [Project](project/README.md) | The glossary and the decisions (ADRs) |
+| [Requirements](prd/README.md) | Product requirements documents: what the hardware must do and why |
+| [Specs](specs/README.md) | External reference specifications: standards, protocols, ISAs |
+| [Blocks](src/README.md) | Specs and docs for each hardware block, mirroring `src/` |
+| [Tools](tools/README.md) | The tools the factory uses and how to run them |
+| [Tracker](tracker/README.md) | Metrics and dashboards |
+
+Start with the [flow](bkm/workflow/flow.md), which covers how a change goes from an issue to `main`, and the [glossary](project/GLOSSARY.md).
+
+This site is built from the [`wiki/`](https://github.com/rtl-factory/factory/tree/main/wiki) folder of the repository on every merge to `main`.

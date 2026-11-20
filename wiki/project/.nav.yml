@@ -1,0 +1,4 @@
+nav:
+  - README.md
+  - Glossary: GLOSSARY.md
+  - Decisions: adr

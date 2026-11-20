@@ -1,0 +1,8 @@
+nav:
+  - README.md
+  - Workflow: workflow
+  - Design: design
+  - Writing: writing
+  - Debug: debug
+  - Principles: principles
+  - Sources: SOURCES.md

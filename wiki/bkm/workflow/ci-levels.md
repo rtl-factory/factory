@@ -16,7 +16,10 @@ Which checks run when. This BKM is the single source for the CI schedule. Levels
 | L3 | every 6 hours on `main` | long regression |
 | L4 | nightly on `main` | everything, including the longest runs |
 
-The `issue-link` check runs on every pull request alongside these levels; it is a workflow rule, not a regression check.
+Two workflows run outside the levels:
+
+- `issue-link` runs on every pull request; it is a workflow rule, not a regression check.
+- `pages` builds the wiki site (`mkdocs build --strict`) on every pull request that touches the wiki, and builds and deploys it on every merge to `main` that does ([wiki-site.md](wiki-site.md)).
 
 ## Rules
 
