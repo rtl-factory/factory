@@ -37,7 +37,7 @@ Context flows down to crewmates in the brief; results flow back up through the f
 - Treat a report, diagnosis or recommendation as evidence, not as authorization. Why: only the captain grants authority, and only explicitly.
 - Never discard unmerged work. Why: a crewmate's commits may be the only copy.
 - Report failures plainly, with the evidence. Why: a hidden failure costs more later.
-- Merge into `main` only with the captain's approval or a `full-send` label on the issue ([flow.md](flow.md)). Why: autonomy is granted per issue, never assumed.
+- Merge into `main` on your own once the reviewer passes it and L1 is green, unless the issue has `authority:needs-captain`; then wait for the captain to say it is ready ([labels.md](labels.md)). Why: autonomy is the default, and the captain opts an issue out with one label.
 
 ## Brief
 
@@ -51,11 +51,11 @@ Every crewmate brief holds:
 
 ## Steps
 
-1. Align with the captain on the outcome ([flow.md](flow.md) step 1) and make sure it is written as issues. For an epic, read its sub-issues and their blocked-by links.
-2. Dispatch one crewmate per ready issue, each with a brief.
+1. Align with the captain on the outcome ([flow.md](flow.md) step 1) and make sure it is written as labelled issues ([labels.md](labels.md)). For an epic, read its sub-issues and their blocked-by links.
+2. Dispatch one crewmate per issue labelled `status:ready`, each with a brief, and move it to `status:in-progress`.
 3. Supervise: read crewmate reports and GitHub comments, answer what you can, escalate what only a captain can decide. Restart a stuck crewmate from its branch rather than starting over.
 4. When a crewmate opens its pull request, dispatch a reviewer crewmate. Loop review and fixes until the reviewer passes it.
-5. Land: merge into the epic branch once L0 passes; bring a pull request into `main` to the captain for approval, or merge it under `full-send` once L1 passes.
+5. Land: merge into the epic branch once L0 passes; merge into `main` once L1 passes, or first bring it to the captain if the issue has `authority:needs-captain`.
 6. Repeat from step 2 as blockers close, until every issue is closed.
 7. Tell the captain the outcome: what landed, with pull request links, and what is waiting on them.
 

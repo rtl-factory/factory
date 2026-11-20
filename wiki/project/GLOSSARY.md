@@ -60,16 +60,20 @@ The specification of one block, in `wiki/src/<type>/<block>/`. It changes in the
 _Avoid_: design doc, documentation (for this meaning)
 
 **Approval**:
-The captain's go-ahead to merge a pull request into `main`, given after the reviewer crewmate passes it and recorded by the first mate as a pull request comment. It is a step in the flow, not a GitHub review.
+The go-ahead to merge a pull request: the reviewer crewmate's pass, plus a captain's explicit word when the issue needs captain. It is a step in the flow, not a GitHub review.
 _Avoid_: LGTM, sign-off
 
-**Full stop**:
-The default merge mode: the first mate takes the pull request to ready-to-merge (reviewed, L1 green) and stops for the captain's approval.
-_Avoid_: manual merge
+**Label**:
+A GitHub label named `kind:value` (`type:`, `area:`, `block:`, `priority:`, `status:`, `authority:`), defined in `.github/labels.json`. Labels are how work is tracked, grouped on dashboards and checked by agents.
+_Avoid_: tag
 
 **Full send**:
-The merge mode of an issue labelled `full-send`: the first mate takes the pull request all the way to merged without waiting for the captain's approval.
+The default merge authority: once the reviewer crewmate passes the pull request and L1 is green, the first mate merges it without waiting for a captain.
 _Avoid_: auto-merge, YOLO
+
+**Needs captain**:
+An issue labelled `authority:needs-captain`: its pull request merges only after a captain explicitly says it is ready. Only a captain sets or removes the label.
+_Avoid_: full stop, manual merge
 
 **Pull request**:
 The GitHub request to merge one branch into another; the only way changes reach `main` or an epic branch.

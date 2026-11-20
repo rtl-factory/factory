@@ -9,6 +9,7 @@ BKMs define how work is done here. Find the rows that match your work, read thos
 |---|---|
 | doing any work on an issue, from alignment to merge | `wiki/bkm/workflow/flow.md` |
 | the first mate: dispatching, supervising and landing crewmates' work | `wiki/bkm/workflow/first-mate.md` |
+| opening, labelling or dispatching an issue, or deciding whether you may merge | `wiki/bkm/workflow/labels.md` |
 | deciding where a check runs, or reading CI results | `wiki/bkm/workflow/ci-levels.md` |
 | configuring or auditing GitHub repository settings | `wiki/bkm/workflow/github-settings.md` |
 | stress-testing a plan or decision with a captain | `wiki/bkm/design/grilling.md`, with `wiki/bkm/design/domain-modeling.md` |

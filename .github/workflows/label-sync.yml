@@ -1,0 +1,36 @@
+# Creates and updates the labels in .github/labels.json (wiki/bkm/workflow/labels.md).
+# Never deletes a label: removing one is a deliberate manual step.
+name: label-sync
+
+on:
+  push:
+    branches: [main]
+    paths: [.github/labels.json]
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  label-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const want = JSON.parse(fs.readFileSync('.github/labels.json', 'utf8'));
+            const have = await github.paginate(github.rest.issues.listLabelsForRepo, { ...context.repo, per_page: 100 });
+            const byName = new Map(have.map(l => [l.name.toLowerCase(), l]));
+            for (const l of want) {
+              const cur = byName.get(l.name.toLowerCase());
+              if (!cur) {
+                await github.rest.issues.createLabel({ ...context.repo, ...l });
+                core.info(`created ${l.name}`);
+              } else if (cur.color !== l.color || (cur.description || '') !== l.description) {
+                await github.rest.issues.updateLabel({ ...context.repo, name: cur.name, new_name: l.name, color: l.color, description: l.description });
+                core.info(`updated ${l.name}`);
+              }
+            }

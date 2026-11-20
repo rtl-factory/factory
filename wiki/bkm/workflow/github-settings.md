@@ -26,4 +26,4 @@ Target `epic/*`, enforcement **Active**: require a pull request, allowed merge m
 
 ## Labels
 
-Create the label `full-send`: the first mate may merge this issue's pull request into `main` without the captain's approval.
+Labels are defined in `.github/labels.json`. Run the `label-sync` workflow once (Actions → label-sync → Run workflow) to create them; it reruns on every change to the file merged into `main`.

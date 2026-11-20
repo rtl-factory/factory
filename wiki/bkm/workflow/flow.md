@@ -9,13 +9,13 @@ The path every change takes from a captain's intent to `main`.
 ## Steps
 
 1. **Align.** The captain tells the first mate what they want. If the goal, scope or acceptance is unclear, grill (`wiki/bkm/design/grilling.md`) before writing anything.
-2. **Issue.** Write the work as a GitHub issue: what to build and acceptance criteria. The captain assigns it. Every change must start here (ADR 0003).
+2. **Issue.** Write the work as a GitHub issue: what to build and acceptance criteria, labelled per [labels.md](labels.md). The captain assigns it. Every change must start here (ADR 0003).
 3. **Branch.** Create `issue/<number>-<slug>` from `main`, or from the epic branch if the issue belongs to an epic.
 4. **Worktree.** Check the branch out in `worktrees/issue-<number>/`. One crewmate per worktree.
 5. **Code and spec loop.** Change the code under `src/<type>/<block>/` and its spec under `wiki/src/<type>/<block>/` together. Run L0. Repeat until the code matches the spec, the spec matches the issue, and L0 passes.
 6. **Pull request.** Commit, push, and open a pull request whose description says `Closes #<number>`.
 7. **Review.** A reviewer crewmate, with a fresh context, reviews the pull request against the issue, the spec and the BKMs, and posts its findings as a pull request review. The implementing crewmate fixes them; return to step 5 until the reviewer passes it.
-8. **Approval.** By default (full stop), wait for the captain's approval, which the first mate records as a pull request comment. With the `full-send` label (full send), skip this step.
+8. **Approval.** By default (full send), the reviewer crewmate's pass is enough. If the issue has `authority:needs-captain`, wait until a captain says the pull request is ready to merge; the first mate records it as a pull request comment.
 9. **Merge.** Once L1 passes, merge (see Merging). The issue closes.
 10. **Clean up.** Remove the worktree and delete the issue branch.
 
@@ -26,14 +26,14 @@ The path every change takes from a captain's intent to `main`.
 - Name branches `issue/<number>-<slug>` and `epic/<number>-<slug>`.
 - A pull request into `main` must close at least one issue. Why: nothing lands without a decision behind it; the `issue-link` check enforces it.
 - Link related issues ("blocked by", "relates to") without making them an epic. Why: an epic is for landing together, not for grouping.
-- Approval is a step in this flow, not a GitHub review. Agents act under their captain's account and GitHub never lets an author approve their own pull request, so the reviewer crewmate's verdict plus the captain's word is the approval (ADR 0007).
+- Approval is a step in this flow, not a GitHub review. Agents act under their captain's account and GitHub never lets an author approve their own pull request, so the reviewer crewmate's pass is the approval, plus the captain's word when the issue has `authority:needs-captain` (ADR 0007).
 
 ## Merging
 
 - **Issue branch → `main`:** squash merge. Why: one issue, one commit on `main`.
 - **Issue branch → epic branch:** squash merge, once L0 passes. The first mate merges these on its own.
 - **Epic branch → `main`:** merge commit, never squash. Why: the epic's issues stay as separate commits on `main` (ADR 0008).
-- Merge into `main` without the captain's approval only when the issue is labelled `full-send`.
+- Merge into `main` once the reviewer crewmate passes it and L1 is green, unless the issue has `authority:needs-captain`; then wait for the captain.
 
 ## Epics
 
