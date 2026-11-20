@@ -53,6 +53,21 @@ PROGRAMS = {
     # loads over the UART into the SDRAM backing; its simulation is long.
     # The board smoke loads the background program over the board's UART
     # pins into the SDRAM model and runs it on the DE10-Lite top.
+    # The ASIC RAM backend runs the smoke, background and objects programs.
+    'system_asic_ram': dict(source='src/nand2mario/sw/system/system_smoke.asm',
+                            layout='src/nand2mario/sw/system/layout.json', entry='system_smoke::start',
+                            target='n2m_system_asic_ram', variable='N2M_SYSTEM_IMAGE',
+                            action='mario-system-asic-ram-preparation'),
+    'system_background_asic_ram': dict(source='src/nand2mario/sw/system/background.asm',
+                                       layout='src/nand2mario/sw/system/background_layout.json',
+                                       entry='background::start', target='n2m_system_background_asic_ram',
+                                       variable='N2M_SYSTEM_IMAGE',
+                                       action='mario-system-background-asic-ram-preparation'),
+    'system_objects_asic_ram': dict(source='src/nand2mario/sw/system/objects.asm',
+                                    layout='src/nand2mario/sw/system/objects_layout.json',
+                                    entry='objects::start', target='n2m_system_objects_asic_ram',
+                                    variable='N2M_SYSTEM_IMAGE',
+                                    action='mario-system-objects-asic-ram-preparation'),
     'de10_lite': dict(source='src/nand2mario/sw/system/background.asm',
                       layout='src/nand2mario/sw/system/background_layout.json',
                       entry='background::start', target='n2m_de10_lite',

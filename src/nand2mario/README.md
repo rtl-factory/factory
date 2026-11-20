@@ -4,16 +4,20 @@ Game Boy-compatible RTL, Python DV, original software/assets, and integration
 specific to nand2mario belong here. Reuse common UART, VGA, memory, package,
 macro, and board infrastructure. The default system clock is 25 MHz.
 
+Ported from the captain's nand2anything repository (issue #67). The block
+specifications this page names (HAS and DV documents) are not ported yet;
+they live in nand2anything under `wiki/src/nand2mario/`.
+
 The LR35902 CPU lives in `rtl/core/n2m_cpu.sv` with focused control, execute,
 bus, retirement and STOP-policy blocks. It reuses the accepted timebase and
-ALU. Its [architecture and verification](../../wiki/src/nand2mario/core/HAS.md)
+ALU. Its architecture and verification
 cover the compact bus/retirement interfaces and 25 MHz clock enables.
 
 Original smoke software is in `sw/cpu/` (CPU smoke) and `sw/system/` (system
 smoke with the timer, joypad and serial interrupts, the background frame
 program with the VBlank interrupt, and the objects frame program with
 window, sprites and OAM DMA); the self-contained local
-[assembler/linker commands](../../wiki/tools/n2m-sw/SPEC.md) use no sibling
+assembler/linker commands use no sibling
 checkout, commercial ROM or external oracle.
 
 `rtl/core/n2m_interfaces_pkg.sv` publishes the system-domain CPU bus and retirement
@@ -45,30 +49,30 @@ the single growing full-system simulation top (timebase, CPU, memory,
 DMA, cartridge with the on-chip or SDRAM backing, the UART loader, timer,
 interrupt flags, PPU, display, joypad and serial behind an I/O fan-out
 today). The
-[memory](../../wiki/src/nand2mario/memory/HAS.md),
-[cartridge](../../wiki/src/nand2mario/cartridge/HAS.md),
-[timer](../../wiki/src/nand2mario/timer/HAS.md),
-[interrupts](../../wiki/src/nand2mario/interrupts/HAS.md),
-[video](../../wiki/src/nand2mario/video/HAS.md),
-[DMA](../../wiki/src/nand2mario/dma/HAS.md),
-[storage](../../wiki/src/nand2mario/storage/HAS.md),
-[UART loader](../../wiki/src/nand2mario/uart/HAS.md),
-[display](../../wiki/src/nand2mario/display/HAS.md),
-[joypad](../../wiki/src/nand2mario/joypad/HAS.md),
-[serial](../../wiki/src/nand2mario/serial/HAS.md) and
-[system](../../wiki/src/nand2mario/system/HAS.md) specifications own their
+memory,
+cartridge,
+timer,
+interrupts,
+video,
+DMA,
+storage,
+UART loader,
+display,
+joypad,
+serial and
+system specifications own their
 behavior; `dv/memory/`, `dv/cartridge/`, `dv/timer/`, `dv/interrupts/`, `dv/video/`, `dv/dma/`,
 `dv/joypad/`, `dv/serial/`, `dv/storage/`, `dv/uart/` and `dv/system/` hold the Python models and tests.
 
-`fpga/` holds the DE10-Lite board top `n2m_de10_lite.sv` (SDRAM backing and
+`fpga/de10_lite/` holds the DE10-Lite board top `n2m_de10_lite.sv` (SDRAM backing and
 UART loader on the board pins; the host keyboard through the common
 `n2a_jtag_virtual` and `n2a_jtag_keyboard`), its source-list-selected clock
-(`n2m_de10_lite_clock_{intel,portable}.sv`) backends, the Set-2-to-joypad
-decoder, the board-input debouncer, the seven-segment decoder, the settings
-fragment and the SDC; `cfg/n2m_quartus.json` owns the pins and the Quartus
+(`n2m_de10_lite_clock_{intel,portable}.sv`) backends, the settings fragment and the SDC; `fpga/de2_115/` holds
+the DE2-115 top and its files; `fpga/board_io/` holds the shared
+Set-2-to-joypad decoder, board-input debouncer and seven-segment decoder; `cfg/n2m_quartus.json` and `cfg/n2m_de2_115_quartus.json` own the pins and the Quartus
 source list, `tools/n2m_quartus.py` and `tools/n2m_board.py` build, program,
 load images and send joypad keys, and `dv/fpga/` holds the board smoke
-([FPGA HAS](../../wiki/src/nand2mario/fpga/HAS.md)).
+(FPGA HAS).
 
 ## Audio (APU)
 
@@ -81,7 +85,7 @@ board runs have no sound.
 
 The optional `CART_LIBRARY=1` system profile runs the pinned original menu,
 snapshot window and CRC-checked game switch/return ABI. The default ordinary
-cartridge configuration is unchanged. [Menu/library](../../wiki/src/nand2mario/sw/HAS.md)
+cartridge configuration is unchanged. Menu/library
 owns catalogue/provenance, commands, independent pixel scenarios for on-chip
 and SDRAM source backings, and the DE2-115 board dependency.
 
@@ -90,13 +94,10 @@ and SDRAM source backings, and the DE2-115 board dependency.
 All of these run in Verilator on the host; no board or Quartus is needed.
 
 ```sh
-# every level0 Mario entry (unit, subsystem and diagram checks)
-python3 tools/build/regress.py run --area mario --level level0
-# one full-system program test
-python3 tools/build/build.py test n2m_system
-# re-render the showcase images from game-qualification results
-python3 -B src/nand2mario/tools/sim_showcase_render.py --catalog wiki/showcase/nand2mario/catalog.json \
-  --results <qualification workdir>/results --output wiki/showcase/nand2mario --source-commit <sha>
+# every L0 nand2mario target (unit, subsystem and board smoke checks)
+python3 tools/sim/sim.py test --project nand2mario --level L0
+# one full-system program test (its wrapper assembles the program first)
+python3 tools/sim/sim.py test n2m_system
 ```
 
 `src/nand2mario/tools/game_qualification.py run <game>` runs one pinned game
@@ -104,9 +105,8 @@ scenario ([#395](https://github.com/amichai-bd/nand2anything/issues/395)).
 Compatibility: ROM-only and MBC1 cartridges; Super Mario Land (MBC1) runs in
 simulation but needs the owner's [private ROM](sw/roms/private/README.md);
 Mooneye acceptance results are in the
-[conformance plan](../../wiki/src/nand2mario/conformance/DV.md)
+conformance plan
 ([#441](https://github.com/amichai-bd/nand2anything/issues/441)) and a SameBoy
 differential runner is a later step; the DMG boot
 ROM is not modelled (cartridges start at 0x0100); the APU is silent.
-The [simulation showcase](../../wiki/showcase/nand2mario/README.md) and
-[board captures](../../wiki/showcase/nand2mario/board/README.md) show the results.
+Board captures are in `sw/roms/private/media/` (private, like the ROM).

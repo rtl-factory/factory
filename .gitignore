@@ -9,3 +9,10 @@ __pycache__/
 
 # Scratch output of simulations, Quartus builds and tools
 /workdir/
+
+# Cartridge images and private content: never add by accident. The one
+# tracked ROM and its README were added on purpose (see
+# src/nand2mario/sw/roms/private/README.md); do not loosen these rules.
+*.gb
+*.gbc
+private/
