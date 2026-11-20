@@ -189,7 +189,7 @@ Values are the pinned `doomkeys.h` constants and lowercase ASCII.
 | `a`-`z` | standard Set-2 letter codes | `'a'`-`'z'` | Y/N prompts, automap f/g/m/c, cheats |
 
 Other E0 keys, including multimedia keys sharing a letter's low byte, map to
-nothing. Every [local control](../../scripts/n2d_control/spec.md) action has
+nothing. Every [local control](../../scripts/host/spec.md#local-controls) action has
 a nonzero entry.
 
 ## Deterministic-time verification build
@@ -234,9 +234,9 @@ stores, settles the bank, waits two VGA sequence increments and publishes
 READY sequence last, then permits no tick, framebuffer write, palette upload
 or commit until release, while still sampling the clock. Only a successful
 maintained Halt makes cached mailbox writes durable and host writes visible on
-resume. The [host SPEC](../../scripts/n2d_capture/spec.md) owns deadlines,
+resume. The [host SPEC](../../scripts/host/spec.md#coherent-frame-capture) owns deadlines,
 continuity, provenance and the
-[identity and addresses](../../scripts/n2d_capture/spec.md#identity-and-exact-addresses).
+[identity and addresses](../../scripts/host/spec.md#identity-and-exact-addresses).
 
 ### Capture mailbox
 

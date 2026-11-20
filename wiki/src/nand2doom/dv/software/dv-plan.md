@@ -108,7 +108,7 @@ and the UART/cache fixture; no test reimplements the handshake.
   and a new generation verified. cocotb `bridge`/`resume` keeps all pin
   access on the scheduler thread; the observer issues no mailbox command.
 - **`test_n2d_capture.py`**
-  (host side of the [capture script](../../scripts/n2d_capture/spec.md)):
+  (host side of the [capture script](../../scripts/host/spec.md#coherent-frame-capture)):
   fragmenting transport, snapshot order, request-only writes, foreign and
   exhausted IDs, generation progress and wrap, partial READY, corruption,
   poison, budget abort; same-image resets around release (no later command

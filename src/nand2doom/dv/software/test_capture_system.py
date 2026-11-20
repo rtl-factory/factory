@@ -11,16 +11,15 @@ from cocotb.utils import get_sim_time
 from cocotb.task import bridge
 from src.nand2doom.dv.platform.test_n2d_c_runtime_system import _initialize
 from src.nand2doom.dv.io.test_n2d_uart_debug import _exchange
-from src.nand2doom.scripts.n2d_uart_debug_host import (
+from src.nand2doom.scripts.host.n2d_uart_debug_host import (
     CMD_HALT,CMD_LOAD,CMD_PEEK,CMD_POKE,CMD_RESET_PC,CMD_RESUME,ST_OK,request)
 from .capture_system_build import build
 from .capture_uart_transport import CaptureUartTransport
 
 ROOT=Path(__file__).resolve().parents[4]
-sys.path.insert(0,str(ROOT/'src/nand2doom/scripts'))
-import n2d_capture as capture
-import n2d_uart as uart
-import n2d_uart_debug_host as wire
+from src.nand2doom.scripts.host import n2d_capture as capture
+from src.nand2doom.scripts.host import n2d_uart as uart
+from src.nand2doom.scripts.host import n2d_uart_debug_host as wire
 
 @cocotb.test(timeout_time=2500,timeout_unit='ms')
 async def capture_system_contract(dut):

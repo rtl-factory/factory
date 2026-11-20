@@ -8,8 +8,8 @@ import zlib
 
 from src.nand2doom.dv.fpga.board_jtag import check_jtag_keys
 from src.nand2doom.dv.memory.sdram_pin_model import NOP, WRITE, SdramPinModel, join
-import src.nand2doom.scripts.n2d_uart_debug_host as wire
-from src.nand2doom.scripts.n2d_uart_debug_host import (
+import src.nand2doom.scripts.host.n2d_uart_debug_host as wire
+from src.nand2doom.scripts.host.n2d_uart_debug_host import (
     CMD_HALT, CMD_PING, CMD_POKE, CMD_PEEK, CMD_RESUME, request, decode_response,
 )
 

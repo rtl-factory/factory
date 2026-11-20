@@ -356,7 +356,7 @@ RDW fields may report `Don't care` or `New data with NBE Read`.
 
 ## Budget
 
-Last passing build in the factory (Quartus Prime Lite 25.1std, `python3 src/nand2doom/scripts/quartus.py --board de10_lite`, issue #78): the full report gate passed with 7 reviewed warning occurrences.
+Last passing build in the factory (Quartus Prime Lite 25.1std, `python3 src/nand2doom/scripts/board/quartus.py --board de10_lite`, issue #78): the full report gate passed with 7 reviewed warning occurrences.
 
 | Resource or check | Result |
 |---|---|

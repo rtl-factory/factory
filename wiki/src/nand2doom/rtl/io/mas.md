@@ -9,7 +9,7 @@ keyboard; and a host keyboard over the USB-Blaster Virtual JTAG cable. PS/2,
 UART `CMD_INPUT`, CPU INJECT and JTAG all produce the same ten-bit Set-2 event
 in one eight-entry FIFO. No path changes the ISA; the
 [platform](../has.md#address-map) owns address decode. The
-[host CLI](../../scripts/n2d_uart/spec.md) owns serial transport, identity
+[host CLI](../../scripts/host/spec.md#uart-host) owns serial transport, identity
 gating, manifest validation and acknowledged loading; the [DV plan](../../dv/io/dv-plan.md)
 owns verification.
 
@@ -73,7 +73,7 @@ next-state block, so it wins over the serializer advance.
 ## Version-1 wire protocol
 
 Little-endian. CRC-8/ATM: polynomial `0x07`, init 0, no reflection, no final
-XOR. Codec: `src/nand2doom/scripts/n2d_uart_debug_host.py`.
+XOR. Codec: `src/nand2doom/scripts/host/n2d_uart_debug_host.py`.
 
 | Request byte | Field | Response byte | Field |
 | ---: | --- | ---: | --- |
@@ -387,7 +387,7 @@ error with no effect; a CONTROL write with no lane is accepted with no effect.
 
 The common [Virtual JTAG keyboard endpoint](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/jtag/HAS.md) lets a
 host offer up to four raw Set-2 bytes per command through a held mailbox. The
-[host script](../../scripts/n2d_jtag_keyboard/spec.md) sends Doom actions, raw
+[host script](../../scripts/host/spec.md#jtag-keyboard) sends Doom actions, raw
 events or text through the shared [JTAG transport](../../../common/scripts/jtag/spec.md).
 
 Scan-inject port (`scan_inject_valid_i`, `scan_inject_byte_i`,
@@ -423,4 +423,4 @@ constrain the hub TCK and mailbox buses ([FPGA timing](../../fpga/de10_lite/boar
 | `src/nand2doom/rtl/io/n2d_uart_mem_port.sv` | Common endpoint bus adapter |
 | `src/nand2doom/rtl/io/n2d_ps2_keyboard.sv` | PS/2 receiver, FIFO, MMIO |
 | `src/nand2doom/rtl/platform/n2d_pkg.sv`, `n2d_types_pkg.sv` | Codes, helpers, state records |
-| `src/nand2doom/scripts/n2d_uart_debug_host.py` | Host codec |
+| `src/nand2doom/scripts/host/n2d_uart_debug_host.py` | Host codec |

@@ -10,7 +10,7 @@ from cocotb.utils import get_sim_time
 
 from src.nand2doom.dv.core.rv32i_smoke_model import encode_i, encode_s, encode_b
 from src.nand2doom.dv.memory.sdram_pin_model import SdramPinModel
-from src.nand2doom.scripts.n2d_uart_debug_host import (
+from src.nand2doom.scripts.host.n2d_uart_debug_host import (
     CMD_PING, CMD_LOAD, CMD_PEEK, CMD_RESUME, CMD_HALT,
     request, decode_response,
 )

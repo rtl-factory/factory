@@ -5,7 +5,7 @@ from cocotb.triggers import FallingEdge
 from .test_n2d_c_runtime_system import _run_system, _expected_frame
 from src.nand2doom.dv.io.test_n2d_uart_bulk import exchange
 from src.nand2doom.dv.io.test_n2d_uart_debug import _exchange
-from src.nand2doom.scripts.n2d_uart_debug_host import CMD_HALT, CMD_PING, request
+from src.nand2doom.scripts.host.n2d_uart_debug_host import CMD_HALT, CMD_PING, request
 
 
 @cocotb.test()

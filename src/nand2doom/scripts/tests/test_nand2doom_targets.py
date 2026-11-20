@@ -8,7 +8,7 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(REPO_ROOT))
 from src.nand2doom.scripts.tests import target_view  # noqa: E402
 
-_spec = importlib.util.spec_from_file_location("quartus", REPO_ROOT / "src/nand2doom/scripts/quartus.py")
+_spec = importlib.util.spec_from_file_location("quartus", REPO_ROOT / "src/nand2doom/scripts/board/quartus.py")
 quartus = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(quartus)
 

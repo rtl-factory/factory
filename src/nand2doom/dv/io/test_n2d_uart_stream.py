@@ -11,7 +11,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge, Timer
 from cocotb.utils import get_sim_time
 
-import src.nand2doom.scripts.n2d_uart_debug_host as wire
+import src.nand2doom.scripts.host.n2d_uart_debug_host as wire
 
 
 BAUD = 3_000_000  # exact FT232R maximum; the fixture runs 8 1/3 clocks per bit

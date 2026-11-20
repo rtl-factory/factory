@@ -13,7 +13,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, Event, FallingEdge, First, ReadOnly, RisingEdge, Timer, with_timeout
 
-from src.nand2doom.scripts.n2d_uart_debug_host import (
+from src.nand2doom.scripts.host.n2d_uart_debug_host import (
     CMD_HALT, CMD_RESET_PC, CMD_RESUME, ST_OK, input_request, request,
 )
 from src.nand2doom.dv.io.test_n2d_ps2_keyboard import send_frame
@@ -30,7 +30,7 @@ from src.nand2doom.dv.software.input_witness import InputABI, InputWitness
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-from src.nand2doom.scripts.n2d_doom import build as build_doom
+from src.nand2doom.scripts.sw_build.n2d_doom import build as build_doom
 
 CLOCK_PERIOD_NS = 40
 FRAME_BYTES = 320 * 200

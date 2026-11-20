@@ -3,7 +3,7 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
-from src.nand2doom.scripts.n2d_image import _confined_output, _tool, _version
+from src.nand2doom.scripts.sw_build.n2d_image import _confined_output, _tool, _version
 from .capture_build import ROOT, SOURCE, PRODUCTION
 
 

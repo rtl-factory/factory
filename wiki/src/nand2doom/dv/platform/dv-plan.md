@@ -98,7 +98,7 @@ CRC over the doubled 320x200 image).
 
 ### Command line
 
-`src/nand2doom/scripts/n2d_perf.py` builds or reuses the image, compiles and
+`src/nand2doom/scripts/perf/n2d_perf.py` builds or reuses the image, compiles and
 runs the target, and writes `report.txt`, `summary.json` and VGA PPM/PNG
 under `workdir/perf/<backend>/` (`<backend>-half/`).
 
@@ -121,7 +121,7 @@ physical FPS.
 ### Render verification
 
 ```sh
-python3 src/nand2doom/scripts/n2d_perf.py --variant render-verification --backend fast --geometry full --frames 2
+python3 src/nand2doom/scripts/perf/n2d_perf.py --variant render-verification --backend fast --geometry full --frames 2
 ```
 
 Writes to `workdir/perf/<backend>-render-verification/`, enables
@@ -135,13 +135,13 @@ first display, then one per display. Source/define hashes, ELF bytes and the
 embedded identity must match the capture manifest. `--geometry half` uses the
 half fixture (`src/nand2doom/dv/software/render_oracle_half.json`),
 which owns only projected hashes and CRCs. Both require a zero swap-guard
-count. The projection checker (`src/nand2doom/scripts/n2d_render_projection.py`)
+count. The projection checker (`src/nand2doom/scripts/perf/n2d_render_projection.py`)
 verifies the six archived full images, projects them (even columns, first VGA
 pixel pair per four, black blanking) and checks tracked half expectations
 before reading candidates; it has no update operation:
 
 ```sh
-python3 src/nand2doom/scripts/n2d_render_projection.py --baseline workdir/reference-full --output workdir/projected-half --candidate workdir/perf/fast-half-render-verification
+python3 src/nand2doom/scripts/perf/n2d_render_projection.py --baseline workdir/reference-full --output workdir/projected-half --candidate workdir/perf/fast-half-render-verification
 ```
 
 Legacy deterministic pins (reference image, full width only; identical across
