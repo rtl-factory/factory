@@ -1,0 +1,3 @@
+# Every change starts with a GitHub issue
+
+No change reaches the repo without a GitHub issue behind it, and every pull request into `main` must close one (enforced by the `issue-link` check). A captain can open issues, or start an alignment session from which issues come; the first mate can open issues and update epics on its own within a goal the captain set. A crewmate is dispatched only on an issue labelled `status:ready`. This makes the issue tracker the factory's record of every decision, while leaving agents autonomy inside an aligned goal. The cost is overhead on trivial changes, which we accept.

@@ -1,5 +1,16 @@
 # factory
 
+A hardware development factory: humans decide, agents execute. Every change starts with a GitHub issue. Agents start at `AGENTS.md`.
+
+## Inspirations
+
+Our BKMs (Best Known Methods) build on these agent-skill packs. We adapt their ideas to hardware work and take each idea once; [wiki/bkm/SOURCES.md](wiki/bkm/SOURCES.md) maps which pack feeds which BKM.
+
+- [tstack](https://github.com/t3dotgg/tstack) by Theo Browne: PR review, filing, CI monitoring and shipping
+- [pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan (`poteto`): planning, code quality and running parallel work
+- [Skills for Real Engineers](https://github.com/mattpocock/skills) by Matt Pocock: planning interviews, specs, TDD and codebase architecture
+- [firstmate](https://github.com/kunchenguid/firstmate) by Kun Chen: one captain, one first mate, a crew of agents
+
 ## Layout
 
 First choose the type of work, then choose the hardware block:
@@ -20,16 +31,15 @@ factory/
 ├── wiki/               Documentation
 │   ├── src/            Documentation for the hardware blocks (mirrors src/)
 │   ├── specs/          External reference specifications
-│   ├── bkm/            Working methods and guides
-│   ├── project/        Repository layout and design decisions
+│   ├── bkm/            Best Known Methods, one directory per kind of work
+│   ├── project/        Glossary and decisions (ADRs)
 │   ├── tools/          Documentation for the tools
 │   └── tracker/        Metrics and dashboards
 │
 ├── cfg/                Project settings and limits
 ├── tools/              Scripts and shared automation
-├── .claude/            Agent skills, agents, and settings
-├── .agents/            Skill discovery for Codex
-├── .gitlab/            CI jobs and issue/MR templates
+├── .claude/            Agent skills that route to BKMs (source of truth)
+├── .agents/skills      Symlink to .claude/skills, for Codex
+├── .github/            CI workflows and issue/PR templates
 └── worktrees/          Separate checkouts for development
 ```
-amichai was here

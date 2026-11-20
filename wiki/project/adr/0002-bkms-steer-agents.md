@@ -1,0 +1,3 @@
+# BKMs steer the agents; skills are entry points
+
+All method lives in BKMs under `wiki/bkm/`. The repo keeps at most 10 skills, one per moment someone triggers (start a change, split work into issues, review, land, debug, catch up, retro, grill, act as first mate, find a BKM). A skill holds only its trigger, a short summary of what happens, and pointers to the BKMs that hold the rules; it never adds a rule of its own or chains into another skill. `AGENTS.md` holds only the few rules every session needs, and pointers. Captains change how agents work by tuning BKMs, which change often; skills rarely change. We rejected the upstream style of many small skills invoking each other: it hides the method inside agent plumbing, and every local tweak would fork a skill.

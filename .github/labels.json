@@ -1,0 +1,117 @@
+[
+  {
+    "name": "type:feature",
+    "color": "1d76db",
+    "description": "New capability in a block or the factory"
+  },
+  {
+    "name": "type:bug",
+    "color": "1d76db",
+    "description": "Something is wrong and must be fixed"
+  },
+  {
+    "name": "type:spec",
+    "color": "1d76db",
+    "description": "Change to a block spec"
+  },
+  {
+    "name": "type:bkm",
+    "color": "1d76db",
+    "description": "Change to a BKM, skill or the glossary"
+  },
+  {
+    "name": "type:infra",
+    "color": "1d76db",
+    "description": "CI, tools, repo settings"
+  },
+  {
+    "name": "type:research",
+    "color": "1d76db",
+    "description": "Find something out; ends in a written finding"
+  },
+  {
+    "name": "type:epic",
+    "color": "1d76db",
+    "description": "Parent issue whose sub-issues land together through an epic branch"
+  },
+  {
+    "name": "area:arch",
+    "color": "5319e7",
+    "description": "Architecture models"
+  },
+  {
+    "name": "area:rtl",
+    "color": "5319e7",
+    "description": "Hardware implementation"
+  },
+  {
+    "name": "area:dv",
+    "color": "5319e7",
+    "description": "Simulation and verification"
+  },
+  {
+    "name": "area:fv",
+    "color": "5319e7",
+    "description": "Formal verification"
+  },
+  {
+    "name": "area:syn",
+    "color": "5319e7",
+    "description": "Synthesis and constraints"
+  },
+  {
+    "name": "area:workflow",
+    "color": "5319e7",
+    "description": "How the factory works: BKMs, skills, CI, GitHub"
+  },
+  {
+    "name": "priority:P0",
+    "color": "d93f0b",
+    "description": "Drop everything: main is broken or blocked"
+  },
+  {
+    "name": "priority:P1",
+    "color": "d93f0b",
+    "description": "Next up"
+  },
+  {
+    "name": "priority:P2",
+    "color": "d93f0b",
+    "description": "Normal"
+  },
+  {
+    "name": "priority:P3",
+    "color": "d93f0b",
+    "description": "Someday"
+  },
+  {
+    "name": "status:triage",
+    "color": "fbca04",
+    "description": "New; not yet clear or not yet labelled"
+  },
+  {
+    "name": "status:ready",
+    "color": "fbca04",
+    "description": "Clear and labelled; can be assigned"
+  },
+  {
+    "name": "status:in-progress",
+    "color": "fbca04",
+    "description": "A crewmate is working on it"
+  },
+  {
+    "name": "status:in-review",
+    "color": "fbca04",
+    "description": "Pull request open; in review"
+  },
+  {
+    "name": "status:blocked",
+    "color": "fbca04",
+    "description": "Waiting on another issue or an outside fact"
+  },
+  {
+    "name": "authority:needs-captain",
+    "color": "b60205",
+    "description": "A captain must say the pull request is ready before it lands; set only by a captain"
+  }
+]
