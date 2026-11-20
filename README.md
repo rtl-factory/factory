@@ -16,7 +16,7 @@ Our BKMs (Best Known Methods) build on these agent-skill packs. We adapt their i
 Code is laid out by project, then discipline, then the block or script:
 
 ```
-src/<project>/<discipline>/<name>/      disciplines: arch, rtl, dv, fv, fpga, scripts
+src/<project>/<discipline>/<name>/      disciplines: arch, rtl, dv, fv, fpga, scripts, sw
 tools/<tool>/                           tools any project can use
 ```
 
@@ -31,9 +31,9 @@ factory/
 │       ├── dv/<block>/         Simulation tests (cocotb)
 │       ├── fv/<block>/         Formal verification
 │       ├── fpga/<board>/       Board tops, Quartus settings, pins, constraints
-│       ├── scripts/<script>/   Scripts bound to this project or one of its blocks
-│       ├── cfg/                Simulation targets and per-board build config
-│       └── sw/                 Software that runs on the design
+│       ├── scripts/<script>/   Host scripts bound to this project or one of its blocks
+│       ├── sw/<name>/          Software that runs on the design's own CPU
+│       └── cfg/                Simulation targets and per-board build config
 │
 ├── tools/                      Tools any project can use
 │   └── <tool>/                 e.g. sim/, toolchain/, pages/
@@ -46,7 +46,8 @@ factory/
 │   │       ├── dv/<block>/         Verification plans
 │   │       ├── fv/<block>/         Formal plans
 │   │       ├── fpga/<board>/       Board docs
-│   │       └── scripts/<script>/   prd.md, spec.md
+│   │       ├── scripts/<script>/   prd.md, spec.md
+│   │       └── sw/<name>/          Software specs
 │   ├── tools/                  Mirrors tools/
 │   │   └── <tool>/             prd.md, spec.md
 │   ├── specs/                  External reference specifications

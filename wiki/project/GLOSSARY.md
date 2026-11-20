@@ -84,7 +84,7 @@ A self-contained design the factory builds, with everything it needs under `src/
 _Avoid_: repo, product (for this meaning)
 
 **Discipline**:
-The kind of work a project's code is, and the second level of its path `src/<project>/<discipline>/`: `arch`, `rtl`, `dv`, `fv`, `fpga` or `scripts`.
+The kind of work a project's code is, and the second level of its path `src/<project>/<discipline>/`: `arch`, `rtl`, `dv`, `fv`, `fpga`, `scripts` or `sw`.
 _Avoid_: type, work type, layer
 
 **Block**:
@@ -181,6 +181,10 @@ _Avoid_: repo tool (say tool), global tool
 **Script**:
 Code bound to one project, or to a block of the `common` project, that changes when that project or block changes; its code is in the project's `scripts` discipline, `src/<project>/scripts/<script>/`, and its PRD and spec in `wiki/src/<project>/scripts/<script>/`.
 _Avoid_: project tool, helper
+
+**Software**:
+Code and data that run on a design's own CPU (C and assembly sources, firmware and runtimes, linker scripts and the target build setup, ROM and data images built for the design); it is the project's `sw` discipline, `src/<project>/sw/<name>/`. Code that runs on the host to build, load or drive it is a script.
+_Avoid_: firmware (for the whole discipline), target code, program (for this meaning)
 
 **Board host**:
 The Linux host a board is wired to; the only place that board is programmed and observed.

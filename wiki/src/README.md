@@ -1,6 +1,6 @@
 # Blocks
 
-Specs and docs for each project's blocks, mirroring the code: code lives under `src/<project>/<discipline>/<name>/` (discipline: `arch`, `rtl`, `dv`, `fv`, `fpga`, `scripts`) and its documents under `wiki/src/<project>/<discipline>/<name>/`: a block's spec and plans, a script's PRD and spec. Code and documents change in the same pull request ([repository layout](../bkm/workflow/repo-layout.md)).
+Specs and docs for each project's blocks, mirroring the code: code lives under `src/<project>/<discipline>/<name>/` (discipline: `arch`, `rtl`, `dv`, `fv`, `fpga`, `scripts`, `sw`) and its documents under `wiki/src/<project>/<discipline>/<name>/`: a block's spec and plans, a script's PRD and spec. Code and documents change in the same pull request ([repository layout](../bkm/workflow/repo-layout.md)).
 
 | Project | What it is |
 |---|---|
