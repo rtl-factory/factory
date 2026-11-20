@@ -43,7 +43,7 @@ One of several crewmates the first mate dispatches on the same issue as competin
 _Avoid_: arena entry, contestant
 
 **Reviewer crewmate**:
-A crewmate with a fresh context that reviews another crewmate's pull request against the issue, the spec and the BKMs. It never reviews its own work.
+A crewmate with a fresh context that reviews another crewmate's work (a pull request, or competing candidates) against the issue, the spec and the BKMs. It never reviews its own work.
 _Avoid_: verifier, checker
 
 **Brief**:
