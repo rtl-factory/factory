@@ -1,0 +1,35 @@
+# UART memory host: spec
+
+How the host works, against its [requirements](prd.md). Code in `src/common/scripts/uart_mem/`: `uart_mem.py` (the library) and `tests/` (a hardware-free contract against an independent fake endpoint). It talks to the `common` UART memory endpoint (`src/common/rtl/uart_mem/`), whose own spec is not ported yet; its simulation contract is `src/common/dv/uart_mem/` (targets `n2a_uart_mem_contract` and `n2a_uart_mem_load_readback`).
+
+## Commands
+
+| Command | Code | Effect |
+|---|---|---|
+| identify | `0x01` | Returns the project id, endpoint version and window map, so the host can refuse a mismatched image |
+| hold / release | `0x02` / `0x03` | Holds the CPU (in reset or a maintained halt) or releases it; memory and scanout keep running |
+| entry | `0x04` | Sets the entry state while held |
+| write | `0x10` | Writes a block of memory; loading uses it while the CPU is held |
+| read | `0x11` | Reads a block of memory, held or live, by arbitrating for bus cycles |
+
+A request starts with `0xA8`, a response with `0x8A`; both carry the protocol version (`0x01`), a sequence number and a CRC-8 over the header, and a payload carries a CRC-32. A response status other than `0x00` names the failure (version, command, checksum, alignment, range, length, not held, timeout, memory, overrun) and raises `StatusError`.
+
+## Parts
+
+| Part | Role |
+|---|---|
+| `Transport` | Any object with `write(data)` and `read(size, deadline) -> bytes` |
+| `Client` | One endpoint session: sequence numbers, framing, deadlines (`timeout`, default 1 s per command), and the project-byte callback `on_project_bytes`. Any failure sets `poisoned`, and every later call raises |
+| `load(client, segments, entry, project_id)` | The load transaction below |
+| `read_window(client, address, length)` | One live read (a screen readback) while the CPU keeps running |
+
+## Load transaction
+
+1. Identify, and check the project id. Check every segment (word-aligned, not empty, inside a writable window) before anything is sent.
+2. Hold the CPU once.
+3. Write each segment, then read it back and compare. A failure here raises `LoadError` and sends no entry or release, so the CPU stays held.
+4. After every segment has verified, set the entry state, then release the CPU once. If the entry or release reply is lost, the CPU state is unknown and must be inspected.
+
+## Tests
+
+`python3 -m pytest src/common/scripts/uart_mem/tests` covers framing, identity, chunking, the load transaction (one hold, verify before entry, one release, failures leave the CPU held), readback and shared-UART project bytes.

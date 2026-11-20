@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "variant": "render-verification",
+  "geometry": "full",
+  "frames": 2,
+  "input": [],
+  "state_symbols": [
+    "gametic",
+    "maketic",
+    "ticdup",
+    "leveltime",
+    "prndindex",
+    "rndindex",
+    "fuzzpos"
+  ],
+  "states": [
+    {
+      "gametic": 2,
+      "maketic": 2,
+      "ticdup": 1,
+      "leveltime": 2,
+      "prndindex": 55,
+      "rndindex": 66,
+      "fuzzpos": 0
+    },
+    {
+      "gametic": 3,
+      "maketic": 3,
+      "ticdup": 1,
+      "leveltime": 3,
+      "prndindex": 55,
+      "rndindex": 67,
+      "fuzzpos": 0
+    },
+    {
+      "gametic": 4,
+      "maketic": 4,
+      "ticdup": 1,
+      "leveltime": 4,
+      "prndindex": 55,
+      "rndindex": 68,
+      "fuzzpos": 0
+    }
+  ],
+  "crcs": {
+    "scene": "0x9da80229",
+    "scene_vga": "0x516470a8",
+    "gameplay": [
+      "0x347e0bd6",
+      "0x347e0bd6"
+    ],
+    "gameplay_vga": [
+      "0x01807cda",
+      "0x01807cda"
+    ]
+  },
+  "framebuffer_sha256": {
+    "doom-frame-001-fb.bin": "996cd3b5e22e9e0ef34cd79d4deb825ca5baa67b306840f4763152c65dd2b6bd",
+    "doom-frame-002-fb.bin": "996cd3b5e22e9e0ef34cd79d4deb825ca5baa67b306840f4763152c65dd2b6bd",
+    "doom-scene-fb.bin": "656b49b356d8f5920142ab2a5f4e759b520e234960e485d3222228446a28a335"
+  },
+  "vga_ppm_sha256": {
+    "doom-frame-001-vga.ppm": "4276c862ccd3d8a67890ba58d21826edc773b41487cf0c295203630c24118385",
+    "doom-frame-002-vga.ppm": "4276c862ccd3d8a67890ba58d21826edc773b41487cf0c295203630c24118385",
+    "doom-scene-vga.ppm": "20f38d52bdd47829e38571df08c8601d6e211281c95532cd9c56619416f5aadc"
+  },
+  "provenance": {
+    "issue": 135,
+    "engine_revision": "dcb7a8dbc7a16ce3dda29382ac9aae9d77d21284",
+    "base_sha": "2bad7420df9cb8c41376f7d3f55bae9ad451a22b",
+    "head_sha": "2b1d6f2f08296c5d1b0c5f3dc05545025751c310",
+    "baseline_firmware_sha256": "7ae83bafe260822d60a144accf643145a578a399cdbe2b88f6ba3cb703953785",
+    "baseline_elf_sha256": "e7fd666d50543cef76750c63aca24ff82357b67e7e6f0b5dd4411bfc55b298c1",
+    "direct_firmware_sha256": "53fd78dba3eb61f6f7ee1e30699c9180a49b55c329687fce43e59f65d2a9ff6d",
+    "direct_elf_sha256": "68eef566bd37d8b8812f041e53104cd91d5d0964039a4e5a269eaa21db879624",
+    "verification_defines": [
+      "-DN2D_DETERMINISTIC_TIME=1",
+      "-DN2D_VERIFY_SINGLETICS=1"
+    ],
+    "recipe_sha256": "a0ba7cdecf686fa78af0781d0dd146a03515d46ea36d9df7d86bf433313b918e",
+    "raw_fb_and_vga_bytes_equal": true,
+    "same_state_differential_proven": true,
+    "backend": "fast",
+    "sdram_correction_166_included": false
+  }
+}
