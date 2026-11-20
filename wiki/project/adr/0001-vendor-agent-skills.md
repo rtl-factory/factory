@@ -1,0 +1,3 @@
+# Copy agent skills into the repo instead of installing them as a plugin
+
+We copy third-party agent skills (starting with mattpocock/skills) into `.claude/skills/`, rather than installing them as a self-updating plugin. Committed copies give every engineer and agent the same skills on clone, and let us adapt them to hardware work; the cost is that upstream updates are pulled by hand (tracked in `.claude/skills/UPSTREAM.md`). Only skills that apply to hardware work are adopted; each candidate is reviewed in its own ticket. `.claude/skills/` is the source of truth; `.agents/skills` is a symlink to it so Codex reads the same files.
