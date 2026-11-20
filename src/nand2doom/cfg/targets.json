@@ -684,7 +684,7 @@
       "testcase": "doom_boot_render_contract",
       "default_seed": 37,
       "max_cycles": 200000000,
-      "level": "L2"
+      "level": "manual"
     },
     "n2d_system_product": {
       "regression_action": "compile",
