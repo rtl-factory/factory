@@ -99,6 +99,10 @@ _Avoid_: boundary, cut
 A block whose small interface hides a lot of behaviour; a shallow block's interface is nearly as complex as what it contains.
 _Avoid_: wrapper (for a deep block)
 
+**Deletion test**:
+Imagine removing a block and wiring its contents into its neighbours: if complexity vanishes it was a pass-through; if it reappears in several places, the block earns its keep.
+_Avoid_: inline test
+
 **Spec**:
 The specification of one block, in `wiki/src/<type>/<block>/`. It changes in the same pull request as the block's code.
 _Avoid_: design doc, documentation (for this meaning)

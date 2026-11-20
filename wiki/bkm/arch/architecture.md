@@ -9,10 +9,7 @@ How to shape blocks and the seams between them, find where the existing structur
 
 ## Terms
 
-- **Interface**: everything a neighbour or a test must know to use a block correctly: ports and parameters, but also the handshake protocol, ordering, latency and throughput, reset and error behaviour, clock domains, and the register map.
-- **Depth**: behaviour a neighbour or test can exercise per unit of interface it must learn. A block is **deep** when a small interface (a few ports and one handshake) hides a lot of behaviour, **shallow** when its interface is nearly as complex as its contents.
-- **Seam**: where a block's interface sits. Where to put it is a decision of its own, separate from what goes behind it.
-- **Deletion test**: imagine removing the block and wiring its contents into its neighbours. If complexity vanishes, it was a pass-through; if it reappears in several places, it earns its keep.
+**Interface**, **seam**, **deep block** (and a shallow one) and the **deletion test** are defined in the [glossary](../../project/GLOSSARY.md).
 
 ## Rules
 
@@ -46,7 +43,7 @@ How to shape blocks and the seams between them, find where the existing structur
 1. Pin the behaviour before moving anything: the block's DV regression green at a named commit, plus, where the reshape allows, a formal equivalence check of old against new RTL. Lint and elaboration are not a pin.
 2. Name the missing structure and the target shape (block split, interfaces, FSMs), per [redesign-from-first-principles](../principles/redesign-from-first-principles.md).
 3. Subtract first: delete dead logic, collapse one-neighbour pass-through blocks, drop unused ports, per [subtract-before-you-add](../principles/subtract-before-you-add.md) and [laziness-protocol](../principles/laziness-protocol.md).
-4. Move in small steps, each keeping the pin green. For an interface change, migrate every instance and delete the old ports in the same wave, with no shim, per [migrate-callers-then-delete-legacy-apis](../principles/migrate-callers-then-delete-legacy-apis.md); for a planned multi-phase rewrite, follow [outcome-oriented-execution](../principles/outcome-oriented-execution.md). Grep every renamed signal in RTL, testbench, constraints, waivers and specs.
+4. Move in small steps, each keeping the pin green. For an interface change, migrate every instance and delete the old ports in the same wave, with no shim, per [migrate-callers-then-delete-legacy-apis](../principles/migrate-callers-then-delete-legacy-apis.md); when the change is too wide for one pull request, split it expand–contract per [issues.md](../workflow/issues.md); for a planned multi-phase rewrite, follow [outcome-oriented-execution](../principles/outcome-oriented-execution.md). Grep every renamed signal in RTL, testbench, constraints, waivers and specs.
 5. Prove behaviour is unchanged on the real artifacts ([prove-it-works](../principles/prove-it-works.md)): the pin passes, and synthesis area and timing moved only as explained. Change the spec in the same pull request if the interface changed.
 6. Order the commits subtraction, reshape, cleanup, per [sequence-verifiable-units](../principles/sequence-verifiable-units.md).
 
