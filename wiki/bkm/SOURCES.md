@@ -8,6 +8,7 @@ Where our BKMs come from. Four agent-skill packs overlap heavily, so we take eac
 | [tstack](https://github.com/t3dotgg/tstack) | Theo Browne | MIT, `LICENSE-tstack` |
 | [pstack](https://github.com/cursor/plugins/tree/main/pstack) | Lauren Tan (`poteto`) | MIT, `LICENSE-pstack` |
 | [firstmate](https://github.com/kunchenguid/firstmate) | Kun Chen | MIT, `LICENSE-firstmate` |
+| nand2anything (private) | Amichai Ben-David, a captain of this factory | No licence file; adapted at the owner's direction (issue #61) |
 
 ## Adopted
 
@@ -18,6 +19,7 @@ Which topic sources each BKM used, and why the others were rejected, is recorded
 | `design/grilling.md`, `design/domain-modeling.md`, `design/glossary-format.md`, `design/adr-format.md` | Skills for Real Engineers: `grilling`, `grill-me`, `grill-with-docs`, `domain-modeling` |
 | `writing/writing-for-agents.md`, `writing/skill-mechanics.md` | Skills for Real Engineers: `writing-for-agents` |
 | `workflow/first-mate.md` | firstmate: roles, principles, crewmate brief; topic #34 for orchestration, sources in its front matter |
+| `fpga/fpga.md`; the install method in `tools/toolchain/spec.md` | nand2anything: host routing, bitstream handoff, Quartus build gates, native pinned Quartus install |
 | `principles/*.md` (23 files) | pstack: every `principle-*` skill except `principle-experience-first` |
 | `workflow/issues.md` | topic #33; sources used in its front matter |
 | `workflow/review.md` | topic #36; sources used in its front matter |

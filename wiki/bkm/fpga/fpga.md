@@ -1,6 +1,6 @@
 ---
 status: draft
-upstream: host routing, SOF handoff and Quartus report gates adapted from amichai-bd/nand2anything wiki/bkm/bkm_host.md, wiki/bkm/bkm_fpga.md and src/nand2doom/tools/quartus.py @ aeebe92
+upstream: host routing, SOF handoff and Quartus report gates adapted from amichai-bd/nand2anything wiki/bkm/bkm_host.md, wiki/bkm/bkm_fpga.md and src/nand2doom/tools/quartus.py @ aeebe92 (private, adapted at the owner's direction; see ../SOURCES.md)
 ---
 
 # FPGA

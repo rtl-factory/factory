@@ -47,7 +47,7 @@ The other tools' install steps are written by the build issue that installs them
 | DE2-115 | Cyclone IV E EP4CE115F29C7 | On-board USB-Blaster |
 | DE10-Lite | MAX 10 10M50DAF484C7G | On-board USB-Blaster |
 
-On the board host: a udev rule granting the Altera USB device (vendor `09fb`, USB-Blaster product `6001`) to the user; the JTAG daemon runs on that host; `quartus_pgm -l` lists the cable and `quartus_pgm -m jtag -o "p;<file>.sof"` programs. The FTDI serial port needs the `dialout` group. Where builds and programming run is in `wiki/bkm/fpga/fpga.md`.
+On the board host: a udev rule granting the Altera USB devices (vendor `09fb`) to the user; the JTAG daemon runs on that host; `quartus_pgm -l` lists the cable and `quartus_pgm -m jtag -o "p;<file>.sof"` programs. The FTDI serial port needs the `dialout` group. Where builds and programming run is in `wiki/bkm/fpga/fpga.md`.
 
 ## Open
 
