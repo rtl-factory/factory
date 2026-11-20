@@ -53,7 +53,7 @@ Known host issues: a `setlocale` warning needs an `en_US.UTF-8` locale; on Arch,
 
 ## Install (Verilator, CI)
 
-The `l0` CI job ([ci-levels.md](../../bkm/workflow/ci-levels.md)) builds Verilator from the pinned tag on Ubuntu 24.04 (`bison`, `flex`, `libfl-dev`, `help2man`, `zlib1g-dev`; `autoconf`, `./configure --prefix=~/verilator`, `make`, `make install`) and caches the install by version, so only the first run after a pin change rebuilds it. The same steps install it on a Linux host.
+The `l0` CI job ([ci-levels.md](../../bkm/workflow/ci-levels.md)) builds Verilator from the pinned tag on Ubuntu 24.04 (`bison`, `flex`, `libfl-dev`, `help2man`, `zlib1g-dev`; `autoconf`, `./configure --prefix=~/verilator`, `make`, `make install`) and caches the install by the pinned tag, so only the first run after a pin change rebuilds it. The same steps install it on a Linux host.
 
 The other tools' install steps are written by the build issue that installs them.
 
