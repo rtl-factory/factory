@@ -1,0 +1,37 @@
+# Keeps status: labels for open work only (wiki/bkm/workflow/labels.md):
+# removes every status: label when an issue closes, and sets status:triage
+# when one reopens. Closes made by another workflow's GITHUB_TOKEN do not
+# trigger workflows, so those keep their label.
+name: status-clear
+
+on:
+  issues:
+    types: [closed, reopened]
+
+permissions:
+  issues: write
+
+jobs:
+  status-clear:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const status = issue.labels.map(l => l.name).filter(n => n.startsWith('status:'));
+            if (context.payload.action === 'reopened') {
+              if (status.length === 0) {
+                await github.rest.issues.addLabels({ ...context.repo, issue_number: issue.number, labels: ['status:triage'] });
+                core.info(`set status:triage on #${issue.number}`);
+              }
+              return;
+            }
+            for (const name of status) {
+              try {
+                await github.rest.issues.removeLabel({ ...context.repo, issue_number: issue.number, name });
+                core.info(`removed ${name} from #${issue.number}`);
+              } catch (e) {
+                if (e.status !== 404) throw e;  // already gone: nothing to do
+              }
+            }
