@@ -4,9 +4,9 @@ name: pages
 on:
   push:
     branches: [main]
-    paths: [wiki/**, mkdocs.yml, tools/pages/**, .github/workflows/pages.yml]
+    paths: [wiki/**, mkdocs.yml, tools/pages/**, 'tools/*/prd.md', 'tools/*/spec.md', .github/workflows/pages.yml]
   pull_request:
-    paths: [wiki/**, mkdocs.yml, tools/pages/**, .github/workflows/pages.yml]
+    paths: [wiki/**, mkdocs.yml, tools/pages/**, 'tools/*/prd.md', 'tools/*/spec.md', .github/workflows/pages.yml]
   workflow_dispatch:
 
 permissions:
