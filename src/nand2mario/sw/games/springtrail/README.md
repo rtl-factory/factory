@@ -20,4 +20,4 @@ prepared from the preceding sample, then the visible interval that follows
 computes and prepares the next one. The numeric world and mechanics contract
 belongs to the [game spec](https://github.com/amichai-bd/nand2mario/blob/510be34b49f5bc666ad828260ed0e193546736dd/wiki/src/sw/springtrail/SPEC.md).
 
-Build: `python3 src/nand2mario/tools/sw_games.py build springtrail --output workdir/<dir>`.
+Build: `python3 src/nand2mario/scripts/sw_games.py build springtrail --output workdir/<dir>`.

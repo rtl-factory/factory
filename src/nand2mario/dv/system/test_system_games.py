@@ -15,7 +15,7 @@ from ..core.test_cpu import unpack
 from ..video.ppu_model import write_png
 from .test_system import idle_host, power_up
 from ..joypad.joypad_model import JoypadModel
-from ...tools.game_qualification import check_image, manifest
+from ...scripts.game_qualification import check_image, manifest
 
 
 @cocotb.test()

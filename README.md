@@ -13,38 +13,49 @@ Our BKMs (Best Known Methods) build on these agent-skill packs. We adapt their i
 
 ## Layout
 
-First choose the project, then the type of work, then the block (an IP or unit):
+Code is laid out by project, then discipline, then the block or script:
 
 ```
-src/<project>/<type>/<block>/
+src/<project>/<discipline>/<name>/      disciplines: arch, rtl, dv, fv, fpga, scripts
+tools/<tool>/                           tools any project can use
 ```
 
-Every document lives in `wiki/` at the path that mirrors its code: `src/<project>/<type>/<block>/` is documented in `wiki/src/<project>/<type>/<block>/`, and a tool in `tools/<tool>/` in `wiki/tools/<tool>/`. The rule, and how to tell a repo tool from a project tool, is in [wiki/bkm/workflow/repo-layout.md](wiki/bkm/workflow/repo-layout.md).
+The wiki mirrors both trees down to the same folder, so every document sits at the path of the code it describes: a block's spec and plans, a script's or a tool's PRD and spec. The rules are in [wiki/bkm/workflow/repo-layout.md](wiki/bkm/workflow/repo-layout.md).
 
 ```
 factory/
-├── src/                Projects: design, models and verification code
-│   ├── <project>/      One folder per project, e.g. nand2mario/, common/
-│   │   ├── arch/       Architecture models
-│   │   ├── rtl/        Hardware implementation
-│   │   ├── dv/         Simulation tests (cocotb)
-│   │   ├── fv/         Formal verification
-│   │   ├── fpga/       Board tops, Quartus settings, pins, constraints (one folder per board)
-│   │   ├── cfg/        Simulation targets and per-board build config
-│   │   ├── sw/         Software that runs on the design
-│   │   └── tools/      Project tools: bound to this project or to one of its blocks
+├── src/                        Projects: design, models, verification and scripts
+│   └── <project>/              One folder per project, e.g. nand2mario/, common/
+│       ├── arch/<block>/       Architecture models
+│       ├── rtl/<block>/        Hardware implementation
+│       ├── dv/<block>/         Simulation tests (cocotb)
+│       ├── fv/<block>/         Formal verification
+│       ├── fpga/<board>/       Board tops, Quartus settings, pins, constraints
+│       ├── scripts/<script>/   Scripts bound to this project or one of its blocks
+│       ├── cfg/                Simulation targets and per-board build config
+│       └── sw/                 Software that runs on the design
 │
-├── wiki/               Documentation, published as the wiki site (mkdocs.yml)
-│   ├── src/            Specs, plans, PRDs per project, block and project tool (mirrors src/)
-│   ├── specs/          External reference specifications
-│   ├── bkm/            Best Known Methods, one directory per kind of work
-│   ├── project/        Glossary and decisions (ADRs)
-│   └── tools/          Repo tools' PRDs and specs (mirrors tools/)
+├── tools/                      Tools any project can use
+│   └── <tool>/                 e.g. sim/, toolchain/, pages/
 │
-├── cfg/                Project settings and limits
-├── tools/              Repo tools: tools any project can use, one folder each
-├── .claude/            Agent skills that route to BKMs (source of truth)
-├── .agents/skills      Symlink to .claude/skills, for Codex
-├── .github/            CI workflows and issue/PR templates
-└── worktrees/          Separate checkouts for development
+├── wiki/                       Documentation, published as the wiki site (mkdocs.yml)
+│   ├── src/                    Mirrors src/
+│   │   └── <project>/          The project's landing page
+│   │       ├── arch/<block>/       Architecture specs
+│   │       ├── rtl/<block>/        Block specs
+│   │       ├── dv/<block>/         Verification plans
+│   │       ├── fv/<block>/         Formal plans
+│   │       ├── fpga/<board>/       Board docs
+│   │       └── scripts/<script>/   prd.md, spec.md
+│   ├── tools/                  Mirrors tools/
+│   │   └── <tool>/             prd.md, spec.md
+│   ├── specs/                  External reference specifications
+│   ├── bkm/                    Best Known Methods, one directory per kind of work
+│   └── project/                Glossary and decisions (ADRs)
+│
+├── cfg/                        Factory settings and limits
+├── .claude/                    Agent skills that route to BKMs (source of truth)
+├── .agents/skills              Symlink to .claude/skills, for Codex
+├── .github/                    CI workflows and issue/PR templates
+└── worktrees/                  Separate checkouts for development
 ```
