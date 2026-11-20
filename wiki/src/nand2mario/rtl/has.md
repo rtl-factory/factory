@@ -20,7 +20,7 @@ A Game Boy-compatible system (LR35902 CPU, memory map, cartridge mapper, timer, 
 | video | `rtl/video/` | The PPU (registers, timing, window, objects, background, mix) and the display tier that stores complete frames and scans them out 3x scaled on 640x480 VGA through the common raster timing and RAM; also the frame snapshot |
 | dma | `rtl/dma/` | OAM DMA |
 | storage | `rtl/storage/` | The SDRAM controller and package (adapted under their MIT notice) and the SDRAM cartridge backing |
-| uart | `rtl/uart/` | The UART cartridge loader over the common byte PHY |
+| uart | `rtl/uart/` | The UART cartridge loader over the common byte PHY; its host side is the script `scripts/cart_loader.py` |
 | audio | `rtl/audio/` | The APU: the full DMG sound register behaviour (power control, channel status, length counters, wave RAM) but **no audio output**; the system is silent by design |
 
 The PPU and the DMA are independent rewrites from public Game Boy documentation.
@@ -40,8 +40,8 @@ The default system clock is 25 MHz; the CPU and peripherals run on clock enables
 ## Top-level behaviour
 
 - Cartridges start at 0x0100: the DMG boot ROM is not modelled.
-- ROM-only and MBC1 cartridges are supported. Super Mario Land (MBC1) runs in simulation but needs the owner's private ROM.
-- The optional `CART_LIBRARY=1` system profile runs the pinned original menu, the snapshot window and the CRC-checked game switch and return ABI; the default ordinary cartridge configuration is unchanged.
+- ROM-only and MBC1 cartridges are supported. Super Mario Land (MBC1) runs in simulation but needs the owner's private ROM (rules in `sw/roms/private/README.md`, private, never published). Board captures are in `sw/roms/private/media/` under the same rule.
+- The optional `CART_LIBRARY=1` system profile runs the pinned original menu, the snapshot window and the CRC-checked game switch and return ABI; the default ordinary cartridge configuration is unchanged. Menu/library owns the catalogue and provenance, its commands, independent pixel scenarios for the on-chip and SDRAM source backings, and the DE2-115 board dependency.
 
 ## Decisions
 
@@ -49,7 +49,7 @@ Not ported yet.
 
 ## Verification strategy
 
-Each block's Python models and cocotb tests are in `src/nand2mario/dv/<block>/`, and the full-system tests in `src/nand2mario/dv/system/`; the board smoke is in `src/nand2mario/dv/fpga/`. Mooneye acceptance results are in the conformance plan ([nand2anything #441](https://github.com/amichai-bd/nand2anything/issues/441)). DV plans are not ported yet.
+Each block's Python models and cocotb tests are in `dv/<block>/`, and the full-system tests in `dv/system/`; the board smoke is in `dv/fpga/`. Mooneye acceptance results are in the conformance plan ([nand2anything #441](https://github.com/amichai-bd/nand2anything/issues/441)); a SameBoy differential runner is a later step. DV plans are not ported yet.
 
 All of these run in Verilator on the host, with no board or Quartus:
 
@@ -60,12 +60,12 @@ python3 tools/sim/sim.py test --project nand2mario --level L0
 python3 tools/sim/sim.py test n2m_system
 ```
 
-`src/nand2mario/scripts/game_qualification.py run <game>` runs one pinned game scenario.
+`python3 src/nand2mario/scripts/game_qualification.py run <game>`, run from the repository root, runs one pinned game scenario ([nand2anything #395](https://github.com/amichai-bd/nand2anything/issues/395)).
 
 ## Boards
 
-`src/nand2mario/fpga/de10_lite/` holds the DE10-Lite board top (SDRAM backing and UART loader on the board pins; the host keyboard through the common JTAG endpoint), its clock backends, the Quartus settings fragment and the SDC; `fpga/de2_115/` holds the DE2-115 top and its files; `fpga/board_io/` holds the shared Set-2-to-joypad decoder, board-input debouncer and seven-segment decoder. `cfg/n2m_quartus.json` and `cfg/n2m_de2_115_quartus.json` hold the pins and the Quartus source lists, and the scripts `scripts/n2m_quartus.py` and `scripts/n2m_board.py` build, program, load images and send joypad keys. Board specs are not written yet.
+`fpga/de10_lite/` holds the DE10-Lite board top (SDRAM backing and UART loader on the board pins; the host keyboard through the common JTAG endpoint), its clock backends, the Quartus settings fragment and the SDC; `fpga/de2_115/` holds the DE2-115 top and its files; `fpga/board_io/` holds the shared Set-2-to-joypad decoder, board-input debouncer and seven-segment decoder. `cfg/n2m_quartus.json` and `cfg/n2m_de2_115_quartus.json` hold the pins and the Quartus source lists, and the scripts `scripts/n2m_quartus.py` and `scripts/n2m_board.py` build, program, load images and send joypad keys. Board specs are not written yet.
 
 ## Software
 
-Original smoke software is in `src/nand2mario/sw/cpu/` (CPU smoke) and `sw/system/` (system smoke with the timer, joypad and serial interrupts, the background frame program with the VBlank interrupt, and the objects frame program with window, sprites and OAM DMA). The original games and menu are in `sw/games/`. They are built by the project's own assembler and linker (`scripts/sw/`), with no sibling checkout, commercial ROM or external oracle.
+Original smoke software is in `sw/cpu/` (CPU smoke) and `sw/system/` (system smoke with the timer, joypad and serial interrupts, the background frame program with the VBlank interrupt, and the objects frame program with window, sprites and OAM DMA). The original games and menu are in `sw/games/`. They are built by the project's own assembler and linker (`scripts/sw/`), with no sibling checkout, commercial ROM or external oracle.

@@ -12,7 +12,7 @@
   {
     "name": "type:spec",
     "color": "1d76db",
-    "description": "Change to a block spec"
+    "description": "Change to a HAS, MAS, plan, PRD or spec"
   },
   {
     "name": "type:bkm",

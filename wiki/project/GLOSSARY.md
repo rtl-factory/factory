@@ -84,7 +84,7 @@ A self-contained design the factory builds, with everything it needs under `src/
 _Avoid_: repo, product (for this meaning)
 
 **Discipline**:
-The kind of work a project's code is, and the second level of its path `src/<project>/<discipline>/`: `rtl`, `dv`, `fv`, `fpga`, `scripts` or `sw`. Each discipline has its standard documents in the wiki (`wiki/bkm/design/standard-docs.md`). `cfg/` is a project folder, not a discipline, and there is no architecture discipline (the HAS holds the architecture).
+The kind of work a project's code is, and the second level of its path `src/<project>/<discipline>/`: `rtl`, `dv`, `fv`, `fpga`, `scripts` or `sw`. Each has its standard documents in the wiki (`wiki/bkm/design/standard-docs.md`); `cfg/` is a project folder, not a discipline.
 _Avoid_: type, work type, layer
 
 **Block**:
@@ -116,7 +116,7 @@ Imagine removing a block and wiring its contents into its neighbours: if complex
 _Avoid_: inline test
 
 **Spec**:
-The specification of one script, piece of software or tool, kept as `spec.md` next to its PRD in the wiki folder that mirrors its code. A block's specification is its MAS and a design's is its HAS; "the spec" of a block means its MAS. Every one changes in the same pull request as the code.
+The specification of one script, piece of software or tool, kept as `spec.md` next to its PRD in the wiki folder that mirrors its code and changed in the same pull request as the code; "the spec" of a block means its MAS, and of a whole design its HAS.
 _Avoid_: design doc, documentation (for this meaning)
 
 **HAS**:
