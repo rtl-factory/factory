@@ -34,4 +34,3 @@ factory/
 ├── .github/            CI workflows and issue/PR templates
 └── worktrees/          Separate checkouts for development
 ```
-amichai was here

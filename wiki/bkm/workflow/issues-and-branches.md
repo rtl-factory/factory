@@ -21,8 +21,8 @@ Use an epic only when several issues cannot reach `main` one by one: each would 
 
 1. Open the epic as a parent issue, with its issues as sub-issues.
 2. Create the epic branch `epic/<number>-<slug>` from `main`.
-3. Branch each issue from the epic branch and open its pull request into the epic branch. These pull requests run the epic regression level.
-4. When every sub-issue is merged and the epic branch is healthy, open one pull request from the epic branch into `main`. It closes the epic and every sub-issue, and runs the pre-merge level like any pull request into `main`.
+3. Branch each issue from the epic branch and open its pull request into the epic branch. These pull requests run L0.
+4. When every sub-issue is merged and the epic branch is healthy, open one pull request from the epic branch into `main`. It closes the epic and every sub-issue, and runs L1 like any pull request into `main`.
 
 ## Exit criteria
 

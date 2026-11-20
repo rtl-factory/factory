@@ -40,7 +40,7 @@ _Avoid_: merge request, MR, diff
 ## CI
 
 **Regression level**:
-One of L0 to L4, a cumulative set of CI checks bound to one trigger: L0 on every pull request, L1 after every merge to `main`, L2 hourly, L3 every 6 hours, L4 nightly. Running a level runs every level below it.
+One of L0 to L4, a cumulative set of CI checks bound to one trigger: L0 on demand (the fastest checks), L1 on every pull request into `main` and again after the merge, L2 hourly, L3 every 6 hours, L4 nightly. Running a level runs every level below it.
 _Avoid_: light CI, full CI, test tier, suite
 
 **Code owner**:

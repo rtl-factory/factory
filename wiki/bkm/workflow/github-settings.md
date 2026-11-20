@@ -15,9 +15,9 @@ Settings → Rules → Rulesets → New branch ruleset, target the default branc
   - Required approvals: 1
   - **Require review from Code Owners**
   - Dismiss stale approvals when new commits are pushed
-- **Require status checks to pass**: add `issue-link` (and the L0 job once it exists). Require branches to be up to date.
+- **Require status checks to pass**: add `issue-link` (and the L1 job once it exists). Require branches to be up to date.
 
-Why: every change to `main` goes through a pull request, passes L0, is approved by a code owner, and closes an issue.
+Why: every change to `main` goes through a pull request, passes L1, is approved by a code owner, and closes an issue.
 
 ## Code owners
 
