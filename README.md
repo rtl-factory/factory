@@ -28,8 +28,9 @@ factory/
 │   ├── fv/             Formal verification
 │   └── syn/            Synthesis setup and constraints
 │
-├── wiki/               Documentation
+├── wiki/               Documentation, published as the wiki site (mkdocs.yml)
 │   ├── src/            Documentation for the hardware blocks (mirrors src/)
+│   ├── prd/            Product requirements documents
 │   ├── specs/          External reference specifications
 │   ├── bkm/            Best Known Methods, one directory per kind of work
 │   ├── project/        Glossary and decisions (ADRs)

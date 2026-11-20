@@ -1,2 +1,5 @@
 # Bazel output locations (logs, waveforms, reports, netlists)
 /bazel-*
+
+# Wiki site build output (mkdocs build)
+/site/
