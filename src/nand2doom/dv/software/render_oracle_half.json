@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "geometry": "half",
+  "full_oracle": {
+    "path": "render_oracle.json",
+    "sha256": "d06e8fb3694855ee4c7ba7e0349661ad53cce88aaea4ab07d67d0aea257d97ac"
+  },
+  "projection": {
+    "method": "even-column-v1",
+    "independent_projection_sha256": "c7aacefd659096ffc846e81b0d44eed4e6276d3bc842ce2e13580af601acfad6",
+    "independent_generator_sha256": "e2854307f7ba2770c9a558bc55618d2f735b7a96aa12cac185f69c5fecf3243c",
+    "candidate_outputs_used": false
+  },
+  "crcs": {
+    "scene": "0x78ddab35",
+    "scene_vga": "0x98f7169b",
+    "gameplay": [
+      "0xbbac0e26",
+      "0xbbac0e26"
+    ],
+    "gameplay_vga": [
+      "0xb675ba67",
+      "0xb675ba67"
+    ]
+  },
+  "framebuffer_sha256": {
+    "doom-scene-fb.bin": "58ab57afd4830302d918e415655099b864a9cb7cd87538356e498905a80c76ca",
+    "doom-frame-001-fb.bin": "3fd37172d404d8acd394dc80b88dc291a9339070da29ede0c0bbc24ac290a73e",
+    "doom-frame-002-fb.bin": "3fd37172d404d8acd394dc80b88dc291a9339070da29ede0c0bbc24ac290a73e"
+  },
+  "vga_ppm_sha256": {
+    "doom-scene-vga.ppm": "006d09f05755f3d809ffa8ef1dd6aa12756b149e61f26e74148200366cddea7f",
+    "doom-frame-001-vga.ppm": "2dcb07012483a51ef9ba4914f13e2b2303a50b9a98edcdb948f273830df2833e",
+    "doom-frame-002-vga.ppm": "2dcb07012483a51ef9ba4914f13e2b2303a50b9a98edcdb948f273830df2833e"
+  }
+}

@@ -13,6 +13,8 @@ Each project lists its targets in `src/<project>/cfg/targets.json`:
 | `top` | HDL top level |
 | `test_module`, `testcase` | cocotb test (Python module path from the repository root); cocotb targets only |
 | `defines`, `plusargs` | Native targets only: `-D` defines at build time; plusargs at run time |
+| `regression_action` | Native targets only: `test` (default) builds and runs; `compile` only builds, for a harness whose inputs a script prepares (nand2doom's performance harness) |
+| `trace_fst` | Native targets only: build with `--trace-fst` so the harness can write an FST window |
 | `default_seed` | Seed used unless `--seed` is given |
 | `clock_hz`, `max_cycles` | Passed to the test as `DV_CLOCK_HZ`, `DV_MAX_CYCLES` |
 | `timeout_seconds` | Time budget of the test run (compile gets a fixed extra allowance) |

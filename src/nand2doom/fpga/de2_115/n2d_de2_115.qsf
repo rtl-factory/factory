@@ -1,0 +1,25 @@
+# DE2-115 settings fragment. Sources, exact device, pins and per-pin I/O
+# standards are generated from the de2_115 board of
+# src/nand2doom/cfg/n2d_quartus.json (quartus.py --board de2_115).
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 2
+set_global_assignment -name SEED 1
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
+set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to UART_RX
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to PS2_CLK
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to PS2_DAT
+# SDRAM (two loads on the shared command bus) and the ADV7123 inputs:
+# explicit moderate drive. LEDs, 7-segment digits and point-to-point serial
+# need only 4 mA. These cover every output/bidirectional pin.
+set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to DRAM*
+set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to VGA_*
+set_instance_assignment -name CURRENT_STRENGTH_NEW "4MA" -to LEDR*
+set_instance_assignment -name CURRENT_STRENGTH_NEW "4MA" -to LEDG*
+set_instance_assignment -name CURRENT_STRENGTH_NEW "4MA" -to HEX*
+set_instance_assignment -name CURRENT_STRENGTH_NEW "4MA" -to UART_TX
+# The 2.5 V status outputs take the explicit default slew rate 2 so every
+# output carries a complete drive assignment (no fitter I/O assignment gaps).
+set_instance_assignment -name SLEW_RATE 2 -to LEDR*
+set_instance_assignment -name SLEW_RATE 2 -to LEDG*
+set_instance_assignment -name SLEW_RATE 2 -to HEX*

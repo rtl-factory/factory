@@ -81,11 +81,16 @@ def run_native(name: str, target: dict, base: Path) -> int:
     build = ["verilator", "--binary", "--timing", "--assert", "--Wall",
              "-j", os.environ.get("SIM_BUILD_JOBS", "2"),
              "--top-module", target["top"], "--Mdir", str(obj), "-o", f"{name}_sim",
+             *(["--trace-fst"] if target.get("trace_fst") else []),
              *(f"-D{d}" for d in target.get("defines", [])),
              *(str(ROOT / s) for s in target["sources"])]
     with open(base / "build.log", "w") as log:
         if subprocess.run(build, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT).returncode:
             return 1
+    if target.get("regression_action") == "compile":
+        # A harness that needs inputs prepared elsewhere (a program image, a
+        # script's plusargs): the regression only proves that it builds.
+        return 0
     with open(base / "test.log", "w") as log:
         run = subprocess.run([str(obj / f"{name}_sim"), *target.get("plusargs", [])],
                              cwd=ROOT, stdout=log, stderr=subprocess.STDOUT)

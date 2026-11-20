@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "project": "nand2doom",
+  "area": "doom",
+  "accent": "#9A6700",
+  "output_dir": "wiki/showcase/doom",
+  "hierarchy": {
+    "diagram": "wiki/src/nand2doom/rtl-diagram/nand2doom-rtl-diagram.json",
+    "profile": "system-simulation",
+    "expand": [],
+    "lanes": [
+      {
+        "title": "RV32IM core and monitors",
+        "color": "#1D76DB",
+        "sources": [
+          "src/nand2doom/rtl/core/*",
+          "src/nand2doom/rtl/platform/n2d_pmon_platform_events.sv"
+        ]
+      },
+      {
+        "title": "Caches and memory",
+        "color": "#B60205",
+        "sources": [
+          "src/nand2doom/rtl/memory/*"
+        ]
+      },
+      {
+        "title": "Video and input",
+        "color": "#0E8A16",
+        "sources": [
+          "src/nand2doom/rtl/video/n2d_framebuffer_vga.sv",
+          "src/nand2doom/rtl/io/n2d_ps2_keyboard.sv",
+          "src/common/rtl/jtag/n2a_jtag_keyboard.sv"
+        ]
+      },
+      {
+        "title": "UART debug",
+        "color": "#8250DF",
+        "sources": [
+          "src/common/rtl/uart_mem/n2a_uart_mem_pkg.sv",
+          "src/common/rtl/uart_mem/n2a_uart_mem.sv",
+          "src/nand2doom/rtl/io/n2d_uart_mem_port.sv",
+          "src/nand2doom/rtl/io/n2d_uart_debug.sv",
+          "src/nand2doom/rtl/platform/n2d_debug_device_line_bridge.sv"
+        ]
+      }
+    ]
+  },
+  "replay": {
+    "revision": "6749097",
+    "host": "cloud agent container",
+    "jobs": 2
+  },
+  "fits": [
+    {
+      "kind": "markdown",
+      "source": "wiki/src/nand2doom/performance-btb-capacity-364.md",
+      "section": "Resource cost",
+      "totals_source": "wiki/src/nand2doom/fpga/spec.md",
+      "totals_section": "Fitted results",
+      "recorded": "#539 · 2026-10-11",
+      "board": "DE10-Lite",
+      "device": "10M50DAF484C7G",
+      "le": "25,895",
+      "le_total": "49,760",
+      "m9k": "174",
+      "m9k_total": "182",
+      "setup_slack_ns": "4.294"
+    },
+    {
+      "kind": "markdown",
+      "source": "wiki/src/nand2doom/performance-btb-capacity-364.md",
+      "section": "Resource cost",
+      "totals_source": "wiki/src/nand2doom/fpga/spec.md",
+      "totals_section": "Fitted results",
+      "recorded": "#539 · 2026-10-11",
+      "board": "DE2-115",
+      "device": "EP4CE115F29C7",
+      "le": "27,715",
+      "le_total": "114,480",
+      "m9k": "320",
+      "m9k_total": "432",
+      "setup_slack_ns": "6.387"
+    }
+  ]
+}
