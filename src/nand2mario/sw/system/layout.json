@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "sections": [
+    {"unit": "system_smoke", "section": "code", "region": "ROM0", "address": 336},
+    {"unit": "system_smoke", "section": "timer_vector", "region": "ROM0", "vector": "TIMER"},
+    {"unit": "system_smoke", "section": "serial_vector", "region": "ROM0", "vector": "SERIAL"},
+    {"unit": "system_smoke", "section": "joypad_vector", "region": "ROM0", "vector": "JOYPAD"}
+  ]
+}

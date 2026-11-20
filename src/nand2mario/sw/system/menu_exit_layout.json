@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "sections": [
+    {"unit": "menu_exit", "section": "code", "region": "ROM0", "address": 512}
+  ]
+}

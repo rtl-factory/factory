@@ -9,7 +9,7 @@ How a design is built with Quartus for the DE2-115 and DE10-Lite, gated, handed 
 
 ## Rules
 
-- Keep each board's facts in one config file per board (device, top level, clock, pins, I/O standards, reviewed warnings, expected RAM inference) next to its Quartus settings in `src/fpga/<block>/`. Why: the build gates read them, and a board difference lives in one place.
+- Keep each board's facts in one config file per board (device, top level, clock, pins, I/O standards, Quartus source list, reviewed warnings, expected RAM inference) in `src/<project>/cfg/`, and its Quartus settings, constraints and board top in `src/<project>/fpga/<board>/`. Why: the build gates read them, and a board difference lives in one place.
 - Keep board wrappers apart from reusable RTL. Why: reusable RTL is verified with Verilator, which never sees vendor primitives.
 - Never simulate with Quartus or its vendor libraries; wrap a vendor primitive behind a synthesizable model. Why: simulation runs on Verilator only (ADR 0009).
 - The build **must** fail on any Quartus warning not listed as reviewed in the board's config, on RAM inferred other than as the config expects, and on timing not met at every timing corner. Why: a warning nobody reviewed, a RAM turned into logic, or one failing corner is a bug that shows up only on the board.

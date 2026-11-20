@@ -1,0 +1,478 @@
+{
+  "schema_version": 1,
+  "description": "DMG architectural constants and the menu/exit-demo library ABI names from pinned nand2mario510be34b. Host transport and unrelated platform constants are excluded. PROFILE_JOYP_SELECT supplies the common released JOYP row value; the library ABI has its own native implementation.",
+  "symbols": [
+    {
+      "name": "GB_ADDRESS_BITS",
+      "value": 16
+    },
+    {
+      "name": "GB_DATA_BITS",
+      "value": 8
+    },
+    {
+      "name": "GB_ROM0_START",
+      "value": 0
+    },
+    {
+      "name": "GB_ROM0_END",
+      "value": 16383
+    },
+    {
+      "name": "GB_ROM1_START",
+      "value": 16384
+    },
+    {
+      "name": "GB_ROM1_END",
+      "value": 32767
+    },
+    {
+      "name": "GB_VRAM_START",
+      "value": 32768
+    },
+    {
+      "name": "GB_VRAM_END",
+      "value": 40959
+    },
+    {
+      "name": "GB_CART_RAM_START",
+      "value": 40960
+    },
+    {
+      "name": "GB_CART_RAM_END",
+      "value": 49151
+    },
+    {
+      "name": "GB_WRAM_START",
+      "value": 49152
+    },
+    {
+      "name": "GB_WRAM_END",
+      "value": 57343
+    },
+    {
+      "name": "GB_ECHO_START",
+      "value": 57344
+    },
+    {
+      "name": "GB_ECHO_END",
+      "value": 65023
+    },
+    {
+      "name": "GB_OAM_START",
+      "value": 65024
+    },
+    {
+      "name": "GB_OAM_END",
+      "value": 65183
+    },
+    {
+      "name": "GB_UNUSABLE_START",
+      "value": 65184
+    },
+    {
+      "name": "GB_UNUSABLE_END",
+      "value": 65279
+    },
+    {
+      "name": "GB_IO_START",
+      "value": 65280
+    },
+    {
+      "name": "GB_IO_END",
+      "value": 65407
+    },
+    {
+      "name": "GB_HRAM_START",
+      "value": 65408
+    },
+    {
+      "name": "GB_HRAM_END",
+      "value": 65534
+    },
+    {
+      "name": "GB_IE_START",
+      "value": 65535
+    },
+    {
+      "name": "GB_IE_END",
+      "value": 65535
+    },
+    {
+      "name": "GB_REG_JOYP",
+      "value": 65280
+    },
+    {
+      "name": "GB_REG_SB",
+      "value": 65281
+    },
+    {
+      "name": "GB_REG_SC",
+      "value": 65282
+    },
+    {
+      "name": "GB_REG_DIV",
+      "value": 65284
+    },
+    {
+      "name": "GB_REG_TIMA",
+      "value": 65285
+    },
+    {
+      "name": "GB_REG_TMA",
+      "value": 65286
+    },
+    {
+      "name": "GB_REG_TAC",
+      "value": 65287
+    },
+    {
+      "name": "GB_REG_IF",
+      "value": 65295
+    },
+    {
+      "name": "GB_REG_NR10",
+      "value": 65296
+    },
+    {
+      "name": "GB_REG_NR11",
+      "value": 65297
+    },
+    {
+      "name": "GB_REG_NR12",
+      "value": 65298
+    },
+    {
+      "name": "GB_REG_NR13",
+      "value": 65299
+    },
+    {
+      "name": "GB_REG_NR14",
+      "value": 65300
+    },
+    {
+      "name": "GB_REG_NR21",
+      "value": 65302
+    },
+    {
+      "name": "GB_REG_NR22",
+      "value": 65303
+    },
+    {
+      "name": "GB_REG_NR23",
+      "value": 65304
+    },
+    {
+      "name": "GB_REG_NR24",
+      "value": 65305
+    },
+    {
+      "name": "GB_REG_NR30",
+      "value": 65306
+    },
+    {
+      "name": "GB_REG_NR31",
+      "value": 65307
+    },
+    {
+      "name": "GB_REG_NR32",
+      "value": 65308
+    },
+    {
+      "name": "GB_REG_NR33",
+      "value": 65309
+    },
+    {
+      "name": "GB_REG_NR34",
+      "value": 65310
+    },
+    {
+      "name": "GB_REG_NR41",
+      "value": 65312
+    },
+    {
+      "name": "GB_REG_NR42",
+      "value": 65313
+    },
+    {
+      "name": "GB_REG_NR43",
+      "value": 65314
+    },
+    {
+      "name": "GB_REG_NR44",
+      "value": 65315
+    },
+    {
+      "name": "GB_REG_NR50",
+      "value": 65316
+    },
+    {
+      "name": "GB_REG_NR51",
+      "value": 65317
+    },
+    {
+      "name": "GB_REG_NR52",
+      "value": 65318
+    },
+    {
+      "name": "GB_REG_LCDC",
+      "value": 65344
+    },
+    {
+      "name": "GB_REG_STAT",
+      "value": 65345
+    },
+    {
+      "name": "GB_REG_SCY",
+      "value": 65346
+    },
+    {
+      "name": "GB_REG_SCX",
+      "value": 65347
+    },
+    {
+      "name": "GB_REG_LY",
+      "value": 65348
+    },
+    {
+      "name": "GB_REG_LYC",
+      "value": 65349
+    },
+    {
+      "name": "GB_REG_DMA",
+      "value": 65350
+    },
+    {
+      "name": "GB_REG_BGP",
+      "value": 65351
+    },
+    {
+      "name": "GB_REG_OBP0",
+      "value": 65352
+    },
+    {
+      "name": "GB_REG_OBP1",
+      "value": 65353
+    },
+    {
+      "name": "GB_REG_WY",
+      "value": 65354
+    },
+    {
+      "name": "GB_REG_WX",
+      "value": 65355
+    },
+    {
+      "name": "GB_REG_BOOT_DISABLE",
+      "value": 65360
+    },
+    {
+      "name": "GB_REG_IE",
+      "value": 65535
+    },
+    {
+      "name": "GB_VIEW_WAVE_START",
+      "value": 65328
+    },
+    {
+      "name": "GB_VIEW_WAVE_END",
+      "value": 65343
+    },
+    {
+      "name": "GB_VIEW_LDH_START",
+      "value": 65280
+    },
+    {
+      "name": "GB_VIEW_LDH_END",
+      "value": 65535
+    },
+    {
+      "name": "GB_VIEW_TILES_START",
+      "value": 32768
+    },
+    {
+      "name": "GB_VIEW_TILES_END",
+      "value": 38911
+    },
+    {
+      "name": "GB_VIEW_MAP0_START",
+      "value": 38912
+    },
+    {
+      "name": "GB_VIEW_MAP1_START",
+      "value": 39936
+    },
+    {
+      "name": "VECTOR_RST_00",
+      "value": 0
+    },
+    {
+      "name": "VECTOR_RST_08",
+      "value": 8
+    },
+    {
+      "name": "VECTOR_RST_10",
+      "value": 16
+    },
+    {
+      "name": "VECTOR_RST_18",
+      "value": 24
+    },
+    {
+      "name": "VECTOR_RST_20",
+      "value": 32
+    },
+    {
+      "name": "VECTOR_RST_28",
+      "value": 40
+    },
+    {
+      "name": "VECTOR_RST_30",
+      "value": 48
+    },
+    {
+      "name": "VECTOR_RST_38",
+      "value": 56
+    },
+    {
+      "name": "VECTOR_VBLANK",
+      "value": 64
+    },
+    {
+      "name": "VECTOR_STAT",
+      "value": 72
+    },
+    {
+      "name": "VECTOR_TIMER",
+      "value": 80
+    },
+    {
+      "name": "VECTOR_SERIAL",
+      "value": 88
+    },
+    {
+      "name": "VECTOR_JOYPAD",
+      "value": 96
+    },
+    {
+      "name": "BUTTON_RIGHT",
+      "value": 1
+    },
+    {
+      "name": "BUTTON_LEFT",
+      "value": 2
+    },
+    {
+      "name": "BUTTON_UP",
+      "value": 4
+    },
+    {
+      "name": "BUTTON_DOWN",
+      "value": 8
+    },
+    {
+      "name": "BUTTON_A",
+      "value": 16
+    },
+    {
+      "name": "BUTTON_B",
+      "value": 32
+    },
+    {
+      "name": "BUTTON_SELECT",
+      "value": 64
+    },
+    {
+      "name": "BUTTON_START",
+      "value": 128
+    },
+    {
+      "name": "MBC1_BANK1_BITS",
+      "value": 5
+    },
+    {
+      "name": "MBC1_BANK2_BITS",
+      "value": 2
+    },
+    {
+      "name": "MBC1_RESET_BANK",
+      "value": 1
+    },
+    {
+      "name": "MBC1_RAMG_START",
+      "value": 0
+    },
+    {
+      "name": "MBC1_RAMG_END",
+      "value": 8191
+    },
+    {
+      "name": "MBC1_BANK1_START",
+      "value": 8192
+    },
+    {
+      "name": "MBC1_BANK1_END",
+      "value": 16383
+    },
+    {
+      "name": "MBC1_BANK2_START",
+      "value": 16384
+    },
+    {
+      "name": "MBC1_BANK2_END",
+      "value": 24575
+    },
+    {
+      "name": "MBC1_MODE_START",
+      "value": 24576
+    },
+    {
+      "name": "MBC1_MODE_END",
+      "value": 32767
+    },
+    {
+      "name": "LIBRARY_CATALOGUE_ADDRESS",
+      "value": 557056
+    },
+    {
+      "name": "LIBRARY_CATALOGUE_ENTRIES",
+      "value": 17
+    },
+    {
+      "name": "LIBRARY_CATALOGUE_VALID",
+      "value": 1
+    },
+    {
+      "name": "LIBRARY_RESULT_INVALID_SLOT",
+      "value": 2
+    },
+    {
+      "name": "LIBRARY_RESULT_NOT_READY",
+      "value": 4
+    },
+    {
+      "name": "LIBRARY_SLOTS",
+      "value": 16
+    },
+    {
+      "name": "LIBRARY_STATUS_SDRAM_READY",
+      "value": 32
+    },
+    {
+      "name": "LIBRARY_STATUS_WINDOW_READY",
+      "value": 64
+    },
+    {
+      "name": "LIBRARY_WINDOW_BYTES",
+      "value": 16384
+    },
+    {
+      "name": "PROFILE_JOYP_SELECT",
+      "value": 48
+    },
+    {
+      "name": "LIBRARY_GAME_EXIT_VALUE",
+      "value": 16
+    }
+  ]
+}

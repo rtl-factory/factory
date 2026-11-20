@@ -30,7 +30,7 @@ factory/
 │   ├── project/
 │   │   ├── GLOSSARY-MAP.md
 │   │   └── adr/                      ← factory-wide decisions
-│   └── src/<type>/<block>/
+│   └── src/<project>/<type>/<block>/
 │       ├── GLOSSARY.md
 │       └── adr/                      ← block-specific decisions
 ```

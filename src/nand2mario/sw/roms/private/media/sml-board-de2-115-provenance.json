@@ -1,0 +1,130 @@
+{
+  "schema": "n2m-board-capture/1",
+  "label": "BOARD: physical Terasic DE2-115 run; frames are frame-store snapshots read back over the UART loader, not electrical VGA captures; webcam stills are photographs of the board's VGA monitor",
+  "board": {
+    "name": "Terasic DE2-115",
+    "device": "EP4CE115F29C7",
+    "jtag_idcode": "0x020F70DD",
+    "uart": "FTDI TTL-232R-3V3 on JP5 GPIO[0]/GPIO[1], 3.3 V",
+    "system_clock_hz": 25000000
+  },
+  "date_utc": "2026-10-10",
+  "image": {
+    "project": "n2m_de2_115",
+    "source_commit": "132ea2b93bc38809c6123a0c28fda82ce38a397b",
+    "source_ref": "PR #397 (issue #396) branch head at fit time",
+    "sof_sha256": "e709dc42769bb3303d01fca6c746fdf4948c01be93afa0dfbfd7acb0eca601e4",
+    "receipt_schema": "n2m-sof/1",
+    "inputs_sha256": "1771c454882e2c5d258f6c0f7ff4cbe6ed38bdd246a77b70ac0cfbda46bbba74",
+    "evidence_sha256": "6e8ff0cbb32771b61dc826d0d54ade4b38120fd8b2502c404f94a7b303f97758",
+    "quartus": "Quartus Prime 25.1std.0 Build 1129 SC Lite Edition",
+    "build_host": "WSL2 build host; SOF hash and receipt verified on the board host",
+    "timing": "all corners met at 25 MHz; Slow 1200mV 85C setup slack 0.855 ns (Fmax 25.55 MHz)",
+    "programmed_utc": "2026-10-10T17:58:32Z",
+    "programmer": "src/nand2mario/tools/n2m_board.py program --board de2_115 (receipt validated before quartus_pgm)"
+  },
+  "tools": {
+    "load": "src/nand2mario/tools/n2m_board.py load --board de2_115",
+    "snapshot": "src/nand2mario/tools/n2m_board.py snapshot --board de2_115",
+    "input": "src/nand2mario/tools/n2m_board.py joypad --board de2_115 (Virtual JTAG keyboard)",
+    "gif": "src/nand2mario/tools/frame_snapshot.py gif --durations-ms 1000 1000 1000 1000 --manifests ...",
+    "webcam": ".agents/skills/board-webcam/board_cam.py still --warmup 20"
+  },
+  "input_sequence": [
+    "load the cartridge image over the UART loader (115200 baud) with full readback verification",
+    "wait about 3 s; snapshot 'title'",
+    "JTAG keyboard tap Start (0.2 s hold); wait about 3 s; snapshot 'play'",
+    "JTAG keyboard press Right; wait about 2 s; snapshot 'right'; release Right",
+    "JTAG keyboard tap A (0.2 s hold); wait about 1 s; snapshot 'after-a'"
+  ],
+  "timing_note": "Each snapshot pins the displayed frame for about 0.6 s while it is read, so the board picture freezes then; GIF frame durations (1000 ms) are editorial and not a measured frame rate.",
+  "pixel_check": "Every GIF frame equals its raw record decoded independently (bits [2j+1:2j] of byte 8+m hold pixel 4m+j) under the fixed DMG grey map shade 0->255, 1->170, 2->85, 3->0.",
+  "games": {
+    "sml": {
+      "game": {
+        "name": "Super Mario Land (Rev 1)",
+        "author": "Nintendo",
+        "license": "proprietary; owner's private cartridge backup, never redistribute",
+        "source": "src/nand2mario/sw/roms/private/super-mario-land-rev1.gb",
+        "credits": ""
+      },
+      "rom_sha256": "49fbd2f61f953d5ef28cab73e357e524c3009ad19fcf30f6a9ee0ae273be41dc",
+      "load": {
+        "image": "(see game)",
+        "bytes": 65536,
+        "baud": 115200,
+        "status": "ok"
+      },
+      "frames": [
+        {
+          "step": "title",
+          "frame_id": 174,
+          "bank": 2,
+          "on_screen_at_pin": true,
+          "on_screen_at_end": true,
+          "utc_start": "2026-10-10T17:59:01.997651Z",
+          "utc_end": "2026-10-10T17:59:02.586121Z",
+          "record_bytes": 5768,
+          "record_sha256": "68b98c855511140a17591c4242806310c0f95e1d0fc67dfa48c96372acc7237c"
+        },
+        {
+          "step": "play",
+          "frame_id": 586,
+          "bank": 0,
+          "on_screen_at_pin": true,
+          "on_screen_at_end": true,
+          "utc_start": "2026-10-10T17:59:09.107029Z",
+          "utc_end": "2026-10-10T17:59:09.691696Z",
+          "record_bytes": 5768,
+          "record_sha256": "557ab48e65a46885f80d01b857a69d79aa963488a43877448d7717f1eec8b03d"
+        },
+        {
+          "step": "right",
+          "frame_id": 921,
+          "bank": 2,
+          "on_screen_at_pin": true,
+          "on_screen_at_end": true,
+          "utc_start": "2026-10-10T17:59:14.724714Z",
+          "utc_end": "2026-10-10T17:59:15.311153Z",
+          "record_bytes": 5768,
+          "record_sha256": "aae039a3416d20b3f66a3aa3d373a00f9b94cdc814bec10ad1462d2a16794fe2"
+        },
+        {
+          "step": "after-a",
+          "frame_id": 1254,
+          "bank": 1,
+          "on_screen_at_pin": true,
+          "on_screen_at_end": true,
+          "utc_start": "2026-10-10T17:59:20.332606Z",
+          "utc_end": "2026-10-10T17:59:20.920048Z",
+          "record_bytes": 5768,
+          "record_sha256": "ed3bb54652022a1235c742eec7f71c9241219a8bfc2c741d0244e8547c9233a5"
+        }
+      ],
+      "gif": {
+        "file": "sml-board-de2-115.gif",
+        "sha256": "98c06ee285d931248524845298201f9d8e681e7d37d3838b894d6049b4b64c6e",
+        "bytes": 5443,
+        "size": "160x144",
+        "frames": 4,
+        "durations_ms": [
+          1000,
+          1000,
+          1000,
+          1000
+        ],
+        "order": "increasing frame ID"
+      },
+      "webcam_still": {
+        "file": "sml-board-de2-115-webcam.jpg",
+        "step": "after-a",
+        "sha256": "efe7dd89124c3ead9338b9b1ff1e31216fc8f27db0b3f099f03a5e28fa8660cd",
+        "bytes": 52334,
+        "size": "1280x720",
+        "camera": "DV20 USB board webcam",
+        "file_time_utc": "2026-10-10T17:59:22Z",
+        "processing": "unchanged"
+      }
+    }
+  }
+}

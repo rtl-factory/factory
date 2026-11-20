@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "sections": [
+    {
+      "unit": "main",
+      "section": "code",
+      "region": "ROM0",
+      "address": 512
+    },
+    {
+      "unit": "main",
+      "section": "assets",
+      "region": "ROM0",
+      "address": 3072
+    },
+    {
+      "unit": "main",
+      "section": "world",
+      "region": "ROM1",
+      "address": 16384
+    },
+    {
+      "unit": "main",
+      "section": "movement",
+      "region": "ROM0",
+      "address": 8192
+    },
+    {
+      "unit": "main",
+      "section": "render",
+      "region": "ROM0",
+      "address": 10240
+    },
+    {
+      "unit": "main",
+      "section": "interactions",
+      "region": "ROM0",
+      "address": 12288
+    },
+    {
+      "unit": "main",
+      "section": "map_restore",
+      "region": "ROM0",
+      "address": 13312
+    },
+    {
+      "unit": "main",
+      "section": "scene",
+      "region": "ROM0",
+      "address": 13824
+    },
+    {
+      "unit": "main",
+      "section": "stream",
+      "region": "ROM0",
+      "address": 15360
+    },
+    {
+      "unit": "main",
+      "section": "courier",
+      "region": "ROM1",
+      "address": 20992
+    },
+    {
+      "unit": "main",
+      "section": "hud",
+      "region": "ROM0",
+      "address": 11008
+    },
+    {
+      "unit": "main",
+      "section": "irq",
+      "region": "ROM0",
+      "address": 2560
+    },
+    {
+      "unit": "main",
+      "section": "core_assets",
+      "region": "ROM1",
+      "address": 24576
+    },
+    {
+      "unit": "main",
+      "section": "columns",
+      "region": "ROM0",
+      "address": 5888
+    },
+    {
+      "unit": "main",
+      "section": "vb_vector",
+      "region": "ROM0",
+      "address": 64,
+      "vector": "VBLANK"
+    },
+    {
+      "unit": "main",
+      "section": "stat_vector",
+      "region": "ROM0",
+      "address": 72,
+      "vector": "STAT"
+    },
+    {
+      "unit": "main",
+      "section": "power",
+      "region": "ROM1",
+      "address": 22016
+    },
+    {
+      "unit": "main",
+      "section": "blocks",
+      "region": "ROM0",
+      "address": 14336
+    },
+    {
+      "unit": "main",
+      "section": "block_assets",
+      "region": "ROM1",
+      "address": 30464
+    },
+    {
+      "unit": "main",
+      "section": "progress",
+      "region": "ROM0",
+      "address": 5120
+    },
+    {
+      "unit": "main",
+      "section": "entities",
+      "region": "ROM0",
+      "address": 1024
+    },
+    {
+      "unit": "main",
+      "section": "entity_helpers",
+      "region": "ROM1",
+      "address": 23040
+    },
+    {
+      "unit": "main",
+      "section": "entity_assets",
+      "region": "ROM1",
+      "address": 29184
+    }
+  ]
+}

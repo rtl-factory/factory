@@ -1,0 +1,423 @@
+{
+  "schema_version": 1,
+  "catalog_source": "https://github.com/amichai-bd/nand2mario/blob/d35a51a83eacc871247278843b0b2dc770e587aa/tools/n2m/dependencies.json",
+  "reference": {
+    "tool": "PyBoy 2.7.0",
+    "frames": "351..440",
+    "palette": [
+      16777215,
+      11184810,
+      5592405,
+      0
+    ],
+    "meaning": "Independent software title frames; no gameplay correctness claim",
+    "mode": "DMG (cgb=False)"
+  },
+  "games": {
+    "max-pirate": {
+      "name": "Max Pirate v1.0",
+      "author": "Marcel Wehrstedt",
+      "source": "https://github.com/MWehrstedt/MaxPirate",
+      "release": "v1.0",
+      "commit": "2978cf7ce688e407e0e08490911b3055327178b8",
+      "url": "https://github.com/MWehrstedt/MaxPirate/releases/download/v1.0/maxpirate.gb",
+      "sha256": "ade748a976cc87d382cf538daf441a3545c324c81d5fcda1f89ec0511b227d7a",
+      "size": 32768,
+      "license": "MIT",
+      "cartridge": "ROM ONLY; the downloaded bytes read 0x0147 = 0x00, 0x0148 = 0x00 (32 KiB) and 0x0149 = 0x00 (no cartridge RAM), with a valid header checksum and Nintendo logo; DMG-only CGB flag 0x00",
+      "notices": {
+        "LICENSE": {
+          "url": "https://raw.githubusercontent.com/MWehrstedt/MaxPirate/2978cf7ce688e407e0e08490911b3055327178b8/LICENSE",
+          "sha256": "b99a54ec42dd687dfbabf2b948fb93a98dab952dbfb12a3ed3afbdc5af28930e",
+          "size": 1073
+        }
+      },
+      "title_sha256": [
+        "2d4e0f710769c497648c4278c2b3e1895b6df59c69ca053b5ab5bd71e56b1ac9",
+        "46e2096b907947368d310929303a04005b39c4a278e3a7de2225c355b4522694",
+        "bcd7b8c67c3a6923fdef1e4a97603c5205dcc1b5c3c07364803ab4782643da77"
+      ],
+      "scenario": [
+        [
+          "title",
+          0,
+          320
+        ],
+        [
+          "start",
+          128,
+          2
+        ],
+        [
+          "play",
+          0,
+          30
+        ],
+        [
+          "right",
+          1,
+          12
+        ],
+        [
+          "release",
+          0,
+          2
+        ]
+      ],
+      "credits": {
+        "art": "GibbonGL (GB Oracles assets, upstream credits)",
+        "art_license_source": "https://gibbongl.itch.io/gboracles-environment-pack",
+        "audio": "beatscribe",
+        "source": "https://github.com/MWehrstedt/MaxPirate/blob/2978cf7ce688e407e0e08490911b3055327178b8/Readme.md"
+      }
+    },
+    "square-fall": {
+      "name": "Square Fall v0.3",
+      "title": "SQUARE FALL",
+      "author": "bjorn_nah (Bjorn)",
+      "source": "https://github.com/bjorn-nah/square_fall",
+      "release": "v0.3",
+      "commit": "3da333bf3a7f41925b252a526ac903f7b99a5b99",
+      "url": "https://github.com/bjorn-nah/square_fall/releases/download/v0.3/square_fall_v03.gb",
+      "sha256": "ef69e75e1b9bb5fa021214dae68488c17fdccd817496f7a3d93e6054b8793d9b",
+      "size": 32768,
+      "license": "MIT",
+      "cartridge": "ROM ONLY; the downloaded bytes read 0x0147 = 0x00, 0x0148 = 0x00 (32 KiB) and 0x0149 = 0x00 (no cartridge RAM), with a valid header checksum and Nintendo logo; DMG-only CGB flag 0x00",
+      "redistribution": "Author release asset. The repository carried no LICENSE file at the release commit, so the pinned licence text is the later commit 2859cb7aeb9310cd3fd91b6048800efe4ef33446 that added it.",
+      "notices": {
+        "LICENSE": {
+          "url": "https://raw.githubusercontent.com/bjorn-nah/square_fall/2859cb7aeb9310cd3fd91b6048800efe4ef33446/LICENSE",
+          "sha256": "0b266ffae3fe5e5a9f49cdaed6cb848182d9146fb56f0f926025c37753bb49e5",
+          "size": 1062
+        }
+      },
+      "title_sha256": [
+        "05839c04acaab4eadb6f9d385d6251a56e091cbaf19b6f5bb444ff6b8fb1fa84"
+      ],
+      "scenario": [
+        [
+          "title",
+          0,
+          12
+        ],
+        [
+          "start",
+          128,
+          2
+        ],
+        [
+          "play",
+          0,
+          30
+        ],
+        [
+          "right",
+          1,
+          12
+        ],
+        [
+          "release",
+          0,
+          2
+        ]
+      ]
+    },
+    "unstoppable-knight": {
+      "name": "Unstoppable Knight 2.2.2",
+      "author": "Rafagars (Rafael Garcia)",
+      "source": "https://github.com/Rafagars/Unstoppable-Knight-GB",
+      "release": "2.2.2",
+      "commit": "47e1059ccce0d803317745461f66b16a754afd29",
+      "url": "https://github.com/Rafagars/Unstoppable-Knight-GB/releases/download/2.2.2/knight.gb",
+      "sha256": "191c7fad34e643ab5f1083cd8f1a0582a4cef2bfee068bf36e18805f8bc40aaf",
+      "size": 32768,
+      "license": "MIT",
+      "cartridge": "ROM ONLY; the downloaded bytes read 0x0147 = 0x00, 0x0148 = 0x00 (32 KiB) and 0x0149 = 0x00 (no cartridge RAM), with a valid header checksum and Nintendo logo; CGB flag 0x80 (CGB-enhanced, DMG-compatible)",
+      "notices": {
+        "LICENSE": {
+          "url": "https://raw.githubusercontent.com/Rafagars/Unstoppable-Knight-GB/47e1059ccce0d803317745461f66b16a754afd29/LICENSE",
+          "sha256": "73b86b8993214ea3499082d7a810ef18640eb9f19808ea751b9c91c835df66c0",
+          "size": 1070
+        }
+      },
+      "title_sha256": [
+        "f29a652620ccedffc702c349a21409b8d0e6474a5cdd3aa45520d0950d8a866f"
+      ],
+      "scenario": [
+        [
+          "title",
+          0,
+          12
+        ],
+        [
+          "start",
+          128,
+          2
+        ],
+        [
+          "play",
+          0,
+          55
+        ],
+        [
+          "right",
+          1,
+          12
+        ],
+        [
+          "release",
+          0,
+          2
+        ]
+      ],
+      "credits": {
+        "music": "Edited Twilight Drive from GB-Studio-Community-Assets",
+        "source": "https://github.com/Rafagars/Unstoppable-Knight-GB/blob/47e1059ccce0d803317745461f66b16a754afd29/README.md"
+      }
+    },
+    "libbet": {
+      "name": "Libbet and the Magic Floor v0.08",
+      "author": "Damian Yerrick (pinobatch)",
+      "source": "https://github.com/pinobatch/libbet",
+      "release": "v0.08",
+      "commit": "46a765a2c01701bffb8c0b7dd6e4be3a6b193090",
+      "url": "https://github.com/pinobatch/libbet/releases/download/v0.08/libbet.gb",
+      "sha256": "3607412031c8287cf878299ce96e581e85b852dde703806343b95576fa3ff1a9",
+      "size": 32768,
+      "license": "Zlib",
+      "cartridge": "ROM ONLY; upstream makefile links with rgbfix -m ROM and the header byte at 0x0147 reads 0x00",
+      "notices": {
+        "LICENSE": {
+          "url": "https://raw.githubusercontent.com/pinobatch/libbet/46a765a2c01701bffb8c0b7dd6e4be3a6b193090/LICENSE",
+          "sha256": "7bd353e765c8d32a7a048929d008e9bb17fa28d7ee4b619f80b67538e9bb82ff",
+          "size": 897
+        }
+      },
+      "title_sha256": [
+        "35b72daceddf64b6105cdc35991008844919f72e9bfcdcea4ffb0950f984d3b1"
+      ],
+      "scenario": [
+        [
+          "title",
+          0,
+          600
+        ],
+        [
+          "start",
+          128,
+          2
+        ],
+        [
+          "play",
+          0,
+          120
+        ],
+        [
+          "right",
+          1,
+          12
+        ],
+        [
+          "release",
+          0,
+          2
+        ]
+      ],
+      "reference_frames": [
+        561,
+        680
+      ],
+      "reference_dmg_entry": true
+    },
+    "airaki": {
+      "name": "Airaki",
+      "author": "furrtek",
+      "source": "https://github.com/furrtek/Airaki",
+      "release": "none; the author publishes no release asset",
+      "commit": "434b8d35af69d6bf8184fe1bc9a4c41294c8ad42",
+      "url": "https://raw.githubusercontent.com/gbdev/database/434b8d35af69d6bf8184fe1bc9a4c41294c8ad42/entries/airaki/airaki.gb",
+      "sha256": "fd8fe6e023d9969935e05e7469c0f687f34a430d1a71fdeb5bb30183ce1ea2dd",
+      "size": 32768,
+      "license": "GPL-3.0-or-later",
+      "cartridge": "ROM ONLY; the downloaded bytes read 0x0147 = 0x00, 0x0148 = 0x00 (32 KiB) and 0x0149 = 0x00 (no cartridge RAM), with a valid header checksum and Nintendo logo; CGB flag 0x80 (CGB-enhanced, DMG-compatible)",
+      "redistribution": "Third-party redistribution, not an author release: the pinned bytes are the gbdev/database @ 434b8d35af69d6bf8184fe1bc9a4c41294c8ad42 blob entries/airaki/airaki.gb. The licence text is pinned separately in the author repository.",
+      "notices": {
+        "LICENSE.txt": {
+          "url": "https://raw.githubusercontent.com/furrtek/Airaki/a0ac51f2ab30ce8d200cf5a32834db0644156025/LICENSE.txt",
+          "sha256": "37d2e5a629d31b79b3c0876a146c7d4c1f8d2cf70276dd4fac2d8d6abd3f0b32",
+          "size": 35795
+        }
+      },
+      "title_sha256": [
+        "00a85d4045540aca6096c621e54a54d5954cdbf257190caa0036c54fd740b750",
+        "01ce0aa657587a351e728090990a036fde322bc79f9bee7a0ff14153ac52f89f",
+        "0bb1455e2093b7b9756a82901e2462fc79a2153c4dfe3b55f5f9a969cb3957dd",
+        "0cdabb455d445d33ae76b10c4869eaaa1b54c8eacc995897e4d9d20555fe6bb5",
+        "0d89c9ea6f95c460a01242ff4d97da213d7a50465241d5f323c2a3c9d7f77cc0",
+        "0f2c0edc2f8bf121c0662b628a33a0bf3e543f6f6837b632ec213b88fdebce50",
+        "187e8dbe788a69506b899878c916107278111030d1e5221030b9d5985a8d0e11",
+        "197900d923c1f78cbb38440b0fa69ed3f58b124293d8a7bc5ebe039730352673",
+        "1b674ca1e21bb5c05864a9fafdd9be11e8208b76ad69e96be35219836f507092",
+        "258edad9b16bf115fa18a75bba4419747f6c8d7a95955d9a95fb698a3ff1dd20",
+        "2750fc8e52462f0f4f369478d26ec49ac0e9a1df778151bba9a799ac3dfbb9de",
+        "29163c5d1b34f58243a41bf79ad794f4228f6824e8fe88e6df93c1c13ed1a8d4",
+        "2c2691a446cdf74fd85659aa40b657afa5f58db7f41b836d61745260fa9b0428",
+        "300d76a44b20193480d19ca322c305389940a660547ef58b002f8c845df046ad",
+        "318a170fe5cba8a8a911596920c51218faca30c2858ce9c1feb99ab09e74077d",
+        "322bcb295982e085ce7e54816c49455852604a2a64ae9488e5d6a8f0c1abaf00",
+        "36ccf90c18a1721abdf33dc15fc77cb0ae0ee948010a94d0743c78af78e5e1ce",
+        "3a59be5336306890df78b44f8a85ecc1546d18eeb284e91bea955b295d06ac03",
+        "3bc86c4e2957309592068297c7e98db08b225f03ef4ac02c6c5375da0fc20d73",
+        "46bf8bcddd9a25b9f22e819a92185c47c0c63246268344cb3d338ec1f5b15658",
+        "4bd52c42201942993ca01f2b3cd3fadcd238b460f01a91303123122531120fd7",
+        "4c409fd9145441136b7eb1474e5b96ad321f3c2ff4da9cbeaef93b416b5f3d4b",
+        "517519278405b13c456301720772197d837af6f76f005fac4bcb0068cfbd8c2c",
+        "51b1fe93b8274375f60972a9d40edf565eeaf054151050d3b53f381ea5d15924",
+        "6123e0ca480297d6387288ad093231570e543ff2cdb66c97dadba9b44c06a691",
+        "62f94c249644f0de4e62c3f6cbe2d7e0155eac59d33277fd48ccab6294a91f3d",
+        "66742863c4dfb6c71f5f0bb558b8ffcafe632607eb28a8329095894a266b582c",
+        "678996d01a2f1173e67c48d27b4b456b1ac1c3f6195e5e899d6b8f533ea0c984",
+        "68cb223ae3d3644ef37865c699d0d65a08609ccc587cc11f2186f6bb9612fc19",
+        "68f3a0e7c08d7e81076015f8be6ff11afc7cd8a23c33a0eccaf50b71c410f902",
+        "6b2817564128a11a0e4c063dd91b11928079b3e3e3b4ffd88b26403f43babd73",
+        "6b488c2b8421c11cbf021adafc082c6366c8fe18bc682986baaec2c7869f6f7f",
+        "6d967718b235b3d885a8693bc20e291ce22575ff7d6a31b4f6436ee49c419f38",
+        "6df30cd75c12362623a5d35d08e29710085fa617b0f1cb9ec038194a43857117",
+        "70eda00995f769fc55dcea2fc352632657ab99970058e3cb90a1793f3f779793",
+        "719c273414dc8f8e1d285c41a3410180629d16802dfbc9b52bd4414133c88c8f",
+        "71f9d954f3845cc4fceae3cc2a40bf861381c372dbebe6c8fd422396a790b86f",
+        "7338dbe7c936d17aec0cf8acc7d986050e646c44c5a0048d7a7b893ef8092109",
+        "80b3d3a14edce56eb91ac8839251dffc21c2ade0f5fb2f3ea3c0b50d05acd737",
+        "81563661437ae4e296cbf339cbaf787cb3f1dd36524720e49d09afe2b48174f6",
+        "81664b91089edbfbfe6e2a451e70e39014a42f2d632093cf6545ee1c9593b3cf",
+        "821dabc01cc321e94e0773fdc00e859e3ef45773411fd7bccae5374011d53475",
+        "8ab7edd474efc573fa5c4f1c5a714a48d347d642a0d9183f4ef41e5650ca134b",
+        "8c43cff72cd52fc3e480b2c09913b7328487b7941d4a488b2b3cff4c1a8dfa7f",
+        "94e1cab5ec85e151ec9bfce2e47b01cfd31e698abb71638a11593cd3b148f15f",
+        "95adf06b7b2afb71d6bb9edaaf185f2bfa1844d04c1641efe57b579d59ca228a",
+        "98229b5d94fc5f9ba9be116c7b9770ead23d9d959453346e6081a74e239f01f0",
+        "986433578d5538e9d65ca49c4dc1766156267d0638db081db63ae36cb2e25894",
+        "9edcb430245a83917897da3eab97b523b6d5f7d2ffd27e37e2d8f1d378bf84af",
+        "a7ba911db5551f9a11949f2abafab29a7ce4b427b2571f82d55ed8cdac35b6f4",
+        "b9b59ac22f21142b675f255ca810d684cfb3e6303a9b534d4028914087c1366e",
+        "bdc2d52da77c7b1a7e078d4c0bfcae424bf0602ce06409d1f2cab97ee4d3121d",
+        "be27285695990975c15055affd1c0ea7635a0ea4d015fe8f9b0c743dc7902e48",
+        "bf5b9e015124154387b66a7956c5a5fb0728eb21fdbb9d95c83d2298d57912db",
+        "c03627e915aa5131bed553a26b083034ff3b46820b792d4c8d1952fec5924b8d",
+        "c91a35b8a3356c5871da99d8329f7ef30a0dcf246b0f6594b446ec7ddcbac7ba",
+        "cddba411063236e0cfa2031cd9398efa55b12e4bc51692573112427678f635e6",
+        "da059ccf8fd7112fc07ad64c2dfa77f3b31b872331dc010fc50bb2b420c8db1a",
+        "e29ac1dc11146ee49e81259cdffefee001d4449cbae0f7d08eea482d7f640ec8",
+        "e56c04221852aa6b2af439af48a98cb51aab0d697aefe525e41dc4ce6d33dd8a",
+        "f181a9f2a3d0cfd4a8fb798fda73986e4ba688abbd027aed9291207a5a8300da",
+        "f2872b0a2876f80d999ef9d8af06523d2156c5a442e439a31bca9b02d8b19c67",
+        "f696e0bb83436500aa8e48d3f8ba9a3e79b47755818187945f2864c25e4af11b",
+        "f7eb6c14e4c9b4e3516d04b95851e8742a9292ef0c70cc480e62e2f76de48702",
+        "f9704cdfcad365a4909d4fa122d7b6838ac7b3ff1c8048bdc17e65da19bab6fe",
+        "fccc1ff71e2138a86b6ba036f5f7e6dd9282a1e8c65965ebe26937e3871562cc"
+      ],
+      "scenario": [
+        [
+          "title",
+          0,
+          720
+        ],
+        [
+          "start",
+          128,
+          2
+        ],
+        [
+          "play",
+          0,
+          30
+        ],
+        [
+          "right",
+          1,
+          12
+        ],
+        [
+          "release",
+          0,
+          2
+        ]
+      ],
+      "reference_frames": [
+        691,
+        780
+      ],
+      "reference_dmg_entry": true
+    },
+    "gb-wordyl": {
+      "name": "GB Wordyl 0.85 (English)",
+      "author": "bbbbbr",
+      "source": "https://github.com/bbbbbr/gb-wordle",
+      "release": "none; the author publishes no release asset",
+      "commit": "434b8d35af69d6bf8184fe1bc9a4c41294c8ad42",
+      "url": "https://raw.githubusercontent.com/gbdev/database/434b8d35af69d6bf8184fe1bc9a4c41294c8ad42/entries/gb-wordyl/GBWORDYL_0.85_en.gb",
+      "sha256": "acc12e3e920e0c432606846da60a5ca9bba21f8012304e8de4a26f88273d14de",
+      "size": 32768,
+      "license": "GPL-3.0-only",
+      "cartridge": "ROM ONLY; the downloaded bytes read 0x0147 = 0x00, 0x0148 = 0x00 (32 KiB) and 0x0149 = 0x00 (no cartridge RAM), with a valid header checksum and Nintendo logo; CGB flag 0x80 (CGB-enhanced, DMG-compatible)",
+      "redistribution": "Third-party redistribution, not an author release: the pinned bytes are the gbdev/database @ 434b8d35af69d6bf8184fe1bc9a4c41294c8ad42 blob entries/gb-wordyl/GBWORDYL_0.85_en.gb. The licence text is pinned separately in the author repository.",
+      "notices": {
+        "LICENSE.txt": {
+          "url": "https://raw.githubusercontent.com/bbbbbr/gb-wordle/e0f7440e39d562bc6d89dc3f900851cd36d99212/LICENSE.txt",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "size": 35149
+        }
+      },
+      "title_sha256": [
+        "21fc94fc2f95230424232682c0726601efe8a531933241aac3109b589e8192f9",
+        "25c7fd3b9526fef075235e968e2661b404ec688321510f1ee54d8d9241830cf1",
+        "35b5c22fb2a8dc1db909934282baab2a3bb5a244e741d2bdb2740508781f1a92",
+        "41cbbe75f47fdf18b1acdfcaecf7c21da141f1b63d8abff2ad5bf0f7710f3583",
+        "633eb2ee17128b537b6cebb23b924983565994bf5fee6204ca35c457d60e7106",
+        "781612d6aff5aea98629ac73156a51db8b2c63683e6614656b260cc8a361b7fa",
+        "7aac0e394af9ce1b413fe253b39b01ce73de7ef25f8d800e2514ea6a55d7add3",
+        "9d8ba65a25b229626b11e9206e41fb76659f0c80e5fa13bbb6493dcd40318982",
+        "a5dc5258439b88af4d2aa2467056914757b568498def8376d43b10ef48d415c7",
+        "af6919f9142f9e2911072c4b75f023d1e1786d463f81f4257e27fbcf0a92b971",
+        "b9926627feb832910264e3a7c92cc0a21634829b6b81b609bdacab0d06582879",
+        "c03a0eba87e88a228f1b9ccc3cf413f16e9993e4ab7880b83915b6e11a296cef",
+        "c6924eb5b82cfe3a1edc1da7c98c860d60eabded864ef79ac154f5ef7c759b80",
+        "dfcc2c7c5aa0c0e841f5c73b0c3f99411680ac72d0d81eb5d8821cd3977ab31a",
+        "e750534f7f0fe06e1b685f85877a0426d288d9b3d5c14147b499f0cee49d46cf",
+        "edf356f09202be1fc039c4ab30f38012894315c3437d4d4bc6681f6a224566ea"
+      ],
+      "scenario": [
+        [
+          "title",
+          0,
+          480
+        ],
+        [
+          "start",
+          128,
+          2
+        ],
+        [
+          "play",
+          0,
+          300
+        ],
+        [
+          "right",
+          1,
+          12
+        ],
+        [
+          "release",
+          0,
+          2
+        ]
+      ],
+      "reference_frames": [
+        441,
+        540
+      ],
+      "reference_dmg_entry": true
+    }
+  }
+}

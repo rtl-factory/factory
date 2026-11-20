@@ -1,0 +1,20 @@
+# Sources, exact device, and pins are generated from src/nand2mario/cfg/n2m_quartus.json.
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 2
+set_global_assignment -name SEED 1
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
+set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
+set_global_assignment -name INTERNAL_FLASH_UPDATE_MODE "SINGLE IMAGE WITH ERAM"
+set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to KEY[0]
+set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to KEY[1]
+# Resistor VGA DAC: explicit moderate drive. LEDs and 7-segment digits need
+# only 4 mA. These cover every output pin.
+set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to VGA_*
+set_instance_assignment -name CURRENT_STRENGTH_NEW "4MA" -to LEDR*
+set_instance_assignment -name CURRENT_STRENGTH_NEW "4MA" -to HEX*
+# Loader UART on Arduino D0/D1 (3.3 V): RX has a weak pull-up so an
+# unplugged adapter reads idle; point-to-point TX needs only 4 mA. The single
+# SDRAM load gets an explicit moderate drive on every SDRAM pin.
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to UART_RXD
+set_instance_assignment -name CURRENT_STRENGTH_NEW "4MA" -to UART_TXD
+set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to DRAM*
