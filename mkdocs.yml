@@ -1,5 +1,6 @@
 # Wiki site: builds wiki/ into a GitHub Pages site (wiki/bkm/workflow/wiki-site.md).
 site_name: RTL Factory wiki
+site_url: https://rtl-factory.github.io/factory/
 site_description: BKMs, glossary, decisions, requirements and specs of the RTL factory
 repo_url: https://github.com/rtl-factory/factory
 repo_name: rtl-factory/factory
