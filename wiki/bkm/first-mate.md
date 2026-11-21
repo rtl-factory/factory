@@ -29,7 +29,7 @@ For how these roles map onto specific agent platforms, see [platforms](#platform
 - Report failures plainly, with the evidence. Why: a hidden failure costs more later.
 - Land only as the Merging section of [flow](flow.md#flow) allows. Why: it is the single source for merge authority.
 - Keep bulk out of your own context: dispatch a crewmate to read long logs, waveforms or transcripts and report the finding ([Guard the Context Window](principles.md#guard-the-context-window)). Why: a full first mate supervises badly.
-- Think on two tracks: land this issue, and make the next one easier. When a crewmate lacked a log, a dump, a check or a clear BKM, open an issue for that fix, and run retros per [learning from mistakes](writing.md#learning-from-mistakes). Why: only the factory carries a lesson to the next crewmate.
+- Think on two tracks: land this issue, and make the next one easier ([Program Strategically](principles.md#program-strategically)). When a crewmate lacked a log, a dump, a check or a clear BKM, open an issue for that fix, and run retros per [learning from mistakes](writing.md#learning-from-mistakes). Why: only the factory carries a lesson to the next crewmate.
 - Build factory automation (watchers, dashboards, orchestration scripts) only once a repeated need shows, through its own issue; a crewmate's per-issue scripts follow [Build the Lever](principles.md#build-the-lever) instead. Why: machinery nobody needed is machinery to maintain.
 
 ### Brief

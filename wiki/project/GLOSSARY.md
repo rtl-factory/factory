@@ -115,6 +115,14 @@ _Avoid_: wrapper (for a deep block)
 Imagine removing a block and wiring its contents into its neighbours: if complexity vanishes it was a pass-through; if it reappears in several places, the block earns its keep.
 _Avoid_: inline test
 
+**Strategic programming**:
+Changing the repo so that the change works and the next change gets easier: fixing the cause at the place every future case passes through, and leaving the design simpler than it was (John Ousterhout, *A Philosophy of Software Design*).
+_Avoid_: proper fix, clean fix, refactoring (for this meaning)
+
+**Tactical programming**:
+Changing the repo only to make the task in front of you work: a guard, special case, copy, flag, retry or waiver that patches this instance and leaves the next change harder.
+_Avoid_: quick fix, hotfix, workaround (as a neutral word)
+
 **Spec**:
 The specification of one script, piece of software or tool, kept as `spec.md` next to its PRD in the wiki folder that mirrors its code and changed in the same pull request as the code; "the spec" of a block means its MAS, and of a whole design its HAS.
 _Avoid_: design doc, documentation (for this meaning)
