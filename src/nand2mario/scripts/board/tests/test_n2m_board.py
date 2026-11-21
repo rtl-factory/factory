@@ -169,6 +169,18 @@ class BoardToolTests(unittest.TestCase):
         self.assertIn("dry_run", result)
         self.assertEqual(6, result["bytes"])   # Ref: Set-2 make codes 22 1a, then breaks in reverse: f0 1a f0 22
 
+    def test_missing_device_is_resolved_by_the_board_idcode(self):
+        asked = []
+        def resolve(cable, quartus_bin, idcode):
+            asked.append((cable, idcode))
+            return f"@1: part (0x{idcode})"
+        for board, idcode in (("de10_lite", "031050DD"), ("de2_115", "020F70DD")):
+            with self.subTest(board=board):
+                code, result = n2m_board.run_joypad(Args(cable="USB-Blaster [1-1]", board=board),
+                                                    jtag=jtag, resolve=resolve)
+                self.assertEqual((0, f"@1: part (0x{idcode})"), (code, result["jtag_device"]))
+        self.assertEqual([("USB-Blaster [1-1]", "031050DD"), ("USB-Blaster [1-1]", "020F70DD")], asked)
+
     def test_unknown_button_and_missing_cable_refused(self):
         with self.assertRaises(ValueError):
             n2m_board.run_joypad(Args(names=["turbo"]), jtag=jtag)

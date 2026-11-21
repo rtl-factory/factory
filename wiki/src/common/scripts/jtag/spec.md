@@ -60,6 +60,7 @@ From WSL with Windows Quartus (`quartus_stp.exe` in `quartus_bin`), the host sta
 ## Users
 
 nand2mario's board flow (`src/nand2mario/scripts/board/n2m_board.py`, `joypad`) maps button names to keys and sends them through this library.
+nand2doom's `n2d_jtag_keyboard.py` and `n2d_control.py` send Doom actions through it, and the [board console](../../../../tools/board/spec.md#keyboard) forwards every key of its keyboard pane through it. The exact cable and device names these users pass come from the console's JTAG chain helpers, which find them by IDCODE.
 
 ## Origin
 

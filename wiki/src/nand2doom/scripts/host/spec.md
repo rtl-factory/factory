@@ -8,14 +8,13 @@ How the host scripts meet their [requirements](prd.md). Code: `src/nand2doom/scr
 |---|---|---|
 | `n2d_uart.py` | The UART command (`ping`, `caps`, `halt`, `resume`, `reset-pc`, `peek`, `poke`, `input`, `load`, `dump`) and the `Client`, bulk and `StreamSession` API the other parts use | [UART host](#uart-host) |
 | `n2d_uart_debug_host.py` | Pure N2D1, bulk and stream wire codec (frames, CRCs, decoders, wire-time model), also imported by the simulation benches | [UART host](#uart-host) |
-| `n2d_play.py` | One command from programming the DE2-115 to playing Doom | [Play](#play) |
+| `n2d_play.py` | One command from programming the DE2-115 or the DE10-Lite to playing Doom | [Play](#play) |
 | `n2d_control.py`, `n2d_control_terminal.py` | Real-time Doom controls in a Tk window or a terminal, over UART or JTAG | [Local controls](#local-controls) |
 | `n2d_jtag_keyboard.py` | Doom actions, raw Set-2 events or text over the JTAG keyboard | [JTAG keyboard](#jtag-keyboard) |
-| `n2d_jtag_device.py`, `n2d_jtag_devices.tcl` | Resolve the DE2-115's `quartus_stp` device name by IDCODE | [Device resolution](#device-resolution) |
 | `n2d_capture.py` | One bounded, coherent framebuffer and palette snapshot | [Coherent frame capture](#coherent-frame-capture) |
 | `n2d_frame_decode.py` | Offline decode of snapshots to PNG and GIF | [Offline frame decoder](#offline-frame-decoder) |
 
-Every part imports the others as `src.nand2doom.scripts.host.<part>`, and each entry file puts the checkout root on `sys.path` before those imports, so it runs as a file from any directory. `n2d_uart.py` takes the manifest constants (architecture, ABI, memory-map revision) from [`n2d_image.py`](../sw_build/spec.md#validation-image) and the Doom pins from [`n2d_doom.py`](../sw_build/spec.md#doom-build); `n2d_capture.py` takes the Doom build's output confinement. The JTAG parts use the `common` [JTAG keyboard host](../../../common/scripts/jtag/spec.md).
+Every part imports the others as `src.nand2doom.scripts.host.<part>`, and each entry file puts the checkout root on `sys.path` before those imports, so it runs as a file from any directory. `n2d_uart.py` takes the manifest constants (architecture, ABI, memory-map revision) from [`n2d_image.py`](../sw_build/spec.md#validation-image) and the Doom pins from [`n2d_doom.py`](../sw_build/spec.md#doom-build); `n2d_capture.py` takes the Doom build's output confinement. The JTAG parts use the `common` [JTAG keyboard host](../../../common/scripts/jtag/spec.md), and find the cable and the device name, and program, with the board console's [JTAG chain helpers](../../../../tools/board/spec.md#jtag-chain) (`tools/board/jtag_chain.py`).
 
 ## UART host
 
@@ -182,8 +181,8 @@ adopted). No runtime reference-repository dependency.
 
 ## Play
 
-One command for the owner to play Doom on the DE2-115: check the board,
-program a DE2-115 image, stream-load Doom over the 3 Mbaud UART, start it, and
+One command for the owner to play Doom on the DE2-115 (or the DE10-Lite): check the board,
+program its image, stream-load Doom over the 3 Mbaud UART, start it, and
 open real-time controls over UART or the USB-Blaster JTAG keyboard. A reload
 after a software change takes seconds, not the full 29 MB. One explicit
 invocation authorizes programming, loading and playing the board it names; it
@@ -210,8 +209,8 @@ python3 src/nand2doom/scripts/host/n2d_play.py --port PORT --skip-load --control
 | Option | Meaning |
 | --- | --- |
 | `--port` | UART port; default `$N2D_UART_PORT`; required unless `--skip-load` with JTAG controls. |
-| `--board` | `de2_115` (IDCODE `020F70DD`, baud 3,000,000). |
-| `--sof` | Default the newest `workdir/quartus/n2d_de2_115/output_files/n2d_de2_115.sof` in this or the main checkout. |
+| `--board` | `de2_115` (default; IDCODE `020F70DD`, baud 3,000,000) or `de10_lite` (IDCODE `031050DD`, baud 1,000,000). |
+| `--sof` | Default the newest `workdir/quartus/n2d_<board>/output_files/n2d_<board>.sof` in this or the main checkout. |
 | `--manifest` | Default `workdir/software/n2d_doom/manifest.json` of this checkout. |
 | `--skip-program` | Keep the FPGA image; Halt, reload, Resume. |
 | `--skip-load` | Ping only and reconnect controls to a running game; implies `--skip-program`. |
@@ -235,7 +234,7 @@ prints before the controls open.
    `quartus_stp`, `quartus_stpw`, `system-console`, `nios2-terminal`,
    `jtagconfig` or `quartus_jli` process refuses with PID and name (`jtagd` is
    the shared server, not a holder).
-2. **Board check.** One `jtagconfig` (20 s) must list exactly one cable whose
+2. **Board check.** One `jtagconfig` (30 s) must list exactly one cable whose
    chain is exactly the board IDCODE (skipped with `--skip-program` and UART
    controls). With JTAG controls and no `--jtag-device` the device name is
    [resolved by IDCODE](#device-resolution) on that
@@ -464,7 +463,7 @@ a board run.
 
 `n2d_jtag_keyboard.py`
 (Python 3.10+) imports only the action table from `n2d_control.py`, the
-resolver `n2d_jtag_device.py`
+resolver `tools/board/jtag_chain.py`
 and `src/common/scripts/jtag/n2a_jtag_keyboard.py`.
 
 ```text
@@ -497,8 +496,8 @@ the whole request, then close.
 Installs name the DE2-115 (IDCODE `0x020F70DD`) differently (`@1: EP4CE115
 (0x020F70DD)` or `@1: 10CL120(Y|Z)/EP3C120/.. (0x020F70DD)`). An explicit
 `--device` is used verbatim (`jtag_device_source` `--device`). Otherwise, with
-`--cable`, one `quartus_stp -t n2d_jtag_devices.tcl CABLE` (30 s) prints one
-`N2D_DEVICE ` line per `get_device_names` entry, and the name whose trailing
+`--cable`, one `quartus_stp -t tools/board/jtag_devices.tcl CABLE` (30 s) prints one
+`N2A_DEVICE ` line per `get_device_names` entry, and the name whose trailing
 `(0xXXXXXXXX)` equals `0x020F70DD` is chosen (`IDCODE 0x020F70DD`). Zero or
 several matches, nonzero exit or timeout refuse with the listed names before
 any transport. The shared library still takes exact names.

@@ -1,0 +1,322 @@
+#!/usr/bin/env python3
+"""Board console: pick a SOF, program the FPGA, load a program, type on the board.
+
+    python3 tools/board/board.py                       # the window
+    python3 tools/board/board.py list
+    python3 tools/board/board.py program --project nand2mario --board de10_lite [--sof PATH] --yes
+    python3 tools/board/board.py load --project nand2doom --board de2_115 --port /dev/ttyUSB0 --yes
+    python3 tools/board/board.py keys --project nand2mario --board de10_lite --yes "hello"
+
+One console for every project and board. It knows no design: each project
+declares its boards in src/<project>/cfg/board.json (board IDCODE, default
+SOF, UART rate, and the project command that loads a program). Programming is
+quartus_pgm through the one cable whose chain is exactly the board's FPGA;
+keys go through the common JTAG keyboard host; loading runs the project's own
+loader. Without --yes every command prints its plan and opens nothing.
+Spec: wiki/tools/board/spec.md.
+"""
+from __future__ import annotations
+
+import argparse
+from dataclasses import dataclass
+import json
+from pathlib import Path
+import subprocess
+import sys
+import time
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from tools.board import jtag_chain  # noqa: E402
+
+SCHEMA = "n2a-board/1"
+PROGRAM_SECONDS = 180
+FIELDS = ("python", "root", "program", "port", "baud", "board")
+
+
+class BoardError(Exception):
+    """A request the console refuses before touching the board, or a failed step."""
+
+
+@dataclass(frozen=True)
+class Board:
+    """One project on one board, as its cfg/board.json declares it."""
+    project: str
+    name: str
+    idcode: str
+    baud: int
+    sof: str
+    program_label: str
+    program_patterns: tuple[str, ...]
+    program_default: str
+    load: tuple[str, ...]
+
+    @property
+    def key(self) -> str:
+        return f"{self.project}/{self.name}"
+
+
+def parse_config(data: dict, source: str) -> list[Board]:
+    if data.get("schema") != SCHEMA:
+        raise BoardError(f"{source}: schema must be {SCHEMA}")
+    try:
+        program, load = data["program"], tuple(data["load"])
+        if not load or not all(isinstance(part, str) for part in load):
+            raise BoardError(f"{source}: load must be a nonempty list of strings")
+        for part in load:
+            try:
+                part.format(**{name: "" for name in FIELDS})
+            except (KeyError, IndexError, ValueError) as exc:
+                raise BoardError(f"{source}: load field {part!r}: allowed {', '.join(FIELDS)}") from exc
+        boards = []
+        for name, board in data["boards"].items():
+            idcode = jtag_chain.idcode_text(board["idcode"])
+            baud = int(board["baud"])
+            if not 9600 <= baud <= 12_000_000:
+                raise BoardError(f"{source}: {name} baud {baud} outside 9600..12000000")
+            boards.append(Board(data["project"], name, idcode, baud, board["sof"], program["label"],
+                                tuple(program["patterns"]), program.get("default", ""), load))
+        return boards
+    except (KeyError, TypeError, ValueError) as exc:
+        raise BoardError(f"{source}: malformed board config: {exc!r}") from exc
+
+
+def load_boards(root: Path = ROOT) -> dict[str, Board]:
+    """Every project's boards, keyed project/board."""
+    found = {}
+    for path in sorted(root.glob("src/*/cfg/board.json")):
+        for board in parse_config(json.loads(path.read_text()), str(path.relative_to(root))):
+            found[board.key] = board
+    return found
+
+
+def pick(boards: dict[str, Board], project: str | None, board: str | None) -> Board:
+    matches = [b for b in boards.values()
+               if (project is None or b.project == project) and (board is None or b.name == board)]
+    if len(matches) != 1:
+        names = ", ".join(sorted(b.key for b in matches)) or "none"
+        raise BoardError(f"--project and --board must name one board (matching: {names})")
+    return matches[0]
+
+
+def board_for_sof(boards: dict[str, Board], sof: Path) -> Board | None:
+    """The board whose default SOF has this file name, when exactly one does."""
+    matches = [b for b in boards.values() if Path(b.sof).name == Path(sof).name]
+    return matches[0] if len(matches) == 1 else None
+
+
+def resolve_path(text: str, root: Path = ROOT) -> Path:
+    path = Path(text).expanduser()
+    return path if path.is_absolute() else root / path
+
+
+def serial_ports() -> list[str]:
+    """Serial devices pyserial sees, stable names first; empty without pyserial."""
+    try:
+        from serial.tools import list_ports
+    except ImportError:
+        return []
+    return sorted(p.device for p in list_ports.comports())
+
+
+# --- program -------------------------------------------------------------
+
+def program_plan(board: Board, sof: Path, cable: str | None, quartus_bin: str | None) -> dict:
+    return {"board": board.key, "sof": str(sof), "exists": sof.is_file(),
+            "cable": cable or f"<the one cable with IDCODE {board.idcode}>",
+            "command": jtag_chain.program_command(sof, cable or "<cable>", quartus_bin)}
+
+
+def program(board: Board, sof: Path, *, cable=None, quartus_bin=None, runner=jtag_chain.run_tool,
+            out=print) -> str:
+    """Configure the FPGA from `sof`; returns the cable used. Raises BoardError."""
+    if not sof.is_file():
+        raise BoardError(f"SOF not found: {sof}")
+    try:
+        cable = cable or jtag_chain.find_cable(board.idcode, quartus_bin, runner=runner)
+    except (ValueError, RuntimeError) as exc:
+        raise BoardError(str(exc)) from exc
+    argv = jtag_chain.program_command(sof, cable, quartus_bin)
+    out("$ " + " ".join(argv))
+    try:
+        rc, text = runner(argv, PROGRAM_SECONDS)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise BoardError(f"quartus_pgm: {exc}") from exc
+    if not jtag_chain.program_succeeded(rc, text):
+        raise BoardError(f"quartus_pgm exited {rc}: {text.strip()[-300:]}")
+    out(f"programmed {sof.name} through {cable}")
+    return cable
+
+
+# --- load ----------------------------------------------------------------
+
+def load_command(board: Board, program_file: Path, port: str, *, python=sys.executable,
+                 root: Path = ROOT) -> list[str]:
+    """The project's loader command line, its fields filled in."""
+    values = dict(python=python, root=str(root), program=str(program_file), port=port,
+                  baud=str(board.baud), board=board.name)
+    return [part.format(**values) for part in board.load]
+
+
+def load(board: Board, program_file: Path, port: str, *, out=print, popen=subprocess.Popen,
+         root: Path = ROOT) -> None:
+    """Run the project's loader, streaming its output. Raises BoardError."""
+    if not port:
+        raise BoardError("loading needs the board's serial --port")
+    if not program_file.is_file():
+        raise BoardError(f"{board.program_label.lower()} not found: {program_file}")
+    argv = load_command(board, program_file, port, root=root)
+    out("$ " + " ".join(argv))
+    try:
+        process = popen(argv, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                        text=True, errors="replace")
+    except OSError as exc:
+        raise BoardError(f"loader: {exc}") from exc
+    for line in process.stdout:
+        out(line.rstrip("\n"))
+    if process.wait():
+        raise BoardError(f"loader exited {process.returncode}")
+
+
+# --- keyboard ------------------------------------------------------------
+
+def jtag_device(board: Board, *, cable=None, device=None, quartus_bin=None,
+                runner=jtag_chain.run_tool) -> tuple[str, str]:
+    """(cable, device) of the board's JTAG keyboard: given, else found by IDCODE."""
+    try:
+        cable = cable or jtag_chain.find_cable(board.idcode, quartus_bin, runner=runner)
+        device = device or jtag_chain.resolve(cable, quartus_bin, board.idcode, runner=runner)
+    except (ValueError, RuntimeError) as exc:
+        raise BoardError(str(exc)) from exc
+    if jtag_chain.device_idcode(device) != int(board.idcode, 16):
+        raise BoardError(f"JTAG device {device!r} is not the {board.name} (IDCODE {board.idcode})")
+    return cable, device
+
+
+class Keyboard:
+    """One open JTAG keyboard session: `send` delivers Set-2 bytes in order."""
+
+    def __init__(self, cable: str, device: str, quartus_bin=None, *, jtag=None):
+        if jtag is None:
+            from src.common.scripts.jtag import n2a_jtag_keyboard as jtag
+        self.jtag = jtag
+        data = jtag.settings({"jtag_cable": cable, "jtag_device": device,
+                              "quartus_bin": quartus_bin or ""})
+        self.transport = jtag.open_transport(data)
+        try:
+            self.session = jtag.Session(self.transport)
+        except Exception:
+            self.transport.close()
+            raise
+
+    def send(self, codes: bytes, seconds: float = 5.0) -> int:
+        return self.jtag.send_all(self.session, codes, deadline=time.monotonic() + seconds)
+
+    def type_text(self, text: str, hold: float = 0.05) -> int:
+        return self.jtag.type_text(self.session, text, hold=hold)
+
+    def close(self) -> str:
+        return self.transport.close()
+
+
+# --- command line --------------------------------------------------------
+
+def parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog="board.py", description=__doc__.split("\n\n", 1)[0])
+    sub = p.add_subparsers(dest="action")
+    sub.add_parser("list", help="projects, boards, default files and serial ports")
+    commands = []
+    g = sub.add_parser("program", help="configure the FPGA from a SOF")
+    g.add_argument("--sof", help="SOF to program (default: the board's built SOF)")
+    commands.append(g)
+    lo = sub.add_parser("load", help="load a program with the project's loader")
+    lo.add_argument("--program", help="program file (default: the project's default)")
+    lo.add_argument("--port", help="serial device of the board UART")
+    commands.append(lo)
+    k = sub.add_parser("keys", help="type text on the board's JTAG keyboard")
+    k.add_argument("text")
+    k.add_argument("--device", help="exact quartus_stp device name (default: found by IDCODE)")
+    commands.append(k)
+    w = sub.add_parser("gui", help="open the window (the default)")
+    w.add_argument("--port", help="prefill the serial port")
+    commands.append(w)
+    for command in commands:
+        command.add_argument("--project", help="project, e.g. nand2mario")
+        command.add_argument("--board", help="board, e.g. de10_lite or de2_115")
+        command.add_argument("--quartus-bin", help="directory of jtagconfig, quartus_pgm, quartus_stp (default PATH)")
+        if command is not w:
+            command.add_argument("--yes", action="store_true", help="act on the board; without it only the plan prints")
+        if command in (g, k):
+            command.add_argument("--cable", help="exact JTAG cable name (default: the one with the board's IDCODE)")
+    return p
+
+
+def run_list(boards, out=print) -> int:
+    for board in boards.values():
+        sof = resolve_path(board.sof)
+        default = resolve_path(board.program_default) if board.program_default else None
+        out(f"{board.key}: IDCODE {board.idcode}, UART {board.baud} baud")
+        out(f"  sof     {board.sof} ({'built' if sof.is_file() else 'not built'})")
+        out(f"  program {board.program_label}: " + (f"{board.program_default} "
+            f"({'present' if default.is_file() else 'missing'})" if default else "choose a file"))
+    ports = serial_ports()
+    out("serial ports: " + (", ".join(ports) if ports else "none found (or pyserial missing)"))
+    return 0
+
+
+def main(argv=None, *, runner=jtag_chain.run_tool, popen=subprocess.Popen, jtag=None, out=print) -> int:
+    args = parser().parse_args(argv)
+    try:
+        boards = load_boards()
+        if args.action == "list":
+            return run_list(boards, out)
+        if args.action in (None, "gui"):
+            from tools.board import gui
+            return gui.main(boards, port=getattr(args, "port", None) or "",
+                            quartus_bin=getattr(args, "quartus_bin", None))
+        board = pick(boards, args.project, args.board)
+        if args.action == "program":
+            sof = resolve_path(args.sof or board.sof)
+            if not args.yes:
+                out(json.dumps(dict(program_plan(board, sof, args.cable, args.quartus_bin),
+                                    dry_run="nothing programmed; add --yes"), indent=2))
+                return 0
+            program(board, sof, cable=args.cable, quartus_bin=args.quartus_bin, runner=runner, out=out)
+            return 0
+        if args.action == "load":
+            chosen = args.program or board.program_default
+            if not chosen:
+                raise BoardError(f"give --program ({board.program_label.lower()})")
+            program_file = resolve_path(chosen)
+            if not args.yes:
+                out(json.dumps({"board": board.key, "program": str(program_file),
+                                "exists": program_file.is_file(),
+                                "command": load_command(board, program_file, args.port or "<port>"),
+                                "dry_run": "no port opened; add --yes with --port"}, indent=2))
+                return 0
+            load(board, program_file, args.port or "", out=out, popen=popen)
+            return 0
+        if not args.yes:
+            out(json.dumps({"board": board.key, "text": args.text,
+                            "cable": args.cable or f"<the one cable with IDCODE {board.idcode}>",
+                            "device": args.device or f"<the device with IDCODE {board.idcode}>",
+                            "dry_run": "nothing opened; add --yes"}, indent=2))
+            return 0
+        cable, device = jtag_device(board, cable=args.cable, device=args.device,
+                                    quartus_bin=args.quartus_bin, runner=runner)
+        keyboard = Keyboard(cable, device, args.quartus_bin, jtag=jtag)
+        try:
+            out(f"typed {keyboard.type_text(args.text)} keys on {board.key}")
+        finally:
+            closed = keyboard.close()
+        if closed != "closed":
+            raise BoardError(f"JTAG close: {closed}")
+        return 0
+    except (BoardError, ValueError, OSError, RuntimeError) as exc:
+        print(f"board: {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

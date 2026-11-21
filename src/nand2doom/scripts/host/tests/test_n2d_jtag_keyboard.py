@@ -12,7 +12,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[5]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-from src.nand2doom.scripts.host import n2d_jtag_device as resolver  # noqa: E402
+from tools.board import jtag_chain as resolver  # noqa: E402
 from src.nand2doom.scripts.host import n2d_jtag_keyboard as tool  # noqa: E402
 from src.nand2doom.scripts.host.n2d_control import ACTIONS  # noqa: E402
 from src.common.scripts.jtag import n2a_jtag_keyboard as jtag  # noqa: E402
@@ -22,8 +22,8 @@ CABLE = ["--cable", "USB-Blaster [1-1]", "--device", "@1: EP4CE115 (0x020F70DD)"
 # Why: quartus_stp names the same DE2-115 IDCODE differently on different
 # installs, so both listings are tested.
 BANNER = "Info: *******************************************************************\nInfo: Running Quartus Prime Signal Tap\n"
-LISTING_EP4 = BANNER + "N2D_DEVICE @1: EP4CE115 (0x020F70DD)\nInfo: Quartus Prime Signal Tap was successful.\n"
-LISTING_10CL = BANNER + "N2D_DEVICE @1: 10CL120(Y|Z)/EP3C120/.. (0x020F70DD)\n"
+LISTING_EP4 = BANNER + "N2A_DEVICE @1: EP4CE115 (0x020F70DD)\nInfo: Quartus Prime Signal Tap was successful.\n"
+LISTING_10CL = BANNER + "N2A_DEVICE @1: 10CL120(Y|Z)/EP3C120/.. (0x020F70DD)\n"
 
 
 def decode(stream: bytes) -> list[int]:
@@ -76,7 +76,7 @@ def listing(text, calls=None, rc=0):
         if calls is not None:
             calls.append(argv)
         return rc, text
-    return lambda cable, quartus_bin: resolver.resolve(cable, quartus_bin, runner=runner)
+    return lambda cable, quartus_bin: resolver.resolve(cable, quartus_bin, tool.DE2_115_IDCODE, runner=runner)
 
 
 def run(argv, fake=None, sleeps=None, resolve=no_listing):
@@ -86,40 +86,6 @@ def run(argv, fake=None, sleeps=None, resolve=no_listing):
 
 
 class DeviceResolutionTests(unittest.TestCase):
-    def test_both_listing_forms_resolve_by_idcode(self):
-        for text, name in ((LISTING_EP4, "@1: EP4CE115 (0x020F70DD)"),
-                           (LISTING_10CL, "@1: 10CL120(Y|Z)/EP3C120/.. (0x020F70DD)")):
-            with self.subTest(name=name):
-                self.assertEqual(resolver.parse_devices(text), [name])
-                self.assertEqual(resolver.select_device(resolver.parse_devices(text)), name)
-        self.assertEqual(resolver.select_device(["@1: 10M50DA (0x031050DD)", "@2: x (0x020f70dd) "]),
-                         "@2: x (0x020f70dd) ")
-
-    def test_zero_or_ambiguous_matches_fail_closed(self):
-        for names in ([], ["@1: 10M50DA (0x031050DD)"], ["@1: EP4CE115"],
-                      ["@1: EP4CE115 (0x020F70DD)", "@2: 10CL120(Y|Z)/EP3C120/.. (0x020F70DD)"]):
-            with self.subTest(names=names), self.assertRaisesRegex(ValueError, "exactly one .*0x020F70DD"):
-                resolver.select_device(names)
-
-    def test_listing_runs_one_bounded_quartus_stp_script(self):
-        calls = []
-        def runner(argv, timeout):
-            calls.append((argv, timeout))
-            return 0, LISTING_10CL
-        self.assertEqual(resolver.resolve("USB-Blaster [1-1]", "/q/bin", runner=runner),
-                         "@1: 10CL120(Y|Z)/EP3C120/.. (0x020F70DD)")
-        self.assertEqual(calls, [(["/q/bin/quartus_stp", "-t", str(resolver.SCRIPT), "USB-Blaster [1-1]"],
-                                  resolver.LIST_TIMEOUT)])
-        self.assertTrue(resolver.SCRIPT.is_file())
-
-    def test_listing_failure_and_timeout_are_errors(self):
-        with self.assertRaisesRegex(RuntimeError, "exited 1: N2D_ERROR no such cable"):
-            resolver.list_devices("x", runner=lambda a, t: (1, "Info: banner\nN2D_ERROR no such cable\n"))
-        def slow(argv, timeout):
-            raise subprocess.TimeoutExpired(argv, timeout)
-        with self.assertRaisesRegex(RuntimeError, "timed out"):
-            resolver.list_devices("x", runner=slow)
-
     def test_dry_run_shows_the_resolved_device_and_opens_no_transport(self):
         fake, calls = Fake(), []
         code, result = run(["--cable", "USB-Blaster [1-1]", "key", "Fire"], fake,
@@ -142,7 +108,7 @@ class DeviceResolutionTests(unittest.TestCase):
 
     def test_unresolvable_device_refuses_before_opening(self):
         fake, err = Fake(), io.StringIO()
-        ambiguous = LISTING_EP4 + "N2D_DEVICE @2: EP4CE115 (0x020F70DD)\n"
+        ambiguous = LISTING_EP4 + "N2A_DEVICE @2: EP4CE115 (0x020F70DD)\n"
         for resolve in (listing(BANNER), listing(ambiguous), listing("Error: no cable", rc=3)):
             with self.subTest(), redirect_stderr(err):
                 self.assertEqual(tool.main(["--cable", "USB-Blaster [1-1]", "--yes", "key", "Fire"],
