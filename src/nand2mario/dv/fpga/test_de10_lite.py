@@ -35,7 +35,7 @@ CLOCK_PERIOD_NS = 40
 SAMPLE_NS = 25000 * CLOCK_PERIOD_NS
 HEARTBEAT_BIT = 20                           # Why: must match the target's HEARTBEAT_BIT parameter.
 HEADER_TYPE = 0x147
-BAUD = 2_000_000                             # Why: the board rate; the target keeps the top's 12 1/2-clock default.
+BAUD = 2_000_000                             # Why: must match the target's UART_CLKS_PER_BIT + UART_FRAC_NUM/UART_FRAC_DEN (12 1/2 clocks, the 2 Mbaud board rate).
 BIT_NS = 10**9 // BAUD
 SDRAM_INITIALIZED_CLOCK = 5036
 # Why: the bit order follows the joypad block's button order.

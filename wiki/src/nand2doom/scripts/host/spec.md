@@ -66,7 +66,7 @@ python src/nand2doom/scripts/host/n2d_uart.py --baud de2_115 --dry-run load work
 | Option | Contract |
 | --- | --- |
 | `--port` | Required live; no default, enumeration or trial writes. Board identity per the [FPGA contract](../../fpga/de10_lite/board-spec.md); a different protocol is never probed. |
-| `--baud` | The image's link rate: integer or `uart.json` `board_baudrates` name (`de10_lite` and `de2_115` both 2,000,000, the factory board rate); default `baudrate` 1 Mbaud. `n2d_capture.py` and `n2d_control.py` take the same option and pass it to the shared `open_serial`. |
+| `--baud` | The image's link rate: integer or `uart.json` `board_baudrates` name (`de10_lite` and `de2_115` both 2,000,000, the factory board rate); default `baudrate` 2 Mbaud. `n2d_capture.py` and `n2d_control.py` take the same option and pass it to the shared `open_serial`. |
 | `--timeout` | 0.01..60 s (default 1) for request write plus response read. |
 | `--budget` | Whole operation 1800 s default (finite, ≥ one timeout, ≤ 86400), from after open including the identity check. |
 | `--plan`, `--dry-run` | Never import serial, open a port, write output or send; single-command plans show an illustrative sequence-zero frame (live commands send Ping first, so sequence one). |

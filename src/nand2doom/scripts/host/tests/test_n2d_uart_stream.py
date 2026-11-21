@@ -306,7 +306,7 @@ class BaudOptionTests(unittest.TestCase):
                                             "--baud", "de2_115"])
         self.assertEqual(args.baud, 2_000_000)
         self.assertEqual(capture.parser().parse_args(
-            ["--manifest", "m", "--output", "o", "--hardware-image", "h"]).baud, 1_000_000)
+            ["--manifest", "m", "--output", "o", "--hardware-image", "h"]).baud, 2_000_000)
 
 
 class OwnedHandleTests(unittest.TestCase):
