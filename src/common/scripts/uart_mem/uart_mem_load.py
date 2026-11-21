@@ -85,7 +85,11 @@ def run(args, *, transport=None, out=sys.stdout) -> int:
     if transport is None:
         if not args.port:
             raise SystemExit("uart_mem_load: --port is required with --yes")
-        transport = SerialTransport(args.port, args.baud)
+        try:
+            transport = SerialTransport(args.port, args.baud)
+        except (ImportError, OSError, ValueError) as error:
+            print(f"uart_mem_load: cannot open {args.port}: {error}", file=sys.stderr)
+            return 1
     client = um.Client(transport, args.timeout)
     try:
         identity = client.identify()
@@ -94,6 +98,7 @@ def run(args, *, transport=None, out=sys.stdout) -> int:
         address = args.address if args.address is not None else (writable[0].base if writable else 0)
         entry = args.entry if args.entry is not None else identity.entry
         start = time.monotonic()
+        print(f"loading {len(data)} bytes at 0x{address:x} into '{identity.project}'", file=out, flush=True)
         um.load(client, [um.Segment(address, data)], entry, args.project)
     except um.EndpointError as error:
         print(f"uart_mem_load: {error}", file=sys.stderr)

@@ -471,7 +471,7 @@ module n2m_system #(
         end
     endgenerate
 
-    // Why: the loader runs in the system reset domain because it holds the
+    // Why: the UART link runs in the system reset domain because it holds the
     // core in reset while it loads.
     n2m_uart_link #(
         .CLKS_PER_BIT   (UART_CLKS_PER_BIT),

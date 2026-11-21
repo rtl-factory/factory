@@ -92,10 +92,10 @@ module n2m_uart_loader #(
     assign tx_valid_o = tx_pending_q;
     assign idle_o = (state_q == IDLE) && !tx_pending_q;
 
-    /* verilator lint_off PINCONNECTEMPTY */
     assign buffer_address = index_q[7:0];
     assign buffer_write = (state_q == PAYLOAD) && rx_valid;
     assign buffer_read = state_q == COMMIT_READ;
+    /* verilator lint_off PINCONNECTEMPTY */
     n2m_dual_port_ram #(
         .DATA_WIDTH (8),
         .DEPTH      (MAX_PAYLOAD_BYTES),
@@ -363,5 +363,5 @@ module n2m_uart_loader #(
         {snapshot_pinned_i, snapshot_available_i, snapshot_ready_i, snapshot_response_i.valid})
     `ASSERT(snapshot_response_known, clk_i, reset_i,
         !snapshot_response_i.valid || !$isunknown(snapshot_response_i))
-    `ASSERT_KNOWN(rx_valid_known, clk_i, reset_i, {rx_valid_i, rx_error_i, tx_ready_i})
+    `ASSERT_KNOWN(byte_port_known, clk_i, reset_i, {rx_valid_i, rx_error_i, tx_ready_i})
 endmodule
