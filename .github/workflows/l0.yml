@@ -88,10 +88,17 @@ jobs:
       - uses: bazel-contrib/setup-bazel@0.15.0
         with:
           bazelisk-cache: true
-          # Why: models and test results survive between runs; a change reruns only
-          # what it touches (wiki/tools/bazel/spec.md).
-          disk-cache: l0
           repository-cache: true
+
+      - name: Restore the Bazel disk cache
+        # Why: models and test results survive between runs, so a change reruns only
+        # what it touches (wiki/tools/bazel/spec.md). Keyed by commit so every run
+        # saves its own and the next restores the newest.
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/bazel-disk
+          key: bazel-disk-l0-${{ runner.os }}-${{ github.sha }}
+          restore-keys: bazel-disk-l0-${{ runner.os }}-
 
       - name: L0 simulation targets
         run: bazel test --config=ci --config=l0 //src/...

@@ -27,6 +27,10 @@ PROJECTS = sorted(SIM_TARGETS.keys())
 HDL_FILES = ["**/*.sv", "**/*.v", "**/*.svh", "**/*.vh"]
 HEADERS = ["**/*.svh", "**/*.vh"]
 
+# The registry fields a model build reads (tools/sim/sim.py build_model); the rest
+# only matter to the test, so editing them rebuilds no model.
+MODEL_FIELDS = ["defines", "kind", "parameters", "public_depth", "sources", "top", "trace_fst"]
+
 def _two_cpus(_os, _inputs):
     return {"cpu": 2, "memory": 2048}
 
@@ -149,9 +153,17 @@ def hdl_project(name):
         key = _model_key(target_name, target)
         if key not in models:
             models[key] = target_name + ".model"
+            write_file(
+                name = models[key] + ".spec",
+                out = models[key] + ".json",
+                content = [json.encode({
+                    "name": target_name,
+                    "target": {k: v for k, v in target.items() if k in MODEL_FIELDS},
+                })],
+            )
             verilator_model(
                 name = models[key],
-                spec = target_name + ".spec",
+                spec = models[key] + ".spec",
                 srcs = [_source_label(s) for s in target["sources"]],
                 headers = headers,
                 waves = select({

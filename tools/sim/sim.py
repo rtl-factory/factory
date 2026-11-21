@@ -293,9 +293,11 @@ def main(argv=None) -> int:
     if args.command == "_child":
         target = target if args.spec else targets[args.target]
         return run_one(args.target, target, workdir, args.seed, args.waves, args.model)
-    if args.direct and args.seed is None and os.environ.get("SIM_SEED"):
+    # Why: a wrapper's own `test --direct` call and a Bazel wrapped test both pass the
+    # seed and waves this way.
+    if args.seed is None and os.environ.get("SIM_SEED"):
         args.seed = int(os.environ["SIM_SEED"])
-    if args.direct and os.environ.get("SIM_WAVES"):
+    if os.environ.get("SIM_WAVES"):
         args.waves = True
     selection = args.all or args.project or args.level
     names = args.targets or (sorted(targets) if selection else [])

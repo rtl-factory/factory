@@ -30,7 +30,7 @@ How the build meets its [requirements](prd.md). How agents use it day to day is 
 
 It also makes `:python` (the project's Python, with every non-HDL file as data), `:headers` (its `.svh` and `.vh` files), `:all_files`, and exports every file, so another project's target can name it as a source.
 
-Two cocotb targets share a model when their top, sources, parameters and public depth are equal. A native target gets its own model, since its binary is named after it.
+Two cocotb targets share a model when their top, sources, parameters and public depth are equal. The model action reads `<first>.model.json`, which holds only those build fields, so editing a test-only field (`max_cycles`, `testcase`, the description) reruns the tests but rebuilds no model. A native target gets its own model, since its binary is named after it.
 
 ## Model action
 
@@ -38,9 +38,9 @@ Two cocotb targets share a model when their top, sources, parameters and public 
 
 ## Test
 
-A test runs `sim.py run-model --spec <spec> --model <dir>` with the project's and `common`'s Python and the cocotb package. The runner runs the target's test against the built model under the target's time budget and applies the same verdicts as `sim.py test`, including the expected fatal of a negative target. Logs, `results.xml` and waveforms go to the test's outputs (`bazel-testlogs/<package>/<target>/test.outputs/`); on failure the logs are also printed into `test.log`.
+A test runs `sim.py run-model --spec <spec> --model <dir>` with every project's Python, the tools' Python (`//tools:python`) and the cocotb package: tests import across projects and tools, so each sees all of it, and any Python change reruns every test (but no model). The runner runs the target's test against the built model under the target's time budget and applies the same verdicts as `sim.py test`, including the expected fatal of a negative target. Logs, `results.xml` and waveforms go to the test's outputs (`bazel-testlogs/<package>/<target>/test.outputs/`); on failure the logs are also printed into `test.log`.
 
-The Bazel timeout is the shortest of short, moderate, long and eternal that is at least 30 s over the target's `timeout_seconds`, so the runner's own timeout fires first and names the target.
+The Bazel timeout is the shortest of short, moderate, long and eternal that is at least 30 s over the target's `timeout_seconds`, so the runner's own timeout fires first and names the target. A wrapped target is always `eternal`, and `.bazelrc` raises `eternal` to 10 hours, above the runner's longest budget for a wrapped target (`timeout_seconds` plus the 900 s compile allowance, times four: 9 hours for the game qualification).
 
 - Seed: `--test_env=SIM_SEED=<n>`; otherwise the target's `default_seed`.
 - Waveforms: `--//tools/bazel:waves` rebuilds the models with tracing and passes `--waves`.
@@ -51,7 +51,7 @@ A target with a `wrapper` prepares its program image before it runs, so its test
 
 ## Levels and CI
 
-`--config=l<N>` filters tests by tag to levels L0…LN (`.bazelrc`). The L0 job sets up Bazel with `bazel-contrib/setup-bazel`, which keeps the disk cache and the repository cache in the GitHub Actions cache, and runs `bazel test --config=ci --config=l0 //src/...`.
+`--config=l<N>` filters tests by tag to levels L0…LN (`.bazelrc`). The L0 job sets up Bazel with `bazel-contrib/setup-bazel` (which keeps Bazelisk and the repository cache), restores the disk cache from the GitHub Actions cache under a key per commit, falling back to the newest earlier one, and saves it again after the run, and runs `bazel test --config=ci --config=l0 //src/...`.
 
 ## Hermeticity
 

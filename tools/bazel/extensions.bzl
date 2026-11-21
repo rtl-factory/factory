@@ -35,10 +35,14 @@ def _find_verilator(rctx):
 def _verilator_impl(rctx):
     pin = json.decode(rctx.read(rctx.attr.toolchain))["verilator"]["version"]
     exe = _find_verilator(rctx)
+    # Why: a rebuilt or replaced binary at the same path must be checked again.
+    rctx.watch(exe.realpath)
+    bindir = exe.realpath.dirname
+    if bindir.get_child("verilator_bin").exists:
+        rctx.watch(bindir.get_child("verilator_bin"))
     version = rctx.execute([exe, "--version"]).stdout.strip()
     if not version.startswith("Verilator %s " % pin) and version != "Verilator " + pin:
         fail("%s is '%s'; cfg/toolchain.json pins Verilator %s" % (exe, version, pin))
-    bindir = exe.realpath.dirname
     for tool in ["verilator", "verilator_bin", "verilator_includer"]:
         if bindir.get_child(tool).exists:
             rctx.symlink(bindir.get_child(tool), "bin/" + tool)

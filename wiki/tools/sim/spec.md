@@ -36,7 +36,7 @@ python tools/sim/sim.py test --all
 
 `--level L` alone runs every non-manual target at level `L` or below; with `--project` it narrows that project. `--workdir DIR` (default `workdir/sim/`, ignored by git) sets the scratch directory; keep it under the repository's `workdir/`, because wrappers refuse outputs anywhere else. A target runs in a child process under its time budget and writes `DIR/cocotb/<target>/{build,test}/` (wrapped targets: `DIR/wrapped/<target>/`). Verilator flags: `--timing --assert --Wall`, compiled from the repository root so ``` `include ``` paths are root-relative.
 
-Seeds: a wrapped target gets its seed and `--waves` through the `SIM_SEED` and `SIM_WAVES` environment variables, which the wrapper's own `test --direct` call reads, so the printed seed is the one the test used. Native targets take no seed and ignore `--waves` (a `trace_fst` harness writes its own FST window when its script asks); their result line shows `seed=-`. A target that runs past its budget is stopped with its whole process group.
+Seeds: a wrapped target gets its seed and `--waves` through the `SIM_SEED` and `SIM_WAVES` environment variables, which the wrapper's own `test --direct` call reads, so the printed seed is the one the test used. `test` also reads them when `--seed` or `--waves` is absent, which is how Bazel's `--test_env=SIM_SEED=<n>` reaches a wrapped target. Native targets take no seed and ignore `--waves` (a `trace_fst` harness writes its own FST window when its script asks); their result line shows `seed=-`. A target that runs past its budget is stopped with its whole process group.
 
 ## Bazel commands
 

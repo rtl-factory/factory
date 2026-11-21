@@ -8,6 +8,9 @@ build --disk_cache=~/.cache/bazel-disk
 build --experimental_disk_cache_gc_max_size=8G
 test --test_output=errors
 test --test_summary=terse
+# Why: eternal must outlast the runner's own budget for a wrapped target, up to
+# 9 hours, so the runner's timeout fires first and names the target.
+test --test_timeout=-1,-1,-1,36000
 # Why: logs, results and traces stay browsable under bazel-testlogs/.../test.outputs/.
 test --nozip_undeclared_test_outputs
 
