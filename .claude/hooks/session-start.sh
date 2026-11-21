@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Cloud session hook: install the pinned Quartus Prime Lite at session start.
+# Cloud session hook: install the pinned OSS CAD Suite (formal tools) and
+# Quartus Prime Lite at session start.
 # Spec: wiki/tools/toolchain/spec.md (Cloud session hook). Pins: cfg/toolchain.json.
 #
 # Quartus files cannot be downloaded from Altera by script, so they are kept in
@@ -13,6 +14,27 @@ set -euo pipefail
 ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
 CONFIG="$ROOT/cfg/toolchain.json"
 log() { echo "[session-start] $*" >&2; }
+
+# OSS CAD Suite: a public, checksum-pinned release, unpacked outside the
+# repository. Its bin/ is not put on PATH (it carries its own Verilator and
+# Python); tools/fv/fv.py calls sby from the install directory. A failure here
+# is logged and does not stop the Quartus install below.
+suite() { python3 -I -c 'import json,sys; q=json.load(open(sys.argv[1]))["oss_cad_suite"]; print(q[sys.argv[2]])' "$CONFIG" "$1"; }
+install_oss_cad_suite() {
+  python3 -I "$ROOT/tools/toolchain/check.py" --config "$CONFIG" --tool oss-cad-suite >&2 && return 0
+  local dir url sum cache
+  dir="$(suite install_dir)"; dir="${dir/#\~/$HOME}"
+  url="$(suite url)"; sum="$(suite sha256)"
+  cache="${XDG_CACHE_HOME:-$HOME/.cache}/oss-cad-suite-download"
+  rm -rf "$cache"; mkdir -p "$cache"
+  log "downloading OSS CAD Suite $(suite version)"
+  curl -fsSL --retry 4 -o "$cache/suite.tgz" "$url" || { log "OSS CAD Suite download failed"; return 1; }
+  echo "$sum  $cache/suite.tgz" | sha256sum -c --quiet - >&2 || { log "OSS CAD Suite checksum mismatch: not installing"; return 1; }
+  rm -rf "$dir"; mkdir -p "$(dirname "$dir")"
+  tar -xzf "$cache/suite.tgz" -C "$(dirname "$dir")" && rm -rf "$cache"
+  python3 -I "$ROOT/tools/toolchain/check.py" --config "$CONFIG" --tool oss-cad-suite >&2
+}
+install_oss_cad_suite || log "OSS CAD Suite not installed: formal runs will fail until it is"
 
 pin() { python3 -I -c 'import json,sys; q=json.load(open(sys.argv[1]))["quartus"]; print(eval(sys.argv[2]))' "$CONFIG" "$1"; }
 INSTALL_DIR="$(pin 'q["install_dir"]')"; INSTALL_DIR="${INSTALL_DIR/#\~/$HOME}"
@@ -28,7 +50,7 @@ export_env() {
   fi
 }
 
-ready() { QUARTUS_SH="$QBIN/quartus_sh" python3 -I "$ROOT/tools/toolchain/check.py" --config "$CONFIG" >&2; }
+ready() { QUARTUS_SH="$QBIN/quartus_sh" python3 -I "$ROOT/tools/toolchain/check.py" --config "$CONFIG" --tool quartus >&2; }
 
 if [[ -x "$QBIN/quartus_sh" ]] && ready; then
   export_env

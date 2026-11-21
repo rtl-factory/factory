@@ -10,9 +10,9 @@ Each page sits at the wiki path that mirrors its code ([repository layout](../..
 |---|---|---|---|
 | Platform (`n2d_system`) | [MAS](rtl/platform/mas.md) | [DV plan](dv/platform/dv-plan.md) | `rtl/platform/`, `dv/platform/` |
 | Core | [MAS](rtl/core/mas.md) | [DV plan](dv/core/dv-plan.md) | `rtl/core/`, `dv/core/` |
-| Memory | [MAS](rtl/memory/mas.md) | [DV plan](dv/memory/dv-plan.md) | `rtl/memory/`, `dv/memory/` |
+| Memory | [MAS](rtl/memory/mas.md) | [DV plan](dv/memory/dv-plan.md), [FV plan](fv/memory/fv-plan.md) | `rtl/memory/`, `dv/memory/`, `fv/memory/` |
 | Video | [MAS](rtl/video/mas.md) | [DV plan](dv/video/dv-plan.md) | `rtl/video/`, `dv/video/` |
-| I/O | [MAS](rtl/io/mas.md) | [DV plan](dv/io/dv-plan.md) | `rtl/io/`, `dv/io/` |
+| I/O | [MAS](rtl/io/mas.md) | [DV plan](dv/io/dv-plan.md), [FV plan](fv/io/fv-plan.md) | `rtl/io/`, `dv/io/`, `fv/io/` |
 | DE10-Lite board (and the contracts both boards share, as the base board of the config) | [board spec](fpga/de10_lite/board-spec.md) | [DV plan](dv/fpga/dv-plan.md) | `fpga/de10_lite/`, `dv/fpga/` |
 | DE2-115 board | [board spec](fpga/de2_115/board-spec.md) | [DV plan](dv/fpga/dv-plan.md) | `fpga/de2_115/`, `dv/fpga/` |
 | Runtime and validation image | [PRD](sw/runtime/prd.md), [spec](sw/runtime/spec.md) | [DV plan](dv/software/dv-plan.md) | `sw/runtime/`, `dv/software/` |
@@ -32,6 +32,7 @@ The pages came over from nand2anything (its per-area HAS and DV pages and tool s
 | `rtl/platform/` | `n2d_system` (the product top shared by both boards), `n2d_pkg`, `n2d_types_pkg`, `n2d_debug_device_line_bridge`, `n2d_pmon_platform_events`. |
 | `fpga/de10_lite/`, `fpga/de2_115/` | Each board's top, its Intel and portable clock backends, its Quartus settings fragment and SDC. Pins and the source list are in `cfg/n2d_quartus.json` (DE2-115 as overrides under `boards`). |
 | `dv/<block>/` | cocotb tests, models and native harnesses; targets in `cfg/targets.json`. |
+| `fv/<block>/` | Formal harnesses and their SymbiYosys files, one per target ([FV](fv/README.md)). |
 | `sw/runtime/`, `sw/doom/`, `sw/third_party/` | Software that runs on the design's CPU: the C runtime and validation program, the Doom platform adaptation, and the third-party notices and pinned-input manifest. |
 | `scripts/` | Host scripts, one folder each: `sw_build/` (image and Doom builds), `board/` (Quartus build and timing), `host/` (UART and JTAG host, play, controls, capture), `perf/` (performance harness and oracles). |
 
@@ -42,6 +43,8 @@ The ASIC flow (`n2d_asic_soc`, its OpenROAD files and IHP models) stayed in nand
 ```sh
 # simulation (Verilator); add --level L1 or L2 for the longer targets
 python3 tools/sim/sim.py test --project nand2doom --level L0
+# formal proofs and covers (OSS CAD Suite)
+python3 tools/fv/fv.py run --project nand2doom
 # script unit tests
 python3 -m pytest src/nand2doom/scripts
 # Quartus fit and timing, both boards

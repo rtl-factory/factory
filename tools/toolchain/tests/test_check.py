@@ -40,3 +40,52 @@ def test_fail_when_missing(monkeypatch, tmp_path):
     pin = dict(PIN, install_dir=str(tmp_path))
     r = check.check_quartus(pin, runner=fake(), which=lambda _n: None)
     assert r["status"] == "FAIL" and r["fix"]
+
+
+# ---- OSS CAD Suite -----------------------------------------------------------
+SUITE = json.loads((check.DEFAULT_CONFIG).read_text())["oss_cad_suite"]
+
+
+def suite_runner(version=f'Yosys {SUITE["yosys"]} (git sha1 63eecf3dd, Release)\n', plugin_ok=True):
+    def runner(command):
+        if command[-1] == "-V":
+            return 0, version
+        return (0, "") if plugin_ok else (1, "ERROR: Can't load module `slang'")
+    return runner
+
+
+def stamp(value=SUITE["version"].replace("-", "")):
+    return lambda _path: value
+
+
+def test_suite_pass_on_pinned_release():
+    r = check.check_oss_cad_suite(SUITE, runner=suite_runner(), is_file=lambda _p: True, read=stamp())
+    assert r["status"] == "PASS"
+
+
+def test_suite_fail_when_missing():
+    r = check.check_oss_cad_suite(SUITE, runner=suite_runner(), is_file=lambda _p: False, read=stamp(None))
+    assert r["status"] == "FAIL" and "not installed" in r["found"] and r["fix"]
+
+
+def test_suite_fail_on_other_release():
+    r = check.check_oss_cad_suite(SUITE, runner=suite_runner(), is_file=lambda _p: True, read=stamp("20250101"))
+    assert r["status"] == "FAIL" and "20250101" in r["found"]
+
+
+def test_suite_fail_without_sby():
+    r = check.check_oss_cad_suite(SUITE, runner=suite_runner(), is_file=lambda p: not p.endswith("/sby"),
+                                  read=stamp())
+    assert r["status"] == "FAIL" and "sby" in r["found"]
+
+
+def test_suite_fail_without_slang():
+    r = check.check_oss_cad_suite(SUITE, runner=suite_runner(plugin_ok=False), is_file=lambda _p: True,
+                                  read=stamp())
+    assert r["status"] == "FAIL" and "slang" in r["found"]
+
+
+def test_tool_selection():
+    config = json.loads((check.DEFAULT_CONFIG).read_text())
+    results = check.check(config, runner=suite_runner(), which=lambda _n: None, tools=("quartus",))
+    assert [r["tool"] for r in results] == ["quartus"]

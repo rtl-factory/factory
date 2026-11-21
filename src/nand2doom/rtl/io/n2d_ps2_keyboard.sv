@@ -358,11 +358,16 @@ module n2d_ps2_keyboard #(
   `N2A_DFF_ARST_VAL(mmio_response_error_q, mmio_response_error_d, clk_i, reset_i, 1'b0)
 
   // Always-present contract checks with the original asynchronous-reset
-  // event control; response_stalled_q keeps its own flop so $stable is
-  // sampled exactly as before.
+  // event control. response_stalled_q and the previous-edge response flops
+  // stand in for $stable, which the formal front end (yosys-slang) rejects
+  // in an asynchronous-reset process (wiki/tools/fv/spec.md).
   logic response_stalled_q_next;
   assign response_stalled_q_next = mmio_response_valid_q && !mmio_response_ready_i;
   `N2A_DFF_ARST_VAL(response_stalled_q, response_stalled_q_next, clk_i, reset_i, 1'b0)
+  logic [31:0] response_read_data_previous_q;
+  logic response_error_previous_q;
+  `N2A_DFF_ARST_VAL(response_read_data_previous_q, mmio_response_read_data_q, clk_i, reset_i, 32'b0)
+  `N2A_DFF_ARST_VAL(response_error_previous_q, mmio_response_error_q, clk_i, reset_i, 1'b0)
   `N2A_ASSERT_CLOCKED_ARST_FATAL_UNGUARDED(clk_i, reset_i,
       fifo_q.fifo_count <= FIFO_COUNT_LIMIT,
       "n2d_ps2_keyboard FIFO count exceeded depth")
@@ -371,6 +376,7 @@ module n2d_ps2_keyboard #(
                  scan_inject_accept})),
       "n2d_ps2_keyboard accepted multiple event sources")
   `N2A_ASSERT_CLOCKED_ARST_FATAL_WHEN_UNGUARDED(clk_i, reset_i, response_stalled_q,
-      $stable(mmio_response_read_data_q) && $stable(mmio_response_error_q),
+      (mmio_response_read_data_q == response_read_data_previous_q) &&
+      (mmio_response_error_q == response_error_previous_q),
       "n2d_ps2_keyboard response changed under backpressure")
 endmodule
