@@ -165,7 +165,14 @@ def main(argv=None) -> int:
             print(f"{r['target']:30s} {r['task']:8s} {r['seconds']:7.1f}s {r['status']}", flush=True)
             if r["status"] != "PASS":
                 failed += 1
-                print(f"    see {r['dir']} and {r['log']}")
+                outputs = os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR")
+                task_dir = Path(r["dir"]).resolve()
+                if outputs and task_dir.is_relative_to(Path(outputs).resolve()):
+                    # Why: the sandbox paths are gone once the test ends; Bazel keeps the outputs.
+                    rel = task_dir.relative_to(Path(outputs).resolve())
+                    print(f"    see bazel-testlogs/<package>/<target>.formal/test.outputs/{rel}")
+                else:
+                    print(f"    see {r['dir']} and {r['log']}")
                 if os.environ.get("TEST_TMPDIR") and Path(r["log"]).exists():
                     # Why: under bazel test this output is the test log an agent reads first.
                     print(Path(r["log"]).read_text(errors="replace"))

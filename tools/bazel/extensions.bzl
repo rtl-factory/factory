@@ -115,6 +115,8 @@ def _oss_cad_suite_impl(rctx):
     install = rctx.getenv("OSS_CAD_SUITE") or pin["install_dir"].replace("~", home, 1)
     root = rctx.path(install)
     stamp = root.get_child("VERSION")
+    # Why: installing the suite after a first fetch must refetch, or the stand-in sby stays.
+    rctx.watch(stamp)
     want = pin["version"].replace("-", "")
     if stamp.exists and rctx.read(stamp).strip() == want:
         # Why: the suite's wrappers find their install through their own folder, so the
