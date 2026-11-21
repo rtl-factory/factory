@@ -5,8 +5,11 @@ common --enable_bzlmod
 # Why: actions see a fixed PATH, so a cached result does not depend on whose shell ran it.
 build --incompatible_strict_action_env
 build --disk_cache=~/.cache/bazel-disk
+build --experimental_disk_cache_gc_max_size=8G
 test --test_output=errors
 test --test_summary=terse
+# Why: logs, results and traces stay browsable under bazel-testlogs/.../test.outputs/.
+test --nozip_undeclared_test_outputs
 
 # Regression levels (wiki/bkm/workflow/ci-levels.md); levels are cumulative.
 test:l0 --test_tag_filters=L0
@@ -18,5 +21,7 @@ test:l4 --test_tag_filters=L0,L1,L2,L3,L4
 # CI: no progress spam, keep going so one run reports every failure.
 common:ci --color=no --curses=no --show_progress_rate_limit=30
 build:ci --keep_going
+# Why: the Actions cache holds 10 GB for the whole repository.
+build:ci --experimental_disk_cache_gc_max_size=3G
 
 try-import %workspace%/user.bazelrc

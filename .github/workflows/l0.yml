@@ -81,6 +81,10 @@ jobs:
       - name: Unit tests (scripts and tools)
         run: python -m pytest -q src/*/scripts tools
 
+      - name: Allow Bazel's sandbox
+        # Why: Ubuntu 24.04 restricts the unprivileged user namespaces linux-sandbox uses.
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
       - uses: bazel-contrib/setup-bazel@0.15.0
         with:
           bazelisk-cache: true
