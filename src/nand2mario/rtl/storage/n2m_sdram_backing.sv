@@ -2,7 +2,8 @@
 `include "src/common/rtl/pkg/macros.vh"
 
 // SDRAM cartridge backing: the cartridge backing port and the cartridge load
-// port served by one n2m_sdram_ctrl over the DE10-Lite SDRAM. The ROM image
+// port served by one n2a_sdram_ctrl (the common SDRAM controller, in the
+// nand2mario configuration) over the board SDRAM. The ROM image
 // lives at device byte addresses 0 to 2 MiB - 1 and the cartridge RAM at
 // 2 MiB to 2 MiB + 32 KiB - 1, one byte per lane of the x16 words. Both
 // ports share the controller through a fixed-priority arbiter (the mapper
@@ -44,10 +45,12 @@ module n2m_sdram_backing (
     input  logic [15:0]                            dram_dq_i
 );
     import n2m_cartridge_pkg::*;
-    import n2m_sdram_pkg::*;
 
     // Device byte address bit that selects the cartridge RAM region.
     localparam int unsigned RAM_REGION_BIT = ROM_ADDRESS_WIDTH;
+    localparam int unsigned SDRAM_ADDRESS_BITS = 26;
+    localparam int unsigned SDRAM_DATA_BITS = 16;
+    localparam int unsigned SDRAM_BYTE_LANES = SDRAM_DATA_BITS / 8;
 
     logic                           ctrl_ready, ctrl_response_valid, ctrl_idle;
     logic [SDRAM_DATA_BITS-1:0]     ctrl_response_data;
@@ -87,33 +90,54 @@ module n2m_sdram_backing (
     assign write_word = {selected_write_data, selected_write_data};
     assign byte_enable = selected_address[0] ? 2'b10 : 2'b01;
 
-    n2m_sdram_ctrl u_ctrl (
+    logic ctrl_response_error;
+
+    // Ref: wiki/src/common/rtl/sdram/mas.md, project configurations: burst one,
+    // close page, linear map and nand2mario's waits keep its fixed 9/10 latency.
+    n2a_sdram_ctrl #(
+        .BURST_BEATS           (1),
+        .OPEN_ROW              (1'b0),
+        .ROW_XOR_BANK          (1'b0),
+        .POWERUP_CLOCKS        (5001),
+        .INIT_REFRESHES        (8),
+        .INIT_WAIT_MIN         (2),
+        .WAIT_RCD              (2),
+        .WAIT_RP               (2),
+        .WAIT_RFC              (3),
+        .WAIT_WR               (2),
+        .WAIT_MRD              (2),
+        .REFRESH_DUE           (160),
+        .REFRESH_DEADLINE      (195),
+        .REFRESH_AGE_FROM_MODE (1'b1)
+    ) u_ctrl (
         .clk_i                 (clk_i),
         .reset_i               (reset_i),
         .request_valid_i       (accept),
+        .request_ready_o       (ctrl_ready),
         .request_write_i       (selected_write),
         .request_address_i     (device_address),
         .request_write_data_i  (write_word),
         .request_byte_enable_i (byte_enable),
-        .request_ready_o       (ctrl_ready),
         .response_valid_o      (ctrl_response_valid),
         .response_data_o       (ctrl_response_data),
+        .response_error_o      (ctrl_response_error),
         .idle_o                (ctrl_idle),
-        .initialized_o         (initialized_o),
-        .dram_addr_o           (dram_addr_o),
-        .dram_ba_o             (dram_ba_o),
-        .dram_cas_n_o          (dram_cas_n_o),
-        .dram_cke_o            (dram_cke_o),
-        .dram_clk_o            (dram_clk_o),
-        .dram_cs_n_o           (dram_cs_n_o),
-        .dram_dqml_o           (dram_dqml_o),
-        .dram_dqmh_o           (dram_dqmh_o),
-        .dram_ras_n_o          (dram_ras_n_o),
-        .dram_we_n_o           (dram_we_n_o),
-        .dram_dq_o             (dram_dq_o),
-        .dram_dq_oe_o          (dram_dq_oe_o),
-        .dram_dq_i             (dram_dq_i)
+        .init_done_o           (initialized_o),
+        .sdram_address_o       (dram_addr_o),
+        .sdram_bank_o          (dram_ba_o),
+        .sdram_cke_o           (dram_cke_o),
+        .sdram_cs_n_o          (dram_cs_n_o),
+        .sdram_ras_n_o         (dram_ras_n_o),
+        .sdram_cas_n_o         (dram_cas_n_o),
+        .sdram_we_n_o          (dram_we_n_o),
+        .sdram_dqm_o           ({dram_dqmh_o, dram_dqml_o}),
+        .sdram_dq_o            (dram_dq_o),
+        .sdram_dq_oe_o         (dram_dq_oe_o),
+        .sdram_dq_i            (dram_dq_i)
     );
+    // Why: the pin clock is the inverted system clock, so CL2 data is stable at
+    // the capturing edge (common MAS, read capture).
+    assign dram_clk_o = ~clk_i;
 
     // Why: the controller serves one access at a time, so one transaction is in
     // flight; busy_q records which port owns it and which byte lane it reads so
@@ -146,6 +170,8 @@ module n2m_sdram_backing (
         !(busy_q && source_q) || !load_request_i.valid)
     `ASSERT(completion_requested, clk_i, reset_i,
         !ctrl_response_valid || busy_q)
+    // Why: every request is word aligned (address bit 0 is cleared above).
+    `ASSERT_NEVER(no_response_error, clk_i, reset_i, ctrl_response_valid && ctrl_response_error)
     `ASSERT(ready_implies_idle, clk_i, reset_i,
         !ready_o || ctrl_idle)
 endmodule
