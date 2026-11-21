@@ -56,8 +56,6 @@ async def _uart_send(dut, packet: bytes) -> None:
 
 async def _uart_receive_byte(dut) -> int:
     value = await _wire(dut).receive_byte()
-    # Why: callers send the next request as soon as this returns; returning at
-    # the end of the stop bit keeps that request from overlapping the frame.
     await ClockCycles(dut.clk_i, CLKS_PER_BIT // 2)
     return value
 
