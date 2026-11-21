@@ -1,4 +1,6 @@
-# SDRAM device model DV plan
+# SDRAM DV plan
+
+This plan covers two blocks: the device model `n2a_sdram_model` and the controller `n2a_sdram_ctrl` ([MAS](../../rtl/sdram/mas.md)).
 
 ## Scope
 
@@ -22,7 +24,7 @@
 | ID | Spec section | Stimulus | Checker | Coverage point | Test | Level |
 |---|---|---|---|---|---|---|
 | M1 | data, masks, burst order | preload 64 bytes; random masked writes | shadow compare | both maps, both burst lengths | `n2a_sdram_model_bl1`, `n2a_sdram_model_bl8` | L0 |
-| M2 | DQ ownership | DQ driven on NOP; WRITE right after READ | fatal message | `dq_outside_write`, `dq_turnaround` | `n2a_sdram_model_*_fail` | L0 |
+| M2 | DQ ownership | DQ driven on NOP; WRITE one idle clock after READ | fatal message | `dq_outside_write`, `dq_turnaround` | `n2a_sdram_model_*_fail` | L0 |
 | M3 | power-up and init | command in power-up; REFRESH first; ACTIVATE or column before MRS; MRS with too few refreshes, right after REFRESH, with an open row, wrong value | fatal message | one target per check | `n2a_sdram_model_*_fail` | L0 |
 | M4 | command spacing | ACTIVATE to an open bank, after REFRESH (tRFC), after MRS (tMRD); PRECHARGE before tRAS, before tWR (after a single beat and after the last of eight); REFRESH back to back, with an open row | fatal message | one target per check | `n2a_sdram_model_*_fail` | L0 |
 | M5 | column commands | no open row, auto-precharge, masked READ, WRITE without DQ | fatal message | one target per check | `n2a_sdram_model_*_fail` | L0 |
@@ -40,6 +42,18 @@ Every fatal check that a legal-format command stream can reach has a negative ta
 
 tWR is checked per bank, on a PRECHARGE of a bank that is open, from that bank's last write beat, as the datasheet states it. The old nand2doom model checked it on every PRECHARGE against the last write to any bank; that was stricter than the device and is dropped.
 
+## Controller
+
+`n2a_sdram_ctrl` is checked against the model and against each project's own contract test, with no edits to the project tests beyond one documented difference.
+
+| ID | MAS section | Stimulus | Checker | Test | Level |
+|---|---|---|---|---|---|
+| C1 | Latency, row policy | 600 random reads and writes over three rows of every bank, 5% misaligned, random gaps | latency table by row state (taken from the command pins), byte shadow, error with no ACTIVATE on misaligned, close-page idle timing, at least 18 refreshes; the model checks every pin rule | `n2a_sdram_ctrl_line` (nand2doom configuration), `n2a_sdram_ctrl_word` (nand2mario configuration) | L0 |
+| C2 | nand2doom configuration | nand2doom's `sdram_pin_timing_contract` on the bare controller | that test's pin model, init order, latency and DQM checks; a read with byte enables must answer without error here (the project controller rejects it) | `n2a_sdram_ctrl_n2d_contract` | L0 |
+| C3 | nand2mario configuration | nand2mario's `sdram_ctrl_contract` through `n2a_sdram_ctrl_n2m_fixture`, which gives the controller the project fixture's port names | that test's init clock numbers, latencies, refresh cadence and shadow | `n2a_sdram_ctrl_n2m_contract` | L0 |
+
+In-RTL assertions: DQ is driven only in WRITE, ACTIVATE only to a closed bank, REFRESH only with every bank closed, close page leaves no bank open in IDLE, the refresh deadline holds, and a stalled request is stable.
+
 ## Status
 
-The project controllers' own benches cover the model on their real command streams. The common controller (#140) adds lockstep tests against it.
+The project controllers' own benches cover the model on their real command streams. C2 and C3 show the common controller is a drop-in for both project controllers; stages 3 and 4 (#141, #142) switch the projects over.
