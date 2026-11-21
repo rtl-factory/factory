@@ -1,6 +1,6 @@
 # L0 regression (wiki/bkm/flow.md CI levels): the comment lint, the scripts'
-# and tools' unit tests, every L0 simulation target (through Bazel, cached) and
-# every L0 formal target, on Verilator, cocotb and the OSS CAD Suite at the
+# and tools' unit tests, every L0 simulation target and every L0 formal target
+# (both through Bazel, cached), on Verilator, cocotb and the OSS CAD Suite at the
 # versions pinned in cfg/toolchain.json, tools/sim/requirements_lock.txt and
 # .bazelversion.
 name: l0
@@ -81,6 +81,16 @@ jobs:
       - name: Unit tests (scripts and tools)
         run: python -m pytest -q src/*/scripts tools
 
+      - name: Install the OSS CAD Suite (formal tools)
+        run: |
+          read -r url sum < <(python3 -I -c 'import json; v = json.load(open("cfg/toolchain.json"))["oss_cad_suite"]; print(v["url"], v["sha256"])')
+          curl -fsSL --retry 4 -o "$RUNNER_TEMP/oss-cad-suite.tgz" "$url"
+          echo "$sum  $RUNNER_TEMP/oss-cad-suite.tgz" | sha256sum -c -
+          mkdir -p "$HOME/oss-cad-suite"
+          tar -xzf "$RUNNER_TEMP/oss-cad-suite.tgz" -C "$HOME/oss-cad-suite" --strip-components=1
+          rm "$RUNNER_TEMP/oss-cad-suite.tgz"
+          python3 tools/toolchain/check.py --tool oss-cad-suite
+
       - name: Allow Bazel's sandbox
         # Why: Ubuntu 24.04 restricts the unprivileged user namespaces linux-sandbox uses.
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
@@ -100,39 +110,18 @@ jobs:
           key: bazel-disk-l0-${{ runner.os }}-${{ github.sha }}
           restore-keys: bazel-disk-l0-${{ runner.os }}-
 
-      - name: L0 simulation targets
+      - name: L0 simulation and formal targets
         run: bazel test --config=ci --config=l0 //src/...
 
-      - name: Keep simulation logs on failure
+      - name: Keep test logs and formal traces on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: sim-logs
-          path: bazel-testlogs/**/test.log
-          if-no-files-found: ignore
-
-      - name: Install the OSS CAD Suite (formal tools)
-        if: ${{ !cancelled() }}
-        run: |
-          read -r url sum < <(python3 -I -c 'import json; v = json.load(open("cfg/toolchain.json"))["oss_cad_suite"]; print(v["url"], v["sha256"])')
-          curl -fsSL --retry 4 -o "$RUNNER_TEMP/oss-cad-suite.tgz" "$url"
-          echo "$sum  $RUNNER_TEMP/oss-cad-suite.tgz" | sha256sum -c -
-          mkdir -p "$HOME/oss-cad-suite"
-          tar -xzf "$RUNNER_TEMP/oss-cad-suite.tgz" -C "$HOME/oss-cad-suite" --strip-components=1
-          rm "$RUNNER_TEMP/oss-cad-suite.tgz"
-          python3 tools/toolchain/check.py --tool oss-cad-suite
-
-      - name: L0 formal targets
-        if: ${{ !cancelled() }}
-        run: python tools/fv/fv.py run --level L0 --workdir workdir/fv
-
-      - name: Keep formal traces on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: fv-traces
+          name: test-logs
           path: |
-            workdir/fv/**/*.vcd
-            workdir/fv/**/logfile.txt
-            workdir/fv/*.log
+            bazel-testlogs/**/test.log
+            bazel-testlogs/**/test.outputs/**/*.vcd
+            bazel-testlogs/**/test.outputs/**/logfile.txt
+            bazel-testlogs/**/test.outputs/*.log
           if-no-files-found: ignore
+

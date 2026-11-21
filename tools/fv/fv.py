@@ -23,8 +23,10 @@ import subprocess
 import sys
 import time
 
-ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_WORKDIR = ROOT / "workdir" / "fv"
+# Why: a Bazel test sets FV_ROOT to its runfiles and writes into its own outputs,
+# so a run reads only the files Bazel declared and keeps traces with the test.
+ROOT = Path(os.environ["FV_ROOT"]).absolute() if os.environ.get("FV_ROOT") else Path(__file__).resolve().parents[2]
+DEFAULT_WORKDIR = Path(os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR") or ROOT / "workdir" / "fv")
 CONFIG = ROOT / "cfg" / "toolchain.json"
 LEVELS = ["L0", "L1", "L2", "L3", "L4"]
 DEFAULT_TIMEOUT_SECONDS = 600
@@ -71,7 +73,10 @@ def load_targets(root: Path = ROOT) -> dict:
 def find_sby(config_path: Path = CONFIG, which=shutil.which) -> str | None:
     """sby from $SBY, the pinned OSS CAD Suite install, then PATH."""
     if os.environ.get("SBY"):
-        return which(os.environ["SBY"])
+        sby = os.environ["SBY"]
+        # Why: the suite's wrapper finds its install through its own real folder, and a
+        # relative path (Bazel's runfiles link) must survive the run's change of folder.
+        return which(str(Path(sby).resolve()) if os.sep in sby else sby)
     pin = json.loads(config_path.read_text()).get("oss_cad_suite")
     if pin:
         candidate = Path(pin["install_dir"]).expanduser() / "bin" / "sby"
@@ -161,6 +166,9 @@ def main(argv=None) -> int:
             if r["status"] != "PASS":
                 failed += 1
                 print(f"    see {r['dir']} and {r['log']}")
+                if os.environ.get("TEST_TMPDIR") and Path(r["log"]).exists():
+                    # Why: under bazel test this output is the test log an agent reads first.
+                    print(Path(r["log"]).read_text(errors="replace"))
     print(f"{len(names)} targets, {failed} failed tasks, {time.monotonic() - total:.1f}s")
     return 1 if failed else 0
 

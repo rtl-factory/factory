@@ -15,7 +15,8 @@ How the build meets its [requirements](prd.md). How agents use it day to day is 
 
 ## Repositories
 
-- `@hdl_registry` reads every `src/<project>/cfg/targets.json` and exposes them as `SIM_TARGETS`, a dictionary from project to its targets. Bazel watches the files it read, so editing a registry re-reads it. The registry format is the simulation runner's ([spec](../sim/spec.md)); nothing else lists targets.
+- `@hdl_registry` reads every `src/<project>/cfg/targets.json` and exposes them as `SIM_TARGETS`, a dictionary from project to its targets, and every `src/<project>/fv/<block>/<target>.sby` as `FV_TARGETS`: its header's level and timeout, and the repository paths its `[files]` section copies. Bazel watches the files and folders it read, so editing a registry or adding a `.sby` file re-reads it. The formats are the runners' ([simulation](../sim/spec.md), [formal](../fv/spec.md)); nothing else lists targets.
+- `@oss_cad_suite` checks the `VERSION` stamp in the suite's install directory (`$OSS_CAD_SUITE`, else `install_dir` in `cfg/toolchain.json`) against the pin and links its `bin/` folder; the stamp is an input of every formal test. Without the pinned suite it provides an `sby` that prints the fix and fails, so only the formal tests fail.
 - `@verilator` finds the Verilator install (`$VERILATOR`, then `PATH`, then `~/verilator/bin`), checks `verilator --version` against `cfg/toolchain.json`, and links its executables into the repository. They are inputs of every model action, so a different binary rebuilds every model.
 
 ## Targets of a project
@@ -27,6 +28,7 @@ How the build meets its [requirements](prd.md). How agents use it day to day is 
 | `//src/<name>:<target>` | The test, tagged with the target's level (`L0`…`L4`), or `manual` for a manual target, which `//...` skips |
 | `//src/<name>:<target>.spec` | The target's registry entry as JSON: the one input the runner reads |
 | `//src/<name>:<first>.model` | The Verilator model, named after the first target (in name order) that builds it |
+| `//src/<name>:<target>.formal` | A formal target's test, tagged with its level |
 
 It also makes `:python` (the project's Python, with every non-HDL file as data), `:headers` (its `.svh` and `.vh` files), `:all_files`, and exports every file, so another project's target can name it as a source.
 
@@ -44,6 +46,10 @@ The Bazel timeout is the shortest of short, moderate, long and eternal that is a
 
 - Seed: `--test_env=SIM_SEED=<n>`; otherwise the target's `default_seed`.
 - Waveforms: `--//tools/bazel:waves` rebuilds the models with tracing and passes `--waves`.
+
+## Formal test
+
+A formal test runs `tools/fv/fv.py run <target>` with `FV_ROOT` set to its runfiles, so SymbiYosys reads the `.sby` file and the sources it copies from Bazel's declared inputs, and `SBY` naming the suite's `sby`. Every task's folder, verdict file, log and traces go to the test's outputs. The Bazel timeout follows the header's `timeout` as for simulation.
 
 ## Wrapped targets
 

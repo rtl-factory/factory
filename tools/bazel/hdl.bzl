@@ -7,6 +7,11 @@ src/<project>/cfg/targets.json into:
   <target>.spec     the target's registry entry, as the runner reads it
   <model>.model     the Verilator model, one action per distinct build; targets
                     that differ only in their test share it, and Bazel caches it
+  <model>.model.spec  the model's build fields only (<model>.model.json), so a
+                    test-only registry change does not rebuild the model
+
+and every formal target of its src/<project>/fv/<block>/<target>.sby into a test
+<target>.formal, whose inputs are the .sby file and the files it copies.
 
 A wrapped target (one whose wrapper prepares a program image first) runs through
 the runner's own test command instead, without a sandbox and never cached,
@@ -14,7 +19,7 @@ until its program builds become Bazel actions.
 """
 
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
-load("@hdl_registry//:targets.bzl", "SIM_TARGETS")
+load("@hdl_registry//:targets.bzl", "FV_TARGETS", "SIM_TARGETS")
 load("@pypi//:requirements.bzl", "requirement")
 load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
@@ -138,6 +143,7 @@ def hdl_project(name):
     # fixture, a project test using tools.board), so every test gets all the Python.
     python = ["//src/%s:python" % p for p in PROJECTS] + ["//tools:python"]
     headers = [":headers"] if name == "common" else [":headers", "//src/common:headers"]
+    _formal_tests(name)
     models = {}
     for target_name, target in sorted(SIM_TARGETS.get(name, {}).items()):
         tags = _tags(target)
@@ -194,6 +200,23 @@ def hdl_project(name):
             },
             tags = tags,
             timeout = timeout,
+        )
+
+def _formal_tests(project):
+    for target_name, target in sorted(FV_TARGETS.get(project, {}).items()):
+        py_test(
+            name = target_name + ".formal",
+            srcs = ["//tools/fv:fv.py"],
+            main = "//tools/fv:fv.py",
+            args = ["run", target_name],
+            data = [_source_label(f) for f in [target["sby"]] + target["files"]] +
+                   ["@oss_cad_suite//:bin/sby", "@oss_cad_suite//:oss_cad_suite"],
+            env = {
+                "FV_ROOT": ".",
+                "SBY": "$(rootpath @oss_cad_suite//:bin/sby)",
+            },
+            tags = _tags(target),
+            timeout = _timeout(target["timeout_seconds"]),
         )
 
 def _wrapped_test(target_name, project, tags, timeout, python):

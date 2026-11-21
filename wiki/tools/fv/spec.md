@@ -47,6 +47,10 @@ yosys-slang, the SystemVerilog front end in the suite, is what parses the reposi
 - Concurrent assertions with sequence operators (`|=>`, `##`) are not supported; harnesses write history registers and immediate assertions instead.
 - Sampled-value functions (`$stable`, `$past`, `$rose`, `$fell`) are rejected inside a process with an asynchronous reset. The repository's `ASSERT_CLOCKED_ARST_*` checks that use them must compare against a previous-edge register instead before the block can be proven, as `n2d_ps2_keyboard` does.
 
+## Under Bazel
+
+Bazel runs every target as the test `//src/<project>:<target>.formal` ([Bazel spec](../bazel/spec.md)): `fv.py run <target>` with `FV_ROOT` (replaces the repository root, so the run reads Bazel's declared inputs) and `SBY` (the suite's `sby`, resolved to its real path so the suite's wrapper finds its install) set, writing into `$TEST_UNDECLARED_OUTPUTS_DIR` when it is set, and printing a failing target's log so it lands in the test log.
+
 ## Origin
 
 New in this factory (#104). SymbiYosys is the formal tool chosen in ADR 0009.

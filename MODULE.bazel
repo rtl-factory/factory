@@ -22,4 +22,4 @@ pip.parse(
 use_repo(pip, "pypi")
 
 hdl = use_extension("//tools/bazel:extensions.bzl", "hdl")
-use_repo(hdl, "hdl_registry", "verilator")
+use_repo(hdl, "hdl_registry", "oss_cad_suite", "verilator")
