@@ -168,13 +168,10 @@ async def sdram_pin_timing_contract(dut):
     await directed(False, join(3, 0x0C00, 0x118), case="closed")
     _, error, _ = await transact(False, 0x1003)
     assert error, "misaligned line request was not rejected"
-    # Why: the common controller (n2a_sdram_ctrl) ignores byte enables on reads,
-    # because nand2mario drives them; only the project controller rejects them.
+    # Why: the common controller ignores byte enables on reads, because
+    # nand2mario drives them.
     _, error, _ = await transact(False, 0x1000, 0, 0x0001)
-    if dut._name == "n2d_sdram_controller":
-        assert error, "read with byte enables was not rejected"
-    else:
-        assert not error, "common controller rejected a read with byte enables"
+    assert not error, "a read with byte enables was rejected"
 
     # Why: back-to-back random traffic (each request presented on the clock
     # after the previous response) reaches refresh interleavings the directed

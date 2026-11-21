@@ -1,13 +1,13 @@
-// Simulation-only composition of the adapted SDRAM controller and the owned
-// device model for the n2m_sdram_ctrl target: the bench drives the request
-// interface and observes the pins the model decodes. The refresh parameters
-// are lowered or raised only by the negative target that proves the model's
-// refresh deadline check.
+// Simulation-only composition of the common SDRAM controller in the
+// nand2mario configuration and the common device model for the n2m_sdram_ctrl
+// target: the bench drives the request interface and observes the pins the
+// model decodes. The refresh parameters are raised only by the negative target
+// that proves the model's refresh deadline check.
 `default_nettype none
 
 module n2m_sdram_ctrl_fixture #(
-    parameter int REFRESH_INTERVAL = n2m_sdram_pkg::SDRAM_REFRESH_INTERVAL,
-    parameter int REFRESH_DEADLINE_CLOCKS = n2m_sdram_pkg::SDRAM_REFRESH_DEADLINE_CLOCKS,
+    parameter int unsigned REFRESH_INTERVAL = 160,
+    parameter int unsigned REFRESH_DEADLINE_CLOCKS = 195,
     parameter int unsigned FILL_SEED = 32'h2545F491
 ) (
     input  logic        clk_i,
@@ -22,7 +22,6 @@ module n2m_sdram_ctrl_fixture #(
     output logic [15:0] response_data_o,
     output logic        idle_o,
     output logic        initialized_o,
-    // Pin observation for the bench's command monitor.
     output logic [12:0] dram_addr_o,
     output logic [1:0]  dram_ba_o,
     output logic        dram_cas_n_o,
@@ -36,45 +35,38 @@ module n2m_sdram_ctrl_fixture #(
     output logic        dram_dq_oe_o,
     output logic [15:0] dram_dq_i
 );
-    logic dram_clk;
+    logic response_error;
 
-    n2m_sdram_ctrl #(
-        .REFRESH_INTERVAL        (REFRESH_INTERVAL),
-        .REFRESH_DEADLINE_CLOCKS (REFRESH_DEADLINE_CLOCKS)
+    n2a_sdram_ctrl #(
+        .BURST_BEATS      (1),
+        .OPEN_ROW         (1'b0),
+        .ROW_XOR_BANK     (1'b0),
+        .POWERUP_CLOCKS   (5001),
+        .INIT_REFRESHES   (8),
+        .INIT_WAIT_MIN    (2),
+        .WAIT_RCD         (2),
+        .WAIT_RP          (2),
+        .WAIT_RFC         (3),
+        .WAIT_WR          (2),
+        .WAIT_MRD         (2),
+        .REFRESH_DUE      (REFRESH_INTERVAL),
+        .REFRESH_DEADLINE (REFRESH_DEADLINE_CLOCKS),
+        .REFRESH_AGE_FROM_MODE (1'b1)
     ) u_ctrl (
-        .clk_i                 (clk_i),
-        .reset_i               (reset_i),
-        .request_valid_i       (request_valid_i),
-        .request_write_i       (request_write_i),
-        .request_address_i     (request_address_i),
-        .request_write_data_i  (request_write_data_i),
-        .request_byte_enable_i (request_byte_enable_i),
-        .request_ready_o       (request_ready_o),
-        .response_valid_o      (response_valid_o),
-        .response_data_o       (response_data_o),
-        .idle_o                (idle_o),
-        .initialized_o         (initialized_o),
-        .dram_addr_o           (dram_addr_o),
-        .dram_ba_o             (dram_ba_o),
-        .dram_cas_n_o          (dram_cas_n_o),
-        .dram_cke_o            (dram_cke_o),
-        .dram_clk_o            (dram_clk),
-        .dram_cs_n_o           (dram_cs_n_o),
-        .dram_dqml_o           (dram_dqml_o),
-        .dram_dqmh_o           (dram_dqmh_o),
-        .dram_ras_n_o          (dram_ras_n_o),
-        .dram_we_n_o           (dram_we_n_o),
-        .dram_dq_o             (dram_dq_o),
-        .dram_dq_oe_o          (dram_dq_oe_o),
-        .dram_dq_i             (dram_dq_i)
-    );
+        .clk_i, .reset_i, .request_valid_i, .request_ready_o, .request_write_i,
+        .request_address_i, .request_write_data_i, .request_byte_enable_i,
+        .response_valid_o, .response_data_o, .response_error_o(response_error), .idle_o,
+        .init_done_o(initialized_o),
+        .sdram_address_o(dram_addr_o), .sdram_bank_o(dram_ba_o), .sdram_cke_o(dram_cke_o),
+        .sdram_cs_n_o(dram_cs_n_o), .sdram_ras_n_o(dram_ras_n_o), .sdram_cas_n_o(dram_cas_n_o),
+        .sdram_we_n_o(dram_we_n_o), .sdram_dqm_o({dram_dqmh_o, dram_dqml_o}),
+        .sdram_dq_o(dram_dq_o), .sdram_dq_oe_o(dram_dq_oe_o), .sdram_dq_i(dram_dq_i));
 
-    // Why: the model follows the controller-edge abstraction of the inverted pin
-    // clock, so it is clocked by the controller clock; dram_clk
-    // is the board pin and carries no simulation meaning here.
+    // Why: nand2mario only issues aligned word requests, so error never rises;
+    // the bench has no port for it.
     /* verilator lint_off UNUSEDSIGNAL */
-    logic dram_clk_unused;
-    assign dram_clk_unused = dram_clk;
+    logic response_error_unused;
+    assign response_error_unused = response_error;
     /* verilator lint_on UNUSEDSIGNAL */
 
     n2a_sdram_model #(

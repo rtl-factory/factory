@@ -157,8 +157,8 @@
     "src/common/rtl/pkg/n2a_types_pkg.sv",
     "src/common/rtl/uart/n2a_uart_rx.sv",
     "src/common/rtl/uart/n2a_uart_tx.sv",
-    "src/nand2mario/rtl/storage/n2m_sdram_pkg.sv",
-    "src/nand2mario/rtl/storage/n2m_sdram_ctrl.sv",
+    "src/common/rtl/sdram/n2a_sdram_pkg.sv",
+    "src/common/rtl/sdram/n2a_sdram_ctrl.sv",
     "src/nand2mario/rtl/storage/n2m_sdram_backing.sv",
     "src/nand2mario/rtl/uart/n2m_loader_pkg.sv",
     "src/nand2mario/rtl/uart/n2m_uart_loader.sv",
@@ -327,6 +327,6 @@
     "VGA_SYNC_N": "C10",
     "VGA_VS": "C13"
   },
-  "sdram_capture": "n2m_system:u_system|n2m_sdram_backing:g_sdram.u_backing|n2m_sdram_ctrl:u_ctrl|state.read_data",
-  "sdram_controller": "n2m_system:u_system|n2m_sdram_backing:g_sdram.u_backing|n2m_sdram_ctrl:u_ctrl|"
+  "sdram_capture": "n2m_system:u_system|n2m_sdram_backing:g_sdram.u_backing|n2a_sdram_ctrl:u_ctrl|regs_q.read_data",
+  "sdram_controller": "n2m_system:u_system|n2m_sdram_backing:g_sdram.u_backing|n2a_sdram_ctrl:u_ctrl|"
 }

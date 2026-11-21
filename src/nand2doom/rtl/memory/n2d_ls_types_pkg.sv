@@ -104,36 +104,6 @@ package n2d_ls_types_pkg;
         logic [2:0]    prefetch_drop_backlog;
     } t_dcache_regs;
 
-    // n2d_sdram_controller command phase.
-    typedef enum logic [4:0] {
-        SDRAM_POWERUP, SDRAM_INIT_PRE, SDRAM_INIT_PRE_WAIT, SDRAM_INIT_REF1,
-        SDRAM_INIT_REF1_WAIT, SDRAM_INIT_REF2, SDRAM_INIT_REF2_WAIT, SDRAM_INIT_MRS,
-        SDRAM_INIT_MRS_WAIT, SDRAM_IDLE, SDRAM_PRECHARGE, SDRAM_ACTIVE, SDRAM_READ,
-        SDRAM_READ_CAPTURE, SDRAM_WRITE, SDRAM_PRECHARGE_ALL, SDRAM_REFRESH
-    } t_sdram_state;
-
-    // n2d_sdram_controller state, open-row table, captured request and
-    // registered read data/response/init outputs. read_data is both the DQ
-    // capture register and the response payload; a write clears it at
-    // acceptance.
-    typedef struct packed {
-        t_sdram_state     state;
-        logic [12:0]      wait_count;
-        logic [8:0]       refresh;
-        logic             refresh_tracking;
-        logic [3:0]       open;
-        logic [3:0][12:0] open_row;
-        logic             write;
-        logic [25:1]      address;
-        logic [127:0]     write_data;
-        logic [15:0]      byte_enable;
-        logic [127:0]     read_data;
-        logic [2:0]       beat;
-        logic             init_done;
-        logic             response_valid;
-        logic             response_error;
-    } t_sdram_regs;
-
     // n2d_debug_memory_adapter transaction phase.
     typedef enum logic [3:0] {
         DEBUG_MEM_IDLE,

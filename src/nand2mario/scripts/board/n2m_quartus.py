@@ -38,6 +38,15 @@ REQUIRED_KEYS = {"project", "top", "family", "device", "clock_hz", "timeout_seco
                  "ram_requirements", "reviewed_warnings", "headers", "sources", "settings", "constraints",
                  "pins", "io_standards", "sdram_capture", "sdram_controller"}
 SDRAM_CLOCK, SDRAM_CLOCK_PORT = "sdram_clock", "DRAM_CLK"
+# Why: the common controller drives CKE as !reset and CS_n as reset, so the board
+# reset synchronizer launches those two pins.
+SDRAM_RESET_SOURCE, SDRAM_RESET_PINS = "n2a_reset_sync:u_reset|", {"DRAM_CKE", "DRAM_CS_N"}
+
+
+def sdram_write_source(config: dict, source: str, pin: str) -> bool:
+    """Whether a register may launch a write path to this SDRAM pin."""
+    return (source.startswith(config["sdram_controller"]) or
+            (pin in SDRAM_RESET_PINS and source.startswith(SDRAM_RESET_SOURCE)))
 DEFAULT_IO_STANDARD = "3.3-V LVTTL"
 CONNECTIVITY_DETAIL = ("Declared by entity but not connected by instance. "
                        "Logic that only feeds a dangling port will be removed.")
@@ -409,7 +418,7 @@ def sdram_timing(reports: Path, config: dict, system_clock: str) -> dict:
                              target is not None and int(target[1]) < 16 and
                              values["Launch Clock"] == SDRAM_CLOCK and values["Latch Clock"] == system_clock)
                 else:
-                    valid = (values["From Node"].startswith(config["sdram_controller"]) and
+                    valid = (sdram_write_source(config, values["From Node"], values["To Node"]) and
                              values["To Node"] in {pin for pin in config["pins"]
                                                    if pin.startswith("DRAM_") and pin != SDRAM_CLOCK_PORT} and
                              values["Launch Clock"] == system_clock and values["Latch Clock"] == SDRAM_CLOCK)
@@ -694,7 +703,7 @@ def validate_fit_evidence(e: dict, config: dict) -> None:
             require(row["From Node"] in {f"DRAM_DQ[{i}]" for i in range(16)} and
                     row["To Node"] in {config["sdram_capture"] + f"[{i}]" for i in range(16)}, "SDRAM read endpoints")
         else:
-            require(row["From Node"].startswith(config["sdram_controller"]) and row["To Node"] in config["pins"] and
+            require(sdram_write_source(config, row["From Node"], row["To Node"]) and row["To Node"] in config["pins"] and
                     row["To Node"].startswith("DRAM_") and row["To Node"] != SDRAM_CLOCK_PORT, "SDRAM write endpoints")
         seen.add(key)
     require(seen == expected_paths, "missing SDRAM paths")

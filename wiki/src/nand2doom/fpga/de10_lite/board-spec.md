@@ -206,11 +206,11 @@ The DE2-115 SDC differences are in the [DE2-115 board spec](../de2_115/board-spe
 
 ## Budget
 
-Last passing build in the factory (Quartus Prime Lite 25.1std, `python3 src/nand2doom/scripts/board/quartus.py --board de10_lite`, issue #78): the full report gate passed with 7 reviewed warning occurrences.
+Last passing build in the factory (Quartus Prime Lite 25.1std, `python3 src/nand2doom/scripts/board/quartus.py --board de10_lite`, issues #141 and #142, common SDRAM controller): the full report gate passed with 4 reviewed warning occurrences.
 
 | Resource or check | Result |
 |---|---|
-| Logic elements | 27,241 of 49,760 (55%) |
+| Logic elements | 27,401 of 49,760 (55%) |
 | M9K blocks | 174 of 182 (8 left) |
 | PLLs | 1 of 4 |
 | Minimum slack, any clock, check and corner | 0.141 ns |
@@ -219,11 +219,11 @@ System clock (25 MHz PLL output) slack per corner, in ns:
 
 | Corner | Setup | Hold |
 |---|---|---|
-| Slow 1200mV 85C | 4.263 | 0.324 |
-| Slow 1200mV 0C | 4.978 | 0.283 |
-| Fast 1200mV 0C | 8.493 | 0.155 |
+| Slow 1200mV 85C | 3.744 | 0.332 |
+| Slow 1200mV 0C | 4.541 | 0.289 |
+| Fast 1200mV 0C | 8.186 | 0.157 |
 
-Built from commit `c3ed333` (the RTL, settings and constraints are unchanged at the head of #96).
+Worst SDRAM margins: read setup 3.744 (the system clock's worst path), read hold 23.872, write setup 9.547, write hold 19.037 ns. Built from the RTL, settings and constraints of #155; the previous gate (#78, commit `c3ed333`) had 27,241 logic elements and system clock setup 4.263 / 4.978 / 8.493 ns.
 
 The earlier fits of both boards, from nand2anything, follow.
 
@@ -378,15 +378,16 @@ per code and category, and each semantic identity's min/max/observed count.
 Unknown, critical, duplicate, missing or changed diagnostics fail; source
 lines and staging prefix may move, but ownership, object, pin/value, PLL
 hierarchy and routing endpoint may not. `reviewed_unused_objects` is empty
-(every 10036 fails). A full compile requires exactly one each of 13024,
-12241, 292013, 15064 and 169177, plus one 13410 per configured constant pin
-(two DE10-Lite, 85 DE2-115): totals 7 and 90 before optional discovery.
+(every 10036 fails). A full compile requires exactly one each of 12241,
+292013, 15064 and 169177, plus one 13024 and one 13410 per configured
+constant pin only when constant pins are configured (none DE10-Lite, 83
+DE2-115): totals 4 and 88 before optional discovery.
 
 | Diagnostic | DE10-Lite interpretation | DE2-115 delta |
 | --- | --- | --- |
 | 12125 | Optional generated discovery: each `db/<entity>.tdf` at most once, one `Source Files Read` row `yes` / `Auto-Generated Megafunction`, a real generated file with matching primitive header and sole `SUBDESIGN`. Families: one `altpll`, ten `altsyncram`, two `decode`, one `mux`. | Same |
 | 12241 | Only after validating every connectivity warning against the Virtual JTAG contract below. | Same |
-| 13024/13410 | Only `DRAM_CKE=1`, `DRAM_CS_N=0`. | Also `DRAM_DQM[3:2]=1`, `VGA_BLANK_N=1`, `VGA_SYNC_N=0`, `LEDR[17:4]=0`, `LEDG=0`, `HEX0`-`HEX7=1`. |
+| 13024/13410 | Must not occur: no pin is constant, as `DRAM_CKE` and `DRAM_CS_N` follow reset in the common SDRAM controller. | Only `DRAM_DQM[3:2]=1`, `VGA_BLANK_N=1`, `VGA_SYNC_N=0`, `LEDR[17:4]=0`, `LEDG=0`, `HEX0`-`HEX7=1`. |
 | 292013 | Lite has no LogicLock; none is used. | Same |
 | 169177/169178 | 21 pins: `DRAM_DQ[15:0]`, `MAX10_CLK1_50`, `RESET_N` (`3.3 V SCHMITT TRIGGER`), `UART_RXD`, `PS2_CLK`, `PS2_DAT` (3.3-V LVTTL). | 20 pins: `DRAM_DQ[15:0]`, `CLOCK_50`, `UART_RX`, `PS2_CLK`, `PS2_DAT`. |
 | 15064 | Only PLL `clk[0]` to `DRAM_CLK` through L14 fabric. | Only PLL `clk[0]` to `VGA_CLK`; none for `DRAM_CLK`. |

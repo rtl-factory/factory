@@ -265,7 +265,7 @@ class ProjectTargetTests(unittest.TestCase):
         self.assertEqual(("cocotb", "n2m_sdram_ctrl_fixture", "sdram_ctrl_contract", 73),
                          (ctrl.kind, ctrl.top, ctrl.testcase, ctrl.default_seed))
         self.assertEqual("src.nand2mario.dv.storage.test_sdram_ctrl", ctrl.test_module)
-        self.assertEqual(("src/nand2mario/rtl/storage/n2m_sdram_pkg.sv", "src/nand2mario/rtl/storage/n2m_sdram_ctrl.sv"),
+        self.assertEqual(("src/common/rtl/sdram/n2a_sdram_pkg.sv", "src/common/rtl/sdram/n2a_sdram_ctrl.sv"),
                          ctrl.sources[:2])
         self.assertEqual("src/nand2mario/dv/storage/n2m_sdram_ctrl_fixture.sv", ctrl.sources[-1])
         self.assertEqual(ctrl.sources, refresh.sources)

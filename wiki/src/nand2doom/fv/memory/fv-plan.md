@@ -34,7 +34,7 @@ Runtime on the cloud container: proof 8.7 s, covers under 1 s (both tasks togeth
 ## Assumptions
 
 - `master_holds_request`: a master that presents a request and is not accepted keeps it valid with the same prefetch flag, operation, address, data and enables. Spec: Line port "The requester holds the full payload until accepted". Driving side: the D-cache checks it in simulation (`line_request_held` in `n2d_dcache.sv`); the I-cache and the debug adapter do not yet check it, so for them it rests on their DV tests.
-- `one_response_per_request`: the controller sends a response only while a line transaction it accepted is in flight, and only on a later edge. Spec: Line port "exactly one later response pulse". Driving side: not asserted in `n2d_sdram_controller.sv`; covered by the memory DV tests.
+- `one_response_per_request`: the controller sends a response only while a line transaction it accepted is in flight, and only on a later edge. Spec: Line port "exactly one later response pulse". Driving side: proven for the common controller in its own FV plan (`response_within_latency`, `response_only_when_outstanding`, [common FV plan](../../../common/fv/sdram/fv-plan.md)); covered here by the memory DV tests.
 - The proof starts in reset and checks nothing while reset is asserted.
 
 Out of scope: progress in time (the bound is counted in completions; bounded progress also needs the controller to complete every request, per the Arbitration bullet), the response data path's width (checked bit for bit, but only for routing), and the caches and the controller themselves.
