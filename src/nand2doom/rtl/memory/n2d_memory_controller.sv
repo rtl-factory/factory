@@ -50,6 +50,7 @@ module n2d_memory_controller (
     logic [25:0] memory_request_address;
     logic [127:0] memory_request_write_data;
     logic [15:0] memory_request_byte_enable;
+    logic sdram_idle;
     logic memory_response_valid, memory_response_error;
     logic [127:0] memory_response_data;
 
@@ -97,15 +98,28 @@ module n2d_memory_controller (
         .memory_response_data_i(memory_response_data),
         .memory_response_error_i(memory_response_error));
 
-    n2d_sdram_controller u_sdram (
+    // Ref: wiki/src/common/rtl/sdram/mas.md, project configurations: burst eight,
+    // open row and the row-XOR-bank map keep nand2doom's line latency.
+    n2a_sdram_ctrl #(
+        .BURST_BEATS   (8),
+        .OPEN_ROW      (1'b1),
+        .ROW_XOR_BANK  (1'b1),
+        .INIT_WAIT_MIN (2)
+    ) u_sdram (
         .clk_i, .reset_i,
         .request_valid_i(memory_request_valid), .request_ready_o(memory_request_ready),
         .request_write_i(memory_request_write), .request_address_i(memory_request_address),
         .request_write_data_i(memory_request_write_data),
         .request_byte_enable_i(memory_request_byte_enable),
         .response_valid_o(memory_response_valid), .response_data_o(memory_response_data),
-        .response_error_o(memory_response_error), .init_done_o,
+        .response_error_o(memory_response_error), .idle_o(sdram_idle), .init_done_o,
         .sdram_address_o, .sdram_bank_o, .sdram_cke_o, .sdram_cs_n_o,
         .sdram_ras_n_o, .sdram_cas_n_o, .sdram_we_n_o, .sdram_dqm_o,
         .sdram_dq_o, .sdram_dq_oe_o, .sdram_dq_i);
+
+    // Why: the arbiter follows request_ready_o; the engine's idle flag is not needed.
+    /* verilator lint_off UNUSEDSIGNAL */
+    logic sdram_idle_unused;
+    assign sdram_idle_unused = sdram_idle;
+    /* verilator lint_on UNUSEDSIGNAL */
 endmodule

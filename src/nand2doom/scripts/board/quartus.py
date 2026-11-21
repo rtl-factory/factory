@@ -298,7 +298,7 @@ def sdram_timing(reports: Path, config: dict, system_clock: str) -> dict:
                 if slack < 0 or slack != float(summary[1]) or slack != float(detail[0]):
                     raise RuntimeError(f"failing or inconsistent SDRAM timing margin: {name}")
                 if direction == "read":
-                    target = re.fullmatch(r"n2d_memory_controller:u_memory\|n2d_sdram_controller:u_sdram\|"
+                    target = re.fullmatch(r"n2d_memory_controller:u_memory\|n2a_sdram_ctrl:u_sdram\|"
                                           r"regs_q\.read_data\[(\d+)\]", values["To Node"])
                     valid = (values["From Node"] in {f"DRAM_DQ[{i}]" for i in range(16)} and
                              target is not None and int(target[1]) < 128 and

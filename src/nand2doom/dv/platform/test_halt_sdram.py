@@ -81,6 +81,7 @@ class PinMemory:
         self.retired = 0
         self.tx_starts = 0
         self.tx_previous = 1
+        self.reset_previous = 1
 
     def word(self, address):
         return self.sdram.word(address)
@@ -92,7 +93,10 @@ class PinMemory:
             d.sdram_dq_i.value = self.sdram.due.pop(cycle() + 1, 0xdead)
             await RisingEdge(d.clk_i)
             now = cycle()
-            if int(d.reset_i.value):
+            # Why: the common controller drives CKE and CS from reset, so the edge
+            # that releases reset still shows the reset pins; it is a power-up NOP.
+            released, self.reset_previous = self.reset_previous, int(d.reset_i.value)
+            if int(d.reset_i.value) or released:
                 continue
             tx = int(d.uart_tx_o.value)
             self.tx_starts += self.tx_previous == 1 and tx == 0

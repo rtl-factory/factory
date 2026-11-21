@@ -842,7 +842,7 @@ class QuartusTests(unittest.TestCase):
                               ("Slow 1200mV 0C", "slow_0"), ("Fast 1200mV 0C", "fast_0")):
             for direction in ("read", "write"):
                 for kind in ("setup", "hold"):
-                    controller = "n2d_memory_controller:u_memory|n2d_sdram_controller:u_sdram|"
+                    controller = "n2d_memory_controller:u_memory|n2a_sdram_ctrl:u_sdram|"
                     source, target, launch, latch = (
                         ("DRAM_DQ[14]", controller + "regs_q.read_data[78]", "sdram_clock", SYSTEM_CLOCK)
                         if direction == "read" else
@@ -1012,14 +1012,14 @@ class QuartusTests(unittest.TestCase):
         reports = self.reports()
         name = "sdram_read_slow_85_setup.rpt"
         original = (reports / name).read_text()
-        good = "n2d_memory_controller:u_memory|n2d_sdram_controller:u_sdram|regs_q.read_data[78]"
+        good = "n2d_memory_controller:u_memory|n2a_sdram_ctrl:u_sdram|regs_q.read_data[78]"
         self.assertIn(good, original)
-        for bad in ("n2d_memory_controller:u_memory|n2d_sdram_controller:u_sdram|read_data_q[78]",
-                    "n2d_memory_controller:u_memory|n2d_sdram_controller:u_sdram|regs_q.write_data[78]",
-                    "n2d_memory_controller:u_memory|n2d_sdram_controller:u_sdramx|regs_q.read_data[78]",
+        for bad in ("n2d_memory_controller:u_memory|n2a_sdram_ctrl:u_sdram|read_data_q[78]",
+                    "n2d_memory_controller:u_memory|n2a_sdram_ctrl:u_sdram|regs_q.write_data[78]",
+                    "n2d_memory_controller:u_memory|n2a_sdram_ctrl:u_sdramx|regs_q.read_data[78]",
                     "n2d_memory_controller:u_memory|regs_q.read_data[78]",
-                    "n2d_memory_controller:u_memory|n2d_sdram_controller:u_sdram|regs_q.read_data[128]",
-                    "n2d_memory_controller:u_memory|n2d_sdram_controller:u_sdram|regs_q.read_data[7a]"):
+                    "n2d_memory_controller:u_memory|n2a_sdram_ctrl:u_sdram|regs_q.read_data[128]",
+                    "n2d_memory_controller:u_memory|n2a_sdram_ctrl:u_sdram|regs_q.read_data[7a]"):
             with self.subTest(bad=bad):
                 (reports / name).write_text(original.replace(good, bad))
                 with self.assertRaisesRegex(RuntimeError, "unexpected SDRAM timing endpoints/clocks"):

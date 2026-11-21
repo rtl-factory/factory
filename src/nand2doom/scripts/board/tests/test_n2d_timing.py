@@ -49,7 +49,7 @@ TSV = "\n".join(CLOCK_25 + [
            "n2d_system:u_system|n2d_icache:u_icache|regs_q.state[1]", CLOCK, CLOCK, "20.0", "23.1", "17",
            "u_system|u_core|x~1 u_system|u_icache|y~2"),
     record("path", SLOW, 2, "-1.0", "DRAM_DQ[3]",
-           "n2d_memory_controller:u_memory|n2d_sdram_controller:u_sdram|regs_q.read_data[3]",
+           "n2d_memory_controller:u_memory|n2a_sdram_ctrl:u_sdram|regs_q.read_data[3]",
            "sdram_clock", CLOCK, "10.0", "8.0", "1", ""),
     record("corepath", SLOW, 1, "9.1", "n2d_system:u_system|n2d_rv32im_core:u_core|regs_q.a[0]",
            "n2d_system:u_system|n2d_rv32im_core:u_core|regs_q.pc[9]", CLOCK, CLOCK, "40.0", "30.5", "21",

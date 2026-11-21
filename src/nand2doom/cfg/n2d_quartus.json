@@ -121,7 +121,8 @@
     "src/common/rtl/jtag/n2a_jtag_virtual.sv",
     "src/common/rtl/sync/n2a_reset_sync.sv",
     "src/nand2doom/rtl/memory/n2d_memory_arbiter.sv",
-    "src/nand2doom/rtl/memory/n2d_sdram_controller.sv",
+    "src/common/rtl/sdram/n2a_sdram_pkg.sv",
+    "src/common/rtl/sdram/n2a_sdram_ctrl.sv",
     "src/nand2doom/rtl/memory/n2d_memory_controller.sv",
     "src/common/fpga/de10_lite/n2a_de10_lite_clock_intel.sv",
     "src/nand2doom/fpga/de10_lite/n2d_de10_lite.sv"

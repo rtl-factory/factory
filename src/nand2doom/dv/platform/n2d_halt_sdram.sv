@@ -123,7 +123,12 @@ module n2d_halt_sdram #(
     end
     assign line_response_o = controller_response || reject_q;
     assign line_error_o = controller_error || reject_q;
-    n2d_sdram_controller u_controller (
+    logic controller_idle;
+    /* verilator lint_off UNUSEDSIGNAL */
+    logic controller_idle_unused;
+    assign controller_idle_unused = controller_idle;
+    /* verilator lint_on UNUSEDSIGNAL */
+    n2a_sdram_ctrl #(.BURST_BEATS(8), .OPEN_ROW(1'b1), .ROW_XOR_BANK(1'b1), .INIT_WAIT_MIN(2)) u_controller (
         .clk_i, .reset_i,
         .request_valid_i(line_valid_o && !stall_i && !reject),
         .request_ready_o(controller_ready),
@@ -132,7 +137,7 @@ module n2d_halt_sdram #(
         .request_write_data_i(line_write_data),
         .request_byte_enable_i(line_enables),
         .response_valid_o(controller_response), .response_data_o(line_read_data),
-        .response_error_o(controller_error), .init_done_o,
+        .response_error_o(controller_error), .idle_o(controller_idle), .init_done_o,
         .sdram_address_o, .sdram_bank_o, .sdram_cke_o, .sdram_cs_n_o,
         .sdram_ras_n_o, .sdram_cas_n_o, .sdram_we_n_o, .sdram_dqm_o,
         .sdram_dq_o, .sdram_dq_oe_o, .sdram_dq_i);
