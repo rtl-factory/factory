@@ -239,7 +239,7 @@ class UartTests(unittest.TestCase):
         serial.Serial.return_value = connection
         with patch.dict(sys.modules, {"serial": serial}):
             self.assertIs(host.open_serial("EXPLICIT", 0.5), connection)
-        self.assertEqual(serial.Serial.call_args.kwargs, dict(port=None, baudrate=1000000,
+        self.assertEqual(serial.Serial.call_args.kwargs, dict(port=None, baudrate=2000000,
                          bytesize=8, parity="N", stopbits=1, timeout=0, write_timeout=0.5,
                          xonxoff=False, rtscts=False, dsrdtr=False))
         self.assertFalse(connection.dtr)

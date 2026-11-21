@@ -20,9 +20,11 @@
 //    resistor DAC pins.
 // 6. Status: LEDR[9:0] and HEX5..HEX0 (last retired PC, last serial byte).
 module n2m_de10_lite #(
-    // Loader UART bit period in system clocks: 217 is 115200 baud at 25 MHz;
-    // the board smoke shortens it.
-    parameter int unsigned UART_CLKS_PER_BIT = 217,
+    // Loader UART bit period in system clocks: 12 1/2 is the 2 Mbaud board
+    // rate at 25 MHz, through the PHY's fractional accumulator.
+    parameter int unsigned UART_CLKS_PER_BIT = 12,
+    parameter int unsigned UART_FRAC_NUM = 1,
+    parameter int unsigned UART_FRAC_DEN = 2,
     // LEDR7 shows this bit of the free-running system-clock counter: 24 is a
     // 0.67 s toggle on the board; the board smoke shortens it to observe it.
     parameter int unsigned HEARTBEAT_BIT = 24
@@ -153,7 +155,9 @@ module n2m_de10_lite #(
     // the loader does not hold it (system HAS reset domains).
     n2m_system #(
         .CART_SDRAM        (1),
-        .UART_CLKS_PER_BIT (UART_CLKS_PER_BIT)
+        .UART_CLKS_PER_BIT (UART_CLKS_PER_BIT),
+        .UART_FRAC_NUM     (UART_FRAC_NUM),
+        .UART_FRAC_DEN     (UART_FRAC_DEN)
     ) u_system (
         .clk_i              (clk_25),
         .reset_i            (reset),

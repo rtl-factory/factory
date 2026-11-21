@@ -82,12 +82,12 @@ module n2d_de2_115
 
     // Why: the architectural observation ports stay unconnected; they are simulation/debug monitors, not pins.
     /* verilator lint_off PINCONNECTEMPTY */
-    // Ref: wiki/src/nand2doom/rtl/io/mas.md "Link rate": the DE2-115 runs the
-    // whole debug link at the 3 Mbaud load rate.
+    // Ref: wiki/src/nand2doom/rtl/io/mas.md "Link rate": the board tops run the
+    // whole debug link at the 2 Mbaud board rate.
     // Why: two full-width 320x200 framebuffer banks fit the DE2-115 M9K budget
     // (wiki/src/nand2doom/rtl/video/mas.md), as does the 32 KiB four-way D-cache
     // (wiki/src/nand2doom/rtl/memory/mas.md).
-    n2d_system #(.UART_BAUD(N2D_UART_LOAD_BAUD),
+    n2d_system #(.UART_BAUD(N2D_UART_BOARD_BAUD),
                  .FRAMEBUFFER_FULL_WIDTH(1'b1), .DCACHE_WAYS(4),
                  .DCACHE_PREFETCH_LINES(2)) u_system (
         .scan_tck_i(jtag_tck), .scan_tdi_i(jtag_tdi),

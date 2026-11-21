@@ -6,9 +6,9 @@
   "load": ["{python}", "src/nand2doom/scripts/host/n2d_play.py", "--board", "{board}",
            "--port", "{port}", "--manifest", "{program}", "--skip-program", "--controls", "none"],
   "boards": {
-    "de10_lite": {"idcode": "031050DD", "baud": 1000000,
+    "de10_lite": {"idcode": "031050DD", "baud": 2000000,
                   "sof": "workdir/quartus/n2d_de10_lite/output_files/n2d_de10_lite.sof"},
-    "de2_115": {"idcode": "020F70DD", "baud": 3000000,
+    "de2_115": {"idcode": "020F70DD", "baud": 2000000,
                 "sof": "workdir/quartus/n2d_de2_115/output_files/n2d_de2_115.sof"}
   }
 }

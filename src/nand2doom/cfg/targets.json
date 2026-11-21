@@ -1264,7 +1264,7 @@
     },
     "n2d_uart_stream": {
       "kind": "cocotb",
-      "description": "nand2doom 3 Mbaud streaming load session: multi-segment stream, CRC/drop/header/truncation recovery, rollback, SDRAM contents and whole-image digest",
+      "description": "nand2doom 2 Mbaud streaming load session: multi-segment stream, CRC/drop/header/truncation recovery, rollback, SDRAM contents and whole-image digest",
       "top": "n2d_uart_stream_memory",
       "sources": [
         "src/common/rtl/sync/n2a_cdc_bit_sync.sv",

@@ -9,7 +9,7 @@
 Steps: refuse if another process holds the UART or a JTAG client is running;
 check the board with jtagconfig (and, for JTAG controls, resolve the
 quartus_stp device name by IDCODE); program the SOF; Ping and Halt; stream-load
-the image at the board rate (3 Mbaud DE2-115, 1 Mbaud DE10-Lite), skipping every non-program segment whose stored SDRAM
+the image at the 2 Mbaud board rate, skipping every non-program segment whose stored SDRAM
 digest already matches; verify every loaded segment's stored digest; reset the
 PC and Resume; then open the real-time controls. Spec:
 wiki/src/nand2doom/scripts/host/spec.md#play.

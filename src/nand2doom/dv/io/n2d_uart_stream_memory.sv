@@ -1,5 +1,5 @@
 // Simulation-only composition for the streaming load session: the product
-// serial bridge at the 3 Mbaud load rate (8 1/3 clocks per bit) feeding the
+// serial bridge at the 2 Mbaud board rate (12 1/2 clocks per bit) feeding the
 // actual debug memory adapter, with a test-driven halt status and scaled
 // stream gap/idle bounds. It holds no state besides the adapter reset
 // release register.
@@ -54,7 +54,7 @@ module n2d_uart_stream_memory
 
     n2d_pkg::t_n2d_screen_req unused_screen_req;
     n2d_uart_debug #(
-        .BAUD(N2D_UART_LOAD_BAUD),
+        .BAUD(N2D_UART_BOARD_BAUD),
         .STREAM_GAP_TIMEOUT_CYCLES(4000),
         .STREAM_IDLE_CYCLES(40000)
     ) u_uart (

@@ -20,10 +20,10 @@ FRAMEBUFFER = 0x1000_0000
 RESULT = 0x100
 COLOR = 0x96c  # Ref: video MAS "Framebuffer and palette": RGB444, red 9, green 6, blue 12
 SCAN_CODE = 0x1c
-# Why: the board top runs the whole debug link at the 3 Mbaud load rate, and 25
-# MHz clock multiples cannot hit that rate, so the host side uses exact
+# Why: the board top runs the whole debug link at the 2 Mbaud board rate, and 25
+# MHz clock multiples cannot hit that rate (12 1/2 clocks), so the host side uses exact
 # absolute-time bit edges.
-BAUD = 3_000_000
+BAUD = 2_000_000
 BIT_PS = 10**12 / BAUD
 STREAM_ADDRESS = 0x0004_0000
 
@@ -186,7 +186,7 @@ async def board_serial_sdram_video_contract(dut):
         assert model.words[address] == ((value & 0xff00) | 0xef)
         assert model.words[address + 2] == (((value >> 16) & 0xff00) | 0xad)
 
-    # Why: this is the board top's real load path at 3 Mbaud: Hello, two
+    # Why: this is the board top's real load path at 2 Mbaud: Hello, two
     # back-to-back Write frames (one with a three-byte tail), a stored-SDRAM
     # digest, End, then legacy Peek of the stored words, so the streaming and
     # legacy engines must hand the link over cleanly.
@@ -274,13 +274,13 @@ async def board_serial_sdram_video_contract(dut):
     assert all(rgb == (0, 0, 0) for rgb in samples[:first]), "border must be black"
     assert samples[first:first + 16] == [expected] * 16, "first 16 scaled pixels"
     check_constant_pins()
-    cocotb.log.info("PASS low-chip burst-eight SDRAM, DQM[3:2] high, 3 Mbaud JP5 UART and stream load, PS/2, JTAG keys, VGA DAC replication/phase")
+    cocotb.log.info("PASS low-chip burst-eight SDRAM, DQM[3:2] high, 2 Mbaud JP5 UART and stream load, PS/2, JTAG keys, VGA DAC replication/phase")
 
 
 
 @cocotb.test(timeout_time=80, timeout_unit="ms")
 async def board_uart_mem_endpoint(dut):
-    """Common UART memory endpoint at 3 Mbaud through the DE2-115 top."""
+    """Common UART memory endpoint at 2 Mbaud through the DE2-115 top."""
     from src.nand2doom.dv.fpga.uart_mem_board import BoardLink, endpoint_load_and_readback
     link = BoardLink(dut, clock="CLOCK_50", reset="KEY", rx="UART_RX", tx="UART_TX",
                      baud=BAUD, dqm=lambda d: int(d.DRAM_DQM.value) & 3)

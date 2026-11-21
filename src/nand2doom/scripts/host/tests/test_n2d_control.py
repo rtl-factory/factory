@@ -82,7 +82,7 @@ class SessionTests(unittest.TestCase):
             seq += 2
         session.close()
         self.assertEqual(fake.packets[0], wire.request(wire.CMD_PING, 0))
-        opener.assert_called_once_with("PORT", .01, 1_000_000)
+        opener.assert_called_once_with("PORT", .01, 2_000_000)
         self.assertEqual(fake.close_count, 1)
 
     def test_mixed_sources_repeats_and_combined_holds(self):
