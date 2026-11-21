@@ -182,7 +182,7 @@ adopted). No runtime reference-repository dependency.
 ## Play
 
 One command for the owner to play Doom on the DE2-115 (or the DE10-Lite): check the board,
-program its image, stream-load Doom over the 3 Mbaud UART, start it, and
+program its image, stream-load Doom over the board UART (3 Mbaud DE2-115, 1 Mbaud DE10-Lite), start it, and
 open real-time controls over UART or the USB-Blaster JTAG keyboard. A reload
 after a software change takes seconds, not the full 29 MB. One explicit
 invocation authorizes programming, loading and playing the board it names; it

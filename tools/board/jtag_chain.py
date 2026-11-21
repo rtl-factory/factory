@@ -114,7 +114,7 @@ def list_devices(cable: str, quartus_bin=None, *, runner=run_tool) -> list[str]:
     return parse_devices(text)
 
 
-def resolve(cable: str, quartus_bin=None, idcode=0, *, runner=run_tool) -> str:
+def resolve(cable: str, quartus_bin, idcode, *, runner=run_tool) -> str:
     """The exact quartus_stp name of the `idcode` device on `cable`."""
     return select_device(list_devices(cable, quartus_bin, runner=runner), idcode)
 
