@@ -17,7 +17,8 @@ why the shared contracts live on the DE10-Lite page are in the
 
 `n2d_de2_115` (`src/nand2doom/fpga/de2_115/n2d_de2_115.sv`) wraps `n2d_system`
 (full-width framebuffer, four-way D-cache, `UART_BAUD` =
-`N2D_UART_LOAD_BAUD`) and `n2d_memory_controller`, with the clock backend
+`N2D_UART_LOAD_BAUD`) and `n2d_memory_controller`, with the common board clock
+([DE2-115 board clock](../../../common/fpga/de2_115/board-spec.md)) backend
 `n2a_de2_115_clock_intel.sv` (`altpll`) in Quartus and
 `n2a_de2_115_clock_portable.sv` in Verilator. The composition, the vendor
 primitives and their simulation stand-ins and the RAM mapping are shared with
