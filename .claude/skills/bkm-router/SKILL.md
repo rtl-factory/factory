@@ -11,7 +11,7 @@ BKMs define how work is done here. Find the rows that match what you are doing, 
 | adding a tool, script, block or folder, moving one, or deciding where code or its documents go (tool or script, script or software, which discipline) | `wiki/bkm/workflow/repo-layout.md` |
 | the first mate: dispatching, supervising, pausing, handing over or landing crewmates' work, or running competing candidates on one issue | `wiki/bkm/workflow/first-mate.md` |
 | working out what plays first mate and crewmate on a given agent platform, or adding a platform to that list | `wiki/bkm/workflow/first-mate-platforms.md` |
-| splitting a plan into issues or an epic, or triaging an issue | `wiki/bkm/workflow/issues.md` |
+| opening any issue, splitting a plan into issues or an epic, or triaging an issue | `wiki/bkm/workflow/issues.md` |
 | opening, labelling or dispatching an issue | `wiki/bkm/workflow/labels.md` |
 | reviewing a pull request as the reviewer crewmate | `wiki/bkm/workflow/review.md` |
 | writing a pull request or a GitHub comment, getting it landable, taking over a stalled one, or landing it | `wiki/bkm/workflow/landing.md` |
