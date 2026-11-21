@@ -24,7 +24,7 @@ The board configs are `src/nand2mario/cfg/n2m_quartus.json` (DE10-Lite), `src/na
 
 ## Loader protocol
 
-Request: SYNC, command, 24-bit address, length minus one, payload (WRITE only), CRC-16/CCITT-FALSE. Response: SYNC, status, command, address, length minus one, payload (READ only), CRC. Commands: PING, HOLD, RELEASE, WRITE, READ, SNAP_PIN, SNAP_READ, SNAP_RELEASE. Every request is idempotent, so a lost reply is retried (three retries by default) after draining the input; a reply whose echoed command or address differs, or a stale ack of an earlier write, is never accepted. I/O timeouts are 1 s per operation, never below 50 ms, and 0.5 s for the release on the way out. The protocol's RTL side is the UART loader block (`wiki/src/nand2mario/rtl/uart/mas.md`, not ported yet).
+The link runs 8-N-1 at 2 Mbaud on both boards, the factory board rate (`cart_loader.py` and `n2m_board.py` default `--baud` 2000000). Request: SYNC, command, 24-bit address, length minus one, payload (WRITE only), CRC-16/CCITT-FALSE. Response: SYNC, status, command, address, length minus one, payload (READ only), CRC. Commands: PING, HOLD, RELEASE, WRITE, READ, SNAP_PIN, SNAP_READ, SNAP_RELEASE. Every request is idempotent, so a lost reply is retried (three retries by default) after draining the input; a reply whose echoed command or address differs, or a stale ack of an earlier write, is never accepted. I/O timeouts are 1 s per operation, never below 50 ms, and 0.5 s for the release on the way out. The protocol's RTL side is the UART loader block (`wiki/src/nand2mario/rtl/uart/mas.md`, not ported yet).
 
 ## Frame snapshot
 

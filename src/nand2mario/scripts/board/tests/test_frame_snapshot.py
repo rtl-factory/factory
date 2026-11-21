@@ -526,7 +526,7 @@ class CommandLineTests(unittest.TestCase):
 
         stem = self.dir / 'cap'
         code, out, _ = self.run_main('capture', '--port', '/dev/fake', '--out', str(stem), open_serial=open_serial)
-        self.assertEqual((code, opened), (0, [('/dev/fake', 115200)]))
+        self.assertEqual((code, opened), (0, [('/dev/fake', 2000000)]))
         self.assertEqual(stem.with_suffix('.bin').read_bytes(), record)
         manifest = json.loads(stem.with_suffix('.json').read_text())
         self.assertEqual((manifest['frame_id'], manifest['bank'], manifest['sha256'], manifest['on_screen_at_end']),

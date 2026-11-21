@@ -5,9 +5,11 @@
 // The low x16 SDRAM has the existing controller geometry. Upper DQ pins
 // are unused inputs under the QSF policy; upper DQM stays masked.
 module n2m_de2_115 #(
-    // Loader UART bit period in system clocks: 217 is 115200 baud at 25 MHz;
-    // the board smoke shortens it.
-    parameter int unsigned UART_CLKS_PER_BIT = 217,
+    // Loader UART bit period in system clocks: 12 1/2 is the 2 Mbaud board
+    // rate at 25 MHz, through the PHY's fractional accumulator.
+    parameter int unsigned UART_CLKS_PER_BIT = 12,
+    parameter int unsigned UART_FRAC_NUM = 1,
+    parameter int unsigned UART_FRAC_DEN = 2,
     // Default cartridge behavior is unchanged; the maintained library profile enables this.
     parameter int unsigned CART_LIBRARY = 0,
     // LEDR7 shows this bit of the free-running system-clock counter: 24 is a
@@ -180,7 +182,9 @@ module n2m_de2_115 #(
     n2m_system #(
         .CART_SDRAM        (1),
         .CART_LIBRARY      (CART_LIBRARY),
-        .UART_CLKS_PER_BIT (UART_CLKS_PER_BIT)
+        .UART_CLKS_PER_BIT (UART_CLKS_PER_BIT),
+        .UART_FRAC_NUM     (UART_FRAC_NUM),
+        .UART_FRAC_DEN     (UART_FRAC_DEN)
     ) u_system (
         .clk_i              (clk_25),
         .reset_i            (reset),

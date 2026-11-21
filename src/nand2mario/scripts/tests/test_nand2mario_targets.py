@@ -294,7 +294,8 @@ class ProjectTargetTests(unittest.TestCase):
         preload = targets["n2m_system_preload"]
         self.assertEqual(("n2m_system", "src.nand2mario.dv.system.test_system_preload", "system_direct_preload"),
                          (preload.top, preload.test_module, preload.testcase))
-        self.assertEqual((("CART_RAM_BYTES", 32768), ("CART_ROM_BYTES", 131072), ("UART_CLKS_PER_BIT", 8)),
+        self.assertEqual((("CART_RAM_BYTES", 32768), ("CART_ROM_BYTES", 131072), ("UART_CLKS_PER_BIT", 8),
+                          ("UART_FRAC_NUM", 0)),
                          preload.parameters)
         self.assertEqual(targets["n2m_system"].sources, preload.sources)
         sdram_preload = targets["n2m_system_sdram_preload"]

@@ -9,6 +9,8 @@
 
 module n2m_system_sdram_fixture #(
     parameter int unsigned UART_CLKS_PER_BIT = 8,
+    parameter int unsigned UART_FRAC_NUM = 0,
+    parameter int unsigned UART_FRAC_DEN = 1,
     parameter int unsigned CART_LIBRARY = 0,
     parameter int unsigned FILL_SEED = 32'h12345678
 ) (
@@ -47,7 +49,8 @@ module n2m_system_sdram_fixture #(
     logic        dram_dq_oe;
 
     /* verilator lint_off PINCONNECTEMPTY */
-    n2a_uart_tx #(.CLKS_PER_BIT (UART_CLKS_PER_BIT)) u_host_tx (
+    n2a_uart_tx #(.CLKS_PER_BIT (UART_CLKS_PER_BIT), .FRAC_NUM (UART_FRAC_NUM),
+                  .FRAC_DEN (UART_FRAC_DEN)) u_host_tx (
         .clk_i        (clk_i),
         .reset_i      (reset_i),
         .byte_valid_i (host_tx_valid_i),
@@ -57,7 +60,8 @@ module n2m_system_sdram_fixture #(
         .tx_o         (host_line)
     );
 
-    n2a_uart_rx #(.CLKS_PER_BIT (UART_CLKS_PER_BIT)) u_host_rx (
+    n2a_uart_rx #(.CLKS_PER_BIT (UART_CLKS_PER_BIT), .FRAC_NUM (UART_FRAC_NUM),
+                  .FRAC_DEN (UART_FRAC_DEN)) u_host_rx (
         .clk_i           (clk_i),
         .reset_i         (reset_i),
         .rx_i            (system_line),
@@ -70,7 +74,9 @@ module n2m_system_sdram_fixture #(
     n2m_system #(
         .CART_SDRAM        (1),
         .CART_LIBRARY      (CART_LIBRARY),
-        .UART_CLKS_PER_BIT (UART_CLKS_PER_BIT)
+        .UART_CLKS_PER_BIT (UART_CLKS_PER_BIT),
+        .UART_FRAC_NUM     (UART_FRAC_NUM),
+        .UART_FRAC_DEN     (UART_FRAC_DEN)
     ) u_system (
         .clk_i              (clk_i),
         .reset_i            (reset_i),

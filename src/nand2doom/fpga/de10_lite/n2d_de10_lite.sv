@@ -53,7 +53,8 @@ module n2d_de10_lite (
     // Why: half-width framebuffer banks keep both banks within the MAX 10 M9K
     // budget of one full-width bank (wiki/src/nand2doom/rtl/video/mas.md); the D-cache stays at
     // 16 KiB two-way (wiki/src/nand2doom/rtl/memory/mas.md).
-    n2d_system #(.FRAMEBUFFER_FULL_WIDTH(1'b0), .DCACHE_WAYS(2),
+    n2d_system #(.UART_BAUD(n2d_pkg::N2D_UART_BOARD_BAUD),
+                 .FRAMEBUFFER_FULL_WIDTH(1'b0), .DCACHE_WAYS(2),
                  .DCACHE_PREFETCH_LINES(2)) u_system (
         .scan_tck_i(jtag_tck), .scan_tdi_i(jtag_tdi),
         .scan_capture_i(jtag_capture), .scan_shift_i(jtag_shift),

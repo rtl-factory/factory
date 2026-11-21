@@ -80,7 +80,8 @@ class ManifestTests(unittest.TestCase):
         self.assertIn("src/common/rtl/jtag/n2a_jtag_virtual.sv", board.sources)
         self.assertIn("src/common/dv/jtag/sld_virtual_jtag_stub.sv", board.sources)
         self.assertEqual(("n2m_de10_lite_fixture", "board_smoke", 97), (board.top, board.testcase, board.default_seed))
-        self.assertEqual((("HEARTBEAT_BIT", 20), ("UART_CLKS_PER_BIT", 8)), tuple(sorted(board.parameters)))
+        self.assertEqual((("HEARTBEAT_BIT", 20), ("UART_CLKS_PER_BIT", 12), ("UART_FRAC_DEN", 2), ("UART_FRAC_NUM", 1)),
+                         tuple(sorted(board.parameters)))
         self.assertIn("src/nand2mario/dv/storage/n2m_sdram_model.sv", board.sources)
         swapped = {intel: portable for portable, intel in PAIRS}
         quartus = [swapped.get(s, s) for s in self.config["sources"]]
@@ -120,7 +121,7 @@ class ManifestTests(unittest.TestCase):
             n2m_quartus.stage(ROOT, output, self.config)
             qsf = (output / "n2m_de10_lite.qsf").read_text()
         self.assertIn('VERILOG_MACRO "SYNTHESIS=1"', qsf)
-        self.assertNotIn("set_parameter", qsf)   # Why: the board top's defaults (115200 baud, 0.67 s heartbeat) must apply unchanged
+        self.assertNotIn("set_parameter", qsf)   # Why: the board top's defaults (2 Mbaud, 0.67 s heartbeat) must apply unchanged
         self.assertIn("set_location_assignment PIN_L14 -to DRAM_CLK", qsf)
         self.assertIn("set_location_assignment PIN_AB5 -to UART_RXD", qsf)
         self.assertIn("set_location_assignment PIN_P11 -to MAX10_CLK1_50", qsf)

@@ -52,8 +52,8 @@ charging 16 ms per response plus 1 Mbaud wire time.
 
 ### Streaming load
 
-`n2d_uart_stream` composes `n2d_uart_debug` at `BAUD=N2D_UART_LOAD_BAUD`
-(3 Mbaud) with the real `n2d_debug_memory_adapter` in
+`n2d_uart_stream` composes `n2d_uart_debug` at `BAUD=N2D_UART_BOARD_BAUD`
+(2 Mbaud) with the real `n2d_debug_memory_adapter` in
 `src/nand2doom/dv/io/n2d_uart_stream_memory.sv`, which scales the bounds to a
 4,000-clock frame gap and 40,000-clock idle session. A Python 16-byte line
 model with seeded 4..13-clock latency backs SDRAM with sentinels. The host
@@ -78,7 +78,7 @@ and ±100 ns, which must agree. Malformed frames come from a separate encoder.
   −1667 ppm in both directions.
 
 The `n2d_de2_115` board target also streams two Writes over JP5 at exactly
-3 Mbaud, checks the chained digest and End and Peeks the tail word.
+2 Mbaud, checks the chained digest and End and Peeks the tail word.
 `common_uart_fractional` checks the PHY edge grid; host resend policy is in
 `src/nand2doom/scripts/host/tests/test_n2d_uart_stream.py`
 ([host contract](../../scripts/host/spec.md#streaming-load)).
@@ -90,8 +90,7 @@ python3 tools/sim/sim.py test n2d_uart_stream --seed 125
 ### UART memory endpoint
 
 `board_uart_mem_endpoint` (`src/nand2doom/dv/fpga/uart_mem_board.py`) runs
-through the real board tops: the DE2-115 at 3 Mbaud and the DE10-Lite at
-1 Mbaud. Both use the external-SDRAM pin model, and the host side uses the
+through the real board tops, both at the 2 Mbaud board rate. Both use the external-SDRAM pin model, and the host side uses the
 bench codec (`src/common/scripts/uart_mem/uart_mem.py`).
 The scenario:
 

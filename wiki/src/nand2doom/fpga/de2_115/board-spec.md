@@ -7,7 +7,7 @@ The Terasic DE2-115 (**EP4CE115F29C7**, Cyclone IV E) top, `src/nand2doom/fpga/d
 The DE2-115 is the primary physical target. The design uses its 50 MHz
 oscillator, `KEY[0]` as reset, the low chip of its 32-bit SDRAM pair (the
 high chip masked), the ADV7123 VGA DAC, the JP5 GPIO header for the UART at
-3 Mbaud, the on-board PS/2 connector, `LEDR[3:0]` for status with the other
+2 Mbaud, the on-board PS/2 connector, `LEDR[3:0]` for status with the other
 LEDs and digits off, and the USB-Blaster for programming and the host JTAG
 keyboard. The board-by-board comparison, the requirements both boards meet and
 why the shared contracts live on the DE10-Lite page are in the
@@ -17,7 +17,7 @@ why the shared contracts live on the DE10-Lite page are in the
 
 `n2d_de2_115` (`src/nand2doom/fpga/de2_115/n2d_de2_115.sv`) wraps `n2d_system`
 (full-width framebuffer, four-way D-cache, `UART_BAUD` =
-`N2D_UART_LOAD_BAUD`) and `n2d_memory_controller`, with the clock backend
+`N2D_UART_BOARD_BAUD`) and `n2d_memory_controller`, with the clock backend
 `n2d_de2_115_clock_intel.sv` (`altpll`) in Quartus and
 `n2d_de2_115_clock_portable.sv` in Verilator. The composition, the vendor
 primitives and their simulation stand-ins and the RAM mapping are shared with
@@ -48,7 +48,7 @@ a unit test compares every shared pin and standard.
 | `HEX3[6:2]`, `HEX4`-`HEX7` | manual tables | 3.3-V LVTTL |
 
 The JP5 voltage jumper must select 3.3 V (GND on pin 12). The host link is a
-3.3 V TTL-232R cable at 3 Mbaud 8-N-1; scripts take `--port` and
+3.3 V TTL-232R cable at 2 Mbaud 8-N-1; scripts take `--port` and
 `--baud de2_115` ([UART scripts](../../scripts/host/spec.md#uart-host)). SDRAM/VGA
 8 mA; UART TX, LEDs and digits 4 mA; slew rate 2 stated on 2.5 V outputs.
 

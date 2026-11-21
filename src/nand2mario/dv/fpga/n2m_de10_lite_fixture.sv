@@ -8,6 +8,8 @@
 
 module n2m_de10_lite_fixture #(
     parameter int unsigned UART_CLKS_PER_BIT = 8,
+    parameter int unsigned UART_FRAC_NUM = 0,
+    parameter int unsigned UART_FRAC_DEN = 1,
     parameter int unsigned HEARTBEAT_BIT = 20,
     parameter int unsigned FILL_SEED = 32'h0DE10117
 ) (
@@ -41,6 +43,8 @@ module n2m_de10_lite_fixture #(
 
     n2m_de10_lite #(
         .UART_CLKS_PER_BIT (UART_CLKS_PER_BIT),
+        .UART_FRAC_NUM     (UART_FRAC_NUM),
+        .UART_FRAC_DEN     (UART_FRAC_DEN),
         .HEARTBEAT_BIT     (HEARTBEAT_BIT)
     ) u_board (
         .MAX10_CLK1_50 (MAX10_CLK1_50),

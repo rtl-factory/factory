@@ -14,7 +14,7 @@ from cocotb.utils import get_sim_time
 import src.nand2doom.scripts.host.n2d_uart_debug_host as wire
 
 
-BAUD = 3_000_000  # Ref: FT232R datasheet maximum rate; the fixture runs 8 1/3 clocks per bit
+BAUD = 2_000_000  # Why: the factory board rate; the fixture runs 12 1/2 clocks per bit
 BIT_PS = 10**12 / BAUD
 CLOCK_NS = 40
 GAP_CYCLES = 4000  # Why: equal to n2d_uart_stream_memory STREAM_GAP_TIMEOUT_CYCLES, which the waits below must exceed
@@ -33,7 +33,7 @@ def raw_frame(kind: int, sequence: int, address: int, length: int, payload: byte
 
 
 class Host:
-    """Exact-3 Mbaud host UART: absolute-time bit edges and centre sampling."""
+    """Exact-2 Mbaud host UART: absolute-time bit edges and centre sampling."""
 
     def __init__(self, dut):
         self.dut = dut

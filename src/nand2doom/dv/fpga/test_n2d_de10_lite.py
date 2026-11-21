@@ -64,11 +64,11 @@ async def board_serial_sdram_contract(dut):
         length = 7
         while len(packet) < length:
             await FallingEdge(dut.UART_TXD)
-            await Timer(1500, unit="ns")
+            await Timer(750, unit="ns")  # Why: 1.5 bits at the 2 Mbaud board rate
             value = 0
             for bit in range(8):
                 value |= int(dut.UART_TXD.value) << bit
-                await Timer(1000, unit="ns")
+                await Timer(500, unit="ns")
             assert int(dut.UART_TXD.value), "UART stop bit"
             packet.append(value)
             if len(packet) == 6:
@@ -80,7 +80,7 @@ async def board_serial_sdram_contract(dut):
         for value in request(command, sequence, **kwargs):
             for bit in (0, *((value >> i) & 1 for i in range(8)), 1):
                 dut.UART_RXD.value = bit
-                await Timer(1000, unit="ns")
+                await Timer(500, unit="ns")
         response = await with_timeout(receiver, 500, "us")
         assert response.sequence == sequence and response.status == 0, response
         return response.words
@@ -109,10 +109,10 @@ async def board_serial_sdram_contract(dut):
 
 @cocotb.test(timeout_time=80, timeout_unit="ms")
 async def board_uart_mem_endpoint(dut):
-    """Common UART memory endpoint at 1 Mbaud through the DE10-Lite top."""
+    """Common UART memory endpoint at 2 Mbaud through the DE10-Lite top."""
     from src.nand2doom.dv.fpga.uart_mem_board import BoardLink, endpoint_load_and_readback
     link = BoardLink(dut, clock="MAX10_CLK1_50", reset="RESET_N", rx="UART_RXD", tx="UART_TXD",
-                     baud=1_000_000,
+                     baud=2_000_000,
                      dqm=lambda d: int(d.DRAM_UDQM.value) << 1 | int(d.DRAM_LDQM.value))
     await link.start()
     await endpoint_load_and_readback(link, half_width=True)

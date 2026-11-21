@@ -66,7 +66,7 @@ python src/nand2doom/scripts/host/n2d_uart.py --baud de2_115 --dry-run load work
 | Option | Contract |
 | --- | --- |
 | `--port` | Required live; no default, enumeration or trial writes. Board identity per the [FPGA contract](../../fpga/de10_lite/board-spec.md); a different protocol is never probed. |
-| `--baud` | The image's link rate: integer or `uart.json` `board_baudrates` name (`de10_lite` 1,000,000; `de2_115` 3,000,000, the FT232R maximum); default `baudrate` 1 Mbaud. `n2d_capture.py` and `n2d_control.py` take the same option and pass it to the shared `open_serial`. |
+| `--baud` | The image's link rate: integer or `uart.json` `board_baudrates` name (`de10_lite` and `de2_115` both 2,000,000, the factory board rate); default `baudrate` 1 Mbaud. `n2d_capture.py` and `n2d_control.py` take the same option and pass it to the shared `open_serial`. |
 | `--timeout` | 0.01..60 s (default 1) for request write plus response read. |
 | `--budget` | Whole operation 1800 s default (finite, ≥ one timeout, ≤ 86400), from after open including the identity check. |
 | `--plan`, `--dry-run` | Never import serial, open a port, write output or send; single-command plans show an illustrative sequence-zero frame (live commands send Ping first, so sequence one). |
@@ -151,7 +151,7 @@ partial word is a short last frame (no masked Poke).
 | Resend | Lost frames, replies checksum, memory, timeout, grant or busy, and frames unanswered after the window timeout (max(0.2 s, three window wire times) + 50 ms) are resent, each ≤ 8 times; Hello ≤ 3 times; a Digest waits with a length-scaled timeout; stale replies are ignored; parsing resynchronizes on `0x7a` and CRC-8. |
 | Stop | Any other status, unexpected reply kind, wrong identity, digest mismatch, short write, exhausted retries or budget raise `StreamError`, poison the client and send no reset-PC or Resume (the endpoint stays halted). |
 | Interruption | No reset needed: the device drops a partial frame after its 40 ms gap and closes the session after 2 s of silence; inside a session legacy Ping/Halt are stream data, so wait ≥ 2 s before the next invocation. |
-| Plan | Frame count and wire time at the rate: the pinned Doom manifest (29,172,220 bytes, 28,490 frames) is 98.9 s at 3 Mbaud, 296.6 s at 1 Mbaud, plus device digest scans, no per-frame turnaround. |
+| Plan | Frame count and wire time at the rate: the pinned Doom manifest (29,172,220 bytes, 28,490 frames) is 148 s at the 2 Mbaud board rate (98.9 s at 3 Mbaud, 296.6 s at 1 Mbaud), plus device digest scans, no per-frame turnaround. |
 
 ### UART tests
 
@@ -182,7 +182,7 @@ adopted). No runtime reference-repository dependency.
 ## Play
 
 One command for the owner to play Doom on the DE2-115 (or the DE10-Lite): check the board,
-program its image, stream-load Doom over the board UART (3 Mbaud DE2-115, 1 Mbaud DE10-Lite), start it, and
+program its image, stream-load Doom over the 2 Mbaud board UART, start it, and
 open real-time controls over UART or the USB-Blaster JTAG keyboard. A reload
 after a software change takes seconds, not the full 29 MB. One explicit
 invocation authorizes programming, loading and playing the board it names; it
@@ -209,7 +209,7 @@ python3 src/nand2doom/scripts/host/n2d_play.py --port PORT --skip-load --control
 | Option | Meaning |
 | --- | --- |
 | `--port` | UART port; default `$N2D_UART_PORT`; required unless `--skip-load` with JTAG controls. |
-| `--board` | `de2_115` (default; IDCODE `020F70DD`, baud 3,000,000) or `de10_lite` (IDCODE `031050DD`, baud 1,000,000). |
+| `--board` | `de2_115` (default; IDCODE `020F70DD`) or `de10_lite` (IDCODE `031050DD`), both at 2,000,000 baud. |
 | `--sof` | Default the newest `workdir/quartus/n2d_<board>/output_files/n2d_<board>.sof` in this or the main checkout. |
 | `--manifest` | Default `workdir/software/n2d_doom/manifest.json` of this checkout. |
 | `--skip-program` | Keep the FPGA image; Halt, reload, Resume. |
@@ -271,8 +271,8 @@ with the reason (program segment, `--force-full`, mismatch with both values,
 failed request) then `loaded and verified` with seconds. A matching digest is
 the same evidence as full verification; after reprogramming SDRAM refresh
 stopped, so digests differ and segments reload. For the pinned image the
-program segment is 377,144 bytes (1.3 s at 3 Mbaud) and the WAD 28,795,076
-bytes (97.6 s).
+program segment is 377,144 bytes (1.9 s at 2 Mbaud) and the WAD 28,795,076
+bytes (146 s).
 
 ### Play failure, interrupt and recovery
 
@@ -342,7 +342,7 @@ python3 src/nand2doom/scripts/host/n2d_control.py --transport jtag --cable 'USB-
 | --- | --- |
 | `--transport uart` (default) or `jtag` | Selects the link. |
 | `--port` / `--cable --device [--quartus-bin]` | Prepopulate the link field only; nothing opens until Connect. The JTAG device is the exact `quartus_stp` name (install-dependent; `n2d_play` passes the one it [resolved by IDCODE](#device-resolution)). |
-| `--baud` | Image link rate or board name (`de2_115` = 3,000,000). |
+| `--baud` | Image link rate or board name (`de2_115` = `de10_lite` = 2,000,000). |
 | `--timeout` | 0.01..1 s per UART transaction, default 1. |
 | `--connect` | Connect at start (otherwise a human Connect click). |
 | `--plan`, `--dry-run`, `--help` | JSON bindings, transport and policy without importing Tk, serial or Quartus, creating output or opening handles. |

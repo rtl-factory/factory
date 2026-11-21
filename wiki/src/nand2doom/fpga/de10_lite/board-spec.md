@@ -52,7 +52,7 @@ read the FPGA timing tables from this page (`src/nand2doom/scripts/tests/test_n2
 | Reset | KEY0 (`RESET_N`), Schmitt trigger | `KEY[0]`, 2.5 V (board debounced) |
 | SDRAM | One IS42S16320D, 16-bit | Low chip of the 32-bit pair: `DQ[15:0]`, `DRAM_DQM = {2'b11, dqm}` (high chip masked, never drives); `DQ[31:16]` unassigned; same 64 MiB map |
 | VGA | 4-bit resistor DAC | ADV7123: channels `{c, c}`; `VGA_CLK` = inverted system clock (RGB latched half a pixel after launch); `VGA_BLANK_N`=1, `VGA_SYNC_N`=0 |
-| UART | Arduino D0/D1 (AB5/AB6), 1 Mbaud | JP5 `GPIO[0]` RX / `GPIO[1]` TX, 3 Mbaud ([link rate](../../rtl/io/mas.md#link-rate)) |
+| UART | Arduino D0/D1 (AB5/AB6), 2 Mbaud | JP5 `GPIO[0]` RX / `GPIO[1]` TX, 2 Mbaud ([link rate](../../rtl/io/mas.md#link-rate)) |
 | PS/2 | GPIO0/1 (V10/W10), external connector | On-board connector |
 | Status | `LEDR[3:0]` | `LEDR[3:0]`; `LEDR[17:4]`, `LEDG`=0, `HEX0`-`HEX7`=1 (off) |
 | Framebuffer | Half width, 128 M9Ks | Full width, 256 M9Ks |

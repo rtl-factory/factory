@@ -980,7 +980,8 @@
       "parameters": {
         "CART_ROM_BYTES": 32768,
         "CART_RAM_BYTES": 8192,
-        "UART_CLKS_PER_BIT": 8
+        "UART_CLKS_PER_BIT": 8,
+        "UART_FRAC_NUM": 0
       },
       "level": "L1",
       "wrapper": [
@@ -1263,7 +1264,8 @@
       "parameters": {
         "CART_ROM_BYTES": 131072,
         "CART_RAM_BYTES": 32768,
-        "UART_CLKS_PER_BIT": 8
+        "UART_CLKS_PER_BIT": 8,
+        "UART_FRAC_NUM": 0
       },
       "level": "L1",
       "wrapper": [
@@ -1438,7 +1440,9 @@
       "default_seed": 97,
       "max_cycles": 8000000,
       "parameters": {
-        "UART_CLKS_PER_BIT": 8,
+        "UART_CLKS_PER_BIT": 12,
+        "UART_FRAC_NUM": 1,
+        "UART_FRAC_DEN": 2,
         "HEARTBEAT_BIT": 20
       },
       "level": "L1",
@@ -1529,9 +1533,11 @@
       "test_module": "src.nand2mario.dv.fpga.test_de10_lite",
       "testcase": "board_smoke",
       "default_seed": 97,
-      "max_cycles": 8000000,
+      "max_cycles": 12000000,
       "parameters": {
-        "UART_CLKS_PER_BIT": 8,
+        "UART_CLKS_PER_BIT": 12,
+        "UART_FRAC_NUM": 1,
+        "UART_FRAC_DEN": 2,
         "HEARTBEAT_BIT": 20
       },
       "level": "L1",
@@ -1923,7 +1929,8 @@
       "parameters": {
         "CART_ROM_BYTES": 32768,
         "CART_RAM_BYTES": 8192,
-        "UART_CLKS_PER_BIT": 8
+        "UART_CLKS_PER_BIT": 8,
+        "UART_FRAC_NUM": 0
       },
       "public_depth": 3,
       "level": "manual",

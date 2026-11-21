@@ -216,12 +216,13 @@ package n2d_pkg;
     localparam logic [31:0] N2D_STREAM_MAX_PAYLOAD  = 32'd1024;
     localparam logic [31:0] N2D_SDRAM_BYTES         = 32'h0400_0000;
     // Debug UART link rates (wiki/src/nand2doom/rtl/io/mas.md "Link rate"). The bit period is
-    // N2D_SYSTEM_CLOCK_HZ / baud clocks. The default link is 1 Mbaud
-    // (25 clocks); the load rate is the FTDI FT232R maximum, 3 Mbaud
-    // (8 1/3 clocks through the PHY's fractional accumulator).
+    // N2D_SYSTEM_CLOCK_HZ / baud clocks. The default link of the simulation
+    // fixtures is 1 Mbaud (25 clocks); both board tops run the factory board
+    // rate, 2 Mbaud on every board and project (12 1/2 clocks through the
+    // PHY's fractional accumulator).
     localparam int unsigned N2D_SYSTEM_CLOCK_HZ     = 25_000_000;
     localparam int unsigned N2D_UART_BAUD           = 1_000_000;
-    localparam int unsigned N2D_UART_LOAD_BAUD      = 3_000_000;
+    localparam int unsigned N2D_UART_BOARD_BAUD     = 2_000_000;
     /* verilator lint_on UNUSEDPARAM */
 
     // Stream write/digest window: SDRAM only, 33-bit end arithmetic.

@@ -16,7 +16,7 @@ Each project declares its boards in `src/<project>/cfg/board.json`. The console 
   "load": ["{python}", "src/nand2mario/scripts/board/n2m_board.py", "load", "{program}",
            "--board", "{board}", "--port", "{port}", "--baud", "{baud}", "--yes"],
   "boards": {
-    "de10_lite": {"idcode": "031050DD", "baud": 115200,
+    "de10_lite": {"idcode": "031050DD", "baud": 2000000,
                   "sof": "workdir/quartus/n2m_de10_lite/output_files/n2m_de10_lite.sof"}
   }
 }
@@ -35,10 +35,10 @@ The declared loaders today:
 
 | Project | Loader | Rates |
 |---|---|---|
-| nand2doom | `n2d_play.py --skip-program --controls none`: Ping and Halt, stream load with digest skip, reset PC and Resume | DE10-Lite 1 Mbaud, DE2-115 3 Mbaud |
-| nand2mario | `n2m_board.py load --yes`: hold, write and verify the cartridge, release | 115200 on both |
+| nand2doom | `n2d_play.py --skip-program --controls none`: Ping and Halt, stream load with digest skip, reset PC and Resume | 2 Mbaud on both |
+| nand2mario | `n2m_board.py load --yes`: hold, write and verify the cartridge, release | 2 Mbaud on both |
 
-Issue #129 moves both projects to the common UART memory endpoint at 2 Mbaud, after which both declarations name one loader.
+Both projects run the factory board rate, 2 Mbaud on every board (issue #129). Issue #129 also moves nand2mario to the common UART memory endpoint, after which both declarations name one loader.
 
 ## JTAG chain
 
