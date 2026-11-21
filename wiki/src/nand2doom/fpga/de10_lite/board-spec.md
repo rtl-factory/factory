@@ -70,7 +70,7 @@ to the board pins.
 
 ### Composition
 
-- `n2d_de10_lite_clock` / `n2d_de2_115_clock` each have two backend files,
+- The common board clocks `n2a_de10_lite_clock` / `n2a_de2_115_clock` ([board clock](../../../common/fpga/de10_lite/board-spec.md)) each have two backend files,
   never compiled together: `*_intel.sv` (Quartus list) instantiates `altpll`
   `u_pll` (20,000 ps reference, multiply 1, divide 2, 50% duty, zero phase,
   dynamic phase/scan ports unused), and `*_portable.sv` (Verilator) divides by
@@ -91,7 +91,7 @@ to the board pins.
 
 | Primitive | Where | Simulation stand-in |
 | --- | --- | --- |
-| `altpll` (`u_pll`) | `n2d_de10_lite_clock_intel.sv` | `n2d_de10_lite_clock_portable.sv`: divide by two, lock three reference edges after reset release |
+| `altpll` (`u_pll`) | `n2a_de10_lite_clock_intel.sv` | `n2a_de10_lite_clock_portable.sv`: divide by two, lock three reference edges after reset release |
 | `altsyncram` | `n2a_sync_ram_intel.sv`, `n2a_sdp_ram_intel.sv`, `n2a_tdp_ram_intel.sv` (Quartus list) | the portable common RAMs (simulation list) |
 | `sld_virtual_jtag` | inside the common `n2a_jtag_virtual` (`u_jtag_virtual`) | the common `sld_virtual_jtag` stub |
 
@@ -151,7 +151,7 @@ registers, 2,114 → 2,013 LABs, 317 M9Ks, setup 6.341 → 6.759 ns, hold 0.125 
 | Path | Role |
 | --- | --- |
 | `src/nand2doom/fpga/de10_lite/n2d_de10_lite.sv`, `src/nand2doom/fpga/de2_115/n2d_de2_115.sv` | Board tops |
-| `src/nand2doom/fpga/de10_lite/n2d_de10_lite_clock_{intel,portable}.sv`, `src/nand2doom/fpga/de2_115/n2d_de2_115_clock_{intel,portable}.sv` | Clock backends |
+| `src/common/fpga/de10_lite/n2a_de10_lite_clock_{intel,portable}.sv`, `src/common/fpga/de2_115/n2a_de2_115_clock_{intel,portable}.sv` | Clock backends (common, [DE10-Lite](../../../common/fpga/de10_lite/board-spec.md), [DE2-115](../../../common/fpga/de2_115/board-spec.md)) |
 | `src/nand2doom/cfg/n2d_quartus.json` | Pins, sources, RAM requirements, reviewed diagnostics |
 | `src/nand2doom/fpga/de10_lite/de10_lite.sdc`, `src/nand2doom/fpga/de2_115/n2d_de2_115.sdc` | Constraints |
 

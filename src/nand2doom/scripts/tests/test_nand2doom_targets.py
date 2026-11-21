@@ -6,7 +6,8 @@ import unittest
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(REPO_ROOT))
-from src.nand2doom.scripts.tests import target_view  # noqa: E402
+sys.path.insert(0, str(REPO_ROOT / "tools/sim"))
+import sim  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location("quartus", REPO_ROOT / "src/nand2doom/scripts/board/quartus.py")
 quartus = importlib.util.module_from_spec(_spec)
@@ -33,7 +34,7 @@ class ProjectTargetTests(unittest.TestCase):
         for source in board_files:
             self.assertIn(source.parent, boards)
         files += board_files
-        targets = target_view.load_targets()
+        targets = sim.target_views()
         consumers = {source for target in targets.values() for source in target.sources}
         # Why: Intel backends are consumed only by a board's Quartus source list, so
         # that list counts as their consumer.
@@ -50,11 +51,11 @@ class ProjectTargetTests(unittest.TestCase):
     def test_verilator_targets_select_portable_backends_only(self):
         # Why: Verilator targets must simulate the portable backends, so none lists an
         # Intel backend and every board-top target lists exactly one clock backend.
-        targets = target_view.load_targets()
+        targets = sim.target_views()
         for board in ("de10_lite", "de2_115"):
             other = f"src/nand2doom/fpga/{board}"
-            clock_files = (f"{other}/n2d_{board}_clock_portable.sv",
-                           f"{other}/n2d_{board}_clock_intel.sv")
+            clock_files = (f"src/common/fpga/{board}/n2a_{board}_clock_portable.sv",
+                           f"src/common/fpga/{board}/n2a_{board}_clock_intel.sv")
             board_targets = 0
             for target in targets.values():
                 if not target.name.startswith("n2d_"):
@@ -68,7 +69,7 @@ class ProjectTargetTests(unittest.TestCase):
             self.assertGreaterEqual(board_targets, 1)
 
     def test_project_targets(self):
-        targets = target_view.load_targets()
+        targets = sim.target_views()
         self.temp_path = REPO_ROOT / "workdir/unit-tests"
         self.assertEqual(2_400_000, targets["n2d_c_runtime_system"].max_cycles)
         self.assertEqual(2_400_000, targets["n2d_integrated_system"].max_cycles)

@@ -1,15 +1,14 @@
-// Intel Cyclone IV E backend of the DE2-115 clock contract: one altpll (u_pll)
-// dividing the 50 MHz CLOCK_50 reference to the 25 MHz system clock with
-// lock status. The ratio equals the DE10-Lite backend's; only the device
-// family differs.
+// Intel MAX 10 backend of the DE10-Lite board clock: one altpll (u_pll)
+// dividing the 50 MHz board reference to the 25 MHz system clock, with its
+// lock status (wiki/src/common/fpga/de10_lite/board-spec.md).
 //
-// This file and n2d_de2_115_clock_portable.sv define the same module name.
+// This file and n2a_de10_lite_clock_portable.sv define the same module name.
 // Only the Quartus source list selects this file; simulation targets list
 // the portable file. The board top never selects a backend itself.
 /* verilator lint_off DECLFILENAME */
-module n2d_de2_115_clock (
-    input logic reference_clk_i,
-    input logic reset_i,
+module n2a_de10_lite_clock (
+    input  logic reference_clk_i,
+    input  logic reset_i,
     output logic clk_25_o,
     output logic locked_o
 );
@@ -19,7 +18,7 @@ module n2d_de2_115_clock (
         .clk0_multiply_by(1), .clk0_divide_by(2),
         .clk0_duty_cycle(50), .clk0_phase_shift("0"),
         .compensate_clock("CLK0"), .operation_mode("NORMAL"),
-        .intended_device_family("Cyclone IV E"), .width_clock(5),
+        .intended_device_family("MAX 10"), .width_clock(5),
         .port_inclk0("PORT_USED"), .port_areset("PORT_USED"),
         .port_locked("PORT_USED"), .port_clk0("PORT_USED"),
         .port_phasecounterselect("PORT_UNUSED"), .port_phasestep("PORT_UNUSED"),

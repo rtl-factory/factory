@@ -5,7 +5,8 @@ import unittest
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(REPO_ROOT))
-from src.nand2mario.scripts.tests import target_view  # noqa: E402
+sys.path.insert(0, str(REPO_ROOT / "tools/sim"))
+import sim  # noqa: E402
 
 
 class ProjectTargetTests(unittest.TestCase):
@@ -17,7 +18,7 @@ class ProjectTargetTests(unittest.TestCase):
         self.assertEqual(positions, sorted(positions), required)
 
     def test_project_targets(self):
-        targets = target_view.load_targets()
+        targets = sim.target_views()
         self.temp_path = REPO_ROOT / "workdir/unit-tests"
         self.assertEqual("cocotb", targets["n2m_timebase"].kind)
         self.assertEqual(390_649, targets["n2m_timebase"].max_cycles)
@@ -34,7 +35,7 @@ class ProjectTargetTests(unittest.TestCase):
         )
 
     def test_video_and_system_targets(self):
-        targets = target_view.load_targets()
+        targets = sim.target_views()
         ppu = targets["n2m_ppu"]
         self.assertEqual(("cocotb", "n2m_ppu_fixture", 71), (ppu.kind, ppu.top, ppu.default_seed))
         self.assertEqual("src.nand2mario.dv.video.test_ppu", ppu.test_module)
@@ -90,7 +91,7 @@ class ProjectTargetTests(unittest.TestCase):
                          (targets["n2m_system_snapshot"].test_module, targets["n2m_system_snapshot"].testcase))
 
     def test_interfaces_and_ram_targets(self):
-        targets = target_view.load_targets()
+        targets = sim.target_views()
         self.assertEqual("native", targets["n2m_interfaces"].kind)
         self.assertEqual("n2m_interfaces_fixture", targets["n2m_interfaces"].top)
         self.assertEqual(
@@ -124,7 +125,7 @@ class ProjectTargetTests(unittest.TestCase):
                     Path("src/nand2mario/dv/memory")))
 
     def test_cartridge_targets(self):
-        targets = target_view.load_targets()
+        targets = sim.target_views()
         mapper = targets["n2m_cartridge"]
         self.assertEqual(("cocotb", "n2m_cartridge", "mbc1_contract", 61),
                          (mapper.kind, mapper.top, mapper.testcase, mapper.default_seed))
@@ -153,7 +154,7 @@ class ProjectTargetTests(unittest.TestCase):
                          (targets["n2m_system_mbc1"].testcase, targets["n2m_system_mbc1"].test_module))
 
     def test_every_system_consumer_lists_library_implementation(self):
-        targets = target_view.load_targets()
+        targets = sim.target_views()
         system = "src/nand2mario/rtl/system/n2m_system.sv"
         package = "src/nand2mario/rtl/cartridge/n2m_library_pkg.sv"
         engine = "src/nand2mario/rtl/cartridge/n2m_library.sv"
@@ -164,7 +165,7 @@ class ProjectTargetTests(unittest.TestCase):
                 self.assert_source_order(target.sources, (package, engine, system))
 
     def test_every_mario_uart_consumer_lists_common_types(self):
-        targets = target_view.load_targets()
+        targets = sim.target_views()
         package = "src/common/rtl/pkg/n2a_types_pkg.sv"
         checked = set()
         for name, target in targets.items():
@@ -178,7 +179,7 @@ class ProjectTargetTests(unittest.TestCase):
         self.assertTrue({"n2m_system_games", "n2m_system_menu", "n2m_system_menu_sdram"} <= checked)
 
     def test_source_closure_rejects_missing_duplicate_and_late_dependencies(self):
-        targets = target_view.load_targets()
+        targets = sim.target_views()
         sources = targets["n2m_system_games"].sources
         contracts = (
             ("src/common/rtl/pkg/n2a_types_pkg.sv", "src/common/rtl/uart/n2a_uart_rx.sv"),
@@ -202,7 +203,7 @@ class ProjectTargetTests(unittest.TestCase):
                     self.assert_source_order(late, required)
 
     def test_licensed_games_keep_ordinary_cartridge_configuration(self):
-        targets = target_view.load_targets()
+        targets = sim.target_views()
         games = targets["n2m_system_games"]
         self.assertEqual(games.top, "n2m_system")
         self.assertEqual(dict(games.parameters).get("CART_LIBRARY", 0), 0)
@@ -211,7 +212,7 @@ class ProjectTargetTests(unittest.TestCase):
         self.assertEqual(games.test_module, "src.nand2mario.dv.system.test_system_games")
 
     def test_enabled_menu_consumers(self):
-        targets = target_view.load_targets()
+        targets = sim.target_views()
         engine = targets['n2m_library']
         self.assertEqual((engine.top, engine.testcase), ('n2m_library_fixture', 'library_contract'))
         for name in ('n2m_system_menu', 'n2m_system_menu_sdram'):
@@ -223,7 +224,7 @@ class ProjectTargetTests(unittest.TestCase):
         self.assertEqual(dict(targets['n2m_system_menu'].parameters)['CART_ROM_BYTES'], 1048576)
 
     def test_timer_interrupt_and_system_targets(self):
-        targets = target_view.load_targets()
+        targets = sim.target_views()
         self.assertEqual("src.nand2mario.dv.timer.test_timer", targets["n2m_timer"].test_module)
         self.assertEqual("timer_contract", targets["n2m_timer"].testcase)
         self.assertEqual(53, targets["n2m_timer"].default_seed)
@@ -241,7 +242,7 @@ class ProjectTargetTests(unittest.TestCase):
         self.assertEqual("src/nand2mario/rtl/system/n2m_system.sv", system[-1])
 
     def test_joypad_serial_and_system_targets(self):
-        targets = target_view.load_targets()
+        targets = sim.target_views()
         self.assertEqual("src.nand2mario.dv.joypad.test_joypad", targets["n2m_joypad"].test_module)
         self.assertEqual("joypad_contract", targets["n2m_joypad"].testcase)
         self.assertEqual(61, targets["n2m_joypad"].default_seed)
@@ -259,7 +260,7 @@ class ProjectTargetTests(unittest.TestCase):
         self.assertEqual("src/nand2mario/rtl/system/n2m_system.sv", system[-1])
 
     def test_storage_and_loader_targets(self):
-        targets = target_view.load_targets()
+        targets = sim.target_views()
         ctrl, refresh = targets["n2m_sdram_ctrl"], targets["n2m_sdram_refresh_fail"]
         self.assertEqual(("cocotb", "n2m_sdram_ctrl_fixture", "sdram_ctrl_contract", 73),
                          (ctrl.kind, ctrl.top, ctrl.testcase, ctrl.default_seed))

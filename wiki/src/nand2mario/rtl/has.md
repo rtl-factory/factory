@@ -64,7 +64,7 @@ python3 tools/sim/sim.py test n2m_system
 
 ## Boards
 
-`fpga/de10_lite/` holds the DE10-Lite board top (SDRAM backing and UART loader on the board pins; the host keyboard through the common JTAG endpoint), its clock backends, the Quartus settings fragment and the SDC; `fpga/de2_115/` holds the DE2-115 top and its files; `fpga/board_io/` holds the shared Set-2-to-joypad decoder, board-input debouncer and seven-segment decoder. `cfg/n2m_quartus.json` and `cfg/n2m_de2_115_quartus.json` hold the pins and the Quartus source lists, and the scripts `scripts/board/n2m_quartus.py` and `scripts/board/n2m_board.py` build, program, load images and send joypad keys. Board specs are not written yet.
+`fpga/de10_lite/` holds the DE10-Lite board top (SDRAM backing and UART loader on the board pins; the host keyboard through the common JTAG endpoint), the Quartus settings fragment and the SDC; `fpga/de2_115/` holds the DE2-115 top and its files; both tops instantiate the common board clock `n2a_<board>_clock` ([DE10-Lite](../../common/fpga/de10_lite/board-spec.md), [DE2-115](../../common/fpga/de2_115/board-spec.md)); `fpga/board_io/` holds the shared Set-2-to-joypad decoder, board-input debouncer and seven-segment decoder. `cfg/n2m_quartus.json` and `cfg/n2m_de2_115_quartus.json` hold the pins and the Quartus source lists, and the scripts `scripts/board/n2m_quartus.py` and `scripts/board/n2m_board.py` build, program, load images and send joypad keys. Board specs are not written yet.
 
 ## Software
 

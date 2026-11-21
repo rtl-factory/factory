@@ -1,12 +1,12 @@
-// Intel MAX 10 backend of the nand2mario DE10-Lite clock contract: one
-// altpll (u_pll) dividing the 50 MHz board reference to the 25 MHz system
-// clock, with its lock status (wiki/src/nand2mario/fpga/de10_lite/board-spec.md).
+// Intel Cyclone IV E backend of the DE2-115 board clock: one altpll (u_pll)
+// dividing the 50 MHz board reference to the 25 MHz system clock, with its
+// lock status (wiki/src/common/fpga/de2_115/board-spec.md).
 //
-// This file and n2m_de10_lite_clock_portable.sv define the same module name.
+// This file and n2a_de2_115_clock_portable.sv define the same module name.
 // Only the Quartus source list selects this file; simulation targets list
 // the portable file. The board top never selects a backend itself.
 /* verilator lint_off DECLFILENAME */
-module n2m_de10_lite_clock (
+module n2a_de2_115_clock (
     input  logic reference_clk_i,
     input  logic reset_i,
     output logic clk_25_o,
@@ -18,7 +18,7 @@ module n2m_de10_lite_clock (
         .clk0_multiply_by(1), .clk0_divide_by(2),
         .clk0_duty_cycle(50), .clk0_phase_shift("0"),
         .compensate_clock("CLK0"), .operation_mode("NORMAL"),
-        .intended_device_family("MAX 10"), .width_clock(5),
+        .intended_device_family("Cyclone IV E"), .width_clock(5),
         .port_inclk0("PORT_USED"), .port_areset("PORT_USED"),
         .port_locked("PORT_USED"), .port_clk0("PORT_USED"),
         .port_phasecounterselect("PORT_UNUSED"), .port_phasestep("PORT_UNUSED"),

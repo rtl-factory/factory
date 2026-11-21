@@ -4,7 +4,7 @@
 // nand2mario board top for the Terasic DE10-Lite (10M50DAF484C7G,
 // wiki/src/nand2mario/fpga/de10_lite/board-spec.md). A thin wrapper around the verified
 // n2m_system in one 25 MHz domain:
-// 1. Clock: MAX10_CLK1_50 into n2m_de10_lite_clock (PLL divide by two).
+// 1. Clock: MAX10_CLK1_50 into n2a_de10_lite_clock (PLL divide by two).
 // 2. Reset: KEY0 (pressed = low) or a PLL that has not locked holds the
 //    system in reset; n2a_reset_sync releases it synchronously.
 // 3. Cartridge: n2m_system's SDRAM backing on the board SDRAM (DRAM_CLK is
@@ -85,7 +85,7 @@ module n2m_de10_lite #(
     logic [HEARTBEAT_BIT:0] heartbeat_q, heartbeat_d;
     logic [SERIAL_STRETCH_BIT:0] stretch_q, stretch_d;
 
-    n2m_de10_lite_clock u_clock (
+    n2a_de10_lite_clock u_clock (
         .reference_clk_i (MAX10_CLK1_50),
         .reset_i         (!KEY[0]),
         .clk_25_o        (clk_25),
