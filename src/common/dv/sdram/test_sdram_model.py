@@ -188,6 +188,9 @@ async def dq_turnaround(dut):
     await b.cmd(ACT, address=5)
     await b.nops(1)
     await b.cmd(READ)
+    # Why: one idle clock after the read beat, so only the one-idle-clock
+    # turnaround term can fire.
+    await b.nops(1)
     await b.cmd(WRITE, drive=True)
 
 
@@ -301,6 +304,17 @@ async def precharge_before_twr(dut):
     await b.cmd(ACT, address=5)
     await b.nops(1)
     await b.cmd(WRITE, drive=True)
+    await b.cmd(PRE)
+
+
+@cocotb.test()
+async def burst_precharge_before_twr(dut):
+    b = await ready(dut)
+    await b.cmd(ACT, address=5)
+    await b.nops(1)
+    await b.cmd(WRITE, drive=True)
+    for _ in range(7):
+        await b.cmd(NOP, drive=True)
     await b.cmd(PRE)
 
 

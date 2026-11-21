@@ -617,6 +617,30 @@
         "message": "n2a_sdram_model: command interrupts a write burst"
       }
     },
+    "n2a_sdram_model_bl8_precharge_before_twr_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation in burst-eight mode (tWR counted from the last write beat) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 8,
+        "ROW_XOR_BANK": 1
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "burst_precharge_before_twr",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: tWR violation"
+      }
+    },
     "n2a_sdram_model_bl8_write_beat_undriven_fail": {
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation in burst-eight mode (write beat without DQ drive) is fatal",
