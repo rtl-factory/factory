@@ -48,7 +48,7 @@ All ports are in the `clk_i` domain.
 | `response_error_o` | out | 1 | With the pulse: the request was misaligned and made no access. |
 | `idle_o` | out | 1 | The engine is in IDLE. |
 | `init_done_o` | out | 1 | The mode register is set. |
-| `sdram_*_o`, `sdram_dq_i` | | | Command, address, bank, DQM, DQ and its output enable; `cke` is `!reset_i` and `cs_n` is `reset_i`. The board top drives DRAM_CLK as the inverted `clk_i`. |
+| `sdram_*_o`, `sdram_dq_i` | | | Command, address, bank, DQM, DQ and its output enable; `cke` is `!reset_i` and `cs_n` is `reset_i`. The inverted `clk_i` drives DRAM_CLK: nand2doom makes it in the board top, nand2mario in its SDRAM backing. |
 
 ### Latency
 

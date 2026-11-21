@@ -236,8 +236,10 @@ module n2m_ppu_objects (
             end
         end
         best_valid = round_valid[4][0];
-        best_index = round_index[4][0];
+        best_index = round_valid[4][0] ? round_index[4][0] : 4'd0;
     end
+    `ASSERT_PARAM(g_too_many_objects, OBJECTS_PER_LINE <= 16,
+        "n2m_ppu_objects: the object tournament has 16 leaves")
     assign candidate_valid_o = best_valid;
     assign candidate_color_o = colors[best_index];
     assign candidate_attributes_o = objects_q[best_index].attributes;

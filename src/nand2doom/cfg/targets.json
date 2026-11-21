@@ -2122,7 +2122,6 @@
       "description": "Independent CL2 inverted-board-clock SDRAM capture and masked writes",
       "top": "n2d_sdram_board_timing",
       "sources": [
-        "src/nand2doom/rtl/memory/n2d_ls_types_pkg.sv",
         "src/common/rtl/sdram/n2a_sdram_pkg.sv",
         "src/common/rtl/sdram/n2a_sdram_ctrl.sv",
         "src/nand2doom/dv/fpga/n2d_sdram_board_timing.sv"
