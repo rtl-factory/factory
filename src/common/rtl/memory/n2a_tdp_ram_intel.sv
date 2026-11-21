@@ -17,95 +17,95 @@
 `include "src/common/rtl/pkg/macros.vh"
 
 module n2a_tdp_ram #(
-  parameter int unsigned DATA_WIDTH = 32,
-  parameter int unsigned DEPTH = 256,
-  parameter int unsigned ADDR_WIDTH = $clog2(DEPTH),
-  // Vendor selection facts. The DE10-Lite consumers use the defaults; another
-  // Intel board wrapper may override them without changing the contract.
-  parameter INTEL_DEVICE_FAMILY = "MAX 10",
-  parameter INTEL_RAM_BLOCK_TYPE = "M9K"
+    parameter int unsigned DATA_WIDTH = 32,
+    parameter int unsigned DEPTH = 256,
+    parameter int unsigned ADDR_WIDTH = $clog2(DEPTH),
+    // Vendor selection facts. The DE10-Lite consumers use the defaults; another
+    // Intel board wrapper may override them without changing the contract.
+    parameter INTEL_DEVICE_FAMILY = "MAX 10",
+    parameter INTEL_RAM_BLOCK_TYPE = "M9K"
 ) (
-  input  logic                                             clk_i,
-  input  logic                                             a_write_enable_i,
-  input  logic [((ADDR_WIDTH < 1) ? 1 : ADDR_WIDTH)-1:0]  a_address_i,
-  input  logic [((DATA_WIDTH < 1) ? 1 : DATA_WIDTH)-1:0]  a_write_data_i,
-  output logic [((DATA_WIDTH < 1) ? 1 : DATA_WIDTH)-1:0]  a_read_data_o,
-  input  logic                                             b_write_enable_i,
-  input  logic [((ADDR_WIDTH < 1) ? 1 : ADDR_WIDTH)-1:0]  b_address_i,
-  input  logic [((DATA_WIDTH < 1) ? 1 : DATA_WIDTH)-1:0]  b_write_data_i,
-  output logic [((DATA_WIDTH < 1) ? 1 : DATA_WIDTH)-1:0]  b_read_data_o
+    input  logic                                             clk_i,
+    input  logic                                             a_write_enable_i,
+    input  logic [((ADDR_WIDTH < 1) ? 1 : ADDR_WIDTH)-1:0]  a_address_i,
+    input  logic [((DATA_WIDTH < 1) ? 1 : DATA_WIDTH)-1:0]  a_write_data_i,
+    output logic [((DATA_WIDTH < 1) ? 1 : DATA_WIDTH)-1:0]  a_read_data_o,
+    input  logic                                             b_write_enable_i,
+    input  logic [((ADDR_WIDTH < 1) ? 1 : ADDR_WIDTH)-1:0]  b_address_i,
+    input  logic [((DATA_WIDTH < 1) ? 1 : DATA_WIDTH)-1:0]  b_write_data_i,
+    output logic [((DATA_WIDTH < 1) ? 1 : DATA_WIDTH)-1:0]  b_read_data_o
 );
-  localparam int unsigned IMPLEMENTATION_DATA_WIDTH =
-      (DATA_WIDTH < 1) ? 1 : DATA_WIDTH;
-  localparam int unsigned REQUIRED_ADDR_WIDTH =
-      (DEPTH < 2) ? 1 : $clog2(DEPTH);
-  localparam bit DEPTH_IS_POWER_OF_TWO =
-      (DEPTH >= 2) && ((DEPTH & (DEPTH - 1)) == 0);
+    localparam int unsigned IMPLEMENTATION_DATA_WIDTH =
+        (DATA_WIDTH < 1) ? 1 : DATA_WIDTH;
+    localparam int unsigned REQUIRED_ADDR_WIDTH =
+        (DEPTH < 2) ? 1 : $clog2(DEPTH);
+    localparam bit DEPTH_IS_POWER_OF_TWO =
+        (DEPTH >= 2) && ((DEPTH & (DEPTH - 1)) == 0);
 
-  `ASSERT_PARAM(g_invalid_data_width, DATA_WIDTH >= 1,
-      "n2a_tdp_ram DATA_WIDTH must be at least 1")
-  `ASSERT_PARAM(g_invalid_depth, DEPTH_IS_POWER_OF_TWO,
-      "n2a_tdp_ram DEPTH must be a power of two and at least 2")
-  `ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
-      "n2a_tdp_ram ADDR_WIDTH must equal $clog2(DEPTH)")
+    `ASSERT_PARAM(g_invalid_data_width, DATA_WIDTH >= 1,
+        "n2a_tdp_ram DATA_WIDTH must be at least 1")
+    `ASSERT_PARAM(g_invalid_depth, DEPTH_IS_POWER_OF_TWO,
+        "n2a_tdp_ram DEPTH must be a power of two and at least 2")
+    `ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
+        "n2a_tdp_ram ADDR_WIDTH must equal $clog2(DEPTH)")
 
-  // Why: the only pin left unconnected is the output eccstatus, exactly as
-  // Intel-generated wrappers leave it; every functional BIDIR_DUAL_PORT pin is
-  // connected on both ports. Only the DV port-stub lint sees the missing pin.
-  /* verilator lint_off PINMISSING */
-  altsyncram #(
-    .operation_mode("BIDIR_DUAL_PORT"),
-    .intended_device_family(INTEL_DEVICE_FAMILY),
-    .ram_block_type(INTEL_RAM_BLOCK_TYPE),
-    .lpm_type("altsyncram"),
-    .width_a(IMPLEMENTATION_DATA_WIDTH),
-    .widthad_a(REQUIRED_ADDR_WIDTH),
-    .numwords_a(DEPTH),
-    .width_byteena_a(1),
-    .outdata_reg_a("UNREGISTERED"),
-    .read_during_write_mode_port_a("OLD_DATA"),
-    .width_b(IMPLEMENTATION_DATA_WIDTH),
-    .widthad_b(REQUIRED_ADDR_WIDTH),
-    .numwords_b(DEPTH),
-    .width_byteena_b(1),
-    .address_reg_b("CLOCK0"),
-    .indata_reg_b("CLOCK0"),
-    .wrcontrol_wraddress_reg_b("CLOCK0"),
-    .byteena_reg_b("CLOCK0"),
-    .rdcontrol_reg_b("CLOCK0"),
-    .outdata_reg_b("UNREGISTERED"),
-    .read_during_write_mode_port_b("OLD_DATA"),
-    .read_during_write_mode_mixed_ports("OLD_DATA"),
-    .clock_enable_input_a("BYPASS"),
-    .clock_enable_output_a("BYPASS"),
-    .clock_enable_input_b("BYPASS"),
-    .clock_enable_output_b("BYPASS"),
-    .init_file("UNUSED"),
-    .power_up_uninitialized("FALSE")
-  ) u_ram (
-    .clock0(clk_i),
-    .wren_a(a_write_enable_i),
-    .address_a(a_address_i),
-    .data_a(a_write_data_i),
-    .q_a(a_read_data_o),
-    .wren_b(b_write_enable_i),
-    .address_b(b_address_i),
-    .data_b(b_write_data_i),
-    .q_b(b_read_data_o),
-    // Ref: Intel altsyncram documentation: inactive levels of unused inputs.
-    .rden_a(1'b1),
-    .rden_b(1'b1),
-    .clock1(1'b1),
-    .clocken0(1'b1),
-    .clocken1(1'b1),
-    .clocken2(1'b1),
-    .clocken3(1'b1),
-    .aclr0(1'b0),
-    .aclr1(1'b0),
-    .byteena_a(1'b1),
-    .byteena_b(1'b1),
-    .addressstall_a(1'b0),
-    .addressstall_b(1'b0)
-  );
-  /* verilator lint_on PINMISSING */
+    // Why: the only pin left unconnected is the output eccstatus, exactly as
+    // Intel-generated wrappers leave it; every functional BIDIR_DUAL_PORT pin is
+    // connected on both ports. Only the DV port-stub lint sees the missing pin.
+    /* verilator lint_off PINMISSING */
+    altsyncram #(
+        .operation_mode("BIDIR_DUAL_PORT"),
+        .intended_device_family(INTEL_DEVICE_FAMILY),
+        .ram_block_type(INTEL_RAM_BLOCK_TYPE),
+        .lpm_type("altsyncram"),
+        .width_a(IMPLEMENTATION_DATA_WIDTH),
+        .widthad_a(REQUIRED_ADDR_WIDTH),
+        .numwords_a(DEPTH),
+        .width_byteena_a(1),
+        .outdata_reg_a("UNREGISTERED"),
+        .read_during_write_mode_port_a("OLD_DATA"),
+        .width_b(IMPLEMENTATION_DATA_WIDTH),
+        .widthad_b(REQUIRED_ADDR_WIDTH),
+        .numwords_b(DEPTH),
+        .width_byteena_b(1),
+        .address_reg_b("CLOCK0"),
+        .indata_reg_b("CLOCK0"),
+        .wrcontrol_wraddress_reg_b("CLOCK0"),
+        .byteena_reg_b("CLOCK0"),
+        .rdcontrol_reg_b("CLOCK0"),
+        .outdata_reg_b("UNREGISTERED"),
+        .read_during_write_mode_port_b("OLD_DATA"),
+        .read_during_write_mode_mixed_ports("OLD_DATA"),
+        .clock_enable_input_a("BYPASS"),
+        .clock_enable_output_a("BYPASS"),
+        .clock_enable_input_b("BYPASS"),
+        .clock_enable_output_b("BYPASS"),
+        .init_file("UNUSED"),
+        .power_up_uninitialized("FALSE")
+    ) u_ram (
+        .clock0(clk_i),
+        .wren_a(a_write_enable_i),
+        .address_a(a_address_i),
+        .data_a(a_write_data_i),
+        .q_a(a_read_data_o),
+        .wren_b(b_write_enable_i),
+        .address_b(b_address_i),
+        .data_b(b_write_data_i),
+        .q_b(b_read_data_o),
+        // Ref: Intel altsyncram documentation: inactive levels of unused inputs.
+        .rden_a(1'b1),
+        .rden_b(1'b1),
+        .clock1(1'b1),
+        .clocken0(1'b1),
+        .clocken1(1'b1),
+        .clocken2(1'b1),
+        .clocken3(1'b1),
+        .aclr0(1'b0),
+        .aclr1(1'b0),
+        .byteena_a(1'b1),
+        .byteena_b(1'b1),
+        .addressstall_a(1'b0),
+        .addressstall_b(1'b0)
+    );
+    /* verilator lint_on PINMISSING */
 endmodule

@@ -10,8 +10,8 @@
 //          inside a macro-owned always_ff that holds no state and runs only
 //          when !(RESET).
 
-`ifndef FACTORY_ASSERTION_MACROS_VH
-`define FACTORY_ASSERTION_MACROS_VH
+`ifndef ASSERTION_MACROS_VH
+`define ASSERTION_MACROS_VH
 
 `include "src/common/rtl/pkg/macros.vh"
 
