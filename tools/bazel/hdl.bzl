@@ -199,7 +199,7 @@ def _wrapped_test(target_name, project, tags, timeout, python):
         deps = python + [requirement("cocotb"), requirement("pillow")],
         env = {"SIM_PATH_PREPEND": "$(rootpaths @verilator//:verilator)"},
         # Why: the wrapper builds its program and writes under the checkout's workdir/,
-        # which a sandbox would forbid and a cache would not see.
-        tags = tags + ["no-sandbox", "no-cache", "wrapped"],
+        # which a sandbox would forbid and a cache would not see, so it always reruns.
+        tags = tags + ["external", "no-sandbox", "no-cache", "wrapped"],
         timeout = "eternal",
     )

@@ -47,7 +47,7 @@ The Bazel timeout is the shortest of short, moderate, long and eternal that is a
 
 ## Wrapped targets
 
-A target with a `wrapper` prepares its program image before it runs, so its test runs `sim.py --workdir workdir/bazel/<target> test <target>` unchanged, tagged `no-sandbox`, `no-cache` and `wrapped`: it builds its own model and writes under the checkout's `workdir/`, and always reruns. This holds until program builds become Bazel actions.
+A target with a `wrapper` prepares its program image before it runs, so its test runs `sim.py --workdir workdir/bazel/<target> test <target>` unchanged, tagged `external` (always run), `no-sandbox`, `no-cache` and `wrapped`: it builds its own model and writes under the checkout's `workdir/`, and always reruns. This holds until program builds become Bazel actions.
 
 ## Levels and CI
 
