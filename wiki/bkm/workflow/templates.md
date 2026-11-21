@@ -10,12 +10,12 @@ The four issue templates and the one pull request template, which one to use, an
 
 - Open every issue with one of the four issue templates below, chosen by its `type:` label: **Enhancement** (`type:feature`, `type:spec`, `type:infra`, `type:research`), **Bug** (`type:bug`), **BKM** (`type:bkm`) or **Epic** (`type:epic`). Why: the first mate, the ready test ([issues.md](issues.md)) and the reviewer read these headings; an issue in another shape has to be rewritten before anyone can dispatch it.
 - Open every pull request with the pull request template below. Why: the reviewer and the captain judge the outcome and its evidence in a fixed place.
-- Copy the headings exactly and keep their order. Drop none; write "None" under a heading that has nothing, and say why when it is not obvious. Add other sections (Notes, Findings) after Blocked by when the issue needs them. Why: an agent finds a section by its heading, and an empty heading shows it was thought about.
+- Copy the headings exactly and keep their order. Drop none; write "None" under a heading that has nothing, and say why when it is not obvious. Add other sections (Notes, Findings) after Blocked by when an issue needs them, or before `Closes` in a pull request. Why: an agent finds a section by its heading, and an empty heading shows it was thought about.
 - Start with **Spec references**: the wiki files the work follows or changes, as repo paths. Name the BKMs that govern it, and the PRD, HAS, MAS, DV or FV plan, board spec, spec or ADR it builds on. Why: the crewmate reads these before anything else, and the reviewer checks the change against them.
 - Write **Scope** and **Out of scope** as short lists of what this issue changes and what it leaves alone, naming the nearest thing someone might expect it to cover. Why: out of scope is where review loops grow a change one cheap fix at a time.
 - Write **Blast radius** as what else the change can affect: other blocks and interfaces, the other project, CI, timing or area, the agents that follow a changed BKM. Say how hard it is to revert. Why: it tells the crewmate what to re-run and the reviewer where to look.
 - Write acceptance criteria and blockers per [issues.md](issues.md), and labels, including `size:` and `complexity:`, per [labels.md](labels.md). Why: those rules live there.
-- Keep the files in `.github/ISSUE_TEMPLATE/` and `.github/pull_request_template.md` identical to the bodies below, and change both in the same pull request. Why: humans file through the web UI and agents write the body by hand, and both must produce the same shape.
+- Keep the files in `.github/ISSUE_TEMPLATE/` and `.github/pull_request_template.md` identical to the bodies below, apart from their front matter and one leading comment that points here, and change both in the same pull request. Why: humans file through the web UI and agents write the body by hand, and both must produce the same shape.
 - A planning issue ([planning.md](../design/planning.md)) is the one exception: it starts with Spec references and then uses the planning body. Why: it tracks decisions, not a change to build.
 
 ## Enhancement
@@ -140,7 +140,7 @@ Only when the issues cannot reach `main` one by one ([issues.md](issues.md) Rule
 
 ## Pull request
 
-Keep it under about 30 lines. How to title it, label it and carry it to landable is in [landing.md](landing.md).
+How to title it, label it and carry it to landable is in [landing.md](landing.md).
 
 ```markdown
 ## Spec references

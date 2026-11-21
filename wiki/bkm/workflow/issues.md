@@ -18,7 +18,6 @@ How to turn an aligned plan, spec or conversation into well-formed issues, when 
 - Open an epic only when the issues cannot reach `main` one by one: each would break `main` until the others land (ADR 0004). Being related, large or ordered is not enough; link those issues instead. Why: an epic branch drifts from `main` and delays real regression.
 - For a wide mechanical change (rename a shared interface, retype a bus) prefer expand–contract over an epic: an issue that adds the new form beside the old, migrate issues per block each blocked by it, and a contract issue that removes the old form, blocked by every migrate issue. Use an epic only when even the batches cannot stay green alone. Why: expand–contract keeps every step landable on `main`.
 - Make an issue a sub-issue only of an epic. Why: every parent issue is an epic (glossary).
-- Open every issue with its template from [templates.md](templates.md), whatever route opens it: a plan split, a bug found mid-work, a follow-up from review, an audit log. Why: the ready test and the first mate read those headings, and an issue in another shape has to be rewritten before anyone can dispatch it.
 - Label every issue you open per [labels.md](labels.md); an epic carries `type:epic`, and each sub-issue carries its own labels. Why: the first mate reads kind and status from labels.
 - An issue **must** pass the ready test below before it moves to `status:ready`. Why: a crewmate is dispatched only on `status:ready` ([flow.md](flow.md)).
 
