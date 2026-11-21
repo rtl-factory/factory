@@ -10,11 +10,12 @@ package n2m_snapshot_pkg;
   // Record: an eight-byte header (magic "NM", format version, on-screen flag
   // and pinned bank, 32-bit frame ID least significant byte first) followed
   // by the frame's 160x144 shades, four per byte, row-major, pixel 4m+j in
-  // bits [2j+1:2j] of byte 8+m.
+  // bits [2j+1:2j] of byte 8+m: 5760 pixel bytes, 5768 in all, so offsets
+  // take SNAPSHOT_OFFSET_WIDTH = $clog2(5768) bits.
   localparam int unsigned SNAPSHOT_HEADER_BYTES = 8;
-  localparam int unsigned SNAPSHOT_PIXEL_BYTES = 160 * 144 / 4;                             // 5760
-  localparam int unsigned SNAPSHOT_RECORD_BYTES = SNAPSHOT_HEADER_BYTES + SNAPSHOT_PIXEL_BYTES; // 5768
-  localparam int unsigned SNAPSHOT_OFFSET_WIDTH = 13;                                       // $clog2(5768)
+  localparam int unsigned SNAPSHOT_PIXEL_BYTES = 160 * 144 / 4;
+  localparam int unsigned SNAPSHOT_RECORD_BYTES = SNAPSHOT_HEADER_BYTES + SNAPSHOT_PIXEL_BYTES;
+  localparam int unsigned SNAPSHOT_OFFSET_WIDTH = 13;
   localparam logic [7:0] SNAPSHOT_MAGIC0 = 8'h4E;   // 'N'
   localparam logic [7:0] SNAPSHOT_MAGIC1 = 8'h4D;   // 'M'
   localparam logic [7:0] SNAPSHOT_FORMAT_VERSION = 8'h01;

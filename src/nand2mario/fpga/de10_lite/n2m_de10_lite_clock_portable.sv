@@ -14,8 +14,6 @@ module n2m_de10_lite_clock (
   output logic clk_25_o,
   output logic locked_o
 );
-  // Behavioral stand-in: divide the 50 MHz reference by two and report
-  // lock three reference edges after reset release.
   logic       clock_q, clock_d;
   logic [2:0] lock_q, lock_d;
   assign clock_d = ~clock_q;

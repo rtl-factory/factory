@@ -42,18 +42,18 @@ module n2m_joypad (
   assign io_selected_o = io_request_i.address == P1_ADDRESS;
   assign write_p1 = io_request_i.valid && io_selected_o && io_request_i.write;
 
-  // Buttons are resampled every edge; the select bits take a written value.
   always_comb begin
     buttons_d = buttons_i;
     select_d = write_p1 ? io_request_i.write_data[5:4] : select_q;
   end
 
-  // The four lines of the selected rows, active-high here: a row whose
-  // select bit is 0 contributes its buttons, both rows OR together.
+  // Ref: Pan Docs "Joypad Input": a row whose select bit is 0 contributes its
+  // buttons. Why: lines are active-high here so the two rows OR together; the
+  // read inverts them.
   always_comb begin
     pressed_q = ({4{~select_q[0]}} & buttons_q[3:0]) | ({4{~select_q[1]}} & buttons_q[7:4]);
     pressed_d = ({4{~select_d[0]}} & buttons_d[3:0]) | ({4{~select_d[1]}} & buttons_d[7:4]);
-    // A line falls (reads 1 then 0) when it becomes pressed on this edge.
+    // Ref: Pan Docs: the joypad interrupt fires when a line falls (1 then 0).
     event_d = |(pressed_d & ~pressed_q);
   end
 
@@ -65,10 +65,9 @@ module n2m_joypad (
   assign interrupt_o = event_q;
   assign wake_o = event_q;
 
-  // Same-cycle response: lines read active-low below the stored select
-  // bits and two high bits. Reads have no side effect. read_data is
-  // meaningful only while io_selected_o; the system fan-out answers other
-  // addresses.
+  // Ref: Pan Docs "Joypad Input": lines read active-low below the stored
+  // select bits and two high bits. Why: read_data is not gated by io_selected_o
+  // because the system fan-out answers every other address.
   always_comb begin
     io_response_o.valid = io_request_i.valid && io_selected_o;
     io_response_o.fault = 1'b0;
@@ -80,7 +79,6 @@ module n2m_joypad (
       !io_request_i.valid || !$isunknown({io_request_i.write, io_request_i.address}))
   `N2A_ASSERT(joypad_write_known, clk_i, reset_i,
       !write_p1 || !$isunknown(io_request_i.write_data))
-  // An event pulse only follows an edge at which a line became pressed.
   `N2A_ASSERT(joypad_event_follows_fall, clk_i, reset_i,
       event_q |-> $past(|(pressed_d & ~pressed_q)))
 endmodule

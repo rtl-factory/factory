@@ -46,7 +46,6 @@ module n2m_ppu_mix (
   `N2A_DFF_RST_EN(pixel_x_o, pixel_x_i, clk_i, emit_i, reset_i, 8'd0)
   `N2A_DFF_RST_EN(pixel_y_o, ly_i, clk_i, emit_i, reset_i, 8'd0)
 
-  // A candidate object never has the transparent color.
   `N2A_ASSERT(object_candidate_opaque, clk_i, reset_i,
       !object_valid_i || (object_color_i != 2'd0))
   `N2A_ASSERT_KNOWN(mix_controls_known, clk_i, reset_i,

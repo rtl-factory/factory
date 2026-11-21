@@ -71,9 +71,10 @@ module n2m_ppu_background (
 
   assign visible_line = ly_i < line_t'(VISIBLE_LINES);
 
-  // Background launch: dots 91, 99, ..., 251 of a visible line, only for
-  // tiles with a visible pixel (tile 20 exists only with a nonzero fine
-  // scroll) that lies left of the window's first pixel.
+  // Why: tiles launch every eight dots from dot 91 (91, 99, ..., 251) so each
+  // tile's bytes are captured before its first pixel; only tiles with a
+  // visible pixel (tile 20 exists only with a nonzero fine scroll) left of the
+  // window's first pixel launch.
   assign fetch_offset = 8'(dot_i - dot_t'(FETCH_DOT));
   assign tile_index = fetch_offset[7:3];
   assign fetch_phase = fetch_offset[2:0];
@@ -86,8 +87,9 @@ module n2m_ppu_background (
                              ((window_first_pixel_i != 8'd0) && (tile_first_pixel < window_cover));
   assign background_launch = background_dot && background_needed;
 
-  // Window launch: the pixel p = dot - 91 - fine starts a window tile when
-  // it is the first window pixel or lies on a window column multiple of 8.
+  // Why: a window tile starts at the first window pixel and at each window
+  // column multiple of 8 (pixel p = dot - 91 - fine), so window tiles align to
+  // the window, not to the background scroll.
   assign window_pixel = dot_i - dot_t'(FETCH_DOT) - dot_t'(fine_scroll_i);
   assign window_dot = window_active_i && (dot_i >= dot_t'(FETCH_DOT) + dot_t'(fine_scroll_i)) &&
                       (window_pixel < 9'(VISIBLE_PIXELS)) &&
@@ -99,9 +101,9 @@ module n2m_ppu_background (
   assign fetch_launch = dot_enable_i && lcd_enable_i && visible_line &&
                         (background_launch || window_launch);
 
-  // Map entry of the launched tile: background row (SCY + LY), column
-  // SCX[7:3] + k; window row from the window line counter, column from the
-  // window column of the launching pixel.
+  // Ref: Pan Docs "Tile Maps": background row (SCY + LY), column SCX[7:3] + k;
+  // window row from the window line counter, column from the window column of
+  // the launching pixel.
   assign background_y = scy_i + ly_i;
   assign map_column = scx_coarse_i + tile_index;
   always_comb begin
@@ -128,7 +130,6 @@ module n2m_ppu_background (
   `N2A_DFF_RST_VAL(state_q, state_d, clk_i, reset_i, FETCH_IDLE)
   assign fetch_busy = state_q != FETCH_IDLE;
 
-  // Fetch context sampled at launch; plane bytes captured as they return.
   `N2A_DFF_RST_EN(map_address_q, map_address_d, clk_i, fetch_launch, reset_i, 13'd0)
   assign unsigned_ids_d = lcdc_i[LCDC_TILE_DATA_BIT];
   `N2A_DFF_RST_EN(tile_row_q, tile_row_d, clk_i, fetch_launch, reset_i, 3'd0)
@@ -141,9 +142,10 @@ module n2m_ppu_background (
   `N2A_DFF_RST_EN(row_low_q, vram_data_i, clk_i, low_capture, reset_i, 8'h00)
   `N2A_DFF_RST_EN(row_high_q, vram_data_i, clk_i, high_capture, reset_i, 8'h00)
 
-  // The low-plane address uses the map byte while it is live on the port;
-  // the high-plane address uses the captured copy one cycle later. LCD off
-  // aborts a fetch in flight: no read leaves once LCDC.7 is clear.
+  // Why: the map byte is live on the port for one cycle only, so the low-plane
+  // address uses it directly and the high-plane address the captured copy one
+  // cycle later. LCD off aborts a fetch in flight: no read leaves once LCDC.7
+  // is clear.
   assign low_address = tile_offset(unsigned_ids_q, vram_data_i, tile_row_q, 1'b0);
   assign high_address = tile_offset(unsigned_ids_q, tile_q, tile_row_q, 1'b1);
   always_comb begin
@@ -172,8 +174,9 @@ module n2m_ppu_background (
     end
   end
 
-  // Pixel emission at the end of dots 92 + fine .. 251 + fine. A window
-  // pixel is one at or beyond the first window pixel of an active line.
+  // Why: emission (end of dots 92 + fine .. 251 + fine) trails the first fetch
+  // launch by one dot so a tile's bytes are captured before its first pixel. A
+  // window pixel is one at or beyond the first window pixel of an active line.
   assign pixel_offset = dot_i - dot_t'(PIXEL_DOT) - dot_t'(fine_scroll_i);
   assign emit = dot_enable_i && lcd_enable_i && visible_line &&
                 (dot_i >= dot_t'(PIXEL_DOT) + dot_t'(fine_scroll_i)) &&
@@ -190,16 +193,12 @@ module n2m_ppu_background (
   assign color_o = lcdc_i[LCDC_BG_ENABLE_BIT] ? raw_color : 2'd0;
   assign window_drawn_o = emit && window_pixel_now && lcdc_i[LCDC_BG_ENABLE_BIT];
 
-  // A fetch completes within four cycles of its launch; the dot enable must
-  // not arrive sooner, VRAM must answer every read on the next cycle, and
-  // the two layers never launch in one dot.
   `N2A_ASSERT(fetch_fits_in_dot, clk_i, reset_i, !(dot_enable_i && fetch_busy))
   `N2A_ASSERT(one_launch_per_dot, clk_i, reset_i, !(background_launch && window_launch))
   `N2A_ASSERT(vram_answers_reads, clk_i, reset_i,
       !(tile_capture || low_capture || high_capture) || vram_valid_i)
   `N2A_ASSERT(vram_data_known, clk_i, reset_i,
       !(tile_capture || low_capture || high_capture) || !$isunknown(vram_data_i))
-  // The fetch state returns to idle one edge after LCDC.7 falls.
   `N2A_ASSERT(no_fetch_while_lcd_off, clk_i, reset_i,
       lcd_enable_i || $past(lcd_enable_i) || !fetch_busy)
 endmodule

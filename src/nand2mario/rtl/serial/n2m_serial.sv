@@ -52,8 +52,9 @@ module n2m_serial (
   assign write_sb = access && io_request_i.write && io_request_i.address == SB_ADDRESS;
   assign write_sc = access && io_request_i.write && io_request_i.address == SC_ADDRESS;
 
-  // A transfer is active while enabled with the internal clock. Each shift
-  // clock pulse shifts one bit, and the eighth shift completes the byte.
+  // Ref: Pan Docs "Serial Data Transfer": a transfer is active while enabled
+  // with the internal clock; each shift clock pulse shifts one bit and the
+  // eighth shift completes the byte.
   always_comb begin
     active = enable_q && clock_q;
     shift = active && shift_clock_i;
@@ -73,8 +74,9 @@ module n2m_serial (
       enable_d = 1'b0;
       tx_data_d = {tx_shift_q[6:0], sb_q[7]};
     end
-    // Writes land after the shift: an SB write replaces the shifted value,
-    // an SC write loads the control bits and restarts the bit count.
+    // Why: a write lands after the same edge's shift so the CPU's value wins: an
+    // SB write replaces the shifted value, an SC write loads the control bits and
+    // restarts the bit count.
     if (write_sb) sb_d = io_request_i.write_data;
     if (write_sc) begin
       enable_d = io_request_i.write_data[7];
@@ -97,9 +99,9 @@ module n2m_serial (
   assign tx_valid_o = tx_valid_q;
   assign tx_data_o = tx_data_q;
 
-  // Same-cycle response: SB is the shift register, SC reads its unused six
-  // bits high. Reads have no side effect. read_data is meaningful only
-  // while io_selected_o; the system fan-out answers other addresses.
+  // Ref: Pan Docs "Serial Data Transfer": SC reads its unused six bits high.
+  // Why: read_data is not gated by io_selected_o because the system fan-out
+  // answers every other address.
   always_comb begin
     io_response_o.valid = access;
     io_response_o.fault = 1'b0;
@@ -113,8 +115,6 @@ module n2m_serial (
       !io_request_i.valid || !$isunknown({io_request_i.write, io_request_i.address}))
   `N2A_ASSERT(serial_write_known, clk_i, reset_i,
       !(access && io_request_i.write) || !$isunknown(io_request_i.write_data))
-  // The bit count only moves on a shift of an active transfer or an SC
-  // write, and the completion pulse follows exactly the eighth shift.
   `N2A_ASSERT(serial_counters_idle, clk_i, reset_i,
       $past(shift) || $past(write_sc) || bits_q == $past(bits_q))
   `N2A_ASSERT(serial_interrupt_follows_completion, clk_i, reset_i,

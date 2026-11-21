@@ -199,8 +199,8 @@ module n2m_ppu (
     .pixel_y_o           (pixel_y_o)
   );
 
-  // VRAM port: the object row fetch owns it while busy, the tile fetch
-  // otherwise; the schedule keeps the two apart.
+  // Why: the PPU has one VRAM read port, so the object row fetch owns it while
+  // busy and the tile fetch otherwise; the schedule keeps the two apart.
   assign vram_read_o = objects_read || tiles_read;
   assign vram_address_o = objects_fetch_busy ? objects_address : tiles_address;
 
@@ -211,8 +211,6 @@ module n2m_ppu (
   assign ly_o = ly;
   assign mode_o = mode;
 
-  // The renderers touch VRAM and OAM only while the CPU is blocked from
-  // them, and never both VRAM readers in one cycle.
   `N2A_ASSERT(vram_reads_in_mode3, clk_i, reset_i, !vram_read_o || vram_blocked_o)
   `N2A_ASSERT(oam_reads_while_blocked, clk_i, reset_i, !oam_read_o || oam_blocked_o)
   `N2A_ASSERT(one_vram_reader, clk_i, reset_i, !(objects_read && tiles_read))

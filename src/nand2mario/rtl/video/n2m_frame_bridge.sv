@@ -70,7 +70,7 @@ module n2m_frame_bridge (
   assign display_id_o = state_q.display_id;
   assign snapshot_pinned_o = state_q.pinned;
 
-  // A completion is applied before a same-cycle raster origin, so the frame
+  // Why: a completion is applied before a same-cycle raster origin, so the frame
   // that completes exactly at the origin is displayed by that VGA frame.
   // LCD-off invalidation is applied after the completion: a frame that
   // completes while the LCD is off is never fresh, even if the LCD is
@@ -114,8 +114,6 @@ module n2m_frame_bridge (
   `N2A_DFF_RST(frame_dropped_o, dropped, clk_i, reset_i)
   `N2A_DFF_RST(frame_repeated_o, repeated, clk_i, reset_i)
 
-  // The three roles always name three distinct banks, the scanned bank
-  // changes only at the raster origin and no pixel lands outside the frame.
   `N2A_ASSERT(banks_are_distinct, clk_i, reset_i,
       (state_q.write_bank != state_q.ready_bank) && (state_q.ready_bank != state_q.display_bank) &&
       (state_q.display_bank != state_q.write_bank))

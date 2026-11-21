@@ -20,18 +20,23 @@ package n2m_ppu_pkg;
   localparam logic [15:0] WY_ADDRESS   = 16'hFF4A;
   localparam logic [15:0] WX_ADDRESS   = 16'hFF4B;
 
-  // Raster geometry. A dot is one 4,194,304 Hz interval.
+  // Raster geometry. A dot is one 4,194,304 Hz interval; dot_t holds 0..455 and
+  // line_t 0..153. Mode 2 is dots 0..79 of a visible line and mode 3 lasts
+  // MODE3_BASE_DOTS before the SCX[2:0] penalty. The end of FETCH_DOT launches
+  // tile fetch 0, the end of dot PIXEL_DOT + SCX[2:0] emits pixel 0 and
+  // LAST_FETCH_DOT is tile fetch 20 (only when SCX[2:0] != 0). LY reads the next
+  // line from LY_READ_DOT; WX above WINDOW_LAST_WX shows no window pixel.
   localparam int unsigned DOTS_PER_LINE   = 456;
   localparam int unsigned LINES_PER_FRAME = 154;
   localparam int unsigned VISIBLE_LINES   = 144;
   localparam int unsigned VISIBLE_PIXELS  = 160;
-  localparam int unsigned MODE2_DOTS      = 80;   // dots 0..79 of a visible line
-  localparam int unsigned MODE3_BASE_DOTS = 172;  // transfer length before the SCX[2:0] penalty
-  localparam int unsigned FETCH_DOT       = 91;   // the end of this dot launches tile fetch 0
-  localparam int unsigned PIXEL_DOT       = 92;   // the end of dot 92 + SCX[2:0] emits pixel 0
-  localparam int unsigned LAST_FETCH_DOT  = 251;  // tile fetch 20 (only when SCX[2:0] != 0)
-  localparam int unsigned LY_READ_DOT     = 452;  // LY reads the next line from this dot
-  localparam int unsigned WINDOW_LAST_WX  = 166;  // WX above this shows no window pixel
+  localparam int unsigned MODE2_DOTS      = 80;
+  localparam int unsigned MODE3_BASE_DOTS = 172;
+  localparam int unsigned FETCH_DOT       = 91;
+  localparam int unsigned PIXEL_DOT       = 92;
+  localparam int unsigned LAST_FETCH_DOT  = 251;
+  localparam int unsigned LY_READ_DOT     = 452;
+  localparam int unsigned WINDOW_LAST_WX  = 166;
 
   // Objects: 40 OAM entries of four bytes, at most ten per line, drawn at
   // (X - 8, Y - 16); the fetch of their tile rows at the start of mode 3
@@ -41,8 +46,8 @@ package n2m_ppu_pkg;
   localparam int unsigned OBJECT_X_OFFSET  = 8;
   localparam int unsigned OBJECT_Y_OFFSET  = 16;
 
-  typedef logic [8:0] dot_t;   // 0..455
-  typedef logic [7:0] line_t;  // 0..153
+  typedef logic [8:0] dot_t;
+  typedef logic [7:0] line_t;
 
   // STAT[1:0] mode encoding.
   typedef enum logic [1:0] {
@@ -52,21 +57,24 @@ package n2m_ppu_pkg;
     MODE_TRANSFER = 2'd3
   } mode_t;
 
-  // LCDC bit positions.
+  // Ref: Pan Docs "LCDC": bit positions. Window map 0: $9800, 1: $9C00; tile
+  // data 1: $8000 unsigned ids, 0: $8800 signed ids; BG map 0: $9800, 1: $9C00;
+  // object size 0: 8x8, 1: 8x16.
   localparam int unsigned LCDC_ENABLE_BIT     = 7;
-  localparam int unsigned LCDC_WINDOW_MAP_BIT = 6;  // 0: window map at $9800, 1: $9C00
-  localparam int unsigned LCDC_WINDOW_BIT     = 5;  // window enable
-  localparam int unsigned LCDC_TILE_DATA_BIT  = 4;  // 1: $8000 unsigned ids, 0: $8800 signed ids
-  localparam int unsigned LCDC_BG_MAP_BIT     = 3;  // 0: map at $9800, 1: map at $9C00
-  localparam int unsigned LCDC_OBJ_SIZE_BIT   = 2;  // 0: 8x8 objects, 1: 8x16 objects
+  localparam int unsigned LCDC_WINDOW_MAP_BIT = 6;
+  localparam int unsigned LCDC_WINDOW_BIT     = 5;
+  localparam int unsigned LCDC_TILE_DATA_BIT  = 4;
+  localparam int unsigned LCDC_BG_MAP_BIT     = 3;
+  localparam int unsigned LCDC_OBJ_SIZE_BIT   = 2;
   localparam int unsigned LCDC_OBJ_ENABLE_BIT = 1;
   localparam int unsigned LCDC_BG_ENABLE_BIT  = 0;
 
-  // OAM attribute byte bit positions.
-  localparam int unsigned ATTR_PRIORITY_BIT = 7;  // 1: background colors 1-3 cover the object
+  // Ref: Pan Docs "OAM": attribute byte bit positions. Priority 1: background
+  // colors 1-3 cover the object; palette 0: OBP0, 1: OBP1.
+  localparam int unsigned ATTR_PRIORITY_BIT = 7;
   localparam int unsigned ATTR_Y_FLIP_BIT   = 6;
   localparam int unsigned ATTR_X_FLIP_BIT   = 5;
-  localparam int unsigned ATTR_PALETTE_BIT  = 4;  // 0: OBP0, 1: OBP1
+  localparam int unsigned ATTR_PALETTE_BIT  = 4;
 
   // One selected object of the current line: X, the row inside the object,
   // the tile id and attributes as scanned, and the two plane bytes of that

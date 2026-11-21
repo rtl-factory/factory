@@ -44,8 +44,9 @@ module n2m_ppu_timing (
   assign last_dot = dot_q == dot_t'(DOTS_PER_LINE - 1);
   assign last_line = ly_q == line_t'(LINES_PER_FRAME - 1);
 
-  // Counters: LCD off forces line 0, dot 0 on the next edge; otherwise one
-  // dot per enable, wrapping 455 -> 0 with the line and 153 -> 0 with the frame.
+  // Why: the LCD restarts from line 0, dot 0 when re-enabled, so LCD off forces
+  // the counters there on the next edge; otherwise one dot per enable, wrapping
+  // 455 -> 0 with the line and 153 -> 0 with the frame.
   always_comb begin
     dot_d = dot_q;
     ly_d = ly_q;
@@ -64,14 +65,16 @@ module n2m_ppu_timing (
   `N2A_DFF_RST(dot_q, dot_d, clk_i, reset_i)
   `N2A_DFF_RST(ly_q, ly_d, clk_i, reset_i)
 
-  // Fine scroll of the current line: SCX[2:0] sampled at the end of dot 80.
+  // Why: SCX[2:0] is sampled once, at the end of dot 80, so a mid-line SCX
+  // write cannot change the line's mode 3 length.
   assign latch_fine = dot_enable_i && lcd_enable_i && visible_line &&
                       (dot_q == dot_t'(MODE2_DOTS));
   `N2A_DFF_RST_EN(fine_q, scx_fine_i, clk_i, latch_fine, reset_i, 3'd0)
   assign fine_scroll_o = fine_q;
 
-  // Mode from the counters: the transfer ends at dot 252 + fine (exclusive).
-  // STAT reports this same mode; the blocking levels follow it.
+  // Why: STAT and the VRAM/OAM blocking levels follow this one mode, so the CPU
+  // is blocked exactly in the mode it reads; the transfer ends at dot
+  // 252 + fine (exclusive).
   assign transfer_end = 9'(MODE2_DOTS + MODE3_BASE_DOTS) + 9'(fine_q);
   always_comb begin
     mode = MODE_HBLANK;
@@ -82,19 +85,22 @@ module n2m_ppu_timing (
     end
   end
 
-  // VBlank entry: one system cycle starting at the edge where LY becomes 144.
+  // Why: VBlank entry is a one-system-cycle pulse so the VBlank interrupt is
+  // raised exactly once per frame, on the edge where LY becomes 144.
   assign vblank_entry_d = dot_enable_i && lcd_enable_i && last_dot &&
                           (ly_q == line_t'(VISIBLE_LINES - 1));
   `N2A_DFF_RST(vblank_entry_q, vblank_entry_d, clk_i, reset_i)
 
-  // LY=LYC: live while the LCD runs, retained across LCD off.
+  // Why: LY=LYC is retained across LCD off so STAT keeps the last comparison
+  // while the counters are held at the origin.
   assign coincidence_live = ly_q == lyc_i;
   assign coincidence = lcd_enable_i ? coincidence_live : coincidence_retained_q;
   `N2A_DFF_RST(coincidence_retained_q, coincidence, clk_i, reset_i)
 
-  // STAT line: the OR of the enabled sources; the interrupt is its rising
-  // edge, sampled every system cycle. The mode 2 source also covers the
-  // VBlank entry cycle (documented DMG behavior); mode sources need the LCD on.
+  // Ref: Pan Docs "STAT interrupt": the STAT line is the OR of the enabled
+  // sources; the interrupt is its rising edge, sampled every system cycle. The
+  // mode 2 source also covers the VBlank entry cycle (documented DMG behavior);
+  // mode sources need the LCD on.
   assign mode0_source = stat_enables_i[STAT_MODE0_ENABLE] && (mode == MODE_HBLANK) &&
                         !(visible_line && dot_q < dot_t'(transfer_end + 9'd3));
   assign mode1_source = stat_enables_i[STAT_MODE1_ENABLE] && (mode == MODE_VBLANK);
@@ -107,8 +113,9 @@ module n2m_ppu_timing (
 
   assign dot_o = dot_q;
   assign ly_o = ly_q;
-  // The CPU-readable LY advances at dot 452, four dots before the raster
-  // line, and wraps 153 -> 0 there; LYC, VBlank and the renderer use ly_q.
+  // Why: only the CPU-readable LY advances early (dot 452, four dots before the
+  // raster line, wrapping 153 -> 0 there), to match DMG LY reads; LYC, VBlank
+  // and the renderer use ly_q so their timing is unchanged.
   assign ly_read_o = (dot_q >= dot_t'(LY_READ_DOT)) ? (last_line ? '0 : ly_q + line_t'(1)) : ly_q;
   assign mode_o = mode;
   assign coincidence_o = coincidence;
@@ -120,7 +127,6 @@ module n2m_ppu_timing (
 
   `N2A_ASSERT(dot_in_range, clk_i, reset_i, dot_q < dot_t'(DOTS_PER_LINE))
   `N2A_ASSERT(line_in_range, clk_i, reset_i, ly_q < line_t'(LINES_PER_FRAME))
-  // One edge after LCDC.7 falls the counters are back at the origin.
   `N2A_ASSERT(lcd_off_holds_origin, clk_i, reset_i,
       lcd_enable_i || $past(lcd_enable_i) || ((dot_q == '0) && (ly_q == '0)))
   `N2A_ASSERT_KNOWN(timing_controls_known, clk_i, reset_i,

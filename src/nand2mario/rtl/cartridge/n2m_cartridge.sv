@@ -33,22 +33,20 @@ module n2m_cartridge (
 );
   import n2m_cartridge_pkg::*;
 
-  // Header registers: defined only after the header has been loaded; a
-  // console reset keeps the inserted cartridge.
+  // Why: the header registers have no reset so that a console reset keeps the
+  // inserted cartridge; they are defined once the header has been loaded.
   logic [7:0] header_type_q, header_rom_size_q, header_ram_size_q;
   logic       type_load, rom_size_load, ram_size_load;
   logic       mbc1, ram_present;
   rom_bank_t  rom_mask;
   ram_bank_t  ram_mask;
 
-  // MBC1 registers.
   logic [4:0] bank1_q, bank1_d;
   logic [1:0] bank2_q, bank2_d;
   logic       mode_q, mode_d;
   logic       ramg_q, ramg_d;
   logic       register_write, bank1_write, bank2_write, mode_write, ramg_write;
 
-  // Request classification and translation.
   logic       rom_window, ram_window, ram_enabled;
   logic       local_request, local_accept, local_q;
   logic       backing_accept, backing_wait_d, backing_wait_q;
@@ -57,8 +55,6 @@ module n2m_cartridge (
   ram_bank_t  ram_bank;
   rom_address_t rom_address, ram_address, backing_address;
 
-  // ---------------------------------------------------------------------
-  // Header capture from the load port.
   assign type_load = load_write_i && (load_address_i == HEADER_TYPE_OFFSET);
   assign rom_size_load = load_write_i && (load_address_i == HEADER_ROM_SIZE_OFFSET);
   assign ram_size_load = load_write_i && (load_address_i == HEADER_RAM_SIZE_OFFSET);
@@ -70,8 +66,7 @@ module n2m_cartridge (
   assign rom_mask = rom_bank_mask(header_rom_size_q);
   assign ram_mask = ram_bank_mask(header_ram_size_q);
 
-  // ---------------------------------------------------------------------
-  // Request classification. The memory map forwards only the two cartridge
+  // Ref: Pan Docs "MBC1": the memory map forwards only the two cartridge
   // windows; a write inside the ROM window is an MBC1 register write (or
   // nothing for ROM-only), a RAM access without enabled RAM is local.
   assign rom_window = request_i.address <= 16'h7FFF;
@@ -86,8 +81,9 @@ module n2m_cartridge (
   assign mode_write = register_write && (request_i.address[14:13] == MBC1_MODE_SELECT);
   assign ramg_write = register_write && (request_i.address[14:13] == MBC1_RAMG_SELECT);
 
-  // MBC1 registers: five-bit BANK1 (reset 1), two-bit BANK2, MODE and RAMG;
-  // the full register value is written and masking happens on translation.
+  // Ref: Pan Docs "MBC1": five-bit BANK1 (reset 1), two-bit BANK2, MODE and
+  // RAMG. Why: the full value is stored and masked only on translation,
+  // because the BANK1-zero check must see all five bits.
   assign bank1_d = request_i.write_data[4:0];
   assign bank2_d = request_i.write_data[1:0];
   assign mode_d = request_i.write_data[0];
@@ -97,12 +93,11 @@ module n2m_cartridge (
   `N2A_DFF_RST_EN(mode_q, mode_d, clk_i, mode_write, reset_i, 1'b0)
   `N2A_DFF_RST_EN(ramg_q, ramg_d, clk_i, ramg_write, reset_i, 1'b0)
 
-  // ---------------------------------------------------------------------
-  // Translation. BANK1 of zero selects bank one before masking (the whole
-  // five-bit register is compared). The low ROM window is bank zero in mode
+  // Ref: Pan Docs "MBC1": BANK1 of zero selects bank one before masking (the
+  // whole five-bit register is compared). The low ROM window is bank zero in mode
   // 0 and BANK2 << 5 in mode 1; the high window is {BANK2, BANK1}; both are
   // masked to the header's bank count. RAM is bank zero in mode 0 and BANK2
-  // in mode 1, masked to the RAM bank count. A ROM-only (or unsupported)
+  // in mode 1, masked to the RAM bank count. Why: a ROM-only (or unsupported)
   // type selects the identity explicitly: the MBC1 registers may hold stale
   // values from an earlier header without an intervening reset.
   assign bank1_effective = (bank1_q == 5'd0) ? 5'd1 : bank1_q;
@@ -122,10 +117,10 @@ module n2m_cartridge (
     backing_request_o.write_data = request_i.write_data;
   end
 
-  // ---------------------------------------------------------------------
-  // Response. A local request is answered on the edge after acceptance from
-  // the local_q register; a forwarded request is answered by the backing's
-  // response, which is passed through in the same cycle.
+  // Why: a local answer comes from local_q one edge after acceptance, the
+  // backing's own next-edge timing, so a game sees one latency; a forwarded
+  // request passes the backing's response through in the same cycle and adds
+  // no cycle.
   assign backing_accept = backing_request_o.valid && backing_ready_i;
   assign backing_wait_d = backing_accept || (backing_wait_q && !backing_response_i.valid);
   `N2A_DFF_RST(local_q, local_accept, clk_i, reset_i)
@@ -137,10 +132,6 @@ module n2m_cartridge (
     response_o.read_data = local_q ? OPEN_BUS_DATA : backing_response_i.read_data;
   end
 
-  // ---------------------------------------------------------------------
-  // Protocol assertions (simulation only): known requests inside the two
-  // cartridge windows, one outstanding request, and no backing response
-  // without an accepted request.
   `N2A_ASSERT(request_known, clk_i, reset_i,
       !request_i.valid || !$isunknown(request_i))
   `N2A_ASSERT(request_in_cartridge_windows, clk_i, reset_i,
