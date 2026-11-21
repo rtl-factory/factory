@@ -6,6 +6,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge
 
+from src.common.dv.uart.uart_wire import UartWire
 from src.nand2doom.scripts.host.n2d_uart_debug_host import (
     CMD_HALT,
     CMD_INPUT,
@@ -41,32 +42,20 @@ MAX_CYCLES = int(os.environ.get("N2A_MAX_CYCLES", "220000"))
 SEED = int(os.environ.get("N2A_SEED", "33"))
 
 
+def _wire(dut) -> UartWire:
+    return UartWire(rx=dut.uart_rx_i, tx=dut.uart_tx_o, clock=dut.clk_i, clocks_per_bit=CLKS_PER_BIT)
+
+
 async def _uart_send_byte(dut, value: int, *, stop: int = 1) -> None:
-    dut.uart_rx_i.value = 0
-    await ClockCycles(dut.clk_i, CLKS_PER_BIT)
-    for bit in range(8):
-        dut.uart_rx_i.value = (value >> bit) & 1
-        await ClockCycles(dut.clk_i, CLKS_PER_BIT)
-    dut.uart_rx_i.value = stop
-    await ClockCycles(dut.clk_i, CLKS_PER_BIT)
-    dut.uart_rx_i.value = 1
+    await _wire(dut).send_byte(value, stop=stop)
 
 
 async def _uart_send(dut, packet: bytes) -> None:
-    for byte in packet:
-        await _uart_send_byte(dut, byte)
+    await _wire(dut).send(packet)
 
 
 async def _uart_receive_byte(dut) -> int:
-    await FallingEdge(dut.uart_tx_o)
-    await ClockCycles(dut.clk_i, CLKS_PER_BIT + (CLKS_PER_BIT // 2))
-    value = 0
-    for bit in range(8):
-        value |= int(dut.uart_tx_o.value) << bit
-        await ClockCycles(dut.clk_i, CLKS_PER_BIT)
-    assert int(dut.uart_tx_o.value) == 1, "response UART stop bit was low"
-    await ClockCycles(dut.clk_i, CLKS_PER_BIT // 2)
-    return value
+    return await _wire(dut).receive_byte()
 
 
 async def _uart_receive(dut):

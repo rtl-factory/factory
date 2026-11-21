@@ -22,6 +22,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, FallingEdge, First, ReadOnly, RisingEdge, Timer
 
+from src.common.dv.uart.uart_wire import UartWire
 from ...scripts.board.cart_loader import (CMD_HOLD, CMD_PING, CMD_READ, CMD_RELEASE, CMD_SNAP_PIN, CMD_SNAP_READ,
                                   CMD_SNAP_RELEASE, CMD_WRITE, RAM_BYTES, ROM_BYTES, STATUS_BAD_ADDRESS,
                                   STATUS_BAD_ARGUMENT, STATUS_BAD_COMMAND, STATUS_BAD_CRC, STATUS_NO_FRAME,
@@ -216,11 +217,9 @@ class Bench:
         d = self.dut
         await FallingEdge(d.clk_i)
         d.line_override_i.value = 1
-        for bit in bits:
-            d.line_i.value = bit
-            await ClockCycles(d.clk_i, CLKS_PER_BIT)
-        d.line_i.value = 1
-        await ClockCycles(d.clk_i, 2 * CLKS_PER_BIT)
+        line = UartWire(rx=d.line_i, clock=d.clk_i, clocks_per_bit=CLKS_PER_BIT)
+        await line.send_levels(bits)
+        await line.idle(2)
         d.line_override_i.value = 0
 
     async def expect_response(self, expected, limit_clocks):

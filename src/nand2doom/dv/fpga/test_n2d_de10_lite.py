@@ -1,8 +1,9 @@
 """Real board wrapper, external-clock SDRAM BFM, serial host transactions and JTAG keys."""
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import FallingEdge, RisingEdge, Timer, with_timeout
+from cocotb.triggers import RisingEdge, Timer, with_timeout
 
+from src.common.dv.uart.uart_wire import UartWire
 from src.nand2doom.dv.fpga.board_jtag import check_jtag_keys
 from src.nand2doom.dv.memory.sdram_pin_model import NOP, WRITE, SdramPinModel, join
 from src.nand2doom.scripts.host.n2d_uart_debug_host import (
@@ -59,28 +60,21 @@ async def board_serial_sdram_contract(dut):
     assert int(dut.LEDR.value) == 7, "PLL/init/halt status must be set, reset clear"
     assert initial == [(0, 1, 0), (0, 0, 1), (0, 0, 1), (0, 0, 0)]
 
+    # Ref: 2 Mbaud board rate, 500 ns per bit.
+    uart = UartWire(rx=dut.UART_RXD, tx=dut.UART_TXD, bit_ps=500_000)
+
     async def receive():
         packet = bytearray()
         length = 7
         while len(packet) < length:
-            await FallingEdge(dut.UART_TXD)
-            await Timer(750, unit="ns")  # Why: 1.5 bits at the 2 Mbaud board rate
-            value = 0
-            for bit in range(8):
-                value |= int(dut.UART_TXD.value) << bit
-                await Timer(500, unit="ns")
-            assert int(dut.UART_TXD.value), "UART stop bit"
-            packet.append(value)
+            packet.append(await uart.receive_byte())
             if len(packet) == 6:
                 length += packet[5] * 4
         return decode_response(bytes(packet))
 
     async def exchange(command, sequence, **kwargs):
         receiver = cocotb.start_soon(receive())
-        for value in request(command, sequence, **kwargs):
-            for bit in (0, *((value >> i) & 1 for i in range(8)), 1):
-                dut.UART_RXD.value = bit
-                await Timer(500, unit="ns")
+        await uart.send(request(command, sequence, **kwargs))
         response = await with_timeout(receiver, 500, "us")
         assert response.sequence == sequence and response.status == 0, response
         return response.words

@@ -23,6 +23,7 @@ from cocotb.triggers import FallingEdge, First, ReadOnly, RisingEdge, Timer
 from cocotb.utils import get_sim_time
 
 from src.common.dv.jtag.vjtag_stub_host import StubHost
+from src.common.dv.uart.uart_wire import UartWire
 from ...scripts.board.cart_loader import (CMD_HOLD, CMD_PING, CMD_READ, CMD_RELEASE, CMD_WRITE, address_field,
                                   chunks, decode_response, encode_request, response_total_length)
 from ..core.test_cpu import unpack
@@ -79,26 +80,16 @@ class UartHost:
     def __init__(self, dut):
         self.dut = dut
         self.received = []
+        self.wire = UartWire(rx=dut.UART_RXD, tx=dut.UART_TXD, bit_ps=BIT_NS * 1000)
         dut.UART_RXD.value = 1
 
     async def receiver(self):
-        d = self.dut
         while True:
-            await FallingEdge(d.UART_TXD)
-            await Timer(BIT_NS + BIT_NS // 2, unit='ns')
-            value = 0
-            for bit in range(8):
-                value |= int(d.UART_TXD.value) << bit
-                await Timer(BIT_NS, unit='ns')
-            assert int(d.UART_TXD.value) == 1, 'UART_TXD stop bit'
-            self.received.append(value)
+            self.received.append(await self.wire.receive_byte())
 
     async def send(self, data):
         await writable()
-        for byte in data:
-            for bit in (0, *((byte >> i) & 1 for i in range(8)), 1):
-                self.dut.UART_RXD.value = bit
-                await Timer(BIT_NS, unit='ns')
+        await self.wire.send(data)
 
     async def exchange(self, frame, limit_ns=400 * 10 * BIT_NS):
         """Send one frame and return its decoded, CRC-checked response."""

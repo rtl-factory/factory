@@ -22,6 +22,8 @@ from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
 from ...scripts.board.cart_loader import (CMD_HOLD, CMD_PING, CMD_READ, CMD_WRITE, address_field, decode_response,
                                   encode_request, response_total_length)
 from .test_system import CLOCK_PERIOD_NS, power_up
+from src.common.dv.uart.uart_wire import UartWire
+
 from .test_system_sdram import SDRAM_INITIALIZED_CLOCK, Host, load_image, release_and_verify
 
 UART_CLKS_PER_BIT = 8                 # Why: must match the registry's parameter for this target.
@@ -37,6 +39,8 @@ class LineHost:
         self.clock = 0
         self.received = []
         self.bound = int(os.environ['DV_MAX_CYCLES'])
+        self.wire = UartWire(rx=dut.uart_rx_i, tx=dut.uart_tx_o, clock=dut.clk_i,
+                             clocks_per_bit=UART_CLKS_PER_BIT, drive_edge='falling')
 
     async def ticker(self):
         while True:
@@ -45,33 +49,11 @@ class LineHost:
             assert self.clock <= self.bound, 'finite simulation bound exceeded'
 
     async def receiver(self):
-        """Sample uart_tx_o at mid-bit after each start edge."""
-        d = self.dut
         while True:
-            await RisingEdge(d.clk_i)
-            await ReadOnly()
-            if int(d.uart_tx_o.value):
-                continue
-            await ClockCycles(d.clk_i, UART_CLKS_PER_BIT // 2)
-            await ReadOnly()
-            assert not int(d.uart_tx_o.value), 'start bit glitch on the loader line'
-            byte = 0
-            for bit in range(8):
-                await ClockCycles(d.clk_i, UART_CLKS_PER_BIT)
-                await ReadOnly()
-                byte |= int(d.uart_tx_o.value) << bit
-            await ClockCycles(d.clk_i, UART_CLKS_PER_BIT)
-            await ReadOnly()
-            assert int(d.uart_tx_o.value), 'loader stop bit low'
-            self.received.append(byte)
+            self.received.append(await self.wire.receive_byte())
 
     async def send(self, data):
-        d = self.dut
-        for byte in data:
-            for level in [0] + [(byte >> bit) & 1 for bit in range(8)] + [1]:
-                await FallingEdge(d.clk_i)
-                d.uart_rx_i.value = level
-                await ClockCycles(d.clk_i, UART_CLKS_PER_BIT)
+        await self.wire.send(data)
 
     async def exchange(self, frame, limit_clocks=None):
         start = len(self.received)

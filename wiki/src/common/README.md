@@ -6,7 +6,7 @@ The shared project: blocks and scripts that every project reuses, with no design
 |---|---|
 | [Blocks](rtl/README.md) (`rtl`) | The SDRAM controller, UART receiver and transmitter, the UART memory endpoint, VGA timing, on-chip RAMs, the RV32 register file, clock-domain and reset synchronizers, shared packages and macros, and the JTAG keyboard endpoint |
 | [Board parts](fpga/README.md) (`fpga`) | The board clock of each board, used by every project's board top |
-| [Verification](dv/README.md) (`dv`) | Shared simulation models and benches: the SDRAM device model and the SDRAM controller benches |
+| [Verification](dv/README.md) (`dv`) | Shared simulation models and benches: the SDRAM device model, the SDRAM controller benches and the UART wire helper |
 | [Formal](fv/README.md) (`fv`) | Formal proofs of shared blocks: the SDRAM controller |
 | [Scripts](scripts/README.md) | The `scripts` discipline of `common`: host-side scripts bound to its blocks |
 

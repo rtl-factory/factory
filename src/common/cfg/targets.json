@@ -842,6 +842,25 @@
       "default_seed": 43,
       "max_cycles": 300000,
       "timeout_seconds": 300
+    },
+    "n2a_uart_wire": {
+      "kind": "cocotb",
+      "description": "Common UART wire helper against the common UART PHY at 12.5 clocks per bit, clock and time modes",
+      "top": "n2a_uart_wire_fixture",
+      "sources": [
+        "src/common/rtl/pkg/n2a_types_pkg.sv",
+        "src/common/rtl/sync/n2a_cdc_bit_sync.sv",
+        "src/common/rtl/uart/n2a_uart_rx.sv",
+        "src/common/rtl/uart/n2a_uart_tx.sv",
+        "src/common/dv/uart/n2a_uart_wire_fixture.sv"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.uart.test_uart_wire",
+      "testcase": "uart_wire_contract",
+      "default_seed": 5,
+      "max_cycles": 100000,
+      "level": "L0"
     }
   }
 }
