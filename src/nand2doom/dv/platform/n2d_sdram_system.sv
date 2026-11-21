@@ -124,20 +124,22 @@ module n2d_sdram_system #(
         .sdram_dqm_o(sdram_dqm), .sdram_dq_o(sdram_dq_out),
         .sdram_dq_oe_o(sdram_dq_oe), .sdram_dq_i(sdram_dq_in));
 
-    n2d_sdram_device_model u_device (
-        .clk_i, .address_i(sdram_address), .bank_i(sdram_bank),
+    n2a_sdram_model #(
+        .BURST_BEATS(8), .ROW_XOR_BANK(1'b1), .FILL(1'b0)
+    ) u_device (
+        .clk_i, .cke_i(sdram_cke), .cs_n_i(sdram_cs_n),
         .ras_n_i(sdram_ras_n), .cas_n_i(sdram_cas_n), .we_n_i(sdram_we_n),
+        .ba_i(sdram_bank), .addr_i(sdram_address),
         .dqm_i(sdram_dqm), .dq_i(sdram_dq_out), .dq_oe_i(sdram_dq_oe),
         .dq_o(sdram_dq_in),
         .preload_valid_i(preload_mode_i && preload_valid_i),
         .preload_address_i, .preload_data_i, .preload_byte_enable_i);
 
-    // Why: CKE/CS are tied active by the controller and fault injection is a
-    // fast-model feature with no meaning on the real controller path, so these
-    // inputs are unused.
+    // Why: fault injection is a fast-model feature with no meaning on the real
+    // controller path, so this input is unused.
     /* verilator lint_off UNUSEDSIGNAL */
     logic unused_inputs;
-    assign unused_inputs = sdram_cke ^ sdram_cs_n ^ sdram_force_error_i;
+    assign unused_inputs = sdram_force_error_i;
     /* verilator lint_on UNUSEDSIGNAL */
 
     always_ff @(posedge clk_i)
