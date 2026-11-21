@@ -15,6 +15,9 @@ and every formal target of its src/<project>/fv/<block>/<target>.sby into a test
 
 unit_tests() makes one L0 test per tests/ folder of a package: pytest on that folder.
 
+quartus_image() makes a board image target: the project's Quartus script run as a
+local action, with its SOF, gate evidence and reports as outputs.
+
 A wrapped target (one whose wrapper prepares a program image first) runs through
 the runner's own test command instead, without a sandbox and never cached,
 until its program builds become Bazel actions.
@@ -130,7 +133,9 @@ def hdl_project(name):
     )
     native.filegroup(
         name = "all_files",
-        srcs = native.glob(["**"], exclude = ["BUILD.bazel"]),
+        # Why: bytecode that running a script leaves behind is no input; it would rerun
+        # every action that reads the project.
+        srcs = native.glob(["**"], exclude = ["BUILD.bazel", "**/__pycache__/**", "**/*.pyc"]),
         visibility = ["//visibility:public"],
     )
     py_library(
@@ -269,3 +274,56 @@ def unit_tests(deps = []):
             tags = ["L0", "external", "no-sandbox", "unit"],
             timeout = "long",
         )
+
+
+def _quartus_image_impl(ctx):
+    out = ctx.actions.declare_directory(ctx.label.name)
+    args = ctx.actions.args()
+    args.add("--script", ctx.file.script)
+    args.add("--project", ctx.attr.project)
+    args.add("--out", out.path)
+    args.add("--")
+    args.add_all(ctx.attr.args)
+    ctx.actions.run(
+        executable = ctx.executable._runner,
+        arguments = [args],
+        inputs = depset(ctx.files.srcs + [ctx.file.script, ctx.file._toolchain]),
+        outputs = [out],
+        # Why: Quartus is a licensed, per-host install outside Bazel, and the scripts
+        # build in the checkout's workdir/; QUARTUS_SH comes from --action_env (or the pin).
+        execution_requirements = {"local": "1", "no-remote": "1", "no-sandbox": "1"},
+        use_default_shell_env = True,
+        mnemonic = "Quartus",
+        progress_message = "Building the board image %{label}",
+    )
+    return [DefaultInfo(files = depset([out]))]
+
+_quartus_image = rule(
+    implementation = _quartus_image_impl,
+    attrs = {
+        "args": attr.string_list(doc = "Arguments of the build script."),
+        "project": attr.string(mandatory = True, doc = "The Quartus project: workdir/quartus/<project>/."),
+        "script": attr.label(allow_single_file = [".py"], mandatory = True),
+        "srcs": attr.label_list(allow_files = True, doc = "Every file the build reads."),
+        "_runner": attr.label(default = "//tools/bazel:quartus_image", executable = True, cfg = "exec"),
+        "_toolchain": attr.label(default = "//cfg:toolchain.json", allow_single_file = True),
+    },
+)
+
+def quartus_image(name, script, project, args = []):
+    """A board image, built with `bazel build`; never part of //... (needs Quartus).
+
+    Args:
+      name: the target, by convention <board>_image.
+      script: the project's Quartus build script.
+      project: the Quartus project name the script builds.
+      args: the script's arguments that select the board and profile.
+    """
+    _quartus_image(
+        name = name,
+        script = script,
+        project = project,
+        args = args,
+        srcs = [":all_files", "//src/common:all_files"],
+        tags = ["manual", "quartus"],
+    )

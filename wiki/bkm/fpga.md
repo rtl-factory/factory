@@ -23,7 +23,7 @@ How a design is built with Quartus for the DE2-115 and DE10-Lite, gated, handed 
 ## Steps
 
 1. Check the host: the readiness check passes.
-2. Build headless from the board's config into a scratch output directory, never inside source folders.
+2. Build headless with `bazel build //src/<project>:<board>_image`, with `build --action_env=QUARTUS_SH=<path>` in `user.bazelrc` when Quartus is not at the pinned install directory. It runs the board's script into `workdir/` and leaves the image and its evidence in `bazel-bin/src/<project>/<board>_image/`, never inside source folders.
 3. Apply the gates: reviewed warnings, expected RAM inference, timing at every corner. Fix the design or the config (with review), never the gate.
 4. Record the evidence in the pull request: fit results (resource use), timing per corner, warnings summary, Quartus version, programming-file hash.
 5. On an authorizing issue, hand the programming file to the board host, verify it, program, and observe the board.

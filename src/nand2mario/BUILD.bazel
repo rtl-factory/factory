@@ -1,4 +1,4 @@
-load("//tools/bazel:hdl.bzl", "hdl_project", "unit_tests")
+load("//tools/bazel:hdl.bzl", "hdl_project", "quartus_image", "unit_tests")
 
 # Every simulation target of cfg/targets.json, and the project's files
 # (wiki/tools/bazel/spec.md).
@@ -6,3 +6,25 @@ hdl_project(name = "nand2mario")
 
 # The unit tests of the project's scripts.
 unit_tests()
+
+# Board images: bazel build //src/nand2mario:<board>_image on a host with Quartus.
+quartus_image(
+    name = "de10_lite_image",
+    args = ["--board", "de10_lite"],
+    project = "n2m_de10_lite",
+    script = "scripts/board/n2m_quartus.py",
+)
+
+quartus_image(
+    name = "de2_115_image",
+    args = ["--board", "de2_115"],
+    project = "n2m_de2_115",
+    script = "scripts/board/n2m_quartus.py",
+)
+
+quartus_image(
+    name = "de2_115_library_image",
+    args = ["--board", "de2_115", "--library"],
+    project = "n2m_de2_115_library",
+    script = "scripts/board/n2m_quartus.py",
+)
