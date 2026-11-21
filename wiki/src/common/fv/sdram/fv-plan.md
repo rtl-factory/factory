@@ -10,7 +10,7 @@
 
 ## Properties
 
-Spec lines are in the [MAS](../../rtl/sdram/mas.md): Parameters (WAIT_* and refresh), Ports (request hold, one response), Latency (table), and Reset and errors. Labels follow the harness: `p_` property, `a_` assumption, `h_` helper invariant, `c_` cover. Results hold for both configurations. Each target runs with `python3 tools/fv/fv.py run n2a_sdram_ctrl_line n2a_sdram_ctrl_word`. Sync commit for every row: `d478df1`.
+Spec lines are in the [MAS](../../rtl/sdram/mas.md): Parameters (WAIT_* and refresh), Ports (request hold, one response), Latency (table), and Reset and errors. Labels follow the harness: `p_` property, `a_` assumption, `h_` helper invariant, `c_` cover. Results hold for both configurations. Each target runs with `python3 tools/fv/fv.py run n2a_sdram_ctrl_line n2a_sdram_ctrl_word`. Sync commit for every row: `3d0d9bd` (this pull request's RTL).
 
 | Property | Harm if broken | Spec line | Result |
 |---|---|---|---|
