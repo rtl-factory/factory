@@ -19,7 +19,7 @@ The board configs are `src/nand2mario/cfg/n2m_quartus.json` (DE10-Lite), `src/na
 
 1. Take the build lock and stage the project under `workdir/quartus/<project>/`; every output path is confined below `workdir/`.
 2. Run `quartus_sh` compile, then a separate timing audit.
-3. Gate the reports: fitted resources and RAM geometry against the config; the system clock name and frequency; `check_timing` categories (exactly one `no_clock`, one `virtual_clock` and one `no_output_delay`, or two `no_output_delay` on the DE2-115; any other count or category fails); unconstrained and illegal clocks and ports (UCP); setup and hold slack at every corner, including the SDRAM and DAC paths; and every warning, which must be listed as reviewed (the one known connectivity warning is matched exactly).
+3. Gate the reports: fitted resources and RAM geometry against the config; the system clock name and frequency; `check_timing` categories (exactly one `no_clock`, one `virtual_clock` and one `no_output_delay`, or two `no_output_delay` on the DE2-115; any other count or category fails); unconstrained and illegal clocks and ports (UCP); setup and hold slack at every corner, including the SDRAM and DAC paths (an SDRAM write path starts in the SDRAM controller, or in the board reset synchronizer for `DRAM_CKE` and `DRAM_CS_N`, which follow reset); and every warning, which must be listed as reviewed (the one known connectivity warning is matched exactly).
 4. Write `evidence.json` (schema, project, device, resources, slack per corner, Fmax, clocks, warnings, Quartus version, source commit) and the SOF's identity sidecar. `program` refuses an SOF whose identity does not match its board.
 
 ## Loader protocol
