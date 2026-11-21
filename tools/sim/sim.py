@@ -40,6 +40,23 @@ def load_targets(root: Path = ROOT) -> dict:
     return targets
 
 
+TARGET_DEFAULTS = {"kind": "cocotb", "parameters": {}, "defines": [], "test_module": None,
+                   "testcase": None, "default_seed": None, "max_cycles": None}
+
+
+def _frozen(value):
+    if isinstance(value, dict):
+        return tuple(sorted(value.items()))
+    return tuple(value) if isinstance(value, list) else value
+
+
+def target_views(root: Path = ROOT) -> dict:
+    """Every target as a read-only object with the defaults filled in, for tests that check the registries."""
+    from types import SimpleNamespace
+    return {name: SimpleNamespace(**{k: _frozen(v) for k, v in {**TARGET_DEFAULTS, **target}.items()}, name=name)
+            for name, target in load_targets(root).items()}
+
+
 def fatal_matches(text: str, expected: dict) -> bool:
     options = expected.get("any_of", [expected])
     return any(all(str(option[key]) in text for key in ("file", "hierarchy", "message") if key in option)

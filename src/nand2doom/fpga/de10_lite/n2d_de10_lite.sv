@@ -31,7 +31,7 @@ module n2d_de10_lite (
     logic jtag_update, jtag_update_ir;
     logic [1:0] jtag_ir;
 
-    n2d_de10_lite_clock u_clock (.reference_clk_i(MAX10_CLK1_50),
+    n2a_de10_lite_clock u_clock (.reference_clk_i(MAX10_CLK1_50),
         .reset_i(!RESET_N), .clk_25_o(clk_25), .locked_o(locked));
     n2a_reset_sync u_reset (.clk_i(clk_25),
         .async_reset_i(!RESET_N || !locked), .reset_o(reset));

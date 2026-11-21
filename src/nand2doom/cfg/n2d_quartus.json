@@ -123,7 +123,7 @@
     "src/nand2doom/rtl/memory/n2d_memory_arbiter.sv",
     "src/nand2doom/rtl/memory/n2d_sdram_controller.sv",
     "src/nand2doom/rtl/memory/n2d_memory_controller.sv",
-    "src/nand2doom/fpga/de10_lite/n2d_de10_lite_clock_intel.sv",
+    "src/common/fpga/de10_lite/n2a_de10_lite_clock_intel.sv",
     "src/nand2doom/fpga/de10_lite/n2d_de10_lite.sv"
   ],
   "settings": "src/nand2doom/fpga/de10_lite/de10_lite.qsf",
@@ -203,10 +203,10 @@
       "settings": "src/nand2doom/fpga/de2_115/n2d_de2_115.qsf",
       "constraints": "src/nand2doom/fpga/de2_115/n2d_de2_115.sdc",
       "reference_port": "CLOCK_50",
-      "clock_module": "n2d_de2_115_clock",
+      "clock_module": "n2a_de2_115_clock",
       "forwarded_clocks": {"sdram_clock": "DRAM_CLK", "vga_dac_clock": "VGA_CLK"},
       "source_replacements": {
-        "src/nand2doom/fpga/de10_lite/n2d_de10_lite_clock_intel.sv": "src/nand2doom/fpga/de2_115/n2d_de2_115_clock_intel.sv",
+        "src/common/fpga/de10_lite/n2a_de10_lite_clock_intel.sv": "src/common/fpga/de2_115/n2a_de2_115_clock_intel.sv",
         "src/nand2doom/fpga/de10_lite/n2d_de10_lite.sv": "src/nand2doom/fpga/de2_115/n2d_de2_115.sv"
       },
       "ram_requirements": [
