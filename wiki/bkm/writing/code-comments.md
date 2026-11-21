@@ -13,12 +13,12 @@ A comment survives only as one of these. The lint checks the form; review checks
 
 | Kind | Form | Holds |
 |---|---|---|
-| Header | the file's leading comment block; in SystemVerilog also the block directly above a `module`, `interface`, `package`, `class`, `function` or `task`, and comments inside a module or interface port and parameter list | what the unit is, its contract, its ports; the summary a reader needs before the code |
+| Header | the file's leading comment block; in SystemVerilog also the block directly above a `module`, `interface`, `package`, `class`, `program`, `function`, `task`, `checker`, `typedef`, `localparam`, `parameter` or `` `define ``, and comments inside a module or interface port and parameter list or a `typedef` enum or struct body | what the unit, type, constant or macro is, its contract, its ports and fields; the summary a reader needs before the code |
 | Why | `Why: ...` | intent or a constraint the code cannot show: why this order, this width, this edge, this workaround |
 | Ref | `Ref: ...` | a fact owned by something we cannot reshape: a protocol, a datasheet timing, a vendor primitive, a spec section, with its source |
 | Todo | `TODO(#<issue>): ...` | open work, tracked by an issue |
 | License | `SPDX-License-Identifier`, `Copyright` | legal notices |
-| Directive | tool pragmas: `noqa`, `type:`, `pragma`, `verilator`, `synthesis`, `translate_off` and the like | instructions to a tool |
+| Directive | tool pragmas: `noqa`, `type:`, `pragma`, `verilator`, `synthesis`, `translate_off`, `verilog_lint:` and the like (full list in the lint spec) | instructions to a tool |
 
 A tag covers the comment lines directly under it, so a long `Why:` needs the tag once. Python docstrings are not comments: they document the API and are not linted.
 
@@ -31,7 +31,7 @@ A tag covers the comment lines directly under it, so a long `Why:` needs the tag
 - A comment that claims a constraint ("do not remove", "must stay in this order", "IMPORTANT") must be proven true on a live path, then encoded as the cheapest check in scope (an assertion, a test, a lint) and deleted. If it cannot be encoded, keep it as `Why:` and say what would break. Why: nothing fails when an agent ignores prose; a check fails every time ([encode-lessons-in-structure.md](../principles/encode-lessons-in-structure.md)).
 - Review comments with a fresh context, not the author's. The reviewer crewmate reads every comment in the diff against this keep list and flags any whose content is false, stale or narration under a tag. Why: an author defends its own comments (pstack `/no-comments`).
 - Never add a tag to an existing comment just to pass the lint. Read it, then delete it, encode it, or rewrite it as a true `Why:` or `Ref:`. Why: a tag on narration defeats the check and teaches the next agent to copy it.
-- Shrink the baseline whenever you touch a file that has one: clean its comments and run `python3 tools/lint/comment_lint.py --update-baseline`. Never raise a file's baseline. Why: the baseline freezes old violations so new ones fail; it only works if it moves one way.
+- Shrink the baseline whenever you touch a file that has one: clean its comments and run `python3 tools/lint/comment_lint.py --update-baseline`. Never raise a file's baseline; CI fails a pull request that does. Why: the baseline freezes old violations so new ones fail; it only works if it moves one way.
 
 ## Steps: cleaning up the comments of an area
 

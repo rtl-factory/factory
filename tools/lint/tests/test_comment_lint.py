@@ -70,6 +70,23 @@ def test_sv_header_and_api_docs_pass(tmp_path):
     assert lint(tmp_path, "m.sv", source) == []
 
 
+def test_sv_type_and_constant_docs_pass(tmp_path):
+    source = (
+        "package p;\n"
+        "  // Link phase of the endpoint.\n"
+        "  typedef enum logic [1:0] {\n"
+        "    IDLE,   // not owning the link\n"
+        "    HEADER  // request bytes 1..10\n"
+        "  } phase_e;\n"
+        "  // Bits per window descriptor.\n"
+        "  localparam int W = 96;\n"
+        "endpackage\n"
+        "// Expands to one flop.\n"
+        "`define DFF(q, d) always_ff @(posedge clk) q <= d;\n"
+    )
+    assert lint(tmp_path, "p.sv", source) == []
+
+
 def test_sv_narration_and_block_comments_fail(tmp_path):
     source = (
         "module m (input logic clk);\n"
@@ -102,3 +119,39 @@ def test_scope_skips_third_party_and_other_suffixes():
     assert not comment_lint.scanned("src/p/sw/third_party/x.py")
     assert not comment_lint.scanned("src/p/sw/main.c")
     assert not comment_lint.scanned("wiki/x.py")
+
+
+def test_portless_module_ends_its_header(tmp_path):
+    source = (
+        "module tb;\n"
+        "  logic a;\n"
+        "  // narration\n"
+        "  sub u (.a(a));\n"
+        "endmodule\n"
+    )
+    assert lint(tmp_path, "tb.sv", source) == [3]
+
+
+def test_starred_block_tag_and_license_anchor(tmp_path):
+    source = (
+        "module m;\n"
+        "  /*\n"
+        "   * Why: the core samples on the falling edge.\n"
+        "   */\n"
+        "  logic a;\n"
+        "  // TODO fix copyright later\n"
+        "endmodule\n"
+    )
+    assert lint(tmp_path, "s.sv", source) == [6]
+
+
+def test_line_numbers_survive_string_continuation(tmp_path):
+    source = 'module m;\n  initial $display("a\\\nb");\n  // narration\nendmodule\n'
+    assert lint(tmp_path, "c.sv", source) == [4]
+
+
+def test_baseline_may_not_rise_against_base():
+    assert comment_lint.raised({"a": 2, "b": 1}, {"a": 2, "b": 1}) == []
+    assert comment_lint.raised({"a.py": 3}, {"a.py": 2})[0].startswith("a.py: baseline raised")
+    assert comment_lint.raised({"new.py": 2}, {"old.py": 2}) == []
+    assert "total raised" in comment_lint.raised({"a": 1, "new.py": 1}, {"a": 1})[0]

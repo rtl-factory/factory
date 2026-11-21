@@ -28,15 +28,17 @@ SV_SUFFIXES = {".sv", ".svh", ".v", ".vh"}
 SKIPPED_PARTS = {"third_party"}
 
 TAG = re.compile(r"^(Why|Ref):\s*\S|^TODO\(#\d+\):\s*\S")
-LICENSE = re.compile(r"SPDX-License-Identifier|Copyright", re.IGNORECASE)
+LICENSE = re.compile(r"^(SPDX-License-Identifier:|Copyright\b)", re.IGNORECASE)
 PY_DIRECTIVE = re.compile(r"^(!|-\*-|noqa\b|type:|pragma\b|pylint:|fmt:|isort:|mypy:|coding[:=])", re.IGNORECASE)
 SV_DIRECTIVE = re.compile(
     r"^(verilator\b|synthesis\b|synopsys\b|pragma\b|altera\b|lint_off\b|lint_on\b|"
     r"translate_off\b|translate_on\b|spyglass\b|cadence\b|coverage\b|verilog_lint:)",
     re.IGNORECASE)
 SV_DECL = re.compile(r"^\s*(?:virtual\s+|static\s+|automatic\s+|pure\s+|extern\s+)*"
-                     r"(module|macromodule|interface|package|class|program|function|task|checker)\b")
+                     r"(module|macromodule|interface|package|class|program|function|task|checker|"
+                     r"typedef|localparam|parameter|`define)\b")
 SV_PORT_HOST = re.compile(r"^\s*(module|macromodule|interface)\b")
+SV_TYPE_BODY = re.compile(r"^\s*typedef\s+(enum|struct|union)\b")
 
 FIX = ("delete it, encode it in a name, type, assertion or test, or tag it "
        "'Why:', 'Ref:' or 'TODO(#<issue>):' (wiki/bkm/writing/code-comments.md)")
@@ -55,12 +57,20 @@ class Violation(NamedTuple):
 
 
 def body(text: str) -> str:
-    return text.strip().lstrip("/*#").rstrip("*/").strip()
+    """The comment's text without markers, from its first non-empty line."""
+    stripped = text.strip().lstrip("/#")
+    if stripped.endswith("*/"):
+        stripped = stripped[:-2]
+    for line in stripped.splitlines():
+        line = line.strip().lstrip("*").strip()
+        if line:
+            return line
+    return ""
 
 
 def allowed(text: str, directive: re.Pattern[str]) -> bool:
     b = body(text)
-    return not b or bool(TAG.match(b) or LICENSE.search(b) or directive.match(b))
+    return not b or bool(TAG.match(b) or LICENSE.match(b) or directive.match(b))
 
 
 def python_comments(source: str) -> tuple[list[Comment], set[int]]:
@@ -106,6 +116,8 @@ def sv_comments(source: str) -> tuple[list[Comment], set[int]]:
         elif c == '"':
             j = i + 1
             while j < n and source[j] not in '"\n':
+                if source[j] == "\\" and j + 1 < n and source[j + 1] == "\n":
+                    line += 1
                 j += 2 if source[j] == "\\" else 1
             code_lines.add(line)
             line_has_code = True
@@ -120,7 +132,8 @@ def sv_comments(source: str) -> tuple[list[Comment], set[int]]:
 
 def sv_allowed_lines(lines: list[str], code_lines: set[int]) -> set[int]:
     """Lines whose comments are API documentation: comment blocks directly
-    above a declaration, and comments inside a module or interface header."""
+    above a declaration, and comments inside a module or interface header or
+    a typedef enum, struct or union body."""
     ok: set[int] = set()
     for number, text in enumerate(lines, start=1):
         if SV_DECL.match(text):
@@ -129,10 +142,26 @@ def sv_allowed_lines(lines: list[str], code_lines: set[int]) -> set[int]:
                 ok.add(above)
                 above -= 1
         if SV_PORT_HOST.match(text):
-            end = number
+            depth, end = 0, number
             while end <= len(lines):
                 ok.add(end)
-                if ");" in lines[end - 1].split("//")[0]:
+                code = lines[end - 1].split("//")[0]
+                ended = False
+                for ch in code:
+                    depth += (ch == "(") - (ch == ")")
+                    if ch == ";" and depth <= 0:
+                        ended = True
+                        break
+                if ended:
+                    break
+                end += 1
+        if SV_TYPE_BODY.match(text):
+            depth, end = 0, number
+            while end <= len(lines):
+                ok.add(end)
+                code = lines[end - 1].split("//")[0]
+                depth += code.count("{") - code.count("}")
+                if depth <= 0 and "}" in code:
                     break
                 end += 1
     return ok
@@ -205,14 +234,44 @@ def check(found: list[Violation], baseline: dict[str, int], files: list[str]) ->
     return errors
 
 
+def raised(baseline: dict[str, int], base: dict[str, int]) -> list[str]:
+    """Error lines for a baseline that grew against the base branch's: any
+    entry above its base value, or a higher total (a new entry may only carry
+    counts moved from entries that dropped, as in a rename)."""
+    errors = [f"{path}: baseline raised from {base[path]} to {n}; clean the new comments instead"
+              for path, n in sorted(baseline.items()) if path in base and n > base[path]]
+    if sum(baseline.values()) > sum(base.values()):
+        errors.append(f"baseline total raised from {sum(base.values())} to {sum(baseline.values())}; "
+                      "new files must have no comment violations")
+    return errors
+
+
+def relative(arg: str) -> str:
+    path = Path(arg)
+    path = path if path.is_absolute() else Path.cwd() / path
+    try:
+        return path.resolve().relative_to(ROOT).as_posix()
+    except ValueError:
+        return arg
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("paths", nargs="*", help="files to check (default: every tracked file in scope)")
     parser.add_argument("--update-baseline", action="store_true", help="rewrite the baseline to the current counts")
     parser.add_argument("--all", action="store_true", help="list every violation, ignoring the baseline")
+    parser.add_argument("--base-baseline", type=Path,
+                        help="the base branch's baseline file; fail if this baseline is higher")
     args = parser.parse_args(argv)
 
-    files = [p for p in args.paths if scanned(p)] if args.paths else tracked_files(ROOT)
+    if args.paths:
+        rel = [relative(p) for p in args.paths]
+        missing = [p for p in rel if not (ROOT / p).is_file()]
+        if missing:
+            parser.error("no such file: " + ", ".join(missing))
+        files = [p for p in rel if scanned(p)]
+    else:
+        files = tracked_files(ROOT)
     found = [v for f in files for v in violations(ROOT / f, f)]
 
     if args.update_baseline:
@@ -232,6 +291,8 @@ def main(argv: list[str] | None = None) -> int:
         gone = sorted(set(baseline) - set(files))
         files = files + gone
     errors = check(found, baseline, files)
+    if args.base_baseline and args.base_baseline.exists():
+        errors += raised(baseline, json.loads(args.base_baseline.read_text()))
     for e in errors:
         print(e)
     if errors:
