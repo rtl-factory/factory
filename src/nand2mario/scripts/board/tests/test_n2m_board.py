@@ -92,7 +92,8 @@ class ManifestTests(unittest.TestCase):
         cases = {
             "clock": lambda c: c.update(clock_hz=50_000_000),
             "duplicate pin": lambda c: c["pins"].update({"SW[0]": c["pins"]["SW[1]"]}),
-            "escaping source": lambda c: c["sources"].append("../outside.sv"),
+            "unknown library": lambda c: c["libraries"].append("n2m_no_such_block"),
+            "source list": lambda c: c.update(sources=["../outside.sv"]),
             "unknown key": lambda c: c.update(extra=1),
             "bad parameter": lambda c: c["parameters"].update(lower=1),
             "timeout": lambda c: c.update(timeout_seconds=0),

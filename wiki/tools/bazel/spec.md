@@ -13,11 +13,12 @@ How the build meets its [requirements](prd.md). How agents use it day to day is 
 | `tools/bazel/hdl.bzl` | `hdl_project()`, the `verilator_model` rule, the test macros and `unit_tests()` |
 | `tools/bazel/pytest_main.py` | The entry point of every unit-test target |
 | `tools/bazel/quartus_image.py` | The board image action: runs a project's Quartus script and keeps its outputs |
+| `tools/bazel/hdl_libraries.py` | The HDL libraries: derives each project's `cfg/libraries.json` from its HDL, resolves a target's libraries into its ordered file list, and prints the registry Bazel reads |
 | `src/<project>/BUILD.bazel` | One call, `hdl_project(name = "<project>")` |
 
 ## Repositories
 
-- `@hdl_registry` reads every `src/<project>/cfg/targets.json` and exposes them as `SIM_TARGETS`, a dictionary from project to its targets, and every `src/<project>/fv/<block>/<target>.sby` as `FV_TARGETS`: its header's level and timeout, and the repository paths its `[files]` section copies. Bazel watches the files and folders it read, so editing a registry or adding a `.sby` file re-reads it. The formats are the runners' ([simulation](../sim/spec.md), [formal](../fv/spec.md)); nothing else lists targets.
+- `@hdl_registry` runs `tools/bazel/hdl_libraries.py registry` with the host's `python3`. It reads every `src/<project>/cfg/targets.json` and exposes them as `SIM_TARGETS`, a dictionary from project to its targets with their libraries resolved into `sources` and `headers`, and every `src/<project>/fv/<block>/<target>.sby` as `FV_TARGETS`: its header's level and timeout, and the files of its library. Bazel watches the files and folders it read, so editing a registry, a library list or a `.sby` file, or adding one, re-reads it. The formats are the runners' ([simulation](../sim/spec.md), [formal](../fv/spec.md)); nothing else lists targets.
 - `@oss_cad_suite` checks the `VERSION` stamp in the suite's install directory (`$OSS_CAD_SUITE`, else `install_dir` in `cfg/toolchain.json`) against the pin and links its `bin/` folder; the stamp is an input of every formal test. Without the pinned suite it provides an `sby` that prints the fix and fails, so only the formal tests fail.
 - `@verilator` finds the Verilator install (`$VERILATOR`, then `PATH`, then `~/verilator/bin`), checks `verilator --version` against `cfg/toolchain.json`, and links its executables into the repository. They are inputs of every model action, so a different binary rebuilds every model.
 
@@ -61,7 +62,21 @@ A formal test runs `tools/fv/fv.py run <target>` with `FV_ROOT` set to its runfi
 
 ## Wrapped targets
 
-A target with a `wrapper` prepares its program image before it runs, so its test runs `sim.py --workdir workdir/bazel/<target> test <target>` unchanged, tagged `external` (always run), `no-sandbox`, `no-cache` and `wrapped`: it builds its own model and writes under the checkout's `workdir/`, and always reruns. This holds until program builds become Bazel actions.
+A target with a `wrapper` prepares its program image before it runs, so its test runs `sim.py --workdir workdir/bazel/<target> test <target>` unchanged, tagged `external` (always run), `no-sandbox`, `no-cache` and `wrapped`: it builds its own model and writes under the checkout's `workdir/`, and always reruns. `--//tools/bazel:waves` reaches it as `SIM_WAVES=1`, so its waveform lands under `workdir/bazel/<target>/`. This holds until program builds become Bazel actions.
+
+## Libraries
+
+Every HDL file is a library, declared once in its project's `src/<project>/cfg/libraries.json` and named after it: a module or package file by its file name, a header by its name without the extension. An entry holds the file (`srcs`, or `headers` for an include file) and `deps`, the libraries it needs: the modules it instantiates, the packages it names (`pkg::`) and the headers it includes. A module with several implementations is one library with `variants` (`default`, `intel`, `asic`; the file without a suffix or with `_portable` is `default`), each with its own file and needs. A need named only under `` `ifdef X `` or `` `ifndef X `` is written `{"if": ["X"], "deps": [...]}` or `{"unless": ["X"], "deps": [...]}`; include guards (`` `ifndef *_VH ``) are not conditions. Design code (`rtl/`, `fpga/`) never needs a `dv/` library: a vendor primitive's stand-in is named by the target that wants it.
+
+The files are generated, never edited: `python3 tools/bazel/hdl_libraries.py update` rewrites them from the HDL, and the L0 test `//tools/bazel:bazel.unit` fails while one is stale. The parse is textual (instances at the start of a line, `name::`, `` `include ``), which the factory's coding rules keep reliable ([RTL coding](../../bkm/rtl.md)).
+
+A target names its libraries, never its files:
+
+- A simulation target in `targets.json` uses `libraries` (default: the library of its `top`), `flavors` (the variants to prefer, such as `["intel"]` for a test of the Intel backend) and its `defines`.
+- A formal target's `.sby` header names `# library: <harness>`, and optionally `# flavors:` and `# defines:`; its script reads `{sources}`, and the formal runner writes the `[files]` section ([formal runner spec](../fv/spec.md)).
+- A board manifest (`src/<project>/cfg/*_quartus.json`) names `libraries` and `flavors: ["intel"]`; the board script resolves them into the sources and headers it writes into the Quartus project.
+
+Resolving lists every library after the libraries it needs, each once, so packages come before their users; the headers are listed separately. `python3 tools/bazel/hdl_libraries.py files <library>... [--flavor F] [--define D] [--headers]` prints a library's list as a `.f` file for any other tool.
 
 ## Board images
 

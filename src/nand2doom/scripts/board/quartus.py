@@ -92,8 +92,26 @@ def io_standard(config: dict, port: str):
     return standards.get(port, standards.get(port.split("[")[0], DEFAULT_IO_STANDARD))
 
 
+def hdl_libraries(root: Path):
+    """The library resolver, tools/bazel/hdl_libraries.py (wiki/tools/bazel/spec.md, Libraries)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("hdl_libraries", root / "tools" / "bazel" / "hdl_libraries.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def resolve_sources(config: dict, root: Path) -> dict:
+    """The manifest with its libraries resolved into the ordered sources and headers."""
+    resolver = hdl_libraries(root)
+    config = resolver.resolve_target(config, resolver.load(root))
+    config.pop("libraries", None)
+    config.pop("flavors", None)
+    return config
+
+
 def load_config(root: Path, filename: str, board: str = BASE_BOARD) -> dict:
-    config = select_board(json.loads((root / filename).read_text()), board)
+    config = select_board(resolve_sources(json.loads((root / filename).read_text()), root), board)
     for key in ("project", "top", "device", "clock_module", "reference_port"):
         if not re.fullmatch(r"[A-Za-z0-9_]+", config[key]):
             raise ValueError(f"invalid {key}")

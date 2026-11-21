@@ -9,7 +9,7 @@ Each project lists its targets in `src/<project>/cfg/targets.json`:
 | Field | Meaning |
 |---|---|
 | `kind` | `cocotb` (default) or `native`: a self-checking SystemVerilog top built with `verilator --binary` and run as is; exit status is the verdict |
-| `sources` | HDL files, relative to the repository root, compile order |
+| `libraries`, `flavors` | The libraries the model compiles (default: the library of `top`) and the variants to prefer; resolved into the ordered sources ([Bazel spec, Libraries](../bazel/spec.md#libraries)) |
 | `top` | HDL top level |
 | `test_module`, `testcase` | cocotb test (Python module path from the repository root); cocotb targets only |
 | `defines`, `plusargs` | Native targets only: `-D` defines at build time; plusargs at run time |

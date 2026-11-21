@@ -1,67 +1,40 @@
 """Repositories the factory's HDL rules need (wiki/tools/bazel/spec.md).
 
 hdl_registry: the simulation targets of every src/<project>/cfg/targets.json and
-the formal targets of every src/<project>/fv/<block>/<target>.sby, as Starlark
-data the project packages turn into Bazel targets.
+the formal targets of every src/<project>/fv/<block>/<target>.sby, with their
+libraries resolved into files by tools/bazel/hdl_libraries.py, as Starlark data
+the project packages turn into Bazel targets.
 verilator: the Verilator install the toolchain pinned (cfg/toolchain.json),
 found on PATH or under ~/verilator, version-checked and fingerprinted.
 oss_cad_suite: the OSS CAD Suite install the toolchain pinned, found under its
 install directory, release-checked.
 """
 
-def _normalize(path):
-    parts = []
-    for part in path.split("/"):
-        if part == "..":
-            parts.pop()
-        elif part and part != ".":
-            parts.append(part)
-    return "/".join(parts)
-
-def _parse_sby(text, folder):
-    """The runner's header fields and the repository paths the [files] section copies."""
-    fields = {"level": None, "timeout_seconds": 600}
-    files = []
-    section = None
-    for line in text.splitlines():
-        stripped = line.strip()
-        if section == None and stripped.startswith("#"):
-            key, _, value = stripped.lstrip("#").partition(":")
-            if key.strip() == "level":
-                fields["level"] = value.strip()
-            elif key.strip() == "timeout":
-                fields["timeout_seconds"] = int(value.strip())
-        elif stripped.startswith("[") and stripped.endswith("]"):
-            section = stripped[1:-1].strip()
-        elif section == "files" and stripped and not stripped.startswith("#"):
-            words = stripped.replace("\t", " ").split(" ")
-            files.append(_normalize(folder + "/" + words[-1]))
-    return dict(fields, files = files)
-
 def _registry_impl(rctx):
-    src = rctx.workspace_root.get_child("src")
-    sim, formal = {}, {}
-    for project in sorted(src.readdir(), key = lambda p: p.basename):
-        name = project.basename
-        registry = project.get_child("cfg").get_child("targets.json")
-        if registry.exists:
-            sim[name] = json.decode(rctx.read(registry))["targets"]
-        fv = project.get_child("fv")
-        if not fv.exists:
-            continue
-        for block in sorted(fv.readdir(), key = lambda p: p.basename):
-            if not block.is_dir:
-                continue
-            for sby in sorted(block.readdir(), key = lambda p: p.basename):
-                if not sby.basename.endswith(".sby"):
-                    continue
-                folder = "src/%s/fv/%s" % (name, block.basename)
-                target = _parse_sby(rctx.read(sby), folder)
-                target["sby"] = folder + "/" + sby.basename
-                formal.setdefault(name, {})[sby.basename[:-len(".sby")]] = target
+    root = rctx.workspace_root
+    script = root.get_child("tools").get_child("bazel").get_child("hdl_libraries.py")
+    python = rctx.which("python3")
+    if not python:
+        fail("python3 not found: the HDL registry is read with the host's python3")
+    result = rctx.execute([python, "-I", script, "--root", root, "registry"], quiet = True)
+    if result.return_code != 0:
+        fail("reading the HDL registry failed:\n" + result.stderr)
+    registry = json.decode(result.stdout)
+    # Why: a changed registry, library list, .sby file or resolver must regenerate the targets.
+    for path in registry["inputs"] + ["tools/bazel/hdl_libraries.py"]:
+        rctx.watch(root.get_child(path))
+    # Why: a new project, registry or .sby file shows up as a changed folder listing.
+    for project in root.get_child("src").readdir(watch = "yes"):
+        for folder in ["cfg", "fv"]:
+            if project.get_child(folder).exists:
+                project.get_child(folder).readdir(watch = "yes")
+        if project.get_child("fv").exists:
+            for block in project.get_child("fv").readdir(watch = "yes"):
+                if block.is_dir:
+                    block.readdir(watch = "yes")
     rctx.file("BUILD.bazel", "")
     rctx.file("targets.bzl", "SIM_TARGETS = json.decode(%r)\nFV_TARGETS = json.decode(%r)\n" %
-                             (json.encode(sim), json.encode(formal)))
+                             (json.encode(registry["sim"]), json.encode(registry["formal"])))
 
 hdl_registry = repository_rule(implementation = _registry_impl)
 

@@ -110,6 +110,13 @@ def top_ports(path):
     return expected
 
 
+
+def simulation_sources(target: str) -> list:
+    """A nand2doom simulation target's resolved source list."""
+    resolver = quartus.hdl_libraries(ROOT)
+    targets = json.loads((ROOT / "src/nand2doom/cfg/targets.json").read_text())["targets"]
+    return resolver.resolve_target(targets[target], resolver.load(ROOT))["sources"]
+
 class QuartusTests(unittest.TestCase):
     def setUp(self):
         (ROOT / "workdir").mkdir(exist_ok=True)
@@ -456,7 +463,7 @@ class QuartusTests(unittest.TestCase):
         self.assertEqual(len(set(self.config["pins"].values())), len(expected))
         self.assertEqual(self.config["device"], "10M50DAF484C7G")
         self.assertFalse(any("fast" in s or "preload" in s or "/dv/" in s for s in self.config["sources"]))
-        simulation = json.loads((ROOT / "src/nand2doom/cfg/targets.json").read_text())["targets"]["n2d_de10_lite"]["sources"]
+        simulation = simulation_sources("n2d_de10_lite")
         # Why: Quartus must build what the board simulation checked, except that each
         # common memory contract uses its Intel backend in place of the portable one
         # (never both files of a pair) and the dv/ primitive stub is left out; the
@@ -468,7 +475,7 @@ class QuartusTests(unittest.TestCase):
                          "src/common/fpga/de10_lite/n2a_de10_lite_clock_intel.sv"}
         # Why: lint-waiver companions and the dv/ primitive stub exist only for
         # Verilator, so Quartus never sees them.
-        expected_sources = {intel_for.get(source, source) for source in simulation[:-1]
+        expected_sources = {intel_for.get(source, source) for source in simulation
                             if "/dv/" not in source}
         self.assertIn("src/common/rtl/jtag/n2a_jtag_virtual.sv", self.config["sources"])
         self.assertEqual(set(self.config["sources"]), expected_sources)
@@ -481,7 +488,7 @@ class QuartusTests(unittest.TestCase):
             self.assertIn(requirement["single_port"], (True, False))
 
     def test_de10_lite_resolution_is_the_unchanged_top_level(self):
-        raw = json.loads((ROOT / "src/nand2doom/cfg/n2d_quartus.json").read_text())
+        raw = quartus.resolve_sources(json.loads((ROOT / "src/nand2doom/cfg/n2d_quartus.json").read_text()), ROOT)
         raw.pop("boards")
         resolved = {key: value for key, value in self.config.items()
                     if key != "board" and key not in quartus.BOARD_DEFAULTS}
@@ -536,12 +543,12 @@ class QuartusTests(unittest.TestCase):
         expected = [de2_115_ram(r) for r in self.config["ram_requirements"]]
         self.assertEqual(config["ram_requirements"], expected)
         self.assertEqual(sum(r["count"] * r["m9ks_each"] for r in expected), 318)
-        simulation = json.loads((ROOT / "src/nand2doom/cfg/targets.json").read_text())["targets"]["n2d_de2_115"]["sources"]
+        simulation = simulation_sources("n2d_de2_115")
         intel_for = {"src/common/rtl/memory/n2a_sync_ram.sv": "src/common/rtl/memory/n2a_sync_ram_intel.sv",
                      "src/common/rtl/memory/n2a_sdp_ram_portable.sv": "src/common/rtl/memory/n2a_sdp_ram_intel.sv",
                      "src/common/rtl/memory/n2a_tdp_ram_portable.sv": "src/common/rtl/memory/n2a_tdp_ram_intel.sv",
                      f"{clocks}/de2_115/n2a_de2_115_clock_portable.sv": f"{clocks}/de2_115/n2a_de2_115_clock_intel.sv"}
-        self.assertEqual(set(config["sources"]), {intel_for.get(name, name) for name in simulation[:-1]
+        self.assertEqual(set(config["sources"]), {intel_for.get(name, name) for name in simulation
                                                   if "/dv/" not in name})
 
     def test_de2_115_plan_and_generated_project(self):

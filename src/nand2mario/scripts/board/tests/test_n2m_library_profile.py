@@ -43,6 +43,12 @@ def invalid_ram_warning_sets():
         yield label, [w.replace(old, new) for w in good]
 
 
+
+def simulation_sources(target: dict) -> list:
+    """A simulation target's resolved source list."""
+    resolver = quartus.hdl_libraries(ROOT)
+    return resolver.resolve_target(target, resolver.load(ROOT))["sources"]
+
 class LibraryProfileTests(unittest.TestCase):
     def setUp(self):
         self.ordinary = quartus.selected_config(ROOT, 'de2_115')
@@ -66,7 +72,7 @@ class LibraryProfileTests(unittest.TestCase):
         self.assertIn('.CART_SDRAM        (1)', source)
         targets = json.loads((ROOT / 'src/nand2mario/cfg/targets.json').read_text())['targets']
         self.assertEqual(targets['n2m_system_menu_sdram']['parameters']['CART_LIBRARY'], 1)
-        simulation = [s for s in targets['n2m_de2_115']['sources'] if '/dv/' not in s]
+        simulation = [s for s in simulation_sources(targets['n2m_de2_115']) if '/dv/' not in s]
         # Why: the dv/ stand-in of the vendor primitive is simulation-only and both lists
         # bind the common n2a_jtag_virtual, so they match once dv/ is dropped.
         synthesis = [s.replace('_intel.sv', '_portable.sv') for s in self.library['sources']]

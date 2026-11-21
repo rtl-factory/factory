@@ -1,0 +1,662 @@
+{
+  "schema_version": 1,
+  "libraries": {
+    "n2m_apu": {
+      "deps": [
+        "macros",
+        "n2m_interfaces_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/audio/n2m_apu.sv"
+      ]
+    },
+    "n2m_board_inputs": {
+      "deps": [
+        "macros",
+        "n2a_cdc_bit_sync"
+      ],
+      "srcs": [
+        "src/nand2mario/fpga/board_io/n2m_board_inputs.sv"
+      ]
+    },
+    "n2m_cartridge": {
+      "deps": [
+        "macros",
+        "n2m_cartridge_pkg",
+        "n2m_interfaces_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/cartridge/n2m_cartridge.sv"
+      ]
+    },
+    "n2m_cartridge_backing": {
+      "deps": [
+        "macros",
+        "n2m_cartridge_pkg",
+        "n2m_dual_port_ram"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/cartridge/n2m_cartridge_backing.sv"
+      ]
+    },
+    "n2m_cartridge_pkg": {
+      "srcs": [
+        "src/nand2mario/rtl/cartridge/n2m_cartridge_pkg.sv"
+      ]
+    },
+    "n2m_cpu": {
+      "deps": [
+        "n2m_cpu_bus",
+        "n2m_cpu_control",
+        "n2m_cpu_execute",
+        "n2m_cpu_pkg",
+        "n2m_cpu_retire",
+        "n2m_cpu_stop_policy",
+        "n2m_interfaces_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/core/n2m_cpu.sv"
+      ]
+    },
+    "n2m_cpu_alu": {
+      "srcs": [
+        "src/nand2mario/rtl/core/n2m_cpu_alu.sv"
+      ]
+    },
+    "n2m_cpu_bus": {
+      "deps": [
+        "macros",
+        "n2m_cpu_pkg",
+        "n2m_interfaces_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/core/n2m_cpu_bus.sv"
+      ]
+    },
+    "n2m_cpu_control": {
+      "deps": [
+        "macros",
+        "n2m_cpu_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/core/n2m_cpu_control.sv"
+      ]
+    },
+    "n2m_cpu_execute": {
+      "deps": [
+        "n2m_cpu_alu",
+        "n2m_cpu_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/core/n2m_cpu_execute.sv"
+      ]
+    },
+    "n2m_cpu_pkg": {
+      "srcs": [
+        "src/nand2mario/rtl/core/n2m_cpu_pkg.sv"
+      ]
+    },
+    "n2m_cpu_retire": {
+      "deps": [
+        "macros",
+        "n2m_cpu_pkg",
+        "n2m_interfaces_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/core/n2m_cpu_retire.sv"
+      ]
+    },
+    "n2m_cpu_stop_policy": {
+      "deps": [
+        "n2m_cpu_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/core/n2m_cpu_stop_policy.sv"
+      ]
+    },
+    "n2m_de10_lite": {
+      "deps": [
+        "macros",
+        "n2a_de10_lite_clock",
+        "n2a_jtag_keyboard",
+        "n2a_jtag_virtual",
+        "n2a_reset_sync",
+        "n2m_board_inputs",
+        "n2m_interfaces_pkg",
+        "n2m_scancode_buttons",
+        "n2m_seven_segment",
+        "n2m_system"
+      ],
+      "srcs": [
+        "src/nand2mario/fpga/de10_lite/n2m_de10_lite.sv"
+      ]
+    },
+    "n2m_de10_lite_fixture": {
+      "deps": [
+        "n2a_sdram_model",
+        "n2m_de10_lite"
+      ],
+      "srcs": [
+        "src/nand2mario/dv/fpga/n2m_de10_lite_fixture.sv"
+      ]
+    },
+    "n2m_de10_lite_lint": {
+      "srcs": [
+        "src/nand2mario/dv/fpga/n2m_de10_lite_lint.v"
+      ]
+    },
+    "n2m_de2_115": {
+      "deps": [
+        "macros",
+        "n2a_de2_115_clock",
+        "n2a_jtag_keyboard",
+        "n2a_jtag_virtual",
+        "n2a_reset_sync",
+        "n2m_board_inputs",
+        "n2m_interfaces_pkg",
+        "n2m_scancode_buttons",
+        "n2m_seven_segment",
+        "n2m_system"
+      ],
+      "srcs": [
+        "src/nand2mario/fpga/de2_115/n2m_de2_115.sv"
+      ]
+    },
+    "n2m_de2_115_fixture": {
+      "deps": [
+        "n2a_sdram_model",
+        "n2m_de2_115"
+      ],
+      "srcs": [
+        "src/nand2mario/dv/fpga/n2m_de2_115_fixture.sv"
+      ]
+    },
+    "n2m_display": {
+      "deps": [
+        "macros",
+        "n2m_display_pkg",
+        "n2m_frame_bridge",
+        "n2m_frame_ram",
+        "n2m_frame_snapshot",
+        "n2m_snapshot_pkg",
+        "n2m_vga_scanout"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/video/n2m_display.sv"
+      ]
+    },
+    "n2m_display_pkg": {
+      "deps": [
+        "n2m_snapshot_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/video/n2m_display_pkg.sv"
+      ]
+    },
+    "n2m_dma": {
+      "deps": [
+        "macros",
+        "n2m_dma_pkg",
+        "n2m_interfaces_pkg",
+        "n2m_memory_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/dma/n2m_dma.sv"
+      ]
+    },
+    "n2m_dma_fixture": {
+      "deps": [
+        "n2m_cartridge",
+        "n2m_cartridge_backing",
+        "n2m_cartridge_pkg",
+        "n2m_dma",
+        "n2m_interfaces_pkg",
+        "n2m_memory",
+        "n2m_memory_pkg",
+        "n2m_timebase"
+      ],
+      "srcs": [
+        "src/nand2mario/dv/dma/n2m_dma_fixture.sv"
+      ]
+    },
+    "n2m_dma_pkg": {
+      "srcs": [
+        "src/nand2mario/rtl/dma/n2m_dma_pkg.sv"
+      ]
+    },
+    "n2m_dual_port_ram": {
+      "variants": {
+        "default": {
+          "deps": [
+            "macros"
+          ],
+          "srcs": [
+            "src/nand2mario/rtl/memory/n2m_dual_port_ram.sv"
+          ]
+        },
+        "asic": {
+          "deps": [
+            "macros",
+            "n2a_sync_ram_wt"
+          ],
+          "srcs": [
+            "src/nand2mario/rtl/memory/n2m_dual_port_ram_asic.sv"
+          ]
+        }
+      }
+    },
+    "n2m_dual_port_ram_dual_fixture": {
+      "deps": [
+        "n2m_dual_port_ram"
+      ],
+      "srcs": [
+        "src/nand2mario/dv/memory/n2m_dual_port_ram_dual_fixture.sv"
+      ]
+    },
+    "n2m_dual_port_ram_shared_fixture": {
+      "deps": [
+        "n2m_dual_port_ram"
+      ],
+      "srcs": [
+        "src/nand2mario/dv/memory/n2m_dual_port_ram_shared_fixture.sv"
+      ]
+    },
+    "n2m_dual_port_ram_single_fixture": {
+      "deps": [
+        "n2m_dual_port_ram"
+      ],
+      "srcs": [
+        "src/nand2mario/dv/memory/n2m_dual_port_ram_single_fixture.sv"
+      ]
+    },
+    "n2m_frame_bridge": {
+      "deps": [
+        "macros",
+        "n2m_display_pkg",
+        "n2m_snapshot_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/video/n2m_frame_bridge.sv"
+      ]
+    },
+    "n2m_frame_ram": {
+      "deps": [
+        "macros",
+        "n2a_sdp_ram",
+        "n2m_display_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/video/n2m_frame_ram.sv"
+      ]
+    },
+    "n2m_frame_snapshot": {
+      "deps": [
+        "macros",
+        "n2m_display_pkg",
+        "n2m_snapshot_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/video/n2m_frame_snapshot.sv"
+      ]
+    },
+    "n2m_interfaces_fixture": {
+      "deps": [
+        "n2m_interfaces_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/dv/core/n2m_interfaces_fixture.sv"
+      ]
+    },
+    "n2m_interfaces_pkg": {
+      "srcs": [
+        "src/nand2mario/rtl/core/n2m_interfaces_pkg.sv"
+      ]
+    },
+    "n2m_interrupts": {
+      "deps": [
+        "macros",
+        "n2m_interfaces_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/interrupts/n2m_interrupts.sv"
+      ]
+    },
+    "n2m_joypad": {
+      "deps": [
+        "macros",
+        "n2m_interfaces_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/joypad/n2m_joypad.sv"
+      ]
+    },
+    "n2m_library": {
+      "deps": [
+        "macros",
+        "n2m_cartridge",
+        "n2m_cartridge_backing",
+        "n2m_cartridge_pkg",
+        "n2m_interfaces_pkg",
+        "n2m_library_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/cartridge/n2m_library.sv"
+      ]
+    },
+    "n2m_library_fixture": {
+      "deps": [
+        "n2m_cartridge_pkg",
+        "n2m_interfaces_pkg",
+        "n2m_library"
+      ],
+      "srcs": [
+        "src/nand2mario/dv/menu/n2m_library_fixture.sv"
+      ]
+    },
+    "n2m_library_pkg": {
+      "srcs": [
+        "src/nand2mario/rtl/cartridge/n2m_library_pkg.sv"
+      ]
+    },
+    "n2m_loader_pkg": {
+      "srcs": [
+        "src/nand2mario/rtl/uart/n2m_loader_pkg.sv"
+      ]
+    },
+    "n2m_memory": {
+      "deps": [
+        "macros",
+        "n2m_dual_port_ram",
+        "n2m_interfaces_pkg",
+        "n2m_memory_decode",
+        "n2m_memory_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/memory/n2m_memory.sv"
+      ]
+    },
+    "n2m_memory_decode": {
+      "deps": [
+        "macros",
+        "n2m_interfaces_pkg",
+        "n2m_memory_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/memory/n2m_memory_decode.sv"
+      ]
+    },
+    "n2m_memory_pkg": {
+      "srcs": [
+        "src/nand2mario/rtl/memory/n2m_memory_pkg.sv"
+      ]
+    },
+    "n2m_ppu": {
+      "deps": [
+        "macros",
+        "n2m_interfaces_pkg",
+        "n2m_ppu_background",
+        "n2m_ppu_mix",
+        "n2m_ppu_objects",
+        "n2m_ppu_pkg",
+        "n2m_ppu_registers",
+        "n2m_ppu_timing",
+        "n2m_ppu_window"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/video/n2m_ppu.sv"
+      ]
+    },
+    "n2m_ppu_background": {
+      "deps": [
+        "macros",
+        "n2m_ppu_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/video/n2m_ppu_background.sv"
+      ]
+    },
+    "n2m_ppu_fixture": {
+      "deps": [
+        "n2m_dual_port_ram",
+        "n2m_interfaces_pkg",
+        "n2m_ppu",
+        "n2m_ppu_pkg",
+        "n2m_timebase"
+      ],
+      "srcs": [
+        "src/nand2mario/dv/video/n2m_ppu_fixture.sv"
+      ]
+    },
+    "n2m_ppu_mix": {
+      "deps": [
+        "macros",
+        "n2m_ppu_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/video/n2m_ppu_mix.sv"
+      ]
+    },
+    "n2m_ppu_objects": {
+      "deps": [
+        "macros",
+        "n2m_ppu_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/video/n2m_ppu_objects.sv"
+      ]
+    },
+    "n2m_ppu_pkg": {
+      "srcs": [
+        "src/nand2mario/rtl/video/n2m_ppu_pkg.sv"
+      ]
+    },
+    "n2m_ppu_registers": {
+      "deps": [
+        "macros",
+        "n2m_interfaces_pkg",
+        "n2m_ppu_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/video/n2m_ppu_registers.sv"
+      ]
+    },
+    "n2m_ppu_timing": {
+      "deps": [
+        "macros",
+        "n2m_ppu_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/video/n2m_ppu_timing.sv"
+      ]
+    },
+    "n2m_ppu_window": {
+      "deps": [
+        "macros",
+        "n2m_ppu_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/video/n2m_ppu_window.sv"
+      ]
+    },
+    "n2m_scancode_buttons": {
+      "deps": [
+        "macros"
+      ],
+      "srcs": [
+        "src/nand2mario/fpga/board_io/n2m_scancode_buttons.sv"
+      ]
+    },
+    "n2m_sdram_backing": {
+      "deps": [
+        "macros",
+        "n2a_sdram_ctrl",
+        "n2m_cartridge_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/storage/n2m_sdram_backing.sv"
+      ]
+    },
+    "n2m_sdram_backing_fixture": {
+      "deps": [
+        "n2a_sdram_model",
+        "n2m_cartridge_pkg",
+        "n2m_sdram_backing"
+      ],
+      "srcs": [
+        "src/nand2mario/dv/storage/n2m_sdram_backing_fixture.sv"
+      ]
+    },
+    "n2m_sdram_ctrl_fixture": {
+      "deps": [
+        "n2a_sdram_ctrl",
+        "n2a_sdram_model"
+      ],
+      "srcs": [
+        "src/nand2mario/dv/storage/n2m_sdram_ctrl_fixture.sv"
+      ]
+    },
+    "n2m_serial": {
+      "deps": [
+        "macros",
+        "n2m_interfaces_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/serial/n2m_serial.sv"
+      ]
+    },
+    "n2m_seven_segment": {
+      "srcs": [
+        "src/nand2mario/fpga/board_io/n2m_seven_segment.sv"
+      ]
+    },
+    "n2m_snapshot_pkg": {
+      "srcs": [
+        "src/nand2mario/rtl/video/n2m_snapshot_pkg.sv"
+      ]
+    },
+    "n2m_system": {
+      "deps": [
+        "macros",
+        "n2m_apu",
+        "n2m_cartridge",
+        "n2m_cartridge_backing",
+        "n2m_cartridge_pkg",
+        "n2m_cpu",
+        "n2m_display",
+        "n2m_dma",
+        "n2m_interfaces_pkg",
+        "n2m_interrupts",
+        "n2m_joypad",
+        "n2m_library",
+        "n2m_library_pkg",
+        "n2m_memory",
+        "n2m_memory_pkg",
+        "n2m_ppu",
+        "n2m_sdram_backing",
+        "n2m_serial",
+        "n2m_snapshot_pkg",
+        "n2m_timebase",
+        "n2m_timer",
+        "n2m_uart_link"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/system/n2m_system.sv"
+      ]
+    },
+    "n2m_system_sdram_fixture": {
+      "deps": [
+        "n2a_sdram_model",
+        "n2a_uart_rx",
+        "n2a_uart_tx",
+        "n2m_cartridge_pkg",
+        "n2m_interfaces_pkg",
+        "n2m_system"
+      ],
+      "srcs": [
+        "src/nand2mario/dv/system/n2m_system_sdram_fixture.sv"
+      ]
+    },
+    "n2m_timebase": {
+      "deps": [
+        "macros"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/core/n2m_timebase.sv"
+      ]
+    },
+    "n2m_timer": {
+      "deps": [
+        "macros",
+        "n2m_interfaces_pkg",
+        "n2m_timer_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/timer/n2m_timer.sv"
+      ]
+    },
+    "n2m_timer_pkg": {
+      "srcs": [
+        "src/nand2mario/rtl/timer/n2m_timer_pkg.sv"
+      ]
+    },
+    "n2m_uart_link": {
+      "deps": [
+        "macros",
+        "n2a_uart_mem",
+        "n2a_uart_rx",
+        "n2a_uart_tx",
+        "n2m_cartridge_pkg",
+        "n2m_loader_pkg",
+        "n2m_snapshot_pkg",
+        "n2m_uart_loader",
+        "n2m_uart_mem_port"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/uart/n2m_uart_link.sv"
+      ]
+    },
+    "n2m_uart_loader": {
+      "deps": [
+        "macros",
+        "n2m_cartridge_pkg",
+        "n2m_dual_port_ram",
+        "n2m_loader_pkg",
+        "n2m_snapshot_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/uart/n2m_uart_loader.sv"
+      ]
+    },
+    "n2m_uart_loader_fixture": {
+      "deps": [
+        "n2a_uart_rx",
+        "n2a_uart_tx",
+        "n2m_cartridge_pkg",
+        "n2m_snapshot_pkg",
+        "n2m_uart_link"
+      ],
+      "srcs": [
+        "src/nand2mario/dv/uart/n2m_uart_loader_fixture.sv"
+      ]
+    },
+    "n2m_uart_mem_port": {
+      "deps": [
+        "macros",
+        "n2m_cartridge_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/uart/n2m_uart_mem_port.sv"
+      ]
+    },
+    "n2m_vga_scanout": {
+      "deps": [
+        "macros",
+        "n2a_vga_timing",
+        "n2m_display_pkg"
+      ],
+      "srcs": [
+        "src/nand2mario/rtl/video/n2m_vga_scanout.sv"
+      ]
+    }
+  }
+}

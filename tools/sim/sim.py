@@ -26,13 +26,27 @@ COMPILE_ALLOWANCE_SECONDS = 900
 LEVELS = ["L0", "L1", "L2", "L3", "L4"]
 
 
+def hdl_libraries(root: Path = ROOT):
+    """The library resolver, tools/bazel/hdl_libraries.py, of the tree being run."""
+    import importlib.util
+    path = root / "tools" / "bazel" / "hdl_libraries.py"
+    if not path.is_file():
+        path = Path(__file__).resolve().parents[1] / "bazel" / "hdl_libraries.py"
+    spec = importlib.util.spec_from_file_location("hdl_libraries", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def load_targets(root: Path = ROOT) -> dict:
     targets = {}
+    resolver = hdl_libraries(root)
+    libraries = resolver.load(root)
     for registry in sorted(root.glob("src/*/cfg/targets.json")):
         for name, target in json.loads(registry.read_text())["targets"].items():
             if name in targets:
                 raise ValueError(f"target {name} defined twice")
-            target = dict(target, project=registry.parts[-3])
+            target = dict(resolver.resolve_target(target, libraries), project=registry.parts[-3])
             native = target.get("kind") == "native"
             if target.get("regression_action", "test") not in ("test", "compile") or (
                     not native and ("regression_action" in target or "trace_fst" in target)):
@@ -262,7 +276,8 @@ def main(argv=None) -> int:
     child.add_argument("--spec", type=Path)
     child.add_argument("--model", type=Path)
     args = parser.parse_args(argv)
-    targets = load_targets()
+    # Why: a Bazel model build or test reads only its spec; the registries are not its inputs.
+    targets = {} if getattr(args, "spec", None) else load_targets()
     workdir = args.workdir if args.workdir.is_absolute() else ROOT / args.workdir
     if args.command == "list":
         for name, target in sorted(targets.items()):

@@ -18,6 +18,12 @@ from src.nand2mario.scripts.board.tests.test_n2m_board import setUpModule  # noq
 from src.nand2mario.scripts.board.tests.sof_identity_fixture import companion_bytes, passing_evidence
 
 
+
+def simulation_sources(target: dict) -> list:
+    """A simulation target's resolved source list."""
+    resolver = quartus.hdl_libraries(ROOT)
+    return resolver.resolve_target(target, resolver.load(ROOT))["sources"]
+
 class De2Tests(unittest.TestCase):
     def setUp(self):
         self.config = quartus.load_config(ROOT, quartus.BOARD_CONFIGS['de2_115'])
@@ -52,7 +58,7 @@ class De2Tests(unittest.TestCase):
 
     def test_simulation_and_synthesis_closures(self):
         targets = json.loads((ROOT / 'src/nand2mario/cfg/targets.json').read_text())['targets']
-        simulation = [s for s in targets['n2m_de2_115']['sources'] if '/dv/' not in s]
+        simulation = [s for s in simulation_sources(targets['n2m_de2_115']) if '/dv/' not in s]
         # Why: the dv/ stand-in of the vendor primitive is simulation-only and both lists
         # bind the common n2a_jtag_virtual, so they match once dv/ is dropped.
         synthesis = [s.replace('_intel.sv', '_portable.sv') for s in self.config['sources']]

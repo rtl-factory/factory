@@ -2,10 +2,16 @@
 """Run every project's formal targets with SymbiYosys (wiki/tools/fv/spec.md).
 
 A target is one SymbiYosys file, src/<project>/fv/<block>/<target>.sby, whose
-header names its regression level and time budget:
+header names its regression level, time budget and the library it proves (its
+files come from src/<project>/cfg/libraries.json, wiki/tools/bazel/spec.md):
 
     # level: L0
     # timeout: 600
+    # library: <harness library>
+
+The runner writes the file with `{sources}` in its script replaced by the
+library's ordered sources and a [files] section that copies them and their
+headers, and runs that.
 
 Each run writes <workdir>/<target>_<task>/ for every task in the file, keeps
 counterexample and cover traces there, and prints one line per task.
@@ -30,12 +36,12 @@ DEFAULT_WORKDIR = Path(os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR") or ROOT / "
 CONFIG = ROOT / "cfg" / "toolchain.json"
 LEVELS = ["L0", "L1", "L2", "L3", "L4"]
 DEFAULT_TIMEOUT_SECONDS = 600
-HEADER = re.compile(r"^#\s*(level|timeout)\s*:\s*(\S+)\s*$")
+HEADER = re.compile(r"^#\s*(level|timeout|library|flavors|defines)\s*:\s*(.*?)\s*$")
 
 
 def parse_target(path: Path) -> dict:
     """Read a .sby file's header fields and task list."""
-    fields = {"level": None, "timeout_seconds": DEFAULT_TIMEOUT_SECONDS}
+    fields = {"level": None, "timeout_seconds": DEFAULT_TIMEOUT_SECONDS, "libraries": [], "flavors": [], "defines": []}
     tasks, section = [], None
     for line in path.read_text().splitlines():
         match = HEADER.match(line)
@@ -43,8 +49,10 @@ def parse_target(path: Path) -> dict:
             key, value = match.groups()
             if key == "level":
                 fields["level"] = value
-            else:
+            elif key == "timeout":
                 fields["timeout_seconds"] = int(value)
+            else:
+                fields["libraries" if key == "library" else key] = value.split()
             continue
         stripped = line.strip()
         if stripped.startswith("[") and stripped.endswith("]"):
@@ -55,16 +63,43 @@ def parse_target(path: Path) -> dict:
         raise ValueError(f"{path}: timeout over {DEFAULT_TIMEOUT_SECONDS} s; every proof must finish in ten minutes")
     if fields["level"] not in LEVELS + ["manual"]:
         raise ValueError(f"{path}: header needs '# level: L0..L4' or 'manual'")
+    if len(fields["libraries"]) != 1:
+        raise ValueError(f"{path}: header needs '# library: <the harness library>'")
     return dict(fields, sby=path, tasks=tasks or [""])
+
+
+def hdl_libraries(root: Path = ROOT):
+    """The library resolver, tools/bazel/hdl_libraries.py, of the tree being run."""
+    import importlib.util
+    path = root / "tools" / "bazel" / "hdl_libraries.py"
+    if not path.is_file():
+        path = Path(__file__).resolve().parents[1] / "bazel" / "hdl_libraries.py"
+    spec = importlib.util.spec_from_file_location("hdl_libraries", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def render(target: dict, root: Path = ROOT) -> str:
+    """The .sby file with its library's sources in the script and a [files] section."""
+    text = target["sby"].read_text()
+    if "{sources}" not in text:
+        raise ValueError(f"{target['sby']}: its script must name the library's files as {{sources}}")
+    if re.search(r"^\s*\[files\]", text, re.M):
+        raise ValueError(f"{target['sby']}: drop [files]; the runner writes it from the library")
+    files = [f"{name} {root / name}" for name in target["headers"] + target["sources"]]
+    return text.replace("{sources}", " ".join(target["sources"])).rstrip("\n") + "\n\n[files]\n" + "\n".join(files) + "\n"
 
 
 def load_targets(root: Path = ROOT) -> dict:
     targets = {}
+    resolver = hdl_libraries(root)
+    libraries = resolver.load(root)
     for path in sorted(root.glob("src/*/fv/*/*.sby")):
         name = path.stem
         if name in targets:
             raise ValueError(f"formal target {name} defined twice")
-        target = parse_target(path)
+        target = resolver.resolve_target(parse_target(path), libraries)
         target["project"] = path.relative_to(root).parts[1]
         targets[name] = target
     return targets
@@ -97,10 +132,12 @@ def run_target(name: str, target: dict, workdir: Path, sby: str) -> list[dict]:
     workdir.mkdir(parents=True, exist_ok=True)
     prefix = workdir / name
     log = workdir / f"{name}.log"
+    rendered = workdir / f"{name}.sby"
+    rendered.write_text(render(target))
     start = time.monotonic()
     with open(log, "w") as out:
-        process = subprocess.Popen([sby, "-f", "--prefix", str(prefix), target["sby"].name],
-                                   cwd=target["sby"].parent, stdout=out, stderr=subprocess.STDOUT,
+        process = subprocess.Popen([sby, "-f", "--prefix", str(prefix), rendered.name],
+                                   cwd=workdir, stdout=out, stderr=subprocess.STDOUT,
                                    start_new_session=True)
         try:
             process.wait(timeout=target["timeout_seconds"])

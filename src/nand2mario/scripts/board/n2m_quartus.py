@@ -94,8 +94,26 @@ def io_standard(config: dict, port: str):
     return standards.get(port, standards.get(port.split("[")[0], DEFAULT_IO_STANDARD))
 
 
+def hdl_libraries(root: Path):
+    """The library resolver, tools/bazel/hdl_libraries.py (wiki/tools/bazel/spec.md, Libraries)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("hdl_libraries", root / "tools" / "bazel" / "hdl_libraries.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def resolve_sources(config: dict, root: Path) -> dict:
+    """The manifest with its libraries resolved into the ordered sources and headers."""
+    resolver = hdl_libraries(root)
+    config = resolver.resolve_target(config, resolver.load(root))
+    config.pop("libraries", None)
+    config.pop("flavors", None)
+    return config
+
+
 def load_config(root: Path, filename: str = DEFAULT_CONFIG) -> dict:
-    return validate_config(json.loads((root / filename).read_text()), root)
+    return validate_config(resolve_sources(json.loads((root / filename).read_text()), root), root)
 
 
 def validate_config(config: dict, root: Path) -> dict:

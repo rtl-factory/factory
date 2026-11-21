@@ -10,6 +10,7 @@ import fv  # noqa: E402
 SBY = """# A formal target
 # level: L0
 # timeout: 120
+# library: t_fv
 [tasks]
 prove
 cover
@@ -23,6 +24,11 @@ def make(root: Path, project: str, block: str, name: str, text: str = SBY) -> Pa
     path = root / "src" / project / "fv" / block / f"{name}.sby"
     path.parent.mkdir(parents=True)
     path.write_text(text)
+    # Why: every target proves the one library t_fv; it is declared once per tree.
+    if not list(root.glob("src/*/cfg/libraries.json")):
+        libraries = root / "src" / project / "cfg" / "libraries.json"
+        libraries.parent.mkdir(parents=True)
+        libraries.write_text('{"libraries": {"t_fv": {"srcs": ["t_fv.sv"], "deps": ["m"]}, "m": {"headers": ["m.vh"]}}}')
     return path
 
 
@@ -33,13 +39,13 @@ def test_header_and_tasks(tmp_path):
 
 
 def test_default_timeout_is_ten_minutes(tmp_path):
-    target = fv.parse_target(make(tmp_path, "p", "b", "t", "# level: L1\n[options]\nmode prove\n"))
+    target = fv.parse_target(make(tmp_path, "p", "b", "t", "# level: L1\n# library: t_fv\n[options]\nmode prove\n"))
     assert target["timeout_seconds"] == 600 and target["tasks"] == [""]
 
 
 def test_timeout_over_ten_minutes_is_an_error(tmp_path):
     with pytest.raises(ValueError):
-        fv.parse_target(make(tmp_path, "p", "b", "t", "# level: L0\n# timeout: 7200\n"))
+        fv.parse_target(make(tmp_path, "p", "b", "t", "# level: L0\n# timeout: 7200\n# library: t_fv\n"))
 
 
 def test_missing_level_is_an_error(tmp_path):
@@ -65,3 +71,19 @@ def test_repository_targets_parse():
     targets = fv.load_targets()
     assert {"n2d_memory_arbiter", "n2d_ps2_keyboard"} <= set(targets)
     assert all(t["timeout_seconds"] <= 600 for t in targets.values())
+
+
+def test_missing_library_is_an_error(tmp_path):
+    with pytest.raises(ValueError, match="library"):
+        fv.parse_target(make(tmp_path, "p", "b", "t", "# level: L0\n[options]\nmode prove\n"))
+
+
+def test_render_fills_the_script_and_the_files_from_the_library(tmp_path):
+    path = make(tmp_path, "p", "b", "t", SBY + "[script]\nread_slang -I . {sources} --top t_fv\n")
+    target = fv.load_targets(tmp_path)["t"]
+    text = fv.render(target, tmp_path)
+    assert "read_slang -I . t_fv.sv --top t_fv" in text
+    assert text.endswith(f"[files]\nm.vh {tmp_path / 'm.vh'}\nt_fv.sv {tmp_path / 't_fv.sv'}\n")
+    path.write_text(SBY + "[script]\nread_slang t_fv.sv\n")
+    with pytest.raises(ValueError, match="sources"):
+        fv.render(fv.load_targets(tmp_path)["t"], tmp_path)

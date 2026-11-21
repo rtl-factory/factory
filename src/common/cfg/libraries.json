@@ -1,0 +1,390 @@
+{
+  "schema_version": 1,
+  "libraries": {
+    "assertion_macros": {
+      "deps": [
+        "macros"
+      ],
+      "headers": [
+        "src/common/rtl/pkg/assertion_macros.vh"
+      ]
+    },
+    "macros": {
+      "deps": [
+        "assertion_macros"
+      ],
+      "headers": [
+        "src/common/rtl/pkg/macros.vh"
+      ]
+    },
+    "n2a_altsyncram_port_stub": {
+      "srcs": [
+        "src/common/dv/memory/n2a_altsyncram_port_stub.sv"
+      ]
+    },
+    "n2a_cdc_bit_sync": {
+      "deps": [
+        "macros"
+      ],
+      "srcs": [
+        "src/common/rtl/sync/n2a_cdc_bit_sync.sv"
+      ]
+    },
+    "n2a_de10_lite_clock": {
+      "variants": {
+        "intel": {
+          "srcs": [
+            "src/common/fpga/de10_lite/n2a_de10_lite_clock_intel.sv"
+          ]
+        },
+        "default": {
+          "deps": [
+            "macros"
+          ],
+          "srcs": [
+            "src/common/fpga/de10_lite/n2a_de10_lite_clock_portable.sv"
+          ]
+        }
+      }
+    },
+    "n2a_de2_115_clock": {
+      "variants": {
+        "intel": {
+          "srcs": [
+            "src/common/fpga/de2_115/n2a_de2_115_clock_intel.sv"
+          ]
+        },
+        "default": {
+          "deps": [
+            "macros"
+          ],
+          "srcs": [
+            "src/common/fpga/de2_115/n2a_de2_115_clock_portable.sv"
+          ]
+        }
+      }
+    },
+    "n2a_jtag_keyboard": {
+      "deps": [
+        "macros",
+        "n2a_cdc_bit_sync",
+        "n2a_reset_sync",
+        "n2a_types_pkg"
+      ],
+      "srcs": [
+        "src/common/rtl/jtag/n2a_jtag_keyboard.sv"
+      ]
+    },
+    "n2a_jtag_keyboard_fixture": {
+      "deps": [
+        "n2a_jtag_keyboard"
+      ],
+      "srcs": [
+        "src/common/dv/jtag/n2a_jtag_keyboard_fixture.sv"
+      ]
+    },
+    "n2a_jtag_virtual": {
+      "srcs": [
+        "src/common/rtl/jtag/n2a_jtag_virtual.sv"
+      ]
+    },
+    "n2a_reset_sync": {
+      "deps": [
+        "macros"
+      ],
+      "srcs": [
+        "src/common/rtl/sync/n2a_reset_sync.sv"
+      ]
+    },
+    "n2a_rv32_regfile": {
+      "deps": [
+        "macros"
+      ],
+      "srcs": [
+        "src/common/rtl/riscv/n2a_rv32_regfile.sv"
+      ]
+    },
+    "n2a_sdp_ram": {
+      "variants": {
+        "intel": {
+          "deps": [
+            "macros"
+          ],
+          "srcs": [
+            "src/common/rtl/memory/n2a_sdp_ram_intel.sv"
+          ]
+        },
+        "default": {
+          "deps": [
+            "macros"
+          ],
+          "srcs": [
+            "src/common/rtl/memory/n2a_sdp_ram_portable.sv"
+          ]
+        }
+      }
+    },
+    "n2a_sdram_ctrl": {
+      "deps": [
+        "assertion_macros",
+        "macros",
+        "n2a_sdram_pkg"
+      ],
+      "srcs": [
+        "src/common/rtl/sdram/n2a_sdram_ctrl.sv"
+      ]
+    },
+    "n2a_sdram_ctrl_fixture": {
+      "deps": [
+        "n2a_sdram_ctrl",
+        "n2a_sdram_model"
+      ],
+      "srcs": [
+        "src/common/dv/sdram/n2a_sdram_ctrl_fixture.sv"
+      ]
+    },
+    "n2a_sdram_ctrl_fv": {
+      "deps": [
+        "n2a_sdram_ctrl"
+      ],
+      "srcs": [
+        "src/common/fv/sdram/n2a_sdram_ctrl_fv.sv"
+      ]
+    },
+    "n2a_sdram_model": {
+      "srcs": [
+        "src/common/dv/sdram/n2a_sdram_model.sv"
+      ]
+    },
+    "n2a_sdram_model_fixture": {
+      "deps": [
+        "n2a_sdram_model"
+      ],
+      "srcs": [
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ]
+    },
+    "n2a_sdram_pkg": {
+      "srcs": [
+        "src/common/rtl/sdram/n2a_sdram_pkg.sv"
+      ]
+    },
+    "n2a_sync_ram": {
+      "variants": {
+        "default": {
+          "deps": [
+            "macros"
+          ],
+          "srcs": [
+            "src/common/rtl/memory/n2a_sync_ram.sv"
+          ]
+        },
+        "intel": {
+          "deps": [
+            "macros"
+          ],
+          "srcs": [
+            "src/common/rtl/memory/n2a_sync_ram_intel.sv"
+          ]
+        }
+      }
+    },
+    "n2a_sync_ram_16384x8_fixture": {
+      "deps": [
+        "n2a_sync_ram"
+      ],
+      "srcs": [
+        "src/common/dv/memory/n2a_sync_ram_16384x8_fixture.sv"
+      ]
+    },
+    "n2a_sync_ram_512x141_fixture": {
+      "deps": [
+        "n2a_sync_ram"
+      ],
+      "srcs": [
+        "src/common/dv/memory/n2a_sync_ram_512x141_fixture.sv"
+      ]
+    },
+    "n2a_sync_ram_invalid_addr_width_fixture": {
+      "deps": [
+        "n2a_sync_ram"
+      ],
+      "srcs": [
+        "src/common/dv/memory/n2a_sync_ram_invalid_addr_width_fixture.sv"
+      ]
+    },
+    "n2a_sync_ram_invalid_data_width_fixture": {
+      "deps": [
+        "n2a_sync_ram"
+      ],
+      "srcs": [
+        "src/common/dv/memory/n2a_sync_ram_invalid_data_width_fixture.sv"
+      ]
+    },
+    "n2a_sync_ram_invalid_depth_fixture": {
+      "deps": [
+        "n2a_sync_ram"
+      ],
+      "srcs": [
+        "src/common/dv/memory/n2a_sync_ram_invalid_depth_fixture.sv"
+      ]
+    },
+    "n2a_sync_ram_invalid_min_depth_fixture": {
+      "deps": [
+        "n2a_sync_ram"
+      ],
+      "srcs": [
+        "src/common/dv/memory/n2a_sync_ram_invalid_min_depth_fixture.sv"
+      ]
+    },
+    "n2a_sync_ram_wt": {
+      "deps": [
+        "macros"
+      ],
+      "srcs": [
+        "src/common/rtl/memory/n2a_sync_ram_wt.sv"
+      ]
+    },
+    "n2a_sync_ram_wt_8192x16_fixture": {
+      "deps": [
+        "n2a_sync_ram_wt"
+      ],
+      "srcs": [
+        "src/common/dv/memory/n2a_sync_ram_wt_8192x16_fixture.sv"
+      ]
+    },
+    "n2a_sync_ram_wt_8192x8_fixture": {
+      "deps": [
+        "n2a_sync_ram_wt"
+      ],
+      "srcs": [
+        "src/common/dv/memory/n2a_sync_ram_wt_8192x8_fixture.sv"
+      ]
+    },
+    "n2a_tdp_ram": {
+      "variants": {
+        "intel": {
+          "deps": [
+            "macros"
+          ],
+          "srcs": [
+            "src/common/rtl/memory/n2a_tdp_ram_intel.sv"
+          ]
+        },
+        "default": {
+          "deps": [
+            "macros"
+          ],
+          "srcs": [
+            "src/common/rtl/memory/n2a_tdp_ram_portable.sv"
+          ]
+        }
+      }
+    },
+    "n2a_tdp_ram_16384x8_fixture": {
+      "deps": [
+        "n2a_tdp_ram"
+      ],
+      "srcs": [
+        "src/common/dv/memory/n2a_tdp_ram_16384x8_fixture.sv"
+      ]
+    },
+    "n2a_tdp_ram_invalid_addr_width_fixture": {
+      "deps": [
+        "n2a_tdp_ram"
+      ],
+      "srcs": [
+        "src/common/dv/memory/n2a_tdp_ram_invalid_addr_width_fixture.sv"
+      ]
+    },
+    "n2a_tdp_ram_invalid_data_width_fixture": {
+      "deps": [
+        "n2a_tdp_ram"
+      ],
+      "srcs": [
+        "src/common/dv/memory/n2a_tdp_ram_invalid_data_width_fixture.sv"
+      ]
+    },
+    "n2a_tdp_ram_invalid_depth_fixture": {
+      "deps": [
+        "n2a_tdp_ram"
+      ],
+      "srcs": [
+        "src/common/dv/memory/n2a_tdp_ram_invalid_depth_fixture.sv"
+      ]
+    },
+    "n2a_types_pkg": {
+      "srcs": [
+        "src/common/rtl/pkg/n2a_types_pkg.sv"
+      ]
+    },
+    "n2a_uart_mem": {
+      "deps": [
+        "macros",
+        "n2a_uart_mem_pkg"
+      ],
+      "srcs": [
+        "src/common/rtl/uart_mem/n2a_uart_mem.sv"
+      ]
+    },
+    "n2a_uart_mem_fixture": {
+      "deps": [
+        "macros",
+        "n2a_sync_ram",
+        "n2a_uart_mem",
+        "n2a_uart_mem_pkg",
+        "n2a_uart_rx",
+        "n2a_uart_tx"
+      ],
+      "srcs": [
+        "src/common/dv/uart_mem/n2a_uart_mem_fixture.sv"
+      ]
+    },
+    "n2a_uart_mem_pkg": {
+      "srcs": [
+        "src/common/rtl/uart_mem/n2a_uart_mem_pkg.sv"
+      ]
+    },
+    "n2a_uart_rx": {
+      "deps": [
+        "macros",
+        "n2a_cdc_bit_sync",
+        "n2a_types_pkg"
+      ],
+      "srcs": [
+        "src/common/rtl/uart/n2a_uart_rx.sv"
+      ]
+    },
+    "n2a_uart_tx": {
+      "deps": [
+        "macros",
+        "n2a_types_pkg"
+      ],
+      "srcs": [
+        "src/common/rtl/uart/n2a_uart_tx.sv"
+      ]
+    },
+    "n2a_uart_wire_fixture": {
+      "deps": [
+        "n2a_uart_rx",
+        "n2a_uart_tx"
+      ],
+      "srcs": [
+        "src/common/dv/uart/n2a_uart_wire_fixture.sv"
+      ]
+    },
+    "n2a_vga_timing": {
+      "deps": [
+        "macros"
+      ],
+      "srcs": [
+        "src/common/rtl/vga/n2a_vga_timing.sv"
+      ]
+    },
+    "sld_virtual_jtag_stub": {
+      "srcs": [
+        "src/common/dv/jtag/sld_virtual_jtag_stub.sv"
+      ]
+    }
+  }
+}
