@@ -125,7 +125,7 @@ def load_config(root: Path, filename: str, board: str = BASE_BOARD) -> dict:
         raise ValueError("invalid board clock wiring")
     warnings = config["reviewed_warnings"]
     if (set(warnings) != {"constant_outputs", "pll_output", "electrical_pins", "logiclock_count"}
-            or not warnings["constant_outputs"] or not warnings["electrical_pins"]
+            or not warnings["electrical_pins"]
             or not set(warnings["constant_outputs"]) <= set(pins)
             or set(warnings["constant_outputs"].values()) - {"VCC", "GND"}
             or warnings["pll_output"] not in clocks.values()
@@ -441,7 +441,8 @@ def warning_rules(config: dict, *, elaboration: bool = False) -> list[dict]:
         1 if elaboration else contract["logiclock_count"])
     if elaboration:
         return rules
-    add(13024, "constant_outputs", {"summary": "VCC or GND"}, "Output pins are stuck at VCC or GND")
+    if contract["constant_outputs"]:
+        add(13024, "constant_outputs", {"summary": "VCC or GND"}, "Output pins are stuck at VCC or GND")
     source = f'src/nand2doom/fpga/{config["top"].removeprefix("n2d_")}/{config["top"]}.sv'
     for pin, value in contract["constant_outputs"].items():
         add(13410, "constant_outputs", {"source": source, "pin": pin, "value": value},

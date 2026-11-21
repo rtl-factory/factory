@@ -52,13 +52,15 @@ def warning_fixture(config):
         warnings.append(f'Warning (10036): Verilog HDL or VHDL warning at {Path(item["source"]).name}(65): '
                         f'object "{item["object"]}" assigned a value but never read File: '
                         f'/staged/{item["source"]} Line: 65')
-    constants = {"DRAM_CKE": "VCC", "DRAM_CS_N": "GND"}
+    constants = {}
     if config["board"] == "de2_115":
         constants.update({"DRAM_DQM[2]": "VCC", "DRAM_DQM[3]": "VCC", "VGA_BLANK_N": "VCC", "VGA_SYNC_N": "GND"})
         constants.update({f"HEX{h}[{i}]": "VCC" for h in range(8) for i in range(7)})
         constants.update({f"LEDR[{i}]": "GND" for i in range(4, 18)})
         constants.update({f"LEDG[{i}]": "GND" for i in range(9)})
-    warnings.extend([AGGREGATE, "Warning (13024): Output pins are stuck at VCC or GND"])
+    warnings.append(AGGREGATE)
+    if constants:
+        warnings.append("Warning (13024): Output pins are stuck at VCC or GND")
     warnings.extend(f'Warning (13410): Pin "{pin}" is stuck at {value} File: {source} Line: 99'
                     for pin, value in constants.items())
     warnings.extend(["Warning (292013): Feature LogicLock is only available with a valid subscription license. "
@@ -252,7 +254,7 @@ class QuartusTests(unittest.TestCase):
                     self.assertFalse(matches(changed), changed)
 
     def test_warning_contract_counts_and_semantic_identities_on_both_boards(self):
-        for board, constants, electrical in (("de10_lite", 2, 21), ("de2_115", 85, 20)):
+        for board, constants, electrical in (("de10_lite", 0, 21), ("de2_115", 83, 20)):
             config = quartus.load_config(ROOT, "src/nand2doom/cfg/n2d_quartus.json", board)
             warnings, fit = warning_fixture(config)
             reports = self.output / board
@@ -262,12 +264,15 @@ class QuartusTests(unittest.TestCase):
             fit_path.write_text(fit)
             result = quartus.reviewed_warnings(warnings, map_path, config, fit_report=fit_path)
             summary = result["warning_summary"]
-            self.assertEqual(summary["occurrences"], constants + 5 + len(config["reviewed_unused_objects"]))
-            expected_codes = {"12241": 1, "292013": 1, "13024": 1, "13410": constants, "15064": 1, "169177": 1}
+            summary_count = 1 if constants else 0
+            self.assertEqual(summary["occurrences"], constants + summary_count + 4 + len(config["reviewed_unused_objects"]))
+            expected_codes = {"12241": 1, "292013": 1, "15064": 1, "169177": 1}
+            if constants:
+                expected_codes.update({"13024": 1, "13410": constants})
             if config["reviewed_unused_objects"]:
                 expected_codes["10036"] = len(config["reviewed_unused_objects"])
             self.assertEqual(summary["by_code"], expected_codes)
-            self.assertEqual(summary["by_category"]["constant_outputs"], constants + 1)
+            self.assertEqual(summary["by_category"].get("constant_outputs", 0), constants + summary_count)
             self.assertEqual(len(result["electrical_advisory"]), electrical)
             self.assertEqual(len(result["connectivity_warnings"]), 21)
             self.assertIn(f"{summary['occurrences']} reviewed warning occurrences", quartus.warning_summary_text(result))

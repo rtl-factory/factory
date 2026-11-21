@@ -17,10 +17,7 @@
     {"name": "u_if|n2a_sdp_ram:g_btb.u_table|n2a_sdp_ram_enabled:u_enabled|altsyncram:u_ram", "single_port": false, "count": 1, "depth": 1024, "width": 36, "m9ks_each": 4}
   ],
   "reviewed_warnings": {
-    "constant_outputs": {
-      "DRAM_CKE": "VCC",
-      "DRAM_CS_N": "GND"
-    },
+    "constant_outputs": {},
     "pll_output": "DRAM_CLK",
     "electrical_pins": {
       "DRAM_DQ[0]": "3.3-V LVTTL",
@@ -223,8 +220,6 @@
       "io_standards": {"KEY": "2.5 V", "LEDR": "2.5 V", "LEDG": "2.5 V", "HEX0": "2.5 V", "HEX1": "2.5 V", "HEX2": "2.5 V", "HEX3[0]": "2.5 V", "HEX3[1]": "2.5 V"},
       "reviewed_warnings": {
         "constant_outputs": {
-          "DRAM_CKE": "VCC",
-          "DRAM_CS_N": "GND",
           "DRAM_DQM[2]": "VCC",
           "DRAM_DQM[3]": "VCC",
           "VGA_BLANK_N": "VCC",
