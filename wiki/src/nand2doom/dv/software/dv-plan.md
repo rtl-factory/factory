@@ -56,9 +56,12 @@ preloads its two sparse segments under reset and runs the product
 CPU/cache/device path. The input witness matches fixed call sites in
 `I_StartTic`, `I_GetEvent` and `NetUpdate`, which the default `-O2` LTO
 profile inlines, so this gate uses the `-Os` profile, as render verification
-does (#100). It passes in about 25 minutes (1,494 s, Verilator 5.052). Its
-Picolibc package needs Python 3.14 (`compression.zstd`), or a
-`--picolibc-prefix` tree, on the host.
+does (#100). A passing run takes about 25 minutes (1,494 s of `sim.py` wall
+time, 1,476 s in cocotb; Verilator 5.052). The build runs inside the cocotb
+process and cannot take `--picolibc-prefix`: extracting the Picolibc package
+needs cocotb's Python at 3.14 (`compression.zstd`), unless a complete extracted
+toolchain is already at `workdir/software/n2d_doom/toolchain/`, which the build
+seeds from (#100 shows how to extract it by hand).
 
 - **Scene.** Trap-free boot, runtime/TLS self-check, engine boot marker, all
   64,000 bytes, the `D_Display` completed-scene marker (an intermediate wipe
@@ -73,8 +76,8 @@ Picolibc package needs Python 3.14 (`compression.zstd`), or a
   slow right turn −320 at 16-bit scale, 20 units per turn). No extra turns.
 - **Frames.** Both framebuffer banks are shadowed from the first CPU resume,
   because status-bar-only persistence keeps rows drawn before gameplay
-  starts; a gameplay frame is recorded at each bank swap after input begins
-  and must have every byte known.
+  starts; a gameplay frame is recorded at each bank swap after the first
+  scene is checked and the CPU resumed, and must have every byte known.
 - **Witness.** A passive retirement observer, started before resume, binds
   the fresh ELF and bin (instruction bytes, symbols, call targets,
   `I_StartTic` → `I_GetEvent`) and rebuilds `gametic`, `maketic`, `ticdup`
@@ -96,10 +99,10 @@ Picolibc package needs Python 3.14 (`compression.zstd`), or a
   bound ≤80% of the lowest observed: 129..136 indices, ~58,000 pixels on 200
   rows, 96 colors, 210,228 pixels on 400 rows). Images are captured before the
   assertions.
-- **Bounds.** 200,000,000 cycles to the first scene (measured renderer
-  reached after ~90 M); 50,000,000 per later observation; 3,600 s wall.
-  A passing run is ~218 M cycles, ~6 h at 9,000..15,000 cycles/s on a shared
-  4-core host. Cycle bounds define acceptance.
+- **Bounds.** 200,000,000 cycles to the first scene (measured first scene
+  at ~55 M); 50,000,000 per later observation; 3,600 s wall. A passing run is
+  ~64 M cycles, ~25 minutes at ~43,000 cycles/s. Cycle bounds define
+  acceptance.
 
 Cycle and IPC measurement uses the
 [native performance harness](../platform/dv-plan.md#native-performance-harness).
@@ -208,5 +211,5 @@ must fail.
 
 ## Status
 
-`n2d_doom_system` and physical validation for simulation-only PRs stay with
-the board milestone [#126](https://github.com/amichai-bd/nand2anything/issues/126).
+`n2d_doom_system` is an L2 target; L2 has no CI job yet. Physical validation
+for simulation-only PRs stays with the board milestone [#126](https://github.com/amichai-bd/nand2anything/issues/126).
