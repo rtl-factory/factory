@@ -23,11 +23,11 @@
 
 The defaults are legal for the IS42S16320D-7 at 25 MHz (40 ns clock: tRFC 63 ns needs one idle clock after REFRESH, tWR 14 ns plus the precharge needs one after the last close-page write beat). Elaboration fails when the init refresh wait or, in close page, `WAIT_WR` is zero.
 
-The project configurations:
+The project configurations, as every bench, harness and project top passes them:
 
 | Project | `BURST_BEATS` | `OPEN_ROW` | `ROW_XOR_BANK` | `POWERUP_CLOCKS` | `INIT_REFRESHES` | `INIT_WAIT_MIN` | RCD/RP/RFC/WR/MRD | DUE/DEADLINE | `REFRESH_AGE_FROM_MODE` |
 |---|---|---|---|---|---|---|---|---|---|
-| nand2doom | 8 | 1 | 1 | 5000 | 2 | 2 | 0/0/0/1/0 (WR unused with open row) | 163/194 | 0 |
+| nand2doom | 8 | 1 | 1 | 5000 | 2 | 2 | 0/0/0/1/0 (WR is unused with open row) | 163/194 | 0 |
 | nand2mario | 1 | 0 | 0 | 5001 | 8 | 2 | 2/2/3/2/2 | 160/195 | 1 |
 
 ### Ports

@@ -6,17 +6,17 @@
 
 - Tool kind: a property checker on the RTL (SymbiYosys, k-induction at depth 24 for the proof, BMC to depth 64 for the covers), because the question is "does the controller ever break this rule".
 - Harness: `src/common/fv/sdram/n2a_sdram_ctrl_fv.sv`, with parameter `LINE` selecting the configuration. It is run by `n2a_sdram_ctrl_line.sby` and `n2a_sdram_ctrl_word.sby`.
-- The power-up wait is four clocks instead of 5000. It is a plain counter, and DV checks it at full length. The RTL's own six assertions are proven with the harness.
+- The power-up wait is four clocks instead of 5000. It is a plain counter, and DV checks it at full length. The RTL's own seven assertions are proven with the harness.
 
 ## Properties
 
-Spec lines are in the [MAS](../../rtl/sdram/mas.md): Parameters (WAIT_* and refresh), Ports (request hold, one response), Latency (table), and Reset and errors. Labels follow the harness: `p_` property, `a_` assumption, `h_` helper invariant, `c_` cover. Results hold for both configurations. Each target runs with `python3 tools/fv/fv.py run n2a_sdram_ctrl_line n2a_sdram_ctrl_word`. Sync commit for every row: `3d0d9bd` (this pull request's RTL).
+Spec lines are in the [MAS](../../rtl/sdram/mas.md): Parameters (WAIT_* and refresh), Ports (request hold, one response), Latency (table), and Reset and errors. Labels follow the harness: `p_` property, `a_` assumption, `h_` helper invariant, `c_` cover. Results hold for both configurations. Each target runs with `python3 tools/fv/fv.py run n2a_sdram_ctrl_line n2a_sdram_ctrl_word`. Sync commit for every row: `0a03553` (this pull request's RTL).
 
 | Property | Harm if broken | Spec line | Result |
 |---|---|---|---|
 | `command_spacing`: each command follows the previous one by at least its WAIT_* idle clocks, by the burst after a READ, and by the burst plus WAIT_WR after a WRITE | A command lands inside tRCD, tRP, tRFC, tMRD or tWR, or interrupts a burst, and the device corrupts or loses data | Parameters, WAIT_* | proven |
 | `column_after_activate_or_column`: a READ or WRITE follows an ACTIVATE or another column command, never a PRECHARGE or REFRESH | A column command goes to a closed row | Microarchitecture, phases | proven |
-| `refresh_interval`: once initialized, no gap between REFRESH commands exceeds REFRESH_DEADLINE + 1 clocks | Rows lose charge and data | Parameters, REFRESH_DEADLINE | proven |
+| `refresh_interval`: once initialized, no gap from the last REFRESH (or from MODE REGISTER SET, in nand2mario with `REFRESH_AGE_FROM_MODE`) to the next REFRESH exceeds REFRESH_DEADLINE + 1 clocks. In nand2mario the first REFRESH-to-REFRESH gap after init is longer by the init waits and is checked by the model in DV | Rows lose charge and data | Parameters, REFRESH_DEADLINE | proven |
 | `no_accept_while_outstanding`, `response_only_when_outstanding`: requests are accepted one at a time, ready rises no earlier than the response clock, and no response comes without a request | Two accesses overlap, or a requester takes a stray pulse as its answer | Ports, one response per accepted request | proven |
 | `response_within_latency`: every accepted request answers within the longest latency of its configuration (12 clocks for nand2doom, 10 for nand2mario) | A requester hangs | Latency | proven |
 | `misaligned_answers_next_clock`, `misaligned_issues_nothing`, `error_only_for_misaligned`, `aligned_no_error` | A misaligned request touches memory, or a good access reports an error | Reset and errors | proven |

@@ -22,7 +22,9 @@ module n2a_sdram_ctrl_fv #(
     localparam int unsigned WAIT_RCD = LINE ? 0 : 2;
     localparam int unsigned WAIT_RP = LINE ? 0 : 2;
     localparam int unsigned WAIT_RFC = LINE ? 0 : 3;
-    localparam int unsigned WAIT_WR = LINE ? 0 : 2;
+    localparam int unsigned WAIT_WR = LINE ? 1 : 2;
+    // Why: WAIT_WR only spaces the close-page PRECHARGE; open row ignores it.
+    localparam int unsigned WRITE_RECOVERY = LINE ? 0 : WAIT_WR;
     localparam int unsigned WAIT_MRD = LINE ? 0 : 2;
     localparam int unsigned REFRESH_DEADLINE = LINE ? 194 : 195;
     localparam int unsigned REFRESH_DUE = LINE ? 163 : 160;
@@ -51,7 +53,7 @@ module n2a_sdram_ctrl_fv #(
         .ROW_XOR_BANK     (LINE),
         .POWERUP_CLOCKS   (4),
         .INIT_REFRESHES   (INIT_REFRESHES),
-        .INIT_WAIT_MIN    (LINE ? 2 : 0),
+        .INIT_WAIT_MIN    (2),
         .WAIT_RCD         (WAIT_RCD),
         .WAIT_RP          (WAIT_RP),
         .WAIT_RFC         (WAIT_RFC),
@@ -153,7 +155,7 @@ module n2a_sdram_ctrl_fv #(
         case (last)
             CMD_ACTIVATE:  return WAIT_RCD;
             CMD_READ:      return BEATS;
-            CMD_WRITE:     return BEATS - 1 + WAIT_WR;
+            CMD_WRITE:     return BEATS - 1 + WRITE_RECOVERY;
             CMD_PRECHARGE: return WAIT_RP;
             CMD_REFRESH:   return WAIT_RFC;
             CMD_MODE:      return WAIT_MRD;
