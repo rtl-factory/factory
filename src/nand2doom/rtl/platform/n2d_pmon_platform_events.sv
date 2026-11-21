@@ -62,8 +62,9 @@ module n2d_pmon_platform_events (
 
     assign line_accept = line_request_valid_i & line_request_ready_i;
     assign uncached_accept = data_accept_i && !data_sdram_i;
-    // Owner of a transaction accepted this clock: fetch, data demand read,
-    // data prefetch, data write (writeback or maintenance), debug.
+    // Ref: wiki/src/nand2doom/rtl/core/mas.md "Performance monitor" events 87-91,
+    // bit 0 first: owner of a transaction accepted this clock is fetch, data
+    // demand read, data prefetch, data write (writeback or maintenance), debug.
     assign accept_owner = {line_accept[2],
         line_accept[1] && line_request_write_i[1],
         line_accept[1] && !line_request_write_i[1] && line_request_prefetch_i,
@@ -82,8 +83,8 @@ module n2d_pmon_platform_events (
             track_d.dcache_line_read_pending = 1'b0;
         if (line_accept[1] && !line_request_write_i[1])
             track_d.dcache_line_read_pending = 1'b1;
-        // One outstanding line transaction: busy from acceptance through its
-        // single response pulse.
+        // Why: one outstanding line transaction, so memory is busy from acceptance
+        // through its single response pulse.
         if (|line_response_valid_i) begin
             track_d.memory_busy = 1'b0;
             track_d.owner = 5'b0;

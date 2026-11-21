@@ -34,7 +34,7 @@ module n2d_de2_115
 );
     logic clk_25, locked, reset, system_reset;
     logic init_done, halt_ack;
-    // Instruction line traffic is read-only; its write payload is unused.
+    // Why: instruction line traffic is read-only, so its write payload is unused.
     /* verilator lint_off UNUSEDSIGNAL */
     logic [2:0] memory_request_prefetch;
     logic [2:0] memory_request_valid, memory_request_ready, memory_request_write;
@@ -56,11 +56,13 @@ module n2d_de2_115
         .reset_i(!KEY[0]), .clk_25_o(clk_25), .locked_o(locked));
     n2a_reset_sync u_reset (.clk_i(clk_25),
         .async_reset_i(!KEY[0] || !locked), .reset_o(reset));
-    // The SDRAM initializes first; UART and CPU start together afterward.
+    // Why: UART and CPU wait for SDRAM init, so neither issues a memory access
+    // the controller cannot yet serve; they start together afterward.
     assign system_reset = reset || !init_done;
     assign LEDR = {14'b0, system_reset, halt_ack, init_done, locked};
     assign LEDG = '0;
-    // Active-low segments: all dark.
+    // Ref: DE2-115 User Manual, seven-segment displays: segments are active low,
+    // so all ones keeps them dark.
     assign HEX0 = '1;
     assign HEX1 = '1;
     assign HEX2 = '1;
@@ -70,19 +72,20 @@ module n2d_de2_115
     assign HEX6 = '1;
     assign HEX7 = '1;
 
-    // Host keyboard: the common Virtual JTAG wrapper presents the USB-Blaster
-    // hub's scan ports to the keyboard endpoint inside n2d_system
-    // (wiki/src/nand2doom/rtl/io/mas.md#jtag-keyboard-composition).
+    // Ref: wiki/src/nand2doom/rtl/io/mas.md#jtag-keyboard-composition: the common
+    // Virtual JTAG wrapper presents the USB-Blaster hub's scan ports to the
+    // keyboard endpoint inside n2d_system.
     n2a_jtag_virtual u_jtag_virtual (
         .tck_o(jtag_tck), .tdi_o(jtag_tdi), .tdo_i(jtag_tdo), .ir_o(jtag_ir),
         .capture_o(jtag_capture), .shift_o(jtag_shift), .update_o(jtag_update),
         .update_ir_o(jtag_update_ir));
 
-    // Architectural observation ports are simulation/debug monitors, not pins.
+    // Why: the architectural observation ports stay unconnected; they are simulation/debug monitors, not pins.
     /* verilator lint_off PINCONNECTEMPTY */
-    // The whole debug link runs at the 3 Mbaud load rate (wiki/src/nand2doom/rtl/io/mas.md "Link
-    // rate"); two full-width 320x200 framebuffer banks fit the DE2-115 M9K
-    // budget (wiki/src/nand2doom/rtl/video/mas.md), as does the 32 KiB four-way D-cache
+    // Ref: wiki/src/nand2doom/rtl/io/mas.md "Link rate": the DE2-115 runs the
+    // whole debug link at the 3 Mbaud load rate.
+    // Why: two full-width 320x200 framebuffer banks fit the DE2-115 M9K budget
+    // (wiki/src/nand2doom/rtl/video/mas.md), as does the 32 KiB four-way D-cache
     // (wiki/src/nand2doom/rtl/memory/mas.md).
     n2d_system #(.UART_BAUD(N2D_UART_LOAD_BAUD),
                  .FRAMEBUFFER_FULL_WIDTH(1'b1), .DCACHE_WAYS(4),
@@ -185,9 +188,9 @@ module n2d_de2_115
         .sdram_cas_n_o(cas_n), .sdram_we_n_o(we_n), .sdram_dqm_o(dqm),
         .sdram_dq_o(dq_out), .sdram_dq_oe_o(dq_oe), .sdram_dq_i(dq_in));
 
-    // SDRAM pin binding. Falling-edge external clock gives commands/data half
-    // a cycle to settle; DQ is the only resolved bidirectional bus. The high
-    // chip receives every command but its masked lanes never drive the bus.
+    // Why: the falling-edge external clock gives commands and data half a cycle
+    // to settle; DQ is the only resolved bidirectional bus. The high chip
+    // receives every command but its masked lanes never drive the bus.
     assign DRAM_CLK = ~clk_25;
     assign DRAM_ADDR = address;
     assign DRAM_BA = bank;
@@ -200,9 +203,9 @@ module n2d_de2_115
     assign DRAM_DQ = dq_oe ? dq_out : 16'hzzzz;
     assign dq_in = DRAM_DQ;
 
-    // ADV7123 binding: RGB launch on the rising 25 MHz edge and the DAC
-    // samples on the rising VGA_CLK edge half a pixel later. HS/VS bypass
-    // the DAC and go straight to the connector.
+    // Why: VGA_CLK is the inverted pixel clock so the ADV7123 samples RGB on its
+    // rising edge half a pixel after RGB launches on the rising 25 MHz edge,
+    // once it has settled. HS/VS bypass the DAC and go straight to the connector.
     assign VGA_R = {vga_red, vga_red};
     assign VGA_G = {vga_green, vga_green};
     assign VGA_B = {vga_blue, vga_blue};

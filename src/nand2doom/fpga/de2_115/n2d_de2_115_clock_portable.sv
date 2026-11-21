@@ -2,6 +2,8 @@
 
 // Portable backend of the DE2-115 clock contract: the same 25 MHz output
 // and lock status as the Intel PLL backend, produced without a vendor model.
+// It divides the 50 MHz reference by two and reports lock three reference
+// edges after reset release.
 //
 // This file and n2d_de2_115_clock_intel.sv define the same module name.
 // Simulation targets list this file; the Quartus source list selects the
@@ -13,8 +15,6 @@ module n2d_de2_115_clock (
     output logic clk_25_o,
     output logic locked_o
 );
-    // Behavioral stand-in: divide the 50 MHz reference by two and report
-    // lock three reference edges after reset release.
     logic clock_q;
     logic [2:0] lock_q;
     logic clock_q_next;

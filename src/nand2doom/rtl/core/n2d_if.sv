@@ -127,7 +127,7 @@ module n2d_if #(
     n2d_core_pkg::t_fetch_slot entry0_after_pop;
     n2d_core_pkg::t_fetch_slot entry1_after_pop;
     n2d_core_pkg::t_fetch_slot head_slot;
-    logic                      head_usable;  // valid and fetched without error
+    logic                      head_usable;
     logic                      head_jal;
     logic                      head_branch;
     logic                      head_jalr;
@@ -140,9 +140,8 @@ module n2d_if #(
     logic                      head_return;
     logic                      ras_push;
     logic                      ras_pop;
-    logic                      ras_valid;    // the stack holds an entry
+    logic                      ras_valid;
     logic [31:0]               ras_top_target;
-    // Fetch BTB lookup of the current fetch PC (if_q.pc)
     logic                      btb_hit;
     logic                      btb_taken;
     logic [1:0]                btb_counter;
@@ -165,8 +164,8 @@ module n2d_if #(
         head_slot = if_q.entry0.valid ? if_q.entry0 : response_slot;
     end
 
-    // Check or form the prediction of the head; a separate process from the
-    // head itself because the return-address stack lookup feeds it.
+    // Why: checking or forming the head's prediction is a separate process from
+    // the head itself because the return-address stack lookup feeds it.
     always_comb begin
         head_usable = head_slot.valid && !head_slot.fetch_error;
         head_jal = head_slot.instruction[6:0] == OPCODE_JAL;
@@ -174,24 +173,26 @@ module n2d_if #(
         head_jalr = head_slot.instruction[6:0] == OPCODE_JALR;
         direct_target = head_slot.pc +
             (head_jal ? imm_j(head_slot.instruction) : imm_b(head_slot.instruction));
-        // Calls link through ra; only the canonical return pops. A return
-        // with an empty stack is not predicted statically.
+        // Why: only ra links and only the canonical return pops, so other JALR uses
+        // never disturb the stack. A return with an empty stack has no stacked
+        // target, so it is not predicted statically.
         head_call = head_usable && (head_jal || head_jalr) &&
             (head_slot.instruction[11:7] == REG_RA);
         head_return = head_usable && (head_slot.instruction == INSN_RET) && ras_valid;
 
-        // Static prediction: a JAL or backward conditional branch (negative
-        // B immediate) whose target is word aligned (fetch PCs are, so bit 1
-        // of the immediate decides), or a return from the stack.
+        // Why: a backward conditional branch is usually a loop back-edge, so it and
+        // JAL are predicted taken, as is a return from the stack. The target must be
+        // word aligned (fetch PCs are, so bit 1 of the immediate decides) because a
+        // misaligned target traps in Q102H instead.
         static_aligned = head_jal ? !head_slot.instruction[21] : !head_slot.instruction[8];
         static_taken = head_return ||
             (head_usable && (head_jal || (head_branch && head_slot.instruction[31])) &&
              static_aligned);
         static_target = head_return ? ras_top_target : direct_target;
 
-        // A fetch prediction stands when its target is the one Q101H can
-        // check: the direct target, the stacked return target, or (for any
-        // other JALR, or a return with an empty stack) the buffered one.
+        // Why: Q101H can confirm only the direct target, the stacked return target,
+        // or (for any other JALR, or a return with an empty stack) the buffered one,
+        // so a fetch prediction stands only when its target is that one.
         fetch_accept = head_usable && head_slot.fetch_taken && (
             (head_jal || head_branch) ? (head_slot.predicted_target == direct_target) :
             head_jalr ? (!head_return || (head_slot.predicted_target == ras_top_target)) :
@@ -205,20 +206,19 @@ module n2d_if #(
         end else begin
             slot_Q101H_o.predicted_taken = static_taken;
             slot_Q101H_o.predicted_target = static_taken ? static_target : 32'b0;
-            // A rejected entry (an alias or stale target) trains as a miss.
+            // Why: clearing btb_hit makes a rejected entry (an alias or stale target)
+            // retrain as a miss instead of strengthening its counter.
             if (head_slot.fetch_taken) slot_Q101H_o.btb_hit = 1'b0;
-            // Fetch went to a rejected target: return to the static choice.
             predict_redirect_Q101H_o = static_taken || (head_usable && head_slot.fetch_taken);
             predict_target_Q101H_o = static_taken ? static_target : head_slot.pc + 32'd4;
         end
     end
 
-    // Queue movement and issue depend on take_i, which n2d_ctrl derives
-    // from the Q101H slot above.
+    // Why: queue movement and issue depend on take_i, which n2d_ctrl derives
+    // from the Q101H slot above, so they need their own process.
     always_comb begin
 
         pop = take_i && if_q.entry0.valid;
-        // The return-address stack is updated as the slot enters Q102H.
         ras_push = take_i && head_call;
         ras_pop = take_i && head_return;
         bypass = take_i && !if_q.entry0.valid;
@@ -227,9 +227,10 @@ module n2d_if #(
         queued_count = {1'b0, if_q.entry0.valid} + {1'b0, if_q.entry1.valid};
         queued_after = queued_count + {1'b0, push} - {1'b0, pop};
 
-        // One outstanding fetch: a new one is accepted only when none is owed
-        // or the owed one responds on this edge, and only when its response
-        // will find a free queue entry without relying on a later take.
+        // Why: one outstanding fetch, accepted only when none is owed or the owed one
+        // responds on this edge, and only when its response will find a free queue
+        // entry without relying on a later take, so a response always has an entry
+        // to land in.
         request_valid = !rst_i && enable_i && fetch_allow_i && !flush_i &&
             (!if_q.outstanding || response_now) && (queued_after <= 2'd1);
         request_accept = request_valid && instruction_request_ready_i;
@@ -266,7 +267,7 @@ module n2d_if #(
             if_d.outstanding = 1'b0;
             if_d.outstanding_stale = 1'b0;
         end else if (flush_i && if_q.outstanding) begin
-            // Sticky: a predicted redirect and the Q102H mispredict of the
+            // Why: sticky, because a predicted redirect and the Q102H mispredict of the
             // same branch can both flush before one slow response arrives.
             if_d.outstanding_stale = 1'b1;
         end
@@ -278,23 +279,22 @@ module n2d_if #(
 
     `N2A_DFF_RST_VAL(if_q, if_d, clk_i, rst_i, IF_RESET)
 
-    //----------------------------------------------------------
-    // Return-address stack: circular, so a push when full overwrites the
-    // oldest entry; count says how many entries are live.
-    //----------------------------------------------------------
+    // Why: the return-address stack is circular so a push when full overwrites
+    // the oldest entry, losing only the outermost return of a deep call chain;
+    // count says how many entries are live.
     generate
     if (RAS_DEPTH > 0) begin : g_ras
         localparam int INDEX_BITS = $clog2(RAS_DEPTH);
 
-        // Plain sized signals, no typedef: Quartus Standard sizes a packed
+        // Why: plain sized signals, no typedef: Quartus Standard sizes a packed
         // struct declared in a generate scope without the local INDEX_BITS.
-        logic [INDEX_BITS-1:0] ras_top_q, ras_top_d;      // entry the next pop returns
-        logic [INDEX_BITS:0]   ras_count_q, ras_count_d;  // live entries, 0..RAS_DEPTH
+        logic [INDEX_BITS-1:0] ras_top_q, ras_top_d;
+        logic [INDEX_BITS:0]   ras_count_q, ras_count_d;  // Why: 0..RAS_DEPTH needs one more bit than the index
         logic [31:0] entry_q [RAS_DEPTH];
         logic [31:0] entry_d [RAS_DEPTH];
         logic [INDEX_BITS-1:0] push_index;
 
-        // Lookup and update are separate processes: the update depends on the
+        // Why: lookup and update are separate processes: the update depends on the
         // take, which depends on the lookup through the prediction.
         always_comb begin
             ras_valid = ras_count_q != '0;
@@ -333,17 +333,16 @@ module n2d_if #(
     end
     endgenerate
 
-    //----------------------------------------------------------
-    // Fetch branch target buffer: one t_btb_entry per index PC[INDEX+1:2],
-    // tagged by the next BTB_TAG_BITS PC bits, in a simple-dual-port RAM
-    // whose registered read address is the next fetch PC.
-    //----------------------------------------------------------
+    // Why: one t_btb_entry per index PC[INDEX+1:2], tagged by the next
+    // BTB_TAG_BITS PC bits, in a simple-dual-port RAM whose registered read
+    // address is the next fetch PC, so the entry is ready in the clock that PC
+    // is fetched.
     generate
     if (BTB_ENTRIES > 0) begin : g_btb
         localparam int INDEX_BITS = $clog2(BTB_ENTRIES);
         localparam int TAG_LOW = INDEX_BITS + 2;
 
-        // Plain sized signals, no generate-scope typedef (see g_ras).
+        // Why: plain sized signals, no generate-scope typedef (see g_ras).
         logic [INDEX_BITS-1:0] sweep_index_q, sweep_index_d;
         logic                  sweep_done_q, sweep_done_d;
         logic [INDEX_BITS-1:0] read_index;
@@ -353,8 +352,8 @@ module n2d_if #(
         t_btb_entry            write_entry;
         logic                  update_return;
 
-        // The entry read for the PC requested in this clock: the RAM was
-        // addressed with if_d.pc on the edge that loaded if_q.pc.
+        // Why: the RAM was addressed with if_d.pc on the edge that loaded if_q.pc,
+        // so the entry read is the one for the PC requested in this clock.
         always_comb begin
             read_index = if_d.pc[TAG_LOW-1:2];
             btb_hit = sweep_done_q && read_entry.valid &&
@@ -365,7 +364,6 @@ module n2d_if #(
                 {{(30 - BTB_TARGET_BITS){1'b0}}, read_entry.target, 2'b00};
         end
 
-        // Training, or the reset sweep that clears every entry first.
         always_comb begin
             update_return = btb_update_slot_i.instruction == INSN_RET;
             write_entry = '0;
@@ -379,7 +377,8 @@ module n2d_if #(
                     write_entry.counter = btb_update_slot_i.btb_counter + 2'b01;
                 else write_entry.counter = 2'b11;
             end else begin
-                // A taken counter's target is the fetch target the slot carries.
+                // Why: a not-taken update keeps the fetch target the slot carries, so a
+                // counter that still predicts taken keeps pointing where it did.
                 write_entry.target = btb_update_slot_i.predicted_target[BTB_TARGET_BITS+1:2];
                 write_entry.counter = (btb_update_slot_i.btb_counter == 2'b00) ? 2'b00 :
                     btb_update_slot_i.btb_counter - 2'b01;
@@ -409,7 +408,7 @@ module n2d_if #(
             .read_data_o(read_entry)
         );
 
-        // PC bits outside the index, tag and word target are not stored; a
+        // Why: PC bits outside the index, tag and word target are not stored; a
         // slot that never trains does not read its other fields.
         `N2A_UNUSED_BITS(unused_update_bits, {btb_update_slot_i.pc[31:TAG_LOW+BTB_TAG_BITS],
                                       btb_update_slot_i.pc[1:0],
@@ -423,7 +422,7 @@ module n2d_if #(
                                       if_q.pc[31:TAG_LOW+BTB_TAG_BITS], if_d.pc[31:TAG_LOW],
                                       if_d.pc[1:0]})
 
-        // A misaligned target traps in Q102H and never trains the buffer.
+        // Why: a misaligned target traps in Q102H and never trains the buffer.
         `N2A_ASSERT(if_btb_target_aligned, clk_i, rst_i,
             !(btb_update_i && btb_update_taken_i) || (btb_update_target_i[1:0] == 2'b00))
     end else begin : g_no_btb

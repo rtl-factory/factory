@@ -85,7 +85,9 @@ module n2d_uart_mem_port
                 end
             end
             MEM_PORT_FINISH: if (txn_status_i.txn_done) begin
-                // Commit publishes the staged word; abort waits for rollback.
+                // Ref: wiki/src/nand2doom/rtl/io/mas.md "Host-memory transaction boundary":
+                // commit publishes the staged word; abort waits for txn_done (discard or
+                // rollback) before the response.
                 regs_d.error = regs_q.error || txn_status_i.txn_error;
                 regs_d.rsp_valid = 1'b1;
                 regs_d.state = MEM_PORT_IDLE;

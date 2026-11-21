@@ -68,7 +68,7 @@ module n2d_uart_debug_engine
         parser_error_command: '0,
         parser_error_sequence: '0};
     debug_rx_t rx_q, rx_d;
-    // Parser fields whose widths follow MAX_WORDS or INTERBYTE_TIMEOUT_CYCLES
+    // Why: parser fields whose widths follow MAX_WORDS or INTERBYTE_TIMEOUT_CYCLES
     // are registers of their own beside the packaged parser record.
     logic [RX_PAYLOAD_INDEX_WIDTH-1:0]  rx_payload_index_q, rx_payload_index_d;
     logic [RX_INDEX_WIDTH-1:0]          rx_payload_length_q, rx_payload_length_d;
@@ -106,7 +106,7 @@ module n2d_uart_debug_engine
         txn_commit: 1'b0,
         txn_abort: 1'b0};
     debug_exec_t exec_q, exec_d;
-    // Executor fields whose widths follow the timeout parameters or MAX_WORDS
+    // Why: executor fields whose widths follow the timeout parameters or MAX_WORDS
     // are registers of their own beside the packaged executor record.
     logic [OP_COUNTER_WIDTH-1:0]   op_counter_q, op_counter_d;
     logic [HALT_COUNTER_WIDTH-1:0] halt_counter_q, halt_counter_d;
@@ -114,7 +114,8 @@ module n2d_uart_debug_engine
     logic [RX_INDEX_WIDTH:0]       response_index_q, response_index_d;
     logic [RX_INDEX_WIDTH:0]       response_payload_bytes_q, response_payload_bytes_d;
     logic [8*RX_PAYLOAD_BYTES-1:0] response_payload_q, response_payload_d;
-    // Response start bundle raised by exactly one executor branch per clock.
+    // Why: exactly one executor branch per clock raises the response start
+    // bundle, so it needs no arbitration.
     logic start_response;
     logic [7:0] start_command, start_sequence, start_status, start_count;
     logic input_event_valid;
@@ -297,9 +298,10 @@ module n2d_uart_debug_engine
     `N2A_DFF_ARST_VAL(interbyte_counter_q, interbyte_counter_d, clk_i, reset_i, '0)
     `N2A_DFF_ARST_VAL(req_payload_q, req_payload_d, clk_i, reset_i, '0)
 
-    // A second, discard-only parser preserves the active request registers.
-    // One complete valid frame received while service is occupied queues one
-    // sequence-matched BUSY response behind the active response.
+    // Why: a second, discard-only parser takes frames that arrive while service
+    // is occupied, so the active request registers are preserved. One complete
+    // valid frame received then queues one sequence-matched BUSY response behind
+    // the active response.
     always_comb begin
         busy_d = busy_q;
         busy_interbyte_counter_d = busy_interbyte_counter_q;
@@ -663,7 +665,7 @@ module n2d_uart_debug_engine
             default: exec_d.exec_state = DEBUG_EXEC_IDLE;
         endcase
 
-        // START_RESPONSE bundle: applied last so it wins over the
+        // Why: the START_RESPONSE bundle is applied last so it wins over the
         // serializer's own index/CRC advance in the same clock.
         if (start_response) begin
             exec_d.response_active = 1'b1;
@@ -686,8 +688,6 @@ module n2d_uart_debug_engine
     `N2A_DFF_ARST_VAL(response_payload_bytes_q, response_payload_bytes_d, clk_i, reset_i, '0)
     `N2A_DFF_ARST_VAL(response_payload_q, response_payload_d, clk_i, reset_i, '0)
 
-    // Checks of the asynchronous-reset executor register (non-reset
-    // branch), sampled on its event control and guard path.
     `N2A_ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, !(mem_txn_commit && mem_txn_abort),
         "debug memory transaction commit and abort overlap")
     `N2A_ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, mem_req_valid,

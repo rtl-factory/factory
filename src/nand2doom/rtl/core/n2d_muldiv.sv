@@ -48,11 +48,9 @@ module n2d_muldiv (
 );
     import n2d_core_types_pkg::*;
 
-    //----------------------------------------------------------
-    // Multiply datapath: operand registers with the issue enable, a free
-    // running product register, no resets, so the inference keeps the
+    // Why: the multiply datapath has operand registers with the issue enable, a
+    // free-running product register and no resets, so the inference keeps the
     // embedded multipliers' input and output register stages.
-    //----------------------------------------------------------
 
     t_mul_issue   mul_issue_q, mul_issue_d;
     t_mul_product mul_product_q, mul_product_d;
@@ -62,8 +60,9 @@ module n2d_muldiv (
     always_comb begin
         mul_issue = issue_i && !funct3_i[2];
 
-        // MULH and MULHSU take rs1 as signed; only MULH takes rs2 as signed.
-        // MUL's low word is the same for every extension.
+        // Ref: RISC-V M "Multiplication Operations": MULH and MULHSU take rs1 as
+        // signed; only MULH takes rs2 as signed. MUL's low word is the same for
+        // every extension.
         mul_issue_d.a = {((funct3_i[1:0] == 2'b01) || (funct3_i[1:0] == 2'b10)) && rs1_i[31], rs1_i};
         mul_issue_d.b = {(funct3_i[1:0] == 2'b01) && rs2_i[31], rs2_i};
         mul_issue_d.high = funct3_i[1:0] != 2'b00;
@@ -76,15 +75,11 @@ module n2d_muldiv (
                                           : mul_product_q.product[31:0];
     end
 
-    // The 33x33 product's two extension bits never reach a result word.
+    // Why: the 33x33 product's two extension bits never reach a result word.
     `N2A_UNUSED_BITS(unused_mul_full, mul_full[65:64])
 
     `N2A_DFF_EN(mul_issue_q, mul_issue_d, clk_i, mul_issue)
     `N2A_DFF(mul_product_q, mul_product_d, clk_i)
-
-    //----------------------------------------------------------
-    // Divider
-    //----------------------------------------------------------
 
     t_div_regs div_q, div_d;
 
@@ -105,9 +100,9 @@ module n2d_muldiv (
     logic [31:0] remainder_next;
     logic        step_bit;
 
-    // Setup: magnitudes, leading ones, and the aligned dividend. The quotient
-    // has at most msb(n) - msb(d) + 1 bits, and the dividend bits above that
-    // window already form a partial remainder below the divisor.
+    // Why: the quotient has at most msb(n) - msb(d) + 1 bits, and the dividend
+    // bits above that window already form a partial remainder below the
+    // divisor, so setup aligns the dividend to skip them.
     always_comb begin
         dividend_magnitude = (div_q.signed_op && div_q.rs1[31]) ? -div_q.rs1 : div_q.rs1;
         divisor_magnitude = (div_q.signed_op && div_q.rs2[31]) ? -div_q.rs2 : div_q.rs2;
@@ -119,15 +114,14 @@ module n2d_muldiv (
             if (divisor_magnitude[bit_index]) divisor_msb = 6'(bit_index);
         end
 
-        // Zero dividend, or fewer significant bits than the divisor: the
-        // quotient is zero and the remainder is the dividend magnitude.
+        // Why: a zero dividend, or one with fewer significant bits than the divisor,
+        // needs no iterations: the quotient is zero and the remainder is the
+        // dividend magnitude.
         dividend_small = (dividend_magnitude == 32'b0) || (dividend_msb < divisor_msb);
         iterations = dividend_msb - divisor_msb + 6'd1;
-        // {remainder, quotient} = dividend << (32 - iterations), iterations 1..32
         aligned = {32'b0, dividend_magnitude} << (6'd32 - iterations);
     end
 
-    // One restoring step: shift the next dividend bit into the remainder.
     always_comb begin
         remainder_shift = {div_q.remainder, div_q.quotient[31]};
         remainder_difference = remainder_shift - {1'b0, div_q.divisor};
@@ -145,7 +139,8 @@ module n2d_muldiv (
 
         div_d = div_q;
         if (kill_i) begin
-            // Only a finished divide keeps its quotient and remainder.
+            // Why: an unfinished divide clears reusable, so a later identical divide
+            // never reuses a partial quotient.
             div_d.state = DIV_IDLE;
             if (div_q.state != DIV_DONE) div_d.reusable = 1'b0;
         end else if (div_issue) begin
@@ -156,7 +151,8 @@ module n2d_muldiv (
             if (issue_reuse) begin
                 div_d.state = DIV_DONE;
             end else if (issue_zero) begin
-                // Quotient all ones, remainder the dividend, no sign fix-up.
+                // Ref: RISC-V M "Division Operations", division by zero: quotient all ones,
+                // remainder the dividend, no sign fix-up.
                 div_d.state = DIV_DONE;
                 div_d.reusable = 1'b1;
                 div_d.quotient = 32'hFFFF_FFFF;

@@ -14,7 +14,7 @@ module n2d_de10_lite (
 );
     logic clk_25, locked, reset, system_reset;
     logic init_done, halt_ack;
-    // Instruction line traffic is read-only; its write payload is unused.
+    // Why: instruction line traffic is read-only, so its write payload is unused.
     /* verilator lint_off UNUSEDSIGNAL */
     logic [2:0] memory_request_prefetch;
     logic [2:0] memory_request_valid, memory_request_ready, memory_request_write;
@@ -35,21 +35,22 @@ module n2d_de10_lite (
         .reset_i(!RESET_N), .clk_25_o(clk_25), .locked_o(locked));
     n2a_reset_sync u_reset (.clk_i(clk_25),
         .async_reset_i(!RESET_N || !locked), .reset_o(reset));
-    // The SDRAM initializes first; UART and CPU start together afterward.
+    // Why: UART and CPU wait for SDRAM init, so neither issues a memory access
+    // the controller cannot yet serve; they start together afterward.
     assign system_reset = reset || !init_done;
     assign LEDR = {system_reset, halt_ack, init_done, locked};
 
-    // Host keyboard: the common Virtual JTAG wrapper presents the USB-Blaster
-    // hub's scan ports to the keyboard endpoint inside n2d_system
-    // (wiki/src/nand2doom/rtl/io/mas.md#jtag-keyboard-composition).
+    // Ref: wiki/src/nand2doom/rtl/io/mas.md#jtag-keyboard-composition: the common
+    // Virtual JTAG wrapper presents the USB-Blaster hub's scan ports to the
+    // keyboard endpoint inside n2d_system.
     n2a_jtag_virtual u_jtag_virtual (
         .tck_o(jtag_tck), .tdi_o(jtag_tdi), .tdo_i(jtag_tdo), .ir_o(jtag_ir),
         .capture_o(jtag_capture), .shift_o(jtag_shift), .update_o(jtag_update),
         .update_ir_o(jtag_update_ir));
 
-    // Architectural observation ports are simulation/debug monitors, not pins.
+    // Why: the architectural observation ports stay unconnected; they are simulation/debug monitors, not pins.
     /* verilator lint_off PINCONNECTEMPTY */
-    // Half-width framebuffer banks keep both banks within the MAX 10 M9K
+    // Why: half-width framebuffer banks keep both banks within the MAX 10 M9K
     // budget of one full-width bank (wiki/src/nand2doom/rtl/video/mas.md); the D-cache stays at
     // 16 KiB two-way (wiki/src/nand2doom/rtl/memory/mas.md).
     n2d_system #(.FRAMEBUFFER_FULL_WIDTH(1'b0), .DCACHE_WAYS(2),
@@ -152,8 +153,8 @@ module n2d_de10_lite (
         .sdram_cas_n_o(cas_n), .sdram_we_n_o(we_n), .sdram_dqm_o(dqm),
         .sdram_dq_o(dq_out), .sdram_dq_oe_o(dq_oe), .sdram_dq_i(dq_in));
 
-    // Board pin binding. Falling-edge external clock gives commands/data half
-    // a cycle to settle; DQ is the only resolved bidirectional bus.
+    // Why: the falling-edge external clock gives commands and data half a cycle
+    // to settle; DQ is the only resolved bidirectional bus.
     assign DRAM_CLK = ~clk_25;
     assign DRAM_ADDR = address;
     assign DRAM_BA = bank;

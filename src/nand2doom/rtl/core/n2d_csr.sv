@@ -133,7 +133,8 @@ module n2d_csr (
             endcase
         end
 
-        // Trap entry records M as the previous privilege and stacks MIE.
+        // Ref: RISC-V Privileged ISA, mstatus on trap entry: MPP records M, MPIE
+        // takes MIE and MIE clears.
         if (trap_valid_i) begin
             csr_d.mepc = trap_epc_i;
             csr_d.mcause = trap_cause_i;
