@@ -32,7 +32,7 @@ class SimShowcaseRenderTests(unittest.TestCase):
             d = self.res / game
             d.mkdir(parents=True)
             (d / "game-result.json").write_text(json.dumps({"image_sha256": f"{gi:064x}"}))
-            seeds = [0, 0, 1, 2, 3]  # title == start: must merge
+            seeds = [0, 0, 1, 2, 3]  # Why: seeds 0, 0 make title and start identical, so they must merge
             for step, seed in zip(render.STEPS, seeds):
                 frame(seed + gi).save(d / f"{step}.png")
         render.main(["--results", str(self.res), "--output", str(self.out),

@@ -28,7 +28,7 @@ class LibraryTests(unittest.TestCase):
             self.assertEqual(packed[address:address + 32], fixture.pack_entry(rows[slot]))
             self.assertEqual(rows[slot]['crc32'], zlib.crc32(packed[slot * 32768:slot * 32768 + rows[slot]['length']]))
         self.assertEqual(packed[5 * 32768:7 * 32768], banked)
-        self.assertEqual(packed[0x880c0:0x880e0], bytes(32))  # second half has no separate entry
+        self.assertEqual(packed[0x880c0:0x880e0], bytes(32))  # Why: the second half has no separate entry
         self.assertEqual(packed[0x88220:0x88400], bytes(480))
         self.assertEqual(rows[0]['title'], self.game[0x134:0x144])
         self.assertEqual(library.pack({16: (2, self.menu), 5: (3, banked), 0: (1, self.game)})[0], packed)

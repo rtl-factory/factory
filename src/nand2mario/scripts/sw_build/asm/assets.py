@@ -54,7 +54,7 @@ def parse_shades(content, file='asset.json'):
     except json.JSONDecodeError as error:
         fail('ASSET_JSON',error.msg,file,error.lineno,error.colno)
     except (ValueError,UnicodeError,OSError) as error:
-        # Keep diagnostics target-relative; OS messages may contain private paths.
+        # Why: keep diagnostics target-relative; OS messages may contain private paths.
         fail('ASSET_JSON','invalid/unreadable UTF-8 shade JSON: '+type(error).__name__,file)
     return validate_shades(data,file)
 

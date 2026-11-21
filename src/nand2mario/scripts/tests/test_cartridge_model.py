@@ -29,7 +29,7 @@ class CartridgeModelTests(unittest.TestCase):
                          [False, False, True, True, True, True, False])
 
     def test_ram_size_zero_means_no_ram(self):
-        # Pan Docs $0149: $00 is no RAM even for a RAM-bearing type.
+        # Ref: Pan Docs $0149: $00 is no RAM even for a RAM-bearing type.
         for cartridge_type in (m.MBC1_RAM, m.MBC1_RAM_BATTERY):
             for code in (0x00, 0x01):
                 c = cartridge(cartridge_type, 6, code)
@@ -52,7 +52,7 @@ class CartridgeModelTests(unittest.TestCase):
         c.write(0x0000, 0x0A)
         self.assertEqual((c.rom_bank(0x0000), c.rom_bank(0x4000), c.ram_bank()), (96, 98, 3))
         for cartridge_type in (m.ROM_ONLY, 0x13):
-            c.load(m.HEADER_TYPE, cartridge_type)   # no reset: registers stay
+            c.load(m.HEADER_TYPE, cartridge_type)   # Why: no reset, so the registers stay
             self.assertEqual(c.registers[m.BANK1], 2)
             self.assertEqual((c.rom_bank(0x0000), c.rom_bank(0x4000)), (0, 1))
             self.assertEqual(c.translate(0x4123, False), ('rom', 0x4123))
@@ -67,7 +67,7 @@ class CartridgeModelTests(unittest.TestCase):
         self.assertEqual(c.translate(0x4000, False), ('rom', 0x4000))
         self.assertEqual(c.translate(0xA000, False), ('local', None))
         self.assertEqual(c.read(0xA000), 0xFF)
-        c = cartridge(0x13, 5, 3)   # another mapper type behaves as ROM-only
+        c = cartridge(0x13, 5, 3)
         c.write(0x2000, 3)
         self.assertEqual(c.translate(0x7FFF, False), ('rom', 0x7FFF))
 
@@ -84,7 +84,7 @@ class CartridgeModelTests(unittest.TestCase):
         self.assertEqual(c.translate(0x0123, False), ('rom', 96 * 16384 + 0x123))
         c.write(0x2000, 0x60)
         self.assertEqual(c.rom_bank(0x4000), 97, 'five register bits, zero check before masking')
-        # RAM: disabled until a $xA nibble, bank 0 in mode 0, BANK2 in mode 1.
+        # Ref: Pan Docs MBC1: RAM disabled until a $xA nibble, bank 0 in mode 0, BANK2 in mode 1.
         self.assertEqual(c.translate(0xA000, False), ('local', None))
         c.write(0x0000, 0x1A)
         self.assertEqual(c.translate(0xA000, False), ('ram', 3 * 8192))
@@ -100,7 +100,7 @@ class CartridgeModelTests(unittest.TestCase):
         self.assertEqual((c.read(0xA000), c.defined_ram_bytes()), (0x66, [(0, 0x66)]))
 
     def test_small_rom_and_ram_masks(self):
-        c = cartridge(m.MBC1_RAM, 3, 2)   # 256 KiB, 8 KiB
+        c = cartridge(m.MBC1_RAM, 3, 2)   # Ref: Pan Docs $0148/$0149: 256 KiB ROM, 8 KiB RAM
         c.write(0x2000, 0x10)
         self.assertEqual(c.rom_bank(0x4000), 0, 'bank 16 of a 16-bank ROM is bank 0')
         c.write(0x4000, 3)
@@ -108,7 +108,7 @@ class CartridgeModelTests(unittest.TestCase):
         self.assertEqual(c.rom_bank(0x0000), 0)
         c.write(0x0000, 0x0A)
         self.assertEqual(c.translate(0xA000, False), ('ram', 0))
-        c = cartridge(m.MBC1, 5, 0)   # 1 MiB without RAM
+        c = cartridge(m.MBC1, 5, 0)   # Ref: Pan Docs $0148/$0149: 1 MiB ROM without RAM
         c.write(0x0000, 0x0A)
         self.assertEqual(c.translate(0xA000, False), ('local', None))
         c.write(0x4000, 2)

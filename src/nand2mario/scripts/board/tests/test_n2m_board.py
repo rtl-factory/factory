@@ -54,7 +54,7 @@ class ManifestTests(unittest.TestCase):
     def test_board_pins_match_the_doom_de10_lite_manifest(self):
         doom = json.loads((ROOT / "src/nand2doom/cfg/n2d_quartus.json").read_text())["pins"]
         shared = set(doom) & set(self.config["pins"])
-        self.assertGreaterEqual(len(shared), 60)   # clock, VGA, UART, every SDRAM pin
+        self.assertGreaterEqual(len(shared), 60)   # Why: 60 is the clock, VGA, UART and every SDRAM pin
         for port in shared:
             self.assertEqual(doom[port], self.config["pins"][port], port)
         self.assertEqual(doom["RESET_N"], self.config["pins"]["KEY[0]"])
@@ -75,14 +75,13 @@ class ManifestTests(unittest.TestCase):
         for portable, intel in PAIRS:
             self.assertIn(portable, board.sources)
             self.assertNotIn(intel, board.sources)
-        # Both lists bind the common Virtual JTAG wrapper; only simulation
-        # adds the dv/ stand-in of its vendor primitive.
+        # Why: the vendor primitive exists only in Quartus, so simulation adds its dv/
+        # stand-in; the common Virtual JTAG wrapper is the same in both lists.
         self.assertIn("src/common/rtl/jtag/n2a_jtag_virtual.sv", board.sources)
         self.assertIn("src/common/dv/jtag/sld_virtual_jtag_stub.sv", board.sources)
         self.assertEqual(("n2m_de10_lite_fixture", "board_smoke", 97), (board.top, board.testcase, board.default_seed))
         self.assertEqual((("HEARTBEAT_BIT", 20), ("UART_CLKS_PER_BIT", 8)), tuple(sorted(board.parameters)))
         self.assertIn("src/nand2mario/dv/storage/n2m_sdram_model.sv", board.sources)
-        # The Quartus closure is the simulation closure with backends swapped.
         swapped = {intel: portable for portable, intel in PAIRS}
         quartus = [swapped.get(s, s) for s in self.config["sources"]]
         self.assertEqual(quartus, [s for s in board.sources if "/dv/" not in s])
@@ -121,11 +120,11 @@ class ManifestTests(unittest.TestCase):
             n2m_quartus.stage(ROOT, output, self.config)
             qsf = (output / "n2m_de10_lite.qsf").read_text()
         self.assertIn('VERILOG_MACRO "SYNTHESIS=1"', qsf)
-        self.assertNotIn("set_parameter", qsf)   # the board top's defaults: 115200 baud, 0.67 s heartbeat
+        self.assertNotIn("set_parameter", qsf)   # Why: the board top's defaults (115200 baud, 0.67 s heartbeat) must apply unchanged
         self.assertIn("set_location_assignment PIN_L14 -to DRAM_CLK", qsf)
         self.assertIn("set_location_assignment PIN_AB5 -to UART_RXD", qsf)
         self.assertIn("set_location_assignment PIN_P11 -to MAX10_CLK1_50", qsf)
-        self.assertNotIn('IO_STANDARD "3.3-V LVTTL" -to KEY[0]', qsf)   # Schmitt trigger in the fragment
+        self.assertNotIn('IO_STANDARD "3.3-V LVTTL" -to KEY[0]', qsf)   # Why: an LVTTL assignment here would override the fragment's Schmitt trigger on KEY[0]
 
     def test_output_confined_to_workdir(self):
         with self.assertRaises(ValueError):
@@ -168,7 +167,7 @@ class BoardToolTests(unittest.TestCase):
         code, result = n2m_board.run_joypad(Args(names=["a", "b"]), jtag=NoOpen)
         self.assertEqual(0, code)
         self.assertIn("dry_run", result)
-        self.assertEqual(6, result["bytes"])   # 22 1a, then f0 1a f0 22
+        self.assertEqual(6, result["bytes"])   # Ref: Set-2 make codes 22 1a, then breaks in reverse: f0 1a f0 22
 
     def test_unknown_button_and_missing_cable_refused(self):
         with self.assertRaises(ValueError):
@@ -184,9 +183,9 @@ class BoardToolTests(unittest.TestCase):
         self.assertIn("quartus_pgm -c '<cable>' -m jtag -o", result["command"])
         self.assertIn("dry_run", result)
         with self.assertRaises(ValueError):
-            n2m_board.run_program(Args(yes=True), runner=runner)          # no cable
+            n2m_board.run_program(Args(yes=True), runner=runner)
         with self.assertRaises(ValueError):
-            n2m_board.run_program(Args(sof="src/nand2mario/README.md"), runner=runner)  # not workdir
+            n2m_board.run_program(Args(sof="src/nand2mario/README.md"), runner=runner)
 
     def test_program_with_yes_runs_exact_command(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "workdir") as temporary:
@@ -230,7 +229,6 @@ class BoardToolTests(unittest.TestCase):
             self.assertIn("dry_run", result)
             frames = dump.read_bytes()
         from src.nand2mario.scripts.board import cart_loader
-        # HOLD, three WRITE chunks and RELEASE (no readback in a dry run).
         self.assertEqual(cart_loader.SYNC, frames[0])
         self.assertEqual(cart_loader.CMD_HOLD, frames[1])
         self.assertEqual(3, sum(1 for i in range(len(frames)) if frames[i:i + 2] == bytes([0xA5, cart_loader.CMD_WRITE])))
@@ -280,7 +278,7 @@ class BoardToolTests(unittest.TestCase):
 
 
 SYSTEM_CLOCK = "u_clock|u_pll|auto_generated|pll1|clk[0]"
-# Sanitized Quartus 25.1 Clocks table with its actual column order.
+# Ref: a sanitized Quartus 25.1 Clocks table with its actual column order.
 CLOCKS = """; Clock Name ; Type ; Period ; Frequency ; Rise ; Fall ; Duty Cycle ; Divide by ; Multiply by ; Phase ; Offset ; Edge List ; Edge Shift ; Inverted ; Master ; Source ; Targets ;
 ; reference ; Base ; 20.000 ; 50.0 MHz ; 0.000 ; 10.000 ; ; ; ; ; ; ; ; ; ; ; { MAX10_CLK1_50 } ;
 ; jtag_tck ; Base ; 100.000 ; 10.0 MHz ; 0.000 ; 50.000 ; ; ; ; ; ; ; ; ; ; ; { altera_reserved_tck } ;

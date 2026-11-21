@@ -32,7 +32,7 @@ class SoftwareTests(unittest.TestCase):
         return assemble(source, self.tree, self.prelude)
 
     def test_independent_opcode_matrix(self):
-        # Construct forms/bytes from architectural fields, never FORMS/opcodes.json.
+        # Why: build forms and bytes from architectural fields, never FORMS/opcodes.json, so the test is an independent oracle.
         regs = ['B', 'C', 'D', 'E', 'H', 'L', '[HL]', 'A']
         cases = [('NOP', [0]), ('STOP', [0x10, 0]), ('HALT', [0x76]),
                  ('DI', [0xF3]), ('EI', [0xFB]), ('RETI', [0xD9]),
@@ -88,8 +88,8 @@ class SoftwareTests(unittest.TestCase):
         plan = build([source], layout, 'smoke::start', output, True)
         self.assertTrue(plan['dry_run'])
         self.assertFalse(output.exists())
-        # -I excludes user site and PYTHONPATH; only this CLI's own directory is
-        # inserted explicitly. An import guard rejects any sibling donor file.
+        # Why: run under -I so no user site or PYTHONPATH can supply a module; only this
+        # CLI's own directory is on the path, and the audit hook fails any sibling donor file.
         script = '''import runpy,sys
 from pathlib import Path
 root=Path(sys.argv.pop(1)).resolve()
@@ -126,7 +126,7 @@ runpy.run_path(str(root/'src/nand2mario/scripts/sw_build/cpu_sw.py'),run_name='_
         original = victim.read_bytes()
         destinations = ['program.gb', 'smoke.object.json', 'map.json',
                         'symbols.json', 'listing.json']
-        # Interception ensures a regression cannot mutate any artifact/victim.
+        # Why: each destination is a symlink to a victim, so a regression that writes through it is caught.
         for name in destinations:
             link = output / name
             link.symlink_to(victim)
