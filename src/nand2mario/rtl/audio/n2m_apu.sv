@@ -46,9 +46,9 @@ module n2m_apu (
   logic [REGISTERS-1:0][7:0] regs_q, regs_d;
   logic       power_q, power_d;
   logic [3:0] active_q, active_d;
-  logic [2:0] step_q, step_d;          // next frame-sequencer step
+  logic [2:0] step_q, step_d;
   logic       sequencer_bit_q;
-  logic [3:0][8:0] length_q, length_d;  // remaining length per channel
+  logic [3:0][8:0] length_q, length_d;
   logic [10:0] shadow_q, shadow_d;
   logic [3:0] sweep_timer_q, sweep_timer_d;
   logic       sweep_enable_q, sweep_enable_d;
@@ -73,7 +73,7 @@ module n2m_apu (
   assign wave_write = write && wave_selected;
   assign sequencer_tick = sequencer_bit_q && !sequencer_bit_i;
 
-  // Read-back masks; unlisted addresses (FF15, FF1F, FF27-FF2F) read $FF.
+  // Ref: SameBoy read_mask; unlisted addresses (FF15, FF1F, FF27-FF2F) read $FF.
   always_comb begin
     case (io_request_i.address)
       16'hFF10: mask = 8'h80;  16'hFF11: mask = 8'h3F;  16'hFF12: mask = 8'h00;
@@ -87,9 +87,9 @@ module n2m_apu (
     endcase
   end
 
-  // Sweep calculations (NR10 bit 3 negates, bits 2-0 shift) from the
-  // shadow frequency, a second check of that result, and the frequency a
-  // channel-1 trigger loads. A zero period reloads the timer with eight.
+  // Ref: Pan Docs "NR10": bit 3 negates, bits 2-0 shift. The shadow frequency
+  // is checked twice (step and second check), and a channel-1 trigger loads
+  // its own; a zero period reloads the timer with eight.
   logic [10:0] trigger_frequency, step_delta, second_delta, trigger_delta;
   logic [11:0] step_next, second_next, trigger_next;
   logic [3:0]  sweep_reload;
@@ -121,7 +121,7 @@ module n2m_apu (
     sweep_enable_d = sweep_enable_q;
     counter = length_q;
 
-    // Frame sequencer: length on even steps, sweep on steps 2 and 6.
+    // Ref: Pan Docs "Audio details" (DIV-APU): length on even steps, sweep on 2 and 6.
     if (power_q && sequencer_tick) begin
       if (!step_q[0]) begin
         for (int i = 0; i < 4; i++) begin
@@ -149,8 +149,8 @@ module n2m_apu (
       step_d = step_q + 3'd1;
     end
 
-    // Length is clocked on the edge that leaves an even step; when the next
-    // step is odd the extra-clock quirks apply.
+    // Ref: SameBoy length quirks: length is clocked on the edge that leaves an
+    // even step; when the next step is odd the extra-clock quirks apply.
     next_clocks_length = !step_d[0];
 
     wave_d[wave_index] = value;
@@ -169,7 +169,7 @@ module n2m_apu (
 
     if (write && register_selected) begin
       if (power_q) regs_d[register_index] = value;
-      // DMG: length loads stay writable with power off.
+      // Ref: Pan Docs: on the DMG, length loads stay writable with power off.
       case (int'(register_index))
         NR11, NR21, NR41: begin
           ch = int'(register_index) / 5;
@@ -185,7 +185,8 @@ module n2m_apu (
             full = ch == 2 ? 9'd256 : 9'd64;
             trigger = value[7];
             enabling = value[6] && !regs_q[register_index][6];
-            // Enabling length in the first half of a period clocks it once.
+            // Ref: Pan Docs "Audio details": enabling length in the first half of a
+            // period clocks it once.
             if (enabling && !next_clocks_length && counter[ch] != 9'd0) begin
               counter[ch] = counter[ch] - 9'd1;
               if (counter[ch] == 9'd0 && !trigger) active_d[ch] = 1'b0;
@@ -215,7 +216,7 @@ module n2m_apu (
     length_d = counter;
   end
 
-  // Channel DACs: NRx2 bits 7-3 nonzero (1, 2, 4), NR30 bit 7 (3).
+  // Ref: Pan Docs "DACs": NRx2 bits 7-3 nonzero (channels 1, 2, 4), NR30 bit 7 (3).
   assign dac = {regs_q[NR42][7:3] != 5'd0, regs_q[NR30][7],
                 regs_q[NR22][7:3] != 5'd0, regs_q[NR12][7:3] != 5'd0};
 

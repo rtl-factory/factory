@@ -61,7 +61,7 @@ module n2d_uart_bulk
         engine_count: '0,
         engine_bad: 1'b0};
     bulk_regs_t regs_q, regs_d;
-    // Inter-byte gap and whole-frame timers: their widths follow the timeout
+    // Why: the inter-byte gap and whole-frame timer widths follow the timeout
     // parameters, so they are registers of their own beside the packaged state.
     logic [$clog2(INTERBYTE_TIMEOUT_CYCLES)-1:0] gap_q, gap_d;
     logic [$clog2(FRAME_TIMEOUT_CYCLES)-1:0]     frame_cycles_q, frame_cycles_d;
@@ -84,8 +84,6 @@ module n2d_uart_bulk
     assign response_length = ((regs_q.status == 0) && (regs_q.command == READ)) ?
                              regs_q.length[12:0] : 13'd0;
 
-    // Both properties are armed one edge after reset release through one
-    // shared after-reset qualifier.
     `N2A_ASSERT_AFTER_RESET(bulk_prefix_advances_after_confirmation, clk_i, reset_i,
         ((regs_q.completed != $past(regs_q.completed)) && ($past(regs_q.state) != BULK_IDLE)) |->
         (($past(regs_q.state) == BULK_CHECK_ENGINE) && $past(engine_idle_i) &&
@@ -95,8 +93,9 @@ module n2d_uart_bulk
         ((regs_q.state == BULK_TX_HEADER || regs_q.state == BULK_TX_DATA || regs_q.state == BULK_TX_CRC) &&
          tx_valid_o && !tx_ready_i) |=> (tx_valid_o && $stable(tx_byte_o)))
 
-    // One synchronous read, one write port, no reset on RAM or read register.
-    // Reads and writes never need same-address collision data.
+    // Why: no reset on the RAM or its read register and no same-address collision
+    // data (reads and writes never need it), so the staging buffer infers one
+    // synchronous-read block RAM.
     n2a_sync_ram #(.DATA_WIDTH(8), .DEPTH(4096)) u_staging (
         .clk_i,
         .write_enable_i(ram_write),
@@ -181,8 +180,9 @@ module n2d_uart_bulk
         regs_d = regs_q;
         frame_cycles_d = frame_cycles_q;
         gap_d = gap_q;
-        // Interbyte silence applies only to the externally received frame,
-        // never to an in-flight memory rollback or an outgoing UART byte.
+        // Why: interbyte silence applies only to the externally received frame, so an
+        // in-flight memory rollback or an outgoing UART byte never trips the gap
+        // timeout.
         if (receiving && !rx_valid_i) gap_d = gap_q + 1'b1;
         else gap_d = '0;
         if (receiving) frame_cycles_d = frame_cycles_q + 1'b1;
@@ -357,8 +357,6 @@ module n2d_uart_bulk
     `N2A_DFF_ARST_VAL(gap_q, gap_d, clk_i, reset_i, '0)
     `N2A_DFF_ARST_VAL(frame_cycles_q, frame_cycles_d, clk_i, reset_i, '0)
 
-    // Checks of the asynchronous-reset FSM register (non-reset branch,
-    // state != BULK_IDLE), sampled on its event control and guard path.
     `N2A_ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, regs_q.state != BULK_IDLE,
         ({3'b0, regs_q.completed} <= regs_q.length && regs_q.completed[1:0] == 0),
         "bulk completed prefix escaped request")

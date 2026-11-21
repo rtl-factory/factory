@@ -30,7 +30,6 @@ module n2m_cpu_execute (
         .flags_i(request.registers.f), .value_o(base_value),
         .flags_o(base_flags), .valid_o(base_valid)
     );
-    // Extend the accepted arithmetic slice without changing its public contract.
     always_comb begin
         alu_value = base_value;
         alu_flags = base_flags;
@@ -38,7 +37,7 @@ module n2m_cpu_execute (
         carry_out = request.registers.f[4];
         if (!base_valid) begin
             case (alu_operation)
-            n2m_cpu_pkg::ALU_DAA: begin // DAA uses N to distinguish add/subtract correction.
+            n2m_cpu_pkg::ALU_DAA: begin  // Ref: SM83 DAA: N selects the add or subtract correction.
                 if (request.registers.f[4] || (!request.registers.f[6] && alu_lhs > 8'h99)) begin
                     adjustment = 8'h60;
                     carry_out = 1'b1;
@@ -49,7 +48,7 @@ module n2m_cpu_execute (
                 else alu_value = alu_lhs + adjustment;
                 alu_flags = {alu_value == 8'b0, request.registers.f[6], 1'b0, carry_out, 4'b0};
             end
-            n2m_cpu_pkg::ALU_CPL: begin // CPL preserves Z/C.
+            n2m_cpu_pkg::ALU_CPL: begin  // Ref: SM83 CPL preserves Z and C.
                 alu_value = ~alu_lhs;
                 alu_flags = {request.registers.f[7], 2'b11, request.registers.f[4], 4'b0};
             end
@@ -171,7 +170,7 @@ module n2m_cpu_execute (
                     result.registers_after = n2m_cpu_pkg::write_byte(request.registers, request.opcode[2:0], alu_value);
                     result.registers_after.f = alu_flags;
                 end else if (request.opcode[7:6] == 1) result.registers_after.f = alu_flags;
-                // Memory RMW already committed its flags with the write. In
+                // Why: memory RMW already committed its flags with the write. In
                 // RL/RR the new carry must not feed a second ALU evaluation.
             end
         end else if (request.opcode >= 8'h40 && request.opcode <= 8'h7f) begin

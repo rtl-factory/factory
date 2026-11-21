@@ -34,8 +34,9 @@ async def bulk_partial_commit_rollback(dut):
         while True:
             await RisingEdge(dut.clk_i)
             cycle += 1
-            # Bounded request stalls model refresh occupation; responses also
-            # vary independently. No weakening of the RTL operation watchdog.
+            # Why: bounded request stalls model refresh occupation and
+            # responses vary independently, without stalls long enough to trip
+            # the RTL operation watchdog.
             ready = cycle % 47 >= 9
             dut.line_request_ready_i.value = ready
             dut.line_response_valid_i.value = 0
@@ -60,8 +61,10 @@ async def bulk_partial_commit_rollback(dut):
                     dut.line_response_data_i.value = memory.get(address, 0)
                     if write:
                         writes.append((address, data, mask))
-                        # First eight writes committed; second chunk's second
-                        # physical write fails after its first reached memory.
+                        # Why: the first eight writes commit; failing the
+                        # second chunk's second physical write after its first
+                        # reached memory checks that a partial chunk is
+                        # reported as failed.
                         if len(writes) == 10 and not failed:
                             dut.line_response_error_i.value = 1
                             failed = True

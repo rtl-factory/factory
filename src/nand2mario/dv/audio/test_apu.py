@@ -32,7 +32,6 @@ class Bench:
         d = self.dut
         await FallingEdge(d.clk_i)
         if tick:
-            # Falling edge of the sequencer bit is seen on this rising edge.
             if not self.bit:
                 d.sequencer_bit_i.value = 1
                 await RisingEdge(d.clk_i)
@@ -90,14 +89,13 @@ async def start(dut):
 
 async def apu_power_and_masks(dut):
     b = await start(dut)
-    # Post-boot state, then power off.
     await b.read_all()
     assert await b.read(NR52) == 0xF1
     assert [await b.read(a) for a in (0xFF11, 0xFF12, 0xFF24, 0xFF25)] == [0xBF, 0xF3, 0x77, 0xF3]
     await b.write(NR52, 0x00)
     await b.read_all()
     assert await b.read(NR52) == 0x70
-    # Power off: register writes ignored, length loads still accepted.
+    # Ref: Pan Docs, NR52 APU power: power off ignores register writes but still accepts length loads.
     for address in range(REGISTER_START, NR52):
         await b.write(address, 0xFF)
     await b.read_all()
@@ -106,7 +104,7 @@ async def apu_power_and_masks(dut):
     for address in range(REGISTER_START, NR52):
         await b.write(address, 0x00 if address in (0xFF14, 0xFF19, 0xFF1E, 0xFF23) else 0xFF)
     await b.read_all()
-    # Power off clears NR10-NR51 and channel status; wave RAM survives.
+    # Ref: Pan Docs, NR52 APU power: power off clears NR10-NR51 and channel status; wave RAM survives.
     for i in range(16):
         await b.write(WAVE_START + i, i * 0x11)
     await b.write(0xFF12, 0xF0)
@@ -122,7 +120,6 @@ async def apu_power_and_masks(dut):
 async def apu_length_and_status(dut):
     b = await start(dut)
     await b.write(NR52, 0x80)
-    # Channel 2: DAC on, length 4, length enabled, trigger.
     await b.write(0xFF17, 0xF0)
     await b.write(0xFF16, 64 - 4)
     await b.write(0xFF19, 0xC0)
@@ -130,7 +127,7 @@ async def apu_length_and_status(dut):
         await b.read(NR52)
         await b.tick()
     assert await b.read(NR52) & 0x02 == 0
-    # DAC off clears status at once; trigger with DAC off stays off.
+    # Ref: Pan Docs, APU DAC behaviour: DAC off clears status at once; trigger with DAC off stays off.
     await b.write(0xFF17, 0xF0)
     await b.write(0xFF19, 0x80)
     assert await b.read(NR52) & 0x02
@@ -138,14 +135,13 @@ async def apu_length_and_status(dut):
     assert await b.read(NR52) & 0x02 == 0
     await b.write(0xFF19, 0x80)
     assert await b.read(NR52) & 0x02 == 0
-    # Channel 3 length 256 and NR30 DAC gate.
     await b.write(0xFF1A, 0x80)
     await b.write(0xFF1B, 0xFE)
     await b.write(0xFF1E, 0xC0)
     assert await b.read(NR52) & 0x04
     await b.tick(5)
     assert await b.read(NR52) & 0x04 == 0
-    # Extra length clock: enable length in the first half with length 1.
+    # Ref: Pan Docs, APU length-counter quirk: enabling length in the first half with length 1 clocks it once extra.
     await b.write(0xFF21, 0xF0)
     await b.write(0xFF20, 63)
     await b.write(0xFF23, 0x80)
@@ -159,19 +155,17 @@ async def apu_sweep_overflow(dut):
     b = await start(dut)
     await b.write(NR52, 0x80)
     await b.write(0xFF12, 0xF0)
-    # Trigger-time overflow: freq $7FF, shift 1, add.
+    # Ref: Pan Docs, channel 1 frequency sweep: trigger-time overflow (freq $7FF, shift 1, add) disables the channel.
     await b.write(0xFF10, 0x11)
     await b.write(0xFF13, 0xFF)
     await b.write(0xFF14, 0x87)
     assert await b.read(NR52) & 0x01 == 0
-    # Sweep-step overflow after several steps from a lower frequency.
     await b.write(0xFF13, 0x00)
     await b.write(0xFF14, 0x86)
     for _ in range(40):
         await b.read(NR52)
         await b.tick()
     assert await b.read(NR52) & 0x01 == 0
-    # Negate never overflows.
     await b.write(0xFF10, 0x19)
     await b.write(0xFF14, 0x87)
     await b.tick(32)

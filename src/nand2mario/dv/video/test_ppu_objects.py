@@ -93,7 +93,7 @@ async def ppu_objects_contract(dut):
     b.retained = False
     rng = b.rng
 
-    # Frame A: 8x8 objects over background and window, every attribute in
+    # Why: frame A: 8x8 objects over background and window, every attribute in
     # play, window at a random WX 8..165 and WY in the upper half so lines
     # above WY show only background, a random LYC with STAT fully enabled.
     await b.load_vram(bytes(rng.randrange(256) for _ in range(8192)))
@@ -111,12 +111,11 @@ async def ppu_objects_contract(dut):
     assert stats['object_pixels'] >= 200 and stats['window_pixels'] >= 160, stats
     assert stats['priority_covered'] >= 1 and stats['ties'] >= 1 and stats['lower_x_wins'] >= 1, stats
     assert stats['flip_x'] >= 1 and stats['flip_y'] >= 1 and stats['obp1'] >= 1, stats
-    # Lines above WY show no window; the window's first line is window line 0.
     lines = m.window_lines(regs[m.LCDC], regs[m.WY], regs[m.WX])
     assert min(lines) == regs[m.WY] and lines[regs[m.WY]] == 0 and len(lines) == 144 - regs[m.WY]
 
-    # Negative controls: one changed pixel inside the window and one inside
-    # an object are both rejected by the frame comparison.
+    # Why: proves the check can fail: one changed pixel inside the window and one inside
+    # an object must both be rejected by the frame comparison.
     pixels = {(x, y): expected[y][x] for y in range(144) for x in range(160)}
     for (x, y) in ((regs[m.WX] - 7, regs[m.WY]), (80, overflow_line)):
         corrupted = [row[:] for row in expected]
@@ -128,10 +127,6 @@ async def ppu_objects_contract(dut):
         else:
             raise AssertionError(f'frame comparison accepted a corrupted pixel at {(x, y)}')
 
-    # Frame B: LCD off, new VRAM/OAM, 8x16 objects, the background disabled
-    # (LCDC.0 clear: both tile layers white and the priority attribute
-    # never covers an object). The window is enabled but, being white, its
-    # geometry is not observable here; the window target covers WX edges.
     await b.write(m.LCDC, 0x00)
     model.disable()
     await b.load_vram(bytes(rng.randrange(256) for _ in range(8192)))
@@ -149,9 +144,6 @@ async def ppu_objects_contract(dut):
                    if m.object_pixel(bytes(b.vram), regs[m.LCDC], m.line_objects(bytes(b.oam), regs[m.LCDC], y)[0], x) is None}
     assert tile_shades == {0}, f'disabled background must be white under the window too, saw {tile_shades}'
 
-    # Frame C: the same stores with the background enabled, objects and
-    # window disabled: the frame is the plain scrolled background although
-    # OAM and WX/WY would draw both.
     await b.write(m.LCDC, 0x00)
     model.disable()
     regs = {**regs, m.LCDC: 0x80 | 0x01 | (rng.randrange(256) & 0x58), m.WX: rng.randrange(7, 160)}
@@ -160,8 +152,6 @@ async def ppu_objects_contract(dut):
     assert stats['object_pixels'] == 0 and stats['window_pixels'] == 0, stats
     assert expected == m.render_background(bytes(b.vram), regs[m.LCDC], regs[m.SCY], regs[m.SCX], regs[m.BGP])
 
-    # Frame D: objects on, window on with WX = 7 from line 0 (the window
-    # covers the whole screen) and X ties resolved by OAM index.
     await b.write(m.LCDC, 0x00)
     model.disable()
     regs = {**regs, m.LCDC: 0x80 | 0x20 | 0x02 | 0x01 | (rng.randrange(256) & 0x58), m.WX: 7, m.WY: 0}

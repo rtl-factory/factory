@@ -48,7 +48,7 @@ module n2m_sdram_model #(
   localparam longint POWERUP_MIN = 2500, REFRESH_GAP_MAX = 195;
   localparam int INIT_REFRESHES = 8;
 
-  // 4 banks x 8192 rows x 1024 columns of 16 bits.
+  // Ref: IS42S16320D datasheet: 4 banks x 8192 rows x 1024 columns of 16 bits.
   logic [15:0] memory [0:(1 << 25) - 1];
 
   bit [12:0] open_row_q [0:3];
@@ -77,7 +77,7 @@ module n2m_sdram_model #(
   assign word = {ba_i, open_row_q[ba_i], addr_i[9:0]};
   assign dq_o = read_out_q ? dq_q : POISON;
 
-  // Seeded nonzero garbage everywhere before the first edge.
+  // Why: SDRAM has no power-up value, so seed nonzero garbage everywhere before the first edge.
   logic [31:0] lfsr;
   initial begin
     lfsr = FILL_SEED == 0 ? 32'h2545F491 : FILL_SEED;
@@ -94,8 +94,8 @@ module n2m_sdram_model #(
     read_out_q <= read;
     dq_q <= read ? memory[word] : POISON;
 
-    // Bus ownership: the controller drives only for a WRITE and never while
-    // the device drives or in the clock after it stopped.
+    // Why: the controller may drive DQ only for a WRITE, never while the device
+    // drives or in the clock after it stopped, or the bus contends.
     if (dq_oe_i) begin
       assert (write) else $fatal(1, "n2m_sdram_model: DQ driven outside a WRITE");
       assert (!read_out_q && !read_out_prev_q)
@@ -174,8 +174,8 @@ module n2m_sdram_model #(
       mode_set_q <= 1'b1;
       last_mode_q <= now_q;
     end
-    // The first refresh after the mode register set is also due within the
-    // interval; afterwards the refresh branch above checks every gap.
+    // Why: the refresh branch checks only gaps between refreshes, so the first refresh
+    // after the mode register set needs this check to stay within the interval.
     if (mode_set_q && !refresh)
       assert (now_q - last_refresh_q <= REFRESH_GAP_MAX)
         else $fatal(1, "n2m_sdram_model: refresh interval exceeded");

@@ -3,11 +3,11 @@
 
 `include "src/common/rtl/pkg/assertion_macros.vh"
 
+`ifdef VERILATOR
 // Explicit lint-only observation of deliberately unused fields/bits. Keep the
 // exact slices visible at each call site; no functional path may read NAME.
 // The simulator defines VERILATOR even with SYNTHESIS, so both simulation modes
 // retain the lint evidence. Hardware tools see neither a sink nor any logic.
-`ifdef VERILATOR
 `define N2A_UNUSED_BITS(NAME, BITS) \
   logic NAME; \
   assign NAME = ^(BITS);
@@ -19,7 +19,6 @@
 // state-owning always_ff process; callers keep next-state logic in blocking
 // combinational code and never write a clocked process of their own.
 // Argument order is normative: Q, D, CLK, then ENABLE, then RESET, then VALUE.
-
 `define N2A_DFF(Q, D, CLK) \
   always_ff @(posedge (CLK)) begin \
     Q <= D; \

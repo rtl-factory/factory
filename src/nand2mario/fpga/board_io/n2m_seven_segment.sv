@@ -7,7 +7,7 @@ module n2m_seven_segment (
   input  logic [3:0] nibble_i,
   output logic [7:0] segments_o
 );
-  logic [6:0] lit;  // active-high g f e d c b a
+  logic [6:0] lit;  // Why: active-high for readable patterns; inverted onto the active-low pins.
   always_comb begin
     case (nibble_i)
       4'h0: lit = 7'b0111111;

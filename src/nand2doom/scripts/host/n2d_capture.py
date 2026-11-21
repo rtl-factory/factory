@@ -112,8 +112,8 @@ class Capture:
             raise CaptureError('capture budget exhausted; incomplete snapshot')
         if self.halted_at is not None and not self.dumping and now+self.client.timeout-self.halted_at > SHORT_HALT:
             raise CaptureError('short halt budget exhausted')
-        # Keep the serial write timeout fixed; never reconfigure a Windows handle
-        # in a packet. Reserve the full transaction before issuing any command.
+        # Why: the write timeout stays fixed because a Windows handle must never be
+        # reconfigured mid-packet; the full transaction is reserved before any command.
         if command == wire.CMD_CAPS:
             result = self.client.capabilities()
         elif command == wire.CMD_BULK_READ:
@@ -176,7 +176,7 @@ class Capture:
     def release(self):
         if self.halted_at is None:
             self.command(wire.CMD_HALT,cleanup=True)
-        self.dumping=True  # release commands use remaining whole-operation reserve
+        self.dumping=True  # Why: release commands may then spend the remaining whole-operation reserve
         before=self.header(cleanup=True)
         self.check_ownership(before)
         if self.snapshot is not None and before != self.snapshot:
@@ -187,9 +187,9 @@ class Capture:
         self.resume(cleanup=True)
         self.dumping=False
         def acknowledged(h):
-            # Check ownership on EVERY poll, before poll() may resume again.
-            # Generation equality detects sampling; numeric order is not valid
-            # across u32 wrap. Accepted IDs, unlike generation, never wrap.
+            # Why: ownership is checked on every poll, before poll() may resume again.
+            # Generation equality detects sampling because numeric order is not valid
+            # across u32 wrap; accepted IDs, unlike generation, never wrap.
             self.check_ownership(h, released=True)
             return h[4] in (IDLE,ERROR) and h[5]==0 and h[9]!=generation
         header=self.poll(acknowledged,self.deadline-1,cleanup=True)
@@ -212,7 +212,8 @@ class Capture:
             self.safe_resume=True
             if initial[6]==0xffffffff:
                 raise CaptureError('capture sequence exhausted; no automatic reinitialization')
-            # Establish a real service witness while running before requesting.
+            # Why: resuming and waiting for a new generation first gives the request a real
+            # service witness, not a stale header.
             self.resume()
             baseline=self.poll(lambda h: h[9]!=initial[9],self.start+15)
             if baseline[3] or baseline[4]!=IDLE or baseline[5] or baseline[6]!=initial[6]:
@@ -220,7 +221,7 @@ class Capture:
                 raise CaptureError('mailbox changed during baseline service')
             self.sequence=baseline[6]+1
             self.previous_sequence=baseline[6]
-            self.owned=True  # verified transport required even if write readback fails
+            self.owned=True  # Why: set before request(), so cleanup still runs if the write readback fails
             self.request(self.sequence)
             self.resume()
 
@@ -244,8 +245,8 @@ class Capture:
                 offset=0
                 for length in blocks:
                     data=self.command(wire.CMD_BULK_READ,address=base+offset,length=length)
-                    # Client returns only a complete validated block. A device
-                    # error's diagnostic completed prefix is never image data.
+                    # Why: the client returns only a complete validated block; a device error's
+                    # completed prefix is diagnostic, never image data.
                     output.extend(data)
                     offset+=length
             if self.header()!=header:
@@ -267,7 +268,7 @@ class Capture:
                 method='completed gameplay display; settled submitted palette; two raster advances; maintained Halt',
                 limitations='Sampled gameplay; real elapsed time advances during halt; not physical sync evidence')
         except Exception:
-            # A poisoned transaction has unknown effects. Do not guess cleanup.
+            # Why: a poisoned transaction has unknown effects, so cleanup is not guessed.
             if not self.client.failed and self.safe_resume and self.clock()+5 < self.deadline:
                 try:
                     if self.owned:
@@ -322,8 +323,8 @@ def main(argv=None, *, opener=uart.open_serial):
             operation=Capture(uart.Client(transport,args.timeout),layout)
             report=operation.run(continuity_attested=args.clock_history_attested)
         indices,palette=bytes(operation.partial_indices),bytes(operation.partial_palette)
-        # The framebuffer window always reads a 320x200 image: half-width
-        # (DE10-Lite) hardware returns each stored even-x pixel for both columns.
+        # Why: the framebuffer window always reads 320x200; half-width (DE10-Lite)
+        # hardware returns each stored even-x pixel for both columns.
         report.update(schema_version=1,status='success',width=320,height=200,
             horizontal_pairs_equal=all(indices[i]==indices[i+1] for i in range(0,len(indices),2)),
             indices_sha256=digest(indices),palette_sha256=digest(palette),

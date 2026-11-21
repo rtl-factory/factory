@@ -100,8 +100,9 @@ async def observe_gameplay_retirements(dut, trace, witness, armed, evidence_path
                     write=True, trap=bool(dut.observation_trap_o.value),
                 )
             if witness.armed and not witness.completed and int(dut.observation_valid_o.value):
-                # Counter stores update GameplayTrace before the same-cycle
-                # publication cross-check; there is no concurrent counter writer.
+                # Why: counter stores may update GameplayTrace before the
+                # same-cycle publication cross-check because there is no
+                # concurrent counter writer.
                 witness.accept({
                     'valid': True, 'order': int(dut.observation_order_o.value),
                     'tick': int(dut.system_tick_o.value),

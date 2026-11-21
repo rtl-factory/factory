@@ -302,7 +302,6 @@ class ProjectTargetTests(unittest.TestCase):
                           "system_sdram_direct_preload"),
                          (sdram_preload.top, sdram_preload.test_module, sdram_preload.testcase))
         self.assertEqual((sdram.sources, sdram.parameters), (sdram_preload.sources, sdram_preload.parameters))
-        # Every n2m_system composition carries the loader, the PHYs and both backings.
         for name in ("n2m_system", "n2m_system_background", "n2m_system_objects", "n2m_system_mbc1", "n2m_system_vga",
                      "n2m_system_preload"):
             with self.subTest(target=name):

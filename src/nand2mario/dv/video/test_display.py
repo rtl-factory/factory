@@ -21,9 +21,6 @@ from . import display_model as m
 
 CLOCK_PERIOD_NS = 40
 HALF_PERIOD_NS = CLOCK_PERIOD_NS // 2
-# Cycle c follows rising edge c. An event presented in cycle c is applied at
-# edge c + 1 and its registered pulse is recorded at that edge; the raster
-# origin cycle O is followed by pixel_start_o at edge O + OUTPUT_LATENCY.
 PULSE_LATENCY = 1
 PULSES = ('frame_complete_o', 'frame_swapped_o', 'frame_dropped_o', 'frame_repeated_o')
 
@@ -37,8 +34,8 @@ class Bench:
         self.dut = dut
         self.rng = random.Random(seed)
         self.bound = int(os.environ['DV_MAX_CYCLES'])
-        self.events = []   # (edge, pulse name) for every observation pulse
-        self.starts = []   # edge index of every pixel_start_o pulse
+        self.events = []
+        self.starts = []
 
     @staticmethod
     def now_edge():
@@ -98,7 +95,7 @@ class Bench:
         d.pixel_shade_i.value = 0
         d.pixel_x_i.value = 0
         d.pixel_y_i.value = 0
-        # The snapshot ports stay idle here (the snapshot target owns them).
+        # Why: the snapshot ports stay idle here (the snapshot target owns them).
         d.snapshot_pin_i.value = 0
         d.snapshot_release_i.value = 0
         d.snapshot_request_i.value = 0
@@ -123,7 +120,7 @@ class Bench:
             for x in range(m.FRAME_WIDTH):
                 last = (x, y) == (m.FRAME_WIDTH - 1, m.FRAME_HEIGHT - 1)
                 if last and last_pixel_edge is not None:
-                    # Present the pixel at the falling edge before the target
+                    # Why: present the pixel at the falling edge before the target
                     # rising edge: land 10 ns earlier so that falling edge is
                     # unambiguously the next one awaited.
                     target_ns = last_pixel_edge * CLOCK_PERIOD_NS - HALF_PERIOD_NS
@@ -140,7 +137,7 @@ class Bench:
                     d.lcd_enable_i.value = int(lcd_after_last)
                 gap = 0 if last else self.rng.randrange(gap_max + 1)
                 if gap:
-                    # Idle cycles; the next falling edge awaited is unambiguous.
+                    # Why: idle cycles; the next falling edge awaited is unambiguous.
                     await Timer(gap * CLOCK_PERIOD_NS - 10, unit='ns')
         self.check_bound()
 
@@ -180,7 +177,7 @@ class Bench:
         start_ns = start * CLOCK_PERIOD_NS
         captured = {}
         for line in sorted(lines):
-            # Land inside the high phase of the line's first clock, so the
+            # Why: land inside the high phase of the line's first clock, so the
             # falling edge awaited next is unambiguously that clock's.
             line_ns = start_ns + line * m.H_TOTAL * CLOCK_PERIOD_NS + HALF_PERIOD_NS // 2
             await Timer(line_ns - get_sim_time(unit='ns'), unit='ns')
@@ -197,7 +194,7 @@ class Bench:
         random image lines."""
         lines = {0, m.IMAGE_TOP - 1, m.IMAGE_TOP, m.IMAGE_TOP + 1, m.IMAGE_TOP + m.IMAGE_HEIGHT - 1,
                  m.IMAGE_TOP + m.IMAGE_HEIGHT, m.V_VISIBLE - 1, m.V_VISIBLE, m.V_VISIBLE + m.V_FRONT_PORCH,
-                 m.V_TOTAL - 2}   # the capture ends before the next origin's pulses
+                 m.V_TOTAL - 2}   # Why: the capture ends before the next origin's pulses.
         lines |= {self.rng.randrange(m.IMAGE_TOP, m.IMAGE_TOP + m.IMAGE_HEIGHT) for _ in range(12)}
         return lines
 
@@ -227,10 +224,6 @@ async def display_contract(dut):
     for name in (*PULSES, 'pixel_start_o'):
         cocotb.start_soon(b.watch(name))
 
-    # Phase 1: blank display from reset. One complete output frame: the
-    # image window is white, the border and blanking black, the syncs sit
-    # exactly where the common 640x480 contract puts them, and the next
-    # frame starts 420,000 clocks later. No bank-policy pulse occurs.
     phase_edge = b.now_edge()
     start, clocks = await b.capture_frame()
     m.compare_clocks(clocks, m.expected_frame(None), label='blank frame')
@@ -240,8 +233,6 @@ async def display_contract(dut):
     check_pulses(b.events_since(phase_edge), (), 'phase 1')
     cocotb.log.info('phase 1: blank frame and sync timing verified from edge %d', start)
 
-    # Phase 2: the LCD turns on and one frame completes; it is swapped in at
-    # the next raster origin and the following output frame shows it scaled.
     await b.set_lcd(True)
     phase_edge = b.now_edge()
     frame1 = random_frame(b.rng)
@@ -257,7 +248,7 @@ async def display_contract(dut):
     m.write_rgb_png(Path.cwd() / 'vga_frame1.png', m.visible_rows(clocks))
     cocotb.log.info('phase 2: frame 1 swapped at edge %d and displayed', swap_edge)
 
-    # Negative control: the clock comparison rejects one changed pixel.
+    # Why: proves the check can fail: the clock comparison must reject one changed pixel.
     corrupted = [row[:] for row in frame1]
     corrupted[101][37] ^= 1
     try:
@@ -267,8 +258,6 @@ async def display_contract(dut):
     else:
         raise AssertionError('frame comparison accepted a corrupted expectation')
 
-    # Phase 3: two frames complete inside one VGA frame: the first is dropped
-    # when the second completes, the second is swapped in at the origin.
     phase_edge = await b.begin_phase()
     frame2, frame3 = random_frame(b.rng), random_frame(b.rng)
     await b.drive_frame(frame2, gap_max=1)
@@ -283,7 +272,6 @@ async def display_contract(dut):
     check_lines(captured, frame3, 'frame 3')
     cocotb.log.info('phase 3: frame 2 dropped, frame 3 displayed')
 
-    # Phase 4: nothing completes for one VGA frame: the origin repeats frame 3.
     phase_edge = await b.begin_phase()
     repeat_edge = await b.wait_pulse('frame_repeated_o', phase_edge)
     assert repeat_edge == b.origin_cycle(phase_edge) + PULSE_LATENCY
@@ -292,15 +280,12 @@ async def display_contract(dut):
     check_lines(captured, frame3, 'repeated frame 3')
     cocotb.log.info('phase 4: frame 3 repeated')
 
-    # Phase 5: the origin boundary. A frame whose last pixel is sampled in
-    # the origin cycle is swapped by that origin; one sampled a cycle later
-    # waits for the next origin while the old frame repeats once more.
     for offset, expected in ((0, ('frame_complete_o', 'frame_swapped_o')),
                              (1, ('frame_repeated_o', 'frame_complete_o', 'frame_swapped_o'))):
         phase_edge = await b.begin_phase()
         frame = random_frame(b.rng)
         origin = b.origin_cycle(phase_edge + 150_000)
-        # The pixel presented in cycle origin + offset is sampled at the next edge.
+        # Why: the pixel presented in cycle origin + offset is sampled at the next edge.
         await b.drive_frame(frame, gap_max=1, last_pixel_edge=origin + offset + 1)
         swap_edge = await b.wait_pulse('frame_swapped_o', phase_edge)
         assert swap_edge == origin + offset * m.FRAME_CLOCKS + PULSE_LATENCY, (offset, swap_edge, origin)
@@ -309,9 +294,6 @@ async def display_contract(dut):
         check_lines(captured, frame, f'origin offset {offset} frame')
         cocotb.log.info('phase 5: last pixel at origin + %d swapped at edge %d', offset, swap_edge)
 
-    # Phase 6: LCD off. A frame completed while the LCD is off is not fresh,
-    # the next origin blanks the display (white image, no pulse) and the
-    # frame store contents never show through.
     phase_edge = b.now_edge()
     await b.set_lcd(False)
     await b.drive_frame(random_frame(b.rng), gap_max=1)
@@ -319,7 +301,6 @@ async def display_contract(dut):
     check_pulses(b.events_since(phase_edge), ('frame_complete_o',), 'phase 6 off')
     check_lines(captured, None, 'LCD off frame')
     assert int(dut.display_valid_o.value) == 0
-    # LCD on again: blank until a new complete frame is swapped in.
     phase_edge = b.now_edge()
     await b.set_lcd(True)
     _, captured = await b.capture_lines(b.sample_lines())
@@ -332,8 +313,6 @@ async def display_contract(dut):
     check_pulses(b.events_since(phase_edge), ('frame_complete_o', 'frame_swapped_o'), 'phase 6 recovery')
     _, captured = await b.capture_lines(b.sample_lines())
     check_lines(captured, frame6, 'frame 6')
-    # A brief LCD-off period inside one VGA frame discards a fresh frame but
-    # keeps the displayed one: the origin repeats it.
     phase_edge = await b.begin_phase()
     await b.drive_frame(random_frame(b.rng), gap_max=1)
     await b.set_lcd(False)
@@ -344,21 +323,12 @@ async def display_contract(dut):
     check_pulses(b.events_since(phase_edge), ('frame_complete_o', 'frame_repeated_o'), 'phase 6 brief off')
     check_lines(captured, frame6, 'frame 6 kept across a brief LCD off')
 
-    # Phase 7: LCD-off invalidation has priority over completion freshness.
-    # A frame whose last pixel is sampled with the LCD off, with the LCD
-    # enabled in the very next cycle, is never displayed: (a) when that next
-    # cycle is the raster origin (the origin sees the LCD on and must find
-    # nothing fresh), (b) when the origin comes a whole frame later. The
-    # display is blanked by the first origin with the LCD off and stays
-    # blank; a frame completed with the LCD on then recovers it.
     for coincident in (True, False):
-        # The LCD goes off before an origin, which blanks the display; the
-        # phase then starts from that blank frame with the LCD still off.
         await b.set_lcd(False)
         phase_edge = await b.begin_phase()
         assert int(dut.display_valid_o.value) == 0
         origin = b.origin_cycle(phase_edge + 150_000)
-        # The last pixel is sampled at edge `sample`; the LCD enable is set in
+        # Why: the last pixel is sampled at edge `sample`; the LCD enable is set in
         # the cycle after that edge and is sampled together with the origin
         # (coincident) or long before it.
         sample = origin if coincident else origin - 100_000
@@ -377,7 +347,6 @@ async def display_contract(dut):
         check_lines(captured, frame7, f'frame 7 after recovery (coincident origin {coincident})')
     cocotb.log.info('phase 6/7: LCD-off blank, recovery, brief-off retention and off-completion priority verified')
 
-    # Every output frame start was exactly one raster period apart.
     assert all(later - earlier == m.FRAME_CLOCKS for earlier, later in zip(b.starts, b.starts[1:])), b.starts
     b.check_bound()
     cocotb.log.info('display checks passed seed=%d edges=%d starts=%d events=%d',

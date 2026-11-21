@@ -14,12 +14,12 @@ from cocotb.utils import get_sim_time
 import src.nand2doom.scripts.host.n2d_uart_debug_host as wire
 
 
-BAUD = 3_000_000  # exact FT232R maximum; the fixture runs 8 1/3 clocks per bit
+BAUD = 3_000_000  # Ref: FT232R datasheet maximum rate; the fixture runs 8 1/3 clocks per bit
 BIT_PS = 10**12 / BAUD
 CLOCK_NS = 40
-GAP_CYCLES = 4000  # n2d_uart_stream_memory STREAM_GAP_TIMEOUT_CYCLES
-IDLE_CYCLES = 40000  # n2d_uart_stream_memory STREAM_IDLE_CYCLES
-SAMPLE_WINDOW_PS = 100_000  # host samples each bit centre and +/-100 ns
+GAP_CYCLES = 4000  # Why: equal to n2d_uart_stream_memory STREAM_GAP_TIMEOUT_CYCLES, which the waits below must exceed
+IDLE_CYCLES = 40000  # Why: equal to n2d_uart_stream_memory STREAM_IDLE_CYCLES, which the waits below must exceed
+SAMPLE_WINDOW_PS = 100_000  # Why: sampling each bit centre and +/-100 ns catches marginal bit timing a single centre sample would pass
 SEED = int(os.environ.get("DV_SEED", os.environ.get("N2A_SEED", "125")))
 MAX_CYCLES = int(os.environ.get("DV_MAX_CYCLES", os.environ.get("N2A_MAX_CYCLES", "3000000")))
 
@@ -37,7 +37,7 @@ class Host:
 
     def __init__(self, dut):
         self.dut = dut
-        self.bit_ps = BIT_PS  # skewed by the FT232R oscillator-tolerance case
+        self.bit_ps = BIT_PS  # Why: an attribute, not BIT_PS, so the FT232R oscillator-tolerance case can skew it
         self.rx = bytearray()
         self.cursor = 0
 
@@ -115,7 +115,8 @@ async def stream_load_contract(dut):
     dut.reset_i.value = 0
     await ClockCycles(dut.clk_i, 4)
 
-    # Backing memory: 16-byte lines, every line pre-filled with a sentinel.
+    # Why: every 16-byte line starts as a sentinel, so a write outside the
+    # streamed segments shows.
     sentinel = bytes((0xA5, 0x5A, 0xC3, 0x3C)) * 4
     memory: dict[int, bytearray] = {}
     control = {"fail_after": -1, "publications": 0, "writes": 0, "cycles": 0}
@@ -173,7 +174,6 @@ async def stream_load_contract(dut):
         sequence += 1
         return sequence & 0xFFFF
 
-    # --- Session open, identity and not-halted rejection -------------------
     hello = await host.exchange(wire.stream_frame(wire.STREAM_HELLO, next_sequence()))
     assert (hello.kind, hello.status, hello.value) == (wire.STREAM_HELLO, wire.ST_OK,
                                                         wire.STREAM_IDENTITY), hello
@@ -181,7 +181,8 @@ async def stream_load_contract(dut):
     assert early.status == wire.ST_NOT_HALTED and control["writes"] == 0, early
     dut.halt_ack_i.value = 1
 
-    # --- Trusted-header rejections answer in order without memory traffic --
+    # Why: rejections decided from the trusted header must answer in order and
+    # cause no memory traffic.
     bad_range = await host.exchange(raw_frame(wire.STREAM_WRITE, next_sequence(),
                                               0x03FFFFFC, 8, bytes(8)))
     assert bad_range.status == wire.ST_RANGE, bad_range
@@ -193,7 +194,6 @@ async def stream_load_contract(dut):
     assert bad_length.status == wire.ST_LENGTH, bad_length
     assert control["writes"] == 0
 
-    # --- Multi-segment pipelined stream with injected link faults ----------
     segments = [(0x0000_1000, rng.randbytes(2500)),
                 (0x0002_0000, rng.randbytes(3075)),
                 (0x03FF_FC00, rng.randbytes(1024))]
@@ -208,14 +208,18 @@ async def stream_load_contract(dut):
         seq = next_sequence()
         sent[seq] = index
         frame = bytearray(wire.stream_write_frame(seq, address, data))
+        # Why: one link fault of each kind, so every recovery path runs: corrupt payload
+        # (the frame CRC fails), a dropped payload byte (that frame fails, the next
+        # resyncs), a corrupt header (silently resynchronized) and a truncated tail
+        # (abandoned by the gap timeout).
         if index == 1:
-            frame[20] ^= 0x40  # payload corruption: frame CRC fails
+            frame[20] ^= 0x40
         elif index == 3:
-            del frame[40]  # dropped payload byte: this frame fails, next resyncs
+            del frame[40]
         elif index == 5:
-            frame[1] ^= 0x01  # header corruption: silently resynchronized
+            frame[1] ^= 0x01
         elif index == len(chunks) - 1:
-            frame = frame[:-3]  # truncated tail: abandoned by the gap timeout
+            frame = frame[:-3]
         stream += frame
     await host.send(bytes(stream))
     replies = await host.settle(GAP_CYCLES + 4000)
@@ -234,7 +238,6 @@ async def stream_load_contract(dut):
     committed = sum(value == wire.ST_OK for value in status.values())
     cocotb.log.info("first pass replies=%s", sorted(status.items()))
 
-    # --- Recovery: resend every unacknowledged frame, pipelined ------------
     pending = [index for seq, index in sent.items() if status.get(seq) != wire.ST_OK]
     memory_error_seen = False
     for round_index in range(4):
@@ -249,7 +252,8 @@ async def stream_load_contract(dut):
             sent[seq] = index
             resend += wire.stream_write_frame(seq, *chunks[index])
         await host.send(bytes(resend))
-        # A full 1 KiB frame commits 256 words after its last byte arrives.
+        # Why: settle 20,000 clocks because a full 1 KiB frame commits 256
+        # words after its last byte arrives.
         replies = await host.settle(20000)
         status = {reply.sequence: reply.status for reply in replies}
         assert [r.sequence for r in replies] == sorted(sent), (round_index, replies)
@@ -259,7 +263,6 @@ async def stream_load_contract(dut):
     assert not pending, f"frames never committed: {pending}"
     assert memory_error_seen, "injected publication failure was not reported"
 
-    # --- Stored-memory contents, tails and sentinels -----------------------
     for address, data in segments:
         assert read_bytes(address, len(data)) == data, f"segment 0x{address:08x} mismatch"
     assert read_bytes(0x0002_0000 + 3075, 1) == sentinel[3:4], "tail lane beyond segment changed"
@@ -267,7 +270,6 @@ async def stream_load_contract(dut):
     allowed = {a & ~0xF for address, data in segments for a in range(address, address + len(data))}
     assert written_lines <= allowed, "write outside the streamed segments"
 
-    # --- Whole-image digest of stored SDRAM, chained across segments -------
     seed = 0xFFFFFFFF
     for address, data in segments:
         reply = await host.exchange(wire.stream_digest_frame(next_sequence(), address, len(data), seed),
@@ -278,13 +280,12 @@ async def stream_load_contract(dut):
     image = b"".join(data for _, data in segments)
     assert seed ^ 0xFFFFFFFF == zlib.crc32(image), "whole-image digest mismatch"
     flip = 0x0002_0000 + 1234
-    line(flip)[flip & 0xF] ^= 0x10  # a stored-memory fault the RX path never saw
+    line(flip)[flip & 0xF] ^= 0x10  # Why: a stored-memory fault the RX path never saw, so only the digest can catch it
     corrupted = await host.exchange(wire.stream_digest_frame(next_sequence(), 0x0002_0000, 3075,
                                                               0xFFFFFFFF), limit=40000)
     assert corrupted.value != wire.stream_digest(segments[1][1]), "digest did not read SDRAM"
     line(flip)[flip & 0xF] ^= 0x10
 
-    # --- Close, then the legacy engine owns the link again ----------------
     done = await host.exchange(wire.stream_frame(wire.STREAM_END, next_sequence()))
     assert done.kind == wire.STREAM_END and done.status == wire.ST_OK
     assert done.value == committed, (done.value, committed)
@@ -293,12 +294,13 @@ async def stream_load_contract(dut):
     ping = wire.decode_response(await host.take(15, 20000))
     assert ping.status == wire.ST_OK and ping.sequence == 7 and ping.words[0] == 0x3144324E
 
-    # --- A host killed mid-frame: a restarted host's End recovers at once --
+    # Why: a host killed mid-frame must not block a restarted host, whose End
+    # must recover at once.
     junk = b"\xee" * 512
     reopened = await host.exchange(wire.stream_frame(wire.STREAM_HELLO, next_sequence()))
     assert reopened.value == wire.STREAM_IDENTITY
     await host.send(wire.stream_write_frame(next_sequence(), 0x1000, junk)[:200])
-    # A restarted host is slower than the frame gap bound; the abandoned
+    # Why: a restarted host is slower than the frame gap bound; the abandoned
     # frame is dropped before its first byte arrives.
     await ClockCycles(dut.clk_i, GAP_CYCLES + 100)
     restart = await host.exchange(wire.stream_frame(wire.STREAM_END, next_sequence()))
@@ -308,7 +310,8 @@ async def stream_load_contract(dut):
     ping = wire.decode_response(await host.take(15, 20000))
     assert ping.status == wire.ST_OK and ping.sequence == 8
 
-    # --- ... and with no host at all, the gap and idle bounds recover -------
+    # Why: with no host at all the gap and idle bounds must still recover the
+    # session.
     reopened = await host.exchange(wire.stream_frame(wire.STREAM_HELLO, next_sequence()))
     assert reopened.value == wire.STREAM_IDENTITY
     await host.send(wire.stream_write_frame(next_sequence(), 0x1000, junk)[:200])
@@ -317,9 +320,9 @@ async def stream_load_contract(dut):
     ping = wire.decode_response(await host.take(15, 20000))
     assert ping.status == wire.ST_OK and ping.sequence == 9
     assert read_bytes(0x1000, len(segments[0][1])) == segments[0][1], "truncated frame wrote memory"
-    # --- FT232R oscillator tolerance: host clock +/-1667 ppm -----------------
-    # The FT232R's internal 12 MHz oscillator is specified at 11.98-12.02 MHz.
-    # The host sends and samples with a skewed bit period in both directions.
+    # Ref: FT232R datasheet: the internal 12 MHz oscillator is specified at
+    # 11.98-12.02 MHz (+/-1667 ppm). The host sends and samples with a skewed bit
+    # period in both directions.
     for ppm in (+1667, -1667):
         host.bit_ps = BIT_PS / (1 + ppm * 1e-6)
         skewed = bytes((i * 11 + ppm) & 0xFF for i in range(130))

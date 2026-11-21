@@ -25,10 +25,10 @@ from .test_system import (idle_host, HALT_OPCODE, compare_signature, defined_sig
 CLOCK_PERIOD_NS = 40
 INSTRUCTION_BOUND = 30000
 DOTS_PER_FRAME = m.DOTS_PER_FRAME
-DOT_EDGES = 390625 / 65536      # exact 25 MHz / 4,194,304 Hz ratio
-# Machine cycles from the boundary at which the VBlank flag is visible to the
-# interrupt-entry retirement of a CPU sleeping in HALT: dispatch starts on
-# that boundary, with no discarded opcode read before its five cycles.
+DOT_EDGES = 390625 / 65536      # Why: the exact 25 MHz / 4,194,304 Hz ratio, not a rounded one.
+# Why: 5 because dispatch starts on the boundary at which the VBlank flag is visible,
+# with no discarded opcode read before the five entry cycles of a CPU
+# sleeping in HALT.
 HALT_WAKE_CYCLES = 5
 
 
@@ -55,8 +55,8 @@ class VideoPeripherals(Peripherals):
     def __init__(self):
         super().__init__()
         self.lcd = {m.LCDC: 0, m.SCY: 0, m.SCX: 0, m.LYC: 0, m.BGP: 0}
-        self.vblank_tick = None     # tick before which the VBlank flag is visible
-        self.enable_dots = None     # dot pulses sampled when the LCD was enabled
+        self.vblank_tick = None
+        self.enable_dots = None
         self.lcdc_writes = 0
 
     def advance(self, ticks):
@@ -124,9 +124,6 @@ async def system_background_frame(dut):
     release_edge = cycles
     release_ns = get_sim_time(unit='ns')
 
-    # Frame starts observed on the public marker: active edge index since
-    # release of each rising frame_start_o (the marker rises in the timestep
-    # of the clock edge whose dot enable emitted pixel (0, 0)).
     frame_starts = []
 
     async def watch_frame_starts():
@@ -137,7 +134,7 @@ async def system_background_frame(dut):
     cocotb.start_soon(watch_frame_starts())
 
     peripherals = VideoPeripherals()
-    memory = GameBoyMemory(image, io_read=peripherals.read, io_write=peripherals.write)   # strict
+    memory = GameBoyMemory(image, io_read=peripherals.read, io_write=peripherals.write)
     model = CPU(mem=memory)
     retirements, interrupts = 0, []
     pixels_before_lcd = 0
@@ -153,14 +150,14 @@ async def system_background_frame(dut):
         if not peripherals.lcd[m.LCDC] & 0x80:
             pixels_before_lcd += int(dut.pixel_valid_o.value)
         if frame_starts and peripherals.enable_dots is None:
-            # Pixel (0, 0) is emitted by the pulse ending LCD dot 92 + fine,
+            # Why: pixel (0, 0) is emitted by the pulse ending LCD dot 92 + fine,
             # the 93 + fine'th dot pulse after the enable; the VBlank entry
             # pulse ends LCD dot 144 * 456 - 1. Both fix the raster phase and
             # the tick at which the IF flag becomes visible to the CPU.
             fine = peripherals.lcd[m.SCX] & 7
             peripherals.enable_dots = dots_at(frame_starts[0]) - (m.PIXEL_DOT + fine + 1)
             vblank_edge = dot_edge(peripherals.enable_dots + m.VISIBLE_LINES * m.DOTS_PER_LINE)
-            visible_tick = (vblank_edge + 2) * 16384 // 390625 + 1   # first tick edge >= vblank_edge + 2
+            visible_tick = (vblank_edge + 2) * 16384 // 390625 + 1   # Why: the first tick edge at or after vblank_edge + 2.
             peripherals.vblank_tick = visible_tick - 1
         record = unpack(int(dut.retirement_o.value))
         if not record['valid']:
@@ -186,16 +183,12 @@ async def system_background_frame(dut):
     assert int(dut.halted_o.value) == 1, 'CPU must report HALT after the halting retirement'
     cocotb.log.info('program halted after %d retirements and %d edges', retirements, cycles)
 
-    # Exactly one interrupt, the VBlank (bit 0), entered while asleep in HALT
-    # exactly HALT_WAKE_CYCLES machine cycles after the predicted visibility
-    # boundary of the flag; the LCD was enabled once.
     assert peripherals.lcdc_writes == 1 and len(frame_starts) >= 1
     assert len(interrupts) == 1 and interrupts[0][1] == 0, ('VBlank interrupt entries', interrupts)
     entry_tick, visible_tick = interrupts[0][0], peripherals.vblank_tick + 1
     assert entry_tick == visible_tick + HALT_WAKE_CYCLES, (
         f'interrupt entry at tick {entry_tick}, flag visible at tick {visible_tick}')
 
-    # Signature: the program-defined VRAM bytes and the register/handler evidence.
     vram_observed, vram_expected = defined_signature(store_bytes(store_array(dut.u_memory.u_vram)), memory, 'vram')
     compare_signature(vram_observed, vram_expected, 'VRAM')
     wram_observed, wram_expected = defined_signature(store_bytes(store_array(dut.u_memory.u_wram)), memory, 'wram')
@@ -207,7 +200,6 @@ async def system_background_frame(dut):
     assert lcdc & 0x80 and len(vram_observed) == 48 + 16 + 1024, (lcdc, len(vram_observed))
     assert int(dut.u_memory.interrupt_enable_o.value) == memory.interrupt_enable() == 0
 
-    # One complete frame from the next frame start, pixel by pixel, in order.
     expected_frame = m.render_background(bytes(memory.vram), lcdc, scy, scx, bgp)
     observed = [[None] * m.VISIBLE_PIXELS for _ in range(m.VISIBLE_LINES)]
     await RisingEdge(dut.frame_start_o)
@@ -229,11 +221,10 @@ async def system_background_frame(dut):
     assert cycles <= bound, f'finite bound exceeded during the frame capture ({cycles})'
     compare_frame(observed, expected_frame)
     m.write_png(Path.cwd() / 'frame.png', observed)
-    # VBlanks keep setting the flag while nothing is enabled; the CPU stays halted.
     await ReadOnly()
     assert int(dut.u_interrupts.interrupt_flags_o.value) & 0x01 and int(dut.halted_o.value) == 1
 
-    # Negative control: the frame comparison rejects a single changed pixel.
+    # Why: proves the check can fail: the frame comparison must reject a single changed pixel.
     corrupted = [row[:] for row in expected_frame]
     corrupted[70][80] ^= 2
     try:

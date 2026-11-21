@@ -24,9 +24,9 @@ from ...scripts.board.cart_loader import (CMD_HOLD, CMD_PING, CMD_READ, CMD_WRIT
 from .test_system import CLOCK_PERIOD_NS, power_up
 from .test_system_sdram import SDRAM_INITIALIZED_CLOCK, Host, load_image, release_and_verify
 
-UART_CLKS_PER_BIT = 8                 # the registry's parameter for this target
+UART_CLKS_PER_BIT = 8                 # Why: must match the registry's parameter for this target.
 SAMPLES = (0x0000, 0x0100, 0x4000, 0x7F00, 0x13F00, 0x1FF00)
-PATCH_OFFSET = 0x13F00                # bank 4 pattern bytes the program never reads ($7F00-$7F0F)
+PATCH_OFFSET = 0x13F00                # Why: bank 4 pattern bytes the program never reads ($7F00-$7F0F).
 
 
 class LineHost:
@@ -124,13 +124,9 @@ async def preload_and_interleave(dut, system, host, image, rng, onchip):
     assert response.ok and response.held
     await ReadOnly()
     assert int(dut.core_reset_o.value) == 1
-    # The preloaded bytes read back through the loader.
     for offset in SAMPLES:
         response = await host.exchange(encode_request(CMD_READ, address_field(offset), length=256))
         assert response.ok and response.payload == image[offset:offset + 256], (hex(offset), response.describe())
-    # Interleaving while held: a direct patch, read back over the UART, then
-    # restored by a UART WRITE, then a direct rewrite of the restored bytes
-    # right after the loader's last frame; every response reaches its owner.
     patch = bytes(rng.randrange(256) for _ in range(16))
     original = image[PATCH_OFFSET:PATCH_OFFSET + 16]
     assert patch != original
@@ -142,7 +138,6 @@ async def preload_and_interleave(dut, system, host, image, rng, onchip):
     await direct_write(dut, host, PATCH_OFFSET, original, every_edge=onchip)
     response = await host.exchange(encode_request(CMD_READ, address_field(PATCH_OFFSET), length=16))
     assert response.ok and response.payload == original, response.describe()
-    # The header captured from the direct preload is the image's.
     assert (int(system.u_cartridge.header_type_q.value), int(system.u_cartridge.header_rom_size_q.value),
             int(system.u_cartridge.header_ram_size_q.value)) == tuple(image[0x147:0x14A])
     retirements, run_clocks, banks, wram_bytes = await release_and_verify(dut, system, host, image)
@@ -184,9 +179,6 @@ async def system_direct_preload(dut):
     cocotb.start_soon(host.receiver())
     await ReadOnly()
     assert int(dut.core_reset_o.value) == 0, 'the on-chip backing is initialized at once'
-    # Every load response of the preload belongs to the direct port; the
-    # loader's load_response_requested and the system's routing assertion
-    # are live throughout.
     fields = await preload_and_interleave(dut, dut, host, image, rng, onchip=True)
     cocotb.log.info('n2m_system direct preload (on-chip) passed: preload_clocks=%d retirements=%d run_clocks=%d '
                     'banks_executed=%s wram_bytes=%d total_clocks=%d', fields[0], fields[1], fields[2],
@@ -214,7 +206,6 @@ async def system_sdram_direct_preload(dut):
     dut.host_tx_valid_i.value = 0
     dut.host_tx_data_i.value = 0
     cocotb.start_soon(Clock(dut.clk_i, CLOCK_PERIOD_NS, unit='ns').start())
-    # The first byte is presented while system reset is still high.
     await FallingEdge(dut.clk_i)
     dut.rom_load_write_i.value = 1
     dut.rom_load_address_i.value = 0
@@ -234,19 +225,18 @@ async def system_sdram_direct_preload(dut):
             break
         if host.clock < SDRAM_INITIALIZED_CLOCK:
             assert int(dut.core_reset_o.value) == 1, 'the core waits for the SDRAM'
-        # The core runs from SDRAM once it is initialized and the mapper
+        # Why: the core runs from SDRAM once it is initialized and the mapper
         # wins a shared edge, so the direct port gets in between fetches.
         assert host.clock < SDRAM_INITIALIZED_CLOCK + 200, 'the direct port never became ready'
     assert host.clock >= SDRAM_INITIALIZED_CLOCK, ('ready before the SDRAM initialized', host.clock)
-    await RisingEdge(dut.clk_i)                 # the held write is accepted here
+    await RisingEdge(dut.clk_i)
     await FallingEdge(dut.clk_i)
     dut.rom_load_write_i.value = 0
-    for _ in range(16):                         # write completion inside the controller
+    for _ in range(16):                         # Why: lets the write complete inside the controller.
         await RisingEdge(dut.clk_i)
     word = int(dut.u_sdram.memory[0].value)
     assert word & 0xFF == image[0], ('the write held through reset and power-up landed', hex(word))
     fields = await preload_and_interleave(dut, system, host, image, rng, onchip=False)
-    # The preload reached the device model: the header word and a bank-7 word.
     for address in (0x146, 0x1FFFE):
         word = int(dut.u_sdram.memory[address >> 1].value)
         assert word == image[address] | image[address + 1] << 8, (hex(address), hex(word))

@@ -21,21 +21,17 @@ from ..memory.memory_model import GameBoyMemory
 from .peripheral_model import Peripherals
 
 CLOCK_PERIOD_NS = 40
-MACHINE_CYCLE_EDGES = 390625 / 16384   # exact 25 MHz / 1,048,576 Hz ratio
+MACHINE_CYCLE_EDGES = 390625 / 16384   # Why: the exact 25 MHz / 1,048,576 Hz ratio, not a rounded one.
 INSTRUCTION_BOUND = 1500
 HALT_OPCODE = 0x76
-# Machine cycles from the tick that ends the edge setting an IF flag (a TIMA
+# Why: 6 = one cycle for the flag set at the end of a tick (a TIMA
 # reload or serial completion tick, or the edge after a joypad line fell) to
-# the interrupt-entry retirement of a CPU sleeping in HALT: the flag is
-# visible at the next boundary, which starts the five-cycle entry directly.
+# become visible at the next boundary, plus the five-cycle entry it starts
+# directly, up to the entry's retirement by a CPU sleeping in HALT.
 # IME-enabled HALT must not insert a discarded opcode-fetch cycle.
 HALT_ENTRY_CYCLES = 6
 TIMER_BIT, SERIAL_BIT, JOYPAD_BIT = 2, 3, 4
-# Buttons the bench applies when the instruction before each program label
-# retires (the retirement's PC-after equals the label), each once.
 BUTTON_SCRIPT = {'joypad_press_1': RIGHT | UP | A | START, 'joypad_release': 0, 'joypad_woken': DOWN}
-# The byte string the program transmits: "N2M" then the direction-row P1
-# byte its joypad handler read with Down pressed.
 SERIAL_STRING = b'N2M' + bytes([0xE7])
 
 
@@ -167,7 +163,6 @@ async def system_smoke(dut):
     cocotb.start_soon(Clock(dut.clk_i, CLOCK_PERIOD_NS, unit='ns').start())
     await RisingEdge(dut.clk_i)
 
-    # Preload the ROM through the load port while the system is in reset.
     for address, byte in enumerate(image):
         await FallingEdge(dut.clk_i)
         dut.rom_load_write_i.value = 1
@@ -179,14 +174,14 @@ async def system_smoke(dut):
     dut.rom_load_write_i.value = 0
     await RisingEdge(dut.clk_i)
     await FallingEdge(dut.clk_i)
-    # Boot VRAM clear: the reset held over the 32 KiB load swept the
-    # garbage-filled VRAM to zero, as the DMG boot ROM leaves it.
+    # Ref: Pan Docs "Power Up Sequence": the DMG boot ROM leaves VRAM zeroed, so the reset
+    # held over the 32 KiB load must sweep the garbage-filled VRAM to zero.
     assert store_bytes(store_array(dut.u_memory.u_vram)) == bytes(8192), 'VRAM not cleared during reset'
     dut.reset_i.value = 0
     release_edge = cycles
 
     peripherals = Peripherals()
-    memory = GameBoyMemory(image, io_read=peripherals.read, io_write=peripherals.write)   # strict
+    memory = GameBoyMemory(image, io_read=peripherals.read, io_write=peripherals.write)
     model = CPU(mem=memory)
     retirements, interrupts = 0, []
     anchor_edge = anchor_cycles = None
@@ -207,7 +202,7 @@ async def system_smoke(dut):
         record = unpack(int(dut.retirement_o.value))
         if not record['valid']:
             continue
-        # The oracle's peripherals are advanced to the machine cycle in which
+        # Why: the oracle's peripherals are advanced to the machine cycle in which
         # the retiring instruction touched the bus: the last cycle of a load
         # or store fetches the next opcode, so its data access and the vector
         # selection of an interrupt entry see the state two ticks before the
@@ -227,7 +222,7 @@ async def system_smoke(dut):
         assert not mismatch, (f'retirement {retirements} pc={expected["pc_before"]:04x}', mismatch)
         retirements += 1
         assert retirements <= INSTRUCTION_BOUND, 'program did not halt within the instruction bound'
-        # Composed timing: between consecutive retirements of one run of
+        # Why: composed timing: between consecutive retirements of one run of
         # instructions the edges follow the 23/24-edge machine cadence with
         # no stall; a HALT sleep or interrupt entry starts a new run.
         if anchor_edge is not None and instruction_cycles is not None:
@@ -239,10 +234,10 @@ async def system_smoke(dut):
             anchor_edge, anchor_cycles = cycles, 0
         if record['halted'] and not halt_edge:
             halt_edge = cycles
-        # A HALT with IME set and an enabled source sleeps until the interrupt
+        # Why: a HALT with IME set and an enabled source sleeps until the interrupt
         # wakes it; only a HALT that nothing can wake ends the run.
         halted = bool(record['halted']) and not (memory.interrupt_enable() & 0x1F and model.ime)
-        # Button script: the bench changes the buttons on the falling edge
+        # Why: button script: the bench changes the buttons on the falling edge
         # after the triggering retirement. The joypad samples them on the
         # next edge and a selected line falling sets the flag on the edge
         # after that, so the CPU can see it from the following tick.
@@ -259,10 +254,6 @@ async def system_smoke(dut):
         await ReadOnly()
     assert int(dut.halted_o.value) == 1, 'CPU must report HALT after the halting retirement'
 
-    # Interrupt entries, each taken while asleep in HALT exactly
-    # HALT_ENTRY_CYCLES machine cycles after its source: one timer entry
-    # after the oracle's TIMA reload tick, one joypad entry after the bench's
-    # press, and one serial entry after each of the oracle's completions.
     assert not triggers, ('button script points never reached', triggers)
     by_bit = {bit: [tick for tick, b in interrupts if b == bit] for bit in (TIMER_BIT, SERIAL_BIT, JOYPAD_BIT)}
     assert len(interrupts) == sum(len(v) for v in by_bit.values()), ('unexpected interrupt entries', interrupts)
@@ -272,7 +263,7 @@ async def system_smoke(dut):
         f'timer entries {by_bit[TIMER_BIT]}, reload at tick {reload_tick}')
     assert joypad_wake_entry is not None and by_bit[JOYPAD_BIT] == [joypad_wake_entry], (
         f'joypad entries {by_bit[JOYPAD_BIT]}, expected {joypad_wake_entry}')
-    # Two scripted presses fell on a selected line: the first press under the
+    # Why: two scripted presses fell on a selected line: the first press under the
     # direction row (IE zero, flag only) and the wake press.
     assert len(peripherals.joypad_event_ticks) == 2, ('bench presses that raised the flag', peripherals.joypad_event_ticks)
     completion_ticks = [tick for tick, _ in peripherals.completions]
@@ -281,14 +272,12 @@ async def system_smoke(dut):
         f'serial entries {by_bit[SERIAL_BIT]}, completions {completion_ticks}')
     assert halt_edge is not None and halt_edge < cycles, 'the program must sleep in HALT before the interrupt'
 
-    # Serial observation: the exact byte string, each byte presented on the
-    # tick of the oracle's completion.
     observed_string = bytes(byte for _, byte in serial_observed)
     compare_signature(observed_string, SERIAL_STRING, 'SERIAL')
     assert serial_observed == peripherals.completions, ('serial observation ticks', serial_observed, peripherals.completions)
 
-    # Exact memory signature: every byte the program defined, read back from
-    # the RTL stores. Bytes the program never wrote have no expected value.
+    # Why: bytes the program never wrote have no expected value, so the signature
+    # covers only the bytes the program defined, read back from the RTL stores.
     stores = {'wram': store_array(dut.u_memory.u_wram), 'hram': store_array(dut.u_memory.u_hram),
               'vram': store_array(dut.u_memory.u_vram), 'oam': store_array(dut.u_memory.u_oam)}
     signatures = {}
@@ -300,23 +289,23 @@ async def system_smoke(dut):
     assert int(dut.u_interrupts.interrupt_flags_o.value) == peripherals.flags.flags
     assert len(signatures['wram'][0]) >= 16 and len(signatures['hram'][0]) == 127, (
         'the program must define a WRAM signature and every HRAM byte')
-    # Timer evidence pinned independently of the oracle: the reloaded TMA
+    # Why: timer evidence pinned independently of the oracle: the reloaded TMA
     # value seen after the interrupt, the acknowledged flag, one handler run.
     wram = store_bytes(store_array(dut.u_memory.u_wram))
     assert wram[0x13] == 0xA5 and wram[0x14] == 0xE0, ('post-interrupt TIMA/IF', wram[0x13], wram[0x14])
     assert wram[0xF0] == 1 and wram[0xF1] == 0xA5 and wram[0xF2] == 0xE0, ('handler evidence', wram[0xF0:0xF3].hex())
     assert wram[0x0E] == 0xFB and wram[0x11] == 0x00 and wram[0x12] == 0x01, ('TAC/DIV evidence', wram[0x0E], wram[0x11], wram[0x12])
-    # Joypad evidence pinned independently of the oracle: the row reads under
+    # Why: joypad evidence pinned independently of the oracle: the row reads under
     # the scripted buttons, the flag a select write raised, the P1 byte after
     # the wake, the handler count and its reads.
     assert wram[0x17:0x21].hex() == 'ffead6c2f0ffe0e7e0e0', ('joypad evidence', wram[0x17:0x21].hex())
     assert wram[0xF3:0xF6].hex() == '01e7e0', ('joypad handler evidence', wram[0xF3:0xF6].hex())
-    # Serial evidence: SB/SC after the last byte, the external-clock wait,
+    # Why: serial evidence pinned independently of the oracle: SB/SC after the last byte, the external-clock wait,
     # the cancelled transfer, four handler runs and their reads.
     assert wram[0x21:0x27].hex() == 'ff7ffe5a7ee0', ('serial evidence', wram[0x21:0x27].hex())
     assert wram[0xF6:0xF9].hex() == '04ff7f', ('serial handler evidence', wram[0xF6:0xF9].hex())
 
-    # Negative control: the signature comparison rejects a single flipped byte.
+    # Why: proves the check can fail: the signature comparison must reject a single flipped byte.
     corrupted = bytearray(signatures['wram'][1])
     corrupted[0] ^= 0x01
     try:
@@ -325,7 +314,7 @@ async def system_smoke(dut):
         pass
     else:
         raise AssertionError('signature comparison accepted a corrupted expectation')
-    # Negative control: the serial string comparison rejects one wrong byte.
+    # Why: proves the check can fail: the serial string comparison must reject one wrong byte.
     try:
         compare_signature(observed_string, b'N2m' + SERIAL_STRING[3:], 'SERIAL-negative')
     except AssertionError:

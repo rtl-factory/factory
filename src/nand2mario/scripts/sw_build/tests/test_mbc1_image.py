@@ -44,8 +44,6 @@ class ExpanderTests(unittest.TestCase):
                 self.assertEqual(image[base + 0x3F00], (bank * 0x25) & 0xFF)
         self.assertEqual(image[0x14D], (-sum(image[0x134:0x14D]) - 25) & 0xFF)
         self.assertEqual(int.from_bytes(image[0x14E:0x150], 'big'), (sum(image[:0x14E]) + sum(image[0x150:])) & 0xFFFF)
-        # The packager's strict validator rejects the direct profile size but
-        # agrees on both checksums once the header is restored to its shape.
         with self.assertRaises(Exception):
             validate_image(image, 0x150, 'MBC1 TEST', 1)
 

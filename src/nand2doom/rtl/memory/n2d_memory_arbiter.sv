@@ -35,15 +35,17 @@ module n2d_memory_arbiter (
     logic [1:0] next_owner_d;
     logic [1:0] owner_d;
     logic       busy_d;
-    // A presented request that the controller stalls keeps its selection,
+    // Why: a presented request that the controller stalls keeps its selection,
     // so a higher-priority master arriving later cannot change the stalled
     // downstream payload (masters hold their requests until accepted).
     logic       stalled_q;
     logic       stalled_d;
     logic [1:0] stalled_owner_q;
     logic [1:0] stalled_owner_d;
-    // Candidates for a new selection: demand requests first, prefetches only
-    // when no demand is valid. A stalled selection is kept either way.
+    // Ref: wiki/src/nand2doom/rtl/memory/mas.md "Requirements" MEM-R6: prefetches
+    // have lowest priority, so new-selection candidates are demand requests
+    // first and prefetches only when no demand is valid. A stalled selection is
+    // kept either way.
     logic [2:0] demand_valid;
     logic [2:0] candidate_valid;
     assign demand_valid = master_request_valid_i & ~master_request_prefetch_i;
@@ -94,8 +96,10 @@ module n2d_memory_arbiter (
         end
     end
 
-    // Next-state: one grant per outstanding line transaction; the rotating
-    // priority pointer advances past the owner when its response returns.
+    // Ref: wiki/src/nand2doom/rtl/memory/mas.md "Requirements" MEM-R6: one grant
+    // per outstanding line transaction; the rotating priority pointer advances
+    // past the owner when its response returns, so each master is accepted at
+    // least once per three completions.
     always_comb begin
         next_owner_d = next_owner_q;
         owner_d = owner_q;

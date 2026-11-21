@@ -41,7 +41,8 @@ module n2d_uart_stream_memory
     n2d_debug_status_t     debug_status;
     n2d_debug_txn_status_t txn_status;
 
-    // Same registered adapter reset release as n2d_uart_debug_memory.
+    // Why: the same registered adapter reset release as n2d_uart_debug_memory,
+    // so publication cannot start during reset release.
     always_ff @(posedge clk_i or posedge reset_i) begin
         if (reset_i) adapter_reset_q <= 1'b1;
         else adapter_reset_q <= 1'b0;
@@ -66,7 +67,8 @@ module n2d_uart_stream_memory
         .txn_status_i(txn_status),
         .mem_req_o(word_request),
         .mem_rsp_i(word_response),
-        // No screen in this fixture: endpoint screen reads time out.
+        // Why: no screen in this fixture, so endpoint screen reads time out
+        // instead of hanging.
         .screen_req_o(unused_screen_req), .screen_rsp_i('0));
     assign halt_req_o = debug_control.halt_req;
     assign arb_req_o = txn_req.arb_req;

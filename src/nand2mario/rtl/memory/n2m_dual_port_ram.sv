@@ -35,11 +35,12 @@ module n2m_dual_port_ram #(
   logic [IMPLEMENTATION_DATA_WIDTH-1:0] memory [0:IMPLEMENTATION_DEPTH-1];
   logic write_a;
 
-  // Reset suppresses the port's request: no write, no data update (the
-  // valid register below is reset, so the outputs hold), valid low.
+  // Why: a request under reset must not change the store or the outputs, so
+  // reset suppresses it: no write, no data update (the valid register below is
+  // reset, so the outputs hold), valid low.
   assign write_a = write_a_i && !reset_a_i;
 
-  // The array is the conventional inferred true-dual-port template: port A
+  // Why: the array is the conventional inferred true-dual-port template: port A
   // writes enabled lanes and both ports read their address on every edge,
   // with no read enable on either output. Block RAM (MAX 10 M9K) supports no
   // per-port output enable in true-dual-port mode, so the contract's read
@@ -50,8 +51,9 @@ module n2m_dual_port_ram #(
       byte_enable_a_i, 8)
   `N2A_MEM_READ(array_a, memory, clk_a_i, address_a_i)
 
-  // Port A: the valid register, the same-port write-first bypass (the full
-  // input word; all lanes are enabled by contract) and the data hold.
+  // Why: the array read is read-first, so port A gets its contract's
+  // write-first result from this bypass; it can return the full input word
+  // because the contract enables all lanes on a port-A write.
   logic                  bypass_a_q, bypass_a_d;
   logic [DATA_WIDTH-1:0] write_data_a_q, held_a_q;
   assign bypass_a_d = write_a_i;
@@ -62,7 +64,6 @@ module n2m_dual_port_ram #(
                          (bypass_a_q ? write_data_a_q : array_a);
   `N2A_DFF(held_a_q, read_data_a_o, clk_a_i)
 
-  // Port B: read-only valid register, array read and data hold on its clock.
   logic [DATA_WIDTH-1:0] held_b_q;
   generate
     if (DUAL_CLOCK) begin : g_dual_clock_b
@@ -70,7 +71,7 @@ module n2m_dual_port_ram #(
       `N2A_MEM_READ(array_b, memory, clk_b_i, address_b_i)
       `N2A_DFF(held_b_q, read_data_b_o, clk_b_i)
 
-      // A dual-clock access to the word being written is outside the contract.
+      // Why: a dual-clock access to the word being written is outside the contract.
       // Checking both observation edges catches an overlapping request window;
       // owners must arbitrate or transfer ownership before that window exists.
       `N2A_ASSERT(dual_clock_collision_a, clk_a_i,
@@ -82,7 +83,7 @@ module n2m_dual_port_ram #(
       `N2A_ASSERT_KNOWN(b_control_known, clk_b_i, reset_b_i,
           {read_b_i, address_b_i})
     end else begin : g_single_clock_b
-      // The A write port and this read port both use nonblocking assignments
+      // Why: the A write port and this read port both use nonblocking assignments
       // on clk_a_i, so a coincident same-address B read returns the pre-write
       // word (read-first).
       `N2A_DFF_RST(read_valid_b_o, read_b_i, clk_a_i, reset_b_i)

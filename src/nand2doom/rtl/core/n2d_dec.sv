@@ -109,7 +109,8 @@ module n2d_dec (
                     dec_o.is_mret = instruction_i == INSN_MRET;
                     dec_o.class_legal = dec_o.is_ecall || dec_o.is_ebreak || dec_o.is_mret;
                 end else if (dec_o.funct3 != 3'b100) begin
-                    // CSR legality also depends on the address (n2d_csr).
+                    // Why: any CSR encoding is class-legal here because CSR legality also
+                    // depends on the address, which only n2d_csr checks.
                     dec_o.is_csr = 1'b1;
                     dec_o.class_legal = 1'b1;
                     dec_o.uses_rs1 = !dec_o.funct3[2];
@@ -120,7 +121,8 @@ module n2d_dec (
             end
         endcase
 
-        // CSRRS/CSRRC suppress writes by encoded source index, not its value.
+        // Ref: RISC-V Zicsr: CSRRS/CSRRC with rs1 = x0 do not write, keyed on the
+        // encoded source index, not its value.
         case (dec_o.funct3)
             3'b001, 3'b101: dec_o.csr_write = 1'b1;
             3'b010, 3'b110, 3'b011, 3'b111: dec_o.csr_write = dec_o.rs1 != 5'd0;

@@ -17,7 +17,7 @@ def exercise(records, a=None, slot=7):
     for index, row in enumerate(records):
         r = dict(row, order=t.last_order + 1 if row.get('order') is None else row['order'],
                  tick=t.phase_start + 10 + index * 10)
-        # All retirements share one monotonic order, including non-stores.
+        # Why: all retirements share one monotonic order, including non-stores.
         if row.get('order') is None:
             r['order'] = max(t.last_order, w.order) + 1
         if r['memory_valid'] and r['memory_write']:
@@ -53,7 +53,7 @@ class InputWitnessTests(unittest.TestCase):
 
     def test_mid_invocation_prepare_waits_clean_entry(self):
         a = abi_fixture()
-        # Only partial neutral architectural seams; no MAKE injected yet.
+        # Why: only partial neutral seams, no MAKE yet, so prepare must wait for a clean entry.
         partial = [dict(rows(a)[0], seam='slot', pc=a.pc['slot'],
                         instruction=a.instructions[a.pc['slot']], next_pc=a.pc['slot'] + 4, memory_valid=True,
                         address=a.symbols['maketic'], read_mask=15, read_data=7,

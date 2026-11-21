@@ -11,7 +11,8 @@ COMPLETION = 0x20000004
 MAKE = 0xD00D39AE
 BREAK = 0xD00D38AE
 TURN = 0xD00D4001
-# Freedoom E1M1 starts at zero; initial slow right turns apply -320 << 16.
+# Why: Freedoom E1M1 starts at angle zero and initial slow right turns apply
+# -320 << 16, so the expected angles are exact multiples.
 EXPECTED_ANGLES = tuple(((-320 * (1 << 16) * count) & 0xFFFFFFFF) >> 20
                         for count in (1, 2))
 COUNTERS = ("gametic", "maketic", "ticdup")
@@ -134,7 +135,8 @@ class GameplayTrace:
             assert 0 < mask <= 15
             if self.known[name] == 15:
                 assert address == base and mask == 15, f"partial post-init {name} store"
-            # Architectural data/mask already occupy their addressed lanes.
+            # Why: architectural data and mask already occupy their addressed
+            # lanes, so lanes copy straight through without shifting.
             for lane in range(4):
                 if mask & (1 << lane):
                     byte_mask = 0xFF << (8 * lane)

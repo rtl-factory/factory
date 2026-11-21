@@ -119,10 +119,10 @@ module n2m_dma_fixture (
     .load_data_i        (rom_load_data_i)
   );
 
-  // The bench's one-byte-per-edge preload becomes ROM writes on the backing's
-  // load port (always ready on the on-chip backing); its responses and the
-  // constant initialization status are not observed here.
-  // While stalled the backing sees no cartridge request.
+  // Why: the on-chip backing's load port is always ready, so the bench's one-byte-per-edge
+  // preload can become plain ROM writes, and its responses and the constant
+  // initialization status need no check here. Gating the request while stalled
+  // keeps a stalled backing from seeing a cartridge request.
   n2m_cartridge_pkg::backing_request_t backing_gated;
   always_comb begin
     backing_gated = backing_request;
@@ -154,7 +154,6 @@ module n2m_dma_fixture (
   );
   /* verilator lint_on PINCONNECTEMPTY */
 
-  // Peripheral fan-out of this composition: the DMA register, else open bus.
   always_comb begin
     io_response.valid = io_request.valid;
     io_response.fault = 1'b0;

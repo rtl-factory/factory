@@ -36,8 +36,9 @@ task automatic observe_game_state;
         game_state_order_seen = 1;
         for (int word_index = 0; word_index < GAME_STATE_WORDS; word_index++) begin
             if ({observation_memory_address_o[31:2], 2'b00} == game_state_addresses[word_index]) begin
-                // The architectural data and mask already occupy addressed
-                // lanes, including the byte stores that initialize BSS.
+                // Why: the architectural data and mask already occupy
+                // addressed lanes, including the byte stores that initialize
+                // BSS, so lanes copy straight through without shifting.
                 for (int lane = 0; lane < 4; lane++) begin
                     if (observation_memory_write_mask_o[lane]) begin
                         game_state_values[word_index][lane*8 +: 8] = observation_memory_write_data_o[lane*8 +: 8];

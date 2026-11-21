@@ -53,7 +53,7 @@ def simulate(name, output, workdir=None):
     work = Path(workdir).resolve() / name if workdir else output / 'build'
     env = dict(os.environ, N2M_GAME=name, N2M_SW_GAMES=str(MANIFEST),
                N2M_SYSTEM_IMAGE=str(output / 'software/program.gb'))
-    # N2M_SIM_LAUNCHER optionally prefixes a host slot/queue wrapper.
+    # Why: a shared host sets N2M_SIM_LAUNCHER to run the simulator under its slot/queue wrapper.
     launcher = os.environ.get('N2M_SIM_LAUNCHER', '').split()
     status = subprocess.run(launcher + [sys.executable, '-B', 'tools/sim/sim.py', '--workdir', str(work),
                                         'test', '--direct', 'n2m_system_sw_games'], cwd=ROOT, env=env).returncode

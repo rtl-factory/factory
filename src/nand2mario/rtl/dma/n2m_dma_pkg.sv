@@ -5,7 +5,7 @@
 // destinations that stay reachable during a transfer.
 package n2m_dma_pkg;
   localparam logic [15:0] DMA_ADDRESS    = 16'hFF46;
-  localparam int unsigned TRANSFER_BYTES = 160;  // one byte per machine cycle
+  localparam int unsigned TRANSFER_BYTES = 160;  // Ref: Pan Docs "OAM DMA": 160 bytes, one per machine cycle.
 
   // The written value is the source page: $XX00-$XX9F. Pages $E0-$FF read
   // the WRAM echo, that is page $XX - $20 (DMG behavior for the external

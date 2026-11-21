@@ -63,7 +63,8 @@ async def sync_ram_wt_contract(dut) -> None:
             f"expected=0x{expected:x} observed=0x{observed:x}"
         )
 
-    # Lowest, highest, one, and the middle word (another bank when banked).
+    # Why: the middle word lies in another bank when the RAM is banked, so the
+    # reads below switch banks.
     a_min, a_max, a_one, a_mid = 0, depth - 1, 1 % depth, depth // 2
 
     dut.address_i.value = 0
@@ -71,7 +72,6 @@ async def sync_ram_wt_contract(dut) -> None:
     dut.write_data_i.value = 0
     cocotb.start_soon(Clock(dut.clk_i, clock_period_ns, unit="ns").start())
 
-    # 1. Every write edge returns the new word (write-through) and stores it.
     for index, address in enumerate((a_min, a_max, a_one, a_mid)):
         observed = await _cycle(dut, address=address, write_enable=True,
                                 write_data=pattern(index))
@@ -79,14 +79,11 @@ async def sync_ram_wt_contract(dut) -> None:
         model[address] = pattern(index)
         check("write-through", observed, model[address], address)
 
-    # 2. Registered reads of every written word, alternating banks each edge.
     for address in (a_mid, a_min, a_max, a_one, a_mid, a_min):
         observed = await _cycle(dut, address=address)
         cycle += 1
         check("registered read", observed, model[address], address)
 
-    # 3. Overwrite: the collision returns the complete new word, which then
-    #    stays readable.
     new_value = model[a_one] ^ data_mask
     observed = await _cycle(dut, address=a_one, write_enable=True, write_data=new_value)
     cycle += 1
@@ -96,12 +93,10 @@ async def sync_ram_wt_contract(dut) -> None:
     cycle += 1
     check("post-overwrite read", observed, model[a_one], a_one)
 
-    # 4. write_enable low ignores the write data.
     observed = await _cycle(dut, address=a_max, write_enable=False, write_data=pattern(9))
     cycle += 1
     check("disabled write ignored", observed, model[a_max], a_max)
 
-    # 5. A write followed at once by a read of another bank, then back.
     observed = await _cycle(dut, address=a_mid, write_enable=True, write_data=pattern(5))
     cycle += 1
     model[a_mid] = pattern(5)

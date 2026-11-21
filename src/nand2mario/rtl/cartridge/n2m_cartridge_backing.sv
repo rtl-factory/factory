@@ -58,7 +58,7 @@ module n2m_cartridge_backing #(
   logic                        load_valid_q, load_ram_q;
   logic                        load_reset;
 
-  // Always ready on the backing port: the mapper presents at most one
+  // Why: always ready on the backing port: the mapper presents at most one
   // request at a time and every store answers on the next edge. The load
   // port yields the RAM store to the mapper on a shared edge.
   assign ready_o = 1'b1;
@@ -83,8 +83,9 @@ module n2m_cartridge_backing #(
   assign ram_write_data = ram_access ? request_i.write_data : load_request_i.write_data;
   assign load_offset = load_request_i.address[ROM_ADDRESS_BITS-1:0];
 
-  // ROM: port A is the load port (never reset), port B the mapper's read
-  // port; a same-edge load write and mapper read of one byte read first.
+  // Why: ROM port A is the load port and never resets, so a core reset cannot
+  // drop a load write; port B is the mapper's read port. A same-edge load write
+  // and mapper read of one byte read first.
   assign load_reset = 1'b0;
   /* verilator lint_off PINCONNECTEMPTY */
   n2m_dual_port_ram #(
@@ -109,8 +110,9 @@ module n2m_cartridge_backing #(
     .read_valid_b_o  (rom_valid)
   );
 
-  // Cartridge RAM: the mapper, or the load port when the mapper is not
-  // accessing RAM, reads and writes through port A; port B is reserved.
+  // Why: the mapper has priority on cartridge RAM port A so CPU timing never
+  // depends on a load; the load port uses it only when the mapper is not
+  // accessing RAM. Port B is reserved.
   n2m_dual_port_ram #(
     .DATA_WIDTH (8),
     .DEPTH      (RAM_BYTES),
@@ -134,8 +136,9 @@ module n2m_cartridge_backing #(
   );
   /* verilator lint_on PINCONNECTEMPTY */
 
-  // Responses one edge after acceptance; the registered store selection
-  // picks the data. Write responses carry no meaningful data.
+  // Why: every store answers on the next edge, so a response is a fixed one
+  // edge after acceptance and the registered store selection picks its data.
+  // Write responses carry no meaningful data.
   `N2A_DFF_RST(valid_q, accept, clk_i, reset_i)
   `N2A_DFF_RST_EN(ram_q, request_i.ram, clk_i, accept, reset_i, 1'b0)
   `N2A_ASSERT_HISTORY_RST(logic, read_q, accept ? !request_i.write : read_q, clk_i, reset_i)

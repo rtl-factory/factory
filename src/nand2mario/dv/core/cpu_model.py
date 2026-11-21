@@ -11,7 +11,7 @@ ILLEGAL = {0xD3, 0xDB, 0xDD, 0xE3, 0xE4, 0xEB, 0xEC, 0xED, 0xF4, 0xFC, 0xFD}
 @dataclass
 class CPU:
     mem: bytearray = field(default_factory=lambda: bytearray(65536))
-    # DMG ABC post-boot registers: B C D E H L (HL) A, F.
+    # Ref: Pan Docs "Power Up Sequence": DMG ABC post-boot registers: B C D E H L (HL) A, F.
     r: list = field(default_factory=lambda: [0x00, 0x13, 0x00, 0xD8, 0x01, 0x4D, 0, 0x01])
     f: int = 0xB0
     sp: int = 0xFFFE

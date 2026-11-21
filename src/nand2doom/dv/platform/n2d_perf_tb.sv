@@ -23,7 +23,8 @@ module n2d_perf_tb;
     logic [25:0] preload_address_i = '0;
     logic [2047:0] preload_data_i = '0;
     logic [255:0] preload_byte_enable_i = '0;
-    // The full public boundary is connected; the harness reads a subset.
+    // Why: the full public boundary is connected so the harness elaborates the
+    // product as boards do; it reads only a subset.
     /* verilator lint_off UNUSEDSIGNAL */
     logic preload_ready_o, preload_response_valid_o, preload_response_error_o;
     logic uart_tx_o, halt_ack_o, observation_valid_o;
@@ -71,14 +72,11 @@ module n2d_perf_tb;
 
     always #20 clk_i = ~clk_i;
 
-    // ------------------------------------------------------------------
-    // Run state shared by the stimulus and the monitors.
     longint unsigned cycle, resume_cycle, resume_retired;
     longint unsigned max_cycles = 64'd400_000_000;
     int unsigned frames_wanted;
     int report_fd, trace_fd;
     longint unsigned trace_start, trace_end;
-    // Optional compact binary memory-stream trace (see stream_record).
     int stream_fd;
     longint unsigned stream_start;
     bit stream_at_scene, stream_on;
@@ -90,8 +88,9 @@ module n2d_perf_tb;
 `endif
     string ppm_dir;
     bit running;
-    // Per-bank shadow of the displayed 320x200 index image. A half-width
-    // write of an even-x byte also fills the odd-x pixel it represents.
+    // Why: a per-bank shadow of the displayed 320x200 index image lets the
+    // harness CRC frames without reading RTL memories; a half-width write of
+    // an even-x byte also fills the odd-x pixel it represents.
     logic [7:0] shadow [0:1][0:FRAME_BYTES-1];
     bit written [0:1][0:FRAME_BYTES-1];
     int unsigned written_count [0:1];
@@ -128,13 +127,12 @@ module n2d_perf_tb;
     longint unsigned cycle_count [CYCLE_CLASSES];
     longint unsigned cycle_frame_base [CYCLE_CLASSES];
     bit frame_end_seen;
-    // Event vectors of the previous three clocks. A clock without a
-    // retirement is attributed to the stall that removed an instruction
-    // from that retirement slot: a memory-stage hold one clock earlier, an
-    // execute-stage stall two clocks earlier, or execute starved by fetch
-    // three clocks earlier.
+    // Why: three clocks of event history because a clock without a retirement
+    // is attributed to the stall that removed an instruction from that
+    // retirement slot: a memory-stage hold one clock earlier, an execute-stage
+    // stall two clocks earlier, or execute starved by fetch three clocks
+    // earlier.
     logic [127:0] events_d1, events_d2, events_d3;
-    // VGA raster capture state.
     bit vga_armed, vga_active;
     string vga_label;
     int unsigned vga_count;
@@ -156,8 +154,8 @@ module n2d_perf_tb;
         return ~c;
     endfunction
 
-    // Observation fields are zero outside a valid retirement, so the count
-    // is the order of the last valid retirement plus one.
+    // Why: observation fields are zero outside a valid retirement, so the
+    // count is the order of the last valid retirement plus one.
     longint unsigned last_order_plus_one;
     function automatic longint unsigned retired();
         return last_order_plus_one;
@@ -245,7 +243,8 @@ module n2d_perf_tb;
         if ($value$plusargs("stream=%s", path)) begin
             stream_fd = $fopen(path, "wb");
             if (stream_fd == 0) $fatal(1, "cannot open stream %s", path);
-            // Without +stream_start the stream starts at the scene marker.
+            // Why: without +stream_start the stream starts at the scene
+            // marker, so a default trace covers gameplay, not boot.
             stream_at_scene = !$value$plusargs("stream_start=%d", stream_start);
             $fwrite(stream_fd, "N2DMST01");
         end
@@ -267,14 +266,16 @@ module n2d_perf_tb;
         preload_mode_i = 1'b0;
         @(negedge clk_i);
         reset_i = 1'b0;
-        // SDRAM power-up initialization takes 5,000+ clocks on the real path.
+        // Why: SDRAM power-up initialization takes 5,000+ clocks on the real
+        // path.
         repeat (8000) @(negedge clk_i);
         list_fd = $fopen(uart_list, "r");
         if (list_fd == 0) $fatal(1, "cannot open UART list %s", uart_list);
         while ($fscanf(list_fd, "%h\n", value) == 1) tokens.push_back(value);
         $fclose(list_fd);
-        // Tokens are packet bytes; 0x100 is a response gap. The run starts
-        // when the final packet (Resume) has been fully transmitted.
+        // Why: tokens are packet bytes and 0x100 is a response gap; the run
+        // starts when the final packet (Resume) has been fully transmitted, so
+        // cycle counts exclude the load.
         foreach (tokens[index]) begin
             if (tokens[index] == 32'h100) begin
                 if (index == tokens.size() - 1) break;
@@ -289,49 +290,60 @@ module n2d_perf_tb;
         $fdisplay(report_fd, "resumed cycle=%0d retired=%0d", cycle, resume_retired);
     end
 
-    // ------------------------------------------------------------------
-    // Monitors sample on the falling edge, after every rising-edge update.
+    // Why: monitors sample on the falling edge, after every rising-edge update.
     // They are sequential testbench code, so blocking updates are intended.
     /* verilator lint_off BLKSEQ */
     always @(posedge clk_i) cycle <= cycle + 1;
 
     // Exclusive per-clock class: the first matching rule wins. Only the
     // classified event bits are read from the full vectors.
+    // Classes follow CYCLE_NAMES, from PMON IDs (core MAS "Performance monitor"):
+    // 2 INSTRET, 6 MULDIV_HOLD in execute, 67 UNCACHED_WAIT (a subset of
+    // DATA_HOLD), 4 DATA_HOLD on a D-cache line, 5 LOAD_USE_HOLD, 69
+    // MUL_USE_HOLD, 8 DATA_ADMISSION_HOLD, 68 SYSTEM_SERIALIZE_HOLD, 3
+    // IFETCH_WAIT (including redirect refill), 76 DEBUG_HALTED.
     /* verilator lint_off UNUSEDSIGNAL */
     function automatic int cycle_class(input logic [127:0] e, input logic [127:0] d1,
                                        input logic [127:0] d2, input logic [127:0] d3);
-        if (e[2]) return 0;              // INSTRET
-        if (d2[6]) return 1;             // MULDIV_HOLD in execute
-        if (d1[67]) return 2;            // UNCACHED_WAIT (subset of DATA_HOLD)
-        if (d1[4]) return 3;             // DATA_HOLD on a D-cache line
-        if (d2[5]) return 4;             // LOAD_USE_HOLD
-        if (d2[69]) return 5;            // MUL_USE_HOLD
-        if (d2[8]) return 6;             // DATA_ADMISSION_HOLD
-        if (d2[68]) return 7;            // SYSTEM_SERIALIZE_HOLD
-        if (d3[3]) return 8;             // IFETCH_WAIT (includes redirect refill)
-        if (e[76]) return 9;             // DEBUG_HALTED
+        if (e[2]) return 0;
+        if (d2[6]) return 1;
+        if (d1[67]) return 2;
+        if (d1[4]) return 3;
+        if (d2[5]) return 4;
+        if (d2[69]) return 5;
+        if (d2[8]) return 6;
+        if (d2[68]) return 7;
+        if (d3[3]) return 8;
+        if (e[76]) return 9;
         return 10;
     endfunction
 
     // Split of an ifetch_wait clock (IFETCH_WAIT cause events 83..86 three
     // clocks earlier) or a dmiss_wait clock (the line-memory owner events
     // 87..91, else MEM_BACKPRESSURE, one clock earlier, like DATA_HOLD).
+    // Classes follow SPLIT_NAMES: 83 a correctly predicted transfer bubble, 84
+    // a mispredict refill, 85 a trap, MRET or resume refill, 86 fetch supply
+    // (I-miss or fill), else other; then 88 the own demand line read in
+    // service, 87 behind an I-cache line read, 89 behind a D-cache prefetch,
+    // 90 behind a D-cache line write, 91 behind the debug master, 33
+    // MEM_BACKPRESSURE (SDRAM refresh), and else D-cache lookup, request and
+    // install.
     function automatic int stall_split(input int cycle_class_index, input logic [127:0] d1,
                                        input logic [127:0] d3);
         if (cycle_class_index == 8) begin
-            if (d3[83]) return 0;        // correctly predicted transfer bubble
-            if (d3[84]) return 1;        // mispredict refill
-            if (d3[85]) return 2;        // trap, MRET or resume refill
-            if (d3[86]) return 3;        // fetch supply: I-miss or fill
+            if (d3[83]) return 0;
+            if (d3[84]) return 1;
+            if (d3[85]) return 2;
+            if (d3[86]) return 3;
             return 4;
         end
-        if (d1[88]) return 5;            // own demand line read in service
-        if (d1[87]) return 6;            // behind an I-cache line read
-        if (d1[89]) return 7;            // behind a D-cache prefetch
-        if (d1[90]) return 8;            // behind a D-cache line write
-        if (d1[91]) return 9;            // behind the debug master
-        if (d1[33]) return 10;           // MEM_BACKPRESSURE: SDRAM refresh
-        return 11;                       // D-cache lookup, request and install
+        if (d1[88]) return 5;
+        if (d1[87]) return 6;
+        if (d1[89]) return 7;
+        if (d1[90]) return 8;
+        if (d1[91]) return 9;
+        if (d1[33]) return 10;
+        return 11;
     endfunction
     /* verilator lint_on UNUSEDSIGNAL */
 
@@ -407,9 +419,9 @@ module n2d_perf_tb;
                         || system_completion_o[31:12] == 20'hD00DE)
                     finish_run("runtime-failure-marker");
             end
-            // Bank swap: the frame that was just drawn becomes the front
-            // bank. Writes sampled on this edge commit with the new front
-            // bank, so the swap is handled first.
+            // Why: writes sampled on this edge commit with the new front bank,
+            // so the swap (the frame just drawn becomes the front bank) is
+            // handled first.
             swap_pending = framebuffer_swap_pending_o;
             if (framebuffer_front_bank_o != last_front) begin
                 last_front = framebuffer_front_bank_o;
@@ -428,8 +440,8 @@ module n2d_perf_tb;
                     frame_wait, frame_spin);
                 if (stream_on)
                     stream_record(8'd8, 8'(scene_done), 32'(frame_index), 32'(retired()), 32'h0);
-                // Per-frame PMON deltas run end to end between swaps,
-                // matching the cycles-per-frame interval.
+                // Why: per-frame PMON deltas run end to end between swaps, so
+                // they match the cycles-per-frame interval.
                 if (frame_end_seen)
                     report_pmon(scene_done ? "gameplay" : "frame", frame_index, 1);
                 frame_end_seen = 1;
@@ -443,8 +455,9 @@ module n2d_perf_tb;
                 if (scene_done) dump_single_tic_pixels($sformatf("frame-%03d", frames_after_scene + 1));
                 frame_index++;
                 if (scene_done) begin
-                    // Capture every gameplay frame's next raster; a frame
-                    // is millions of cycles, far longer than one raster.
+                    // Why: every gameplay frame's next raster is captured,
+                    // which works because a frame is millions of cycles, far
+                    // longer than one raster.
                     frames_after_scene++;
                     if (!vga_armed && !vga_active) begin
                         vga_armed = 1;
@@ -457,14 +470,17 @@ module n2d_perf_tb;
                 swap_requested = 1;
                 swap_request_cycle = cycle;
             end
-            // Software spins on the swap status (video control 0x008) only
-            // when it needs the back bank before the swap completed.
+            // Why: software spins on the swap status (video control 0x008)
+            // only when it needs the back bank before the swap completed, so
+            // that read marks the start of spin time.
             if (swap_pending && spin_start_cycle == 0 && u_dut.u_system.data_request_valid
                     && !u_dut.u_system.data_request_write
                     && u_dut.u_system.data_request_address == 32'h2000_1008)
                 spin_start_cycle = cycle;
             if (framebuffer_write_valid_o) begin
-                // Guard: drawing must wait for a requested swap to complete.
+                // Why: drawing before a requested swap completes would tear
+                // the displayed frame, so such a write is counted as a guard
+                // violation.
                 if (swap_pending || u_dut.u_system.framebuffer_swap_request) begin
                     swap_guard_violations++;
                     $fdisplay(report_fd, "guard cycle=%0d address=0x%04h write while swap pending",
@@ -499,8 +515,9 @@ module n2d_perf_tb;
             if (cycle - resume_cycle >= max_cycles) finish_run("cycle-limit");
         end
 
-        // VGA raster capture: same CRC definition as the cocotb gate (RGB444 as
-        // two big-endian bytes per clock over one 800x525 raster from frame start).
+        // Why: the same CRC definition as the cocotb gate (RGB444 as two
+        // big-endian bytes per clock over one 800x525 raster from frame start),
+        // so native and cocotb rasters compare directly.
             if (vga_armed && !vga_active && frame_start_o) begin
                 vga_armed = 0;
                 vga_active = 1;
@@ -529,9 +546,9 @@ module n2d_perf_tb;
     end
 
 `ifdef N2D_PERF_FST
-    // Bounded waveform window in absolute cycles. Verilator does not act on
-    // $dumpon/$dumpoff, so tracing starts with $dumpvars at the window start
-    // and an FST run ends the simulation at the window end.
+    // Why: bounded waveform window in absolute cycles. Verilator does not act
+    // on $dumpon/$dumpoff, so tracing starts with $dumpvars at the window
+    // start and an FST run ends the simulation at the window end.
     always @(negedge clk_i) begin
         if (fst_end != 0) begin
             if (!fst_started && cycle >= fst_start) begin
@@ -609,7 +626,6 @@ module n2d_perf_tb;
         end
     end
 
-    // Optional text trace of retirements, cache events and line traffic.
     always @(negedge clk_i) begin
         if (trace_fd != 0 && running && cycle >= trace_start && cycle < trace_end) begin
             if (observation_valid_o)

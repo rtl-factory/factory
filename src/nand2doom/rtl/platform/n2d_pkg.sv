@@ -3,11 +3,9 @@
 // debug engine, bulk framing and the platform. No state, no timing.
 package n2d_pkg;
 
-    // ---------------------------------------------------------------------
-    // n2d_uart_debug / n2d_uart_debug_engine port groups. Each struct holds
+    // Why: each n2d_uart_debug / n2d_uart_debug_engine port-group struct holds
     // one direction only; the ready of the input-event request stays a
     // scalar input because it is the only opposite-direction signal.
-    // ---------------------------------------------------------------------
 
     // Engine -> platform control (halt request level, resume invalidation
     // pulse, reset-PC pulse with its value).
@@ -85,7 +83,8 @@ package n2d_pkg;
     // package without n2d_uart_debug, so these are exempt from the
     // unused-parameter rule, like the engine-only constants below.
     /* verilator lint_off UNUSEDPARAM */
-    localparam logic [31:0] N2D_MEM_PROJECT_ID     = 32'h2064_326e;  // "n2d "
+    // N2D_MEM_PROJECT_ID is ASCII "n2d ", first character in the low byte.
+    localparam logic [31:0] N2D_MEM_PROJECT_ID     = 32'h2064_326e;
     localparam logic [31:0] N2D_MEM_SCREEN_BASE    = 32'h1002_0000;
     localparam logic [31:0] N2D_MEM_PALETTE_BASE   = 32'h1003_0000;
     localparam logic [287:0] N2D_MEM_WINDOWS = {
@@ -132,11 +131,6 @@ package n2d_pkg;
     localparam logic [7:0] N2D_ST_GRANT       = 8'h0b;
     localparam logic [7:0] N2D_ST_BUSY        = 8'h0c;
     /* verilator lint_on UNUSEDPARAM */
-
-    // ---------------------------------------------------------------------
-    // Pure combinational helpers shared by n2d_uart_bulk and
-    // n2d_uart_debug_engine.
-    // ---------------------------------------------------------------------
 
     // CRC-8, polynomial 0x07, MSB first, one byte per call.
     function automatic logic [7:0] n2d_crc8_byte(

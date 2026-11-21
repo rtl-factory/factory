@@ -118,7 +118,7 @@ module n2m_system_sdram_fixture #(
     .dram_dq_o          (dram_dq_o),
     .dram_dq_oe_o       (dram_dq_oe),
     .dram_dq_i          (dram_dq_i),
-    // The ASIC chip's off-chip cartridge bus is idle in this configuration.
+    // Why: this composition serves the cartridge from the SDRAM backing, so the ASIC chip's off-chip cartridge bus stays idle.
     .cart_bus_request_o  (),
     .cart_bus_ready_i    (1'b0),
     .cart_bus_response_i ('0)

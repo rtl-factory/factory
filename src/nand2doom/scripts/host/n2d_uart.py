@@ -103,7 +103,7 @@ def validate_manifest(path: Path) -> Manifest:
         name = item.get("file", item.get("path"))
         if not isinstance(name, str) or not name or ("path" in item and item["path"] != name):
             raise ValueError("segment requires one unambiguous file/path")
-        # Both slash styles are checked even when validating a Windows plan on Linux.
+        # Why: a plan may be validated on Linux for Windows, so both slash styles are rejected.
         if "\\" in name or ":" in name or Path(name).is_absolute():
             raise ValueError("segment file must be a portable relative path")
         source = (root / name).resolve()
@@ -120,8 +120,8 @@ def validate_manifest(path: Path) -> Manifest:
         segments.append(Segment(address, data, name))
     if not any(s.address <= entry and entry + 4 <= s.address + len(s.data) for s in segments):
         raise ValueError("entry instruction is not contained in a segment")
-    # High SDRAM is the reserved game-data window, including manifests stripped
-    # of provenance. The build recipe remains the owner of the pinned facts.
+    # Why: high SDRAM is the reserved game-data window, even for manifests stripped
+    # of provenance; the build recipe stays the owner of the pinned facts.
     from src.nand2doom.scripts.sw_build import n2d_doom as doom
     if "engine" in manifest or "game_data" in manifest or any(
             s.address + len(s.data) > doom.WAD_ADDRESS or s.name.lower().endswith(".wad")
@@ -231,7 +231,7 @@ class Client:
                     else count if command == wire.CMD_PEEK else 0)
         deadline = self._deadline()
         try:
-            # A short write is uncertain, not an invitation to send a second frame.
+            # Why: a short write is uncertain, so the frame is never sent a second time.
             if self.transport.write(packet) != len(packet):
                 raise HostError("short write; transaction completion uncertain")
             if self.clock() >= deadline:
@@ -370,7 +370,7 @@ class StreamError(HostError):
     """A streaming load could not complete; earlier frames may be committed."""
 
 
-# Statuses a resend of the same idempotent frame can cure.
+# Why: a resend of the same idempotent frame can cure these statuses, so only they are retried.
 STREAM_RETRYABLE = {wire.ST_CHECKSUM, wire.ST_MEMORY, wire.ST_TIMEOUT, wire.ST_GRANT, wire.ST_BUSY}
 
 
@@ -483,7 +483,7 @@ class StreamSession:
                 if reply.kind != wire.STREAM_WRITE:
                     raise StreamError(f"unexpected stream reply kind 0x{reply.kind:02x}")
                 if reply.sequence not in inflight:
-                    continue  # stale reply for a frame already resent
+                    continue  # Why: the reply is stale: its frame was already resent
                 lost = []
                 for sequence in list(inflight):
                     if sequence == reply.sequence:
@@ -510,7 +510,8 @@ class StreamSession:
         return done
 
     def digest(self, address, length, seed):
-        # Generous device-scan allowance: 100 system clocks per word at 25 MHz.
+        # Why: the device scan takes time per word, so allow a generous 100 system clocks
+        # per word at 25 MHz on top of the frame timeout.
         timeout = self.frame_timeout + 2 + (length / 4) * 100 / 25e6
         return self._exchange(lambda seq: wire.stream_digest_frame(seq, address, length, seed),
                               wire.STREAM_DIGEST, timeout)
@@ -733,8 +734,8 @@ def main(argv=None, *, opener=open_serial):
         print(f"request sequence 0: {wire.request(command, 0, **kwargs).hex()}")
     if args.dry_run:
         return 0
-    # The owned handle is closed exactly once after the invocation, whatever
-    # its outcome. A close failure exits 3 and takes precedence over the result.
+    # Why: the owned handle is closed exactly once whatever the outcome; a close
+    # failure exits 3 and takes precedence over the result.
     handle = []
     try:
         status = _live(args, opener, handle, command, kwargs, manifest)

@@ -4,6 +4,7 @@
 // fraction stretches individual bits by one clock from a per-frame remainder
 // accumulator, so an exact baud such as 3 Mbaud at 25 MHz (8 1/3 clocks) has
 // no cumulative drift; the default zero fraction is the integer divisor.
+// byte_valid_o and framing_error_o are one-cycle pulses at the stop sample.
 module n2a_uart_rx #(
     parameter int unsigned CLKS_PER_BIT = 217,
     parameter int unsigned FRAC_NUM = 0,
@@ -56,8 +57,6 @@ module n2a_uart_rx #(
     `N2A_ASSERT_PARAM(g_invalid_fraction, (FRAC_DEN >= 1) && (FRAC_NUM < FRAC_DEN),
         "n2a_uart_rx FRAC_NUM must be below FRAC_DEN")
 
-    // End of the current full bit, including its optional stretch clock, and
-    // the remainder that decides whether the next bit is stretched.
     assign bit_done = (bit_clock_q ==
                        (BIT_CLOCK_LAST + COUNTER_WIDTH'(protocol_q.extra)));
     assign frac_sum = (ACC_WIDTH+1)'(frac_acc_q) + (ACC_WIDTH+1)'(FRAC_NUM);
@@ -74,8 +73,8 @@ module n2a_uart_rx #(
 
     assign busy_o = (protocol_q.state != UART_IDLE);
 
-    // Sample the start bit at mid-bit, then each data and stop bit one bit
-    // period later. Valid and error are one-cycle pulses at the stop sample.
+    // Why: the start bit is sampled at mid-bit so each later sample, one bit
+    // period apart, lands at a bit centre, farthest from both edges.
     always_comb begin
         protocol_d = protocol_q;
         bit_clock_d = bit_clock_q;
@@ -149,7 +148,8 @@ module n2a_uart_rx #(
         endcase
     end
 
-    // Asynchronous reset per the UART HAS; every register shares it.
+    // Why: every register shares one asynchronous reset, so the receiver leaves
+    // reset as a whole and no half-received frame survives it.
     `N2A_DFF_ARST_VAL(protocol_q, protocol_d, clk_i, reset_i, PROTOCOL_RESET)
     `N2A_DFF_ARST_VAL(bit_clock_q, bit_clock_d, clk_i, reset_i, '0)
     `N2A_DFF_ARST_VAL(frac_acc_q, frac_acc_d, clk_i, reset_i, '0)

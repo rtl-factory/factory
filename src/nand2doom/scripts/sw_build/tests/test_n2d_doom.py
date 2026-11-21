@@ -38,7 +38,7 @@ def _tarball(entries: dict[str, bytes]) -> bytes:
 def _upstream_source(test: unittest.TestCase, name: str) -> str:
     """A pinned upstream engine file, read from the vendored engine archive."""
     archive = n2d_doom.VENDORED_DOWNLOADS / f"doomgeneric-{n2d_doom.ENGINE_REVISION}.tar.gz"
-    if not archive.is_file():  # fetched once from its pinned origin into the local cache
+    if not archive.is_file():
         n2d_doom._download(n2d_doom.ENGINE_URL, archive, n2d_doom.ENGINE_SHA256)
     if n2d_doom._sha256(archive) != n2d_doom.ENGINE_SHA256:
         test.fail("cached engine archive does not match the pinned SHA-256")
@@ -51,8 +51,8 @@ def _upstream_r_draw(test: unittest.TestCase) -> str:
     return _upstream_source(test, "r_draw.c")
 
 
-# Host harness: random columns and spans through the upstream and rewritten
-# drawers into two screens, which must stay byte-identical.
+# Why: the rewritten drawers must stay byte-identical to upstream, so the host
+# harness runs random columns and spans through both into two screens.
 DRAW_HARNESS_PRELUDE = """#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -123,12 +123,10 @@ int main(void) {
 }
 """
 
-# Independent scalar contract for modulo32 coordinates. Unlike the upstream
-# do/while span (whose invalid-count I_Error never returns), the existing port
-# writes no pixels for a nonpositive count. Check that boundary separately
-# from the positive-count upstream equivalence test above.
-# Independent scalar form of prior main: nonpositive counts write no bytes.
-# Pinned upstream do/while spans are tested only with valid nonempty inputs.
+# Why: an independent scalar contract for modulo32 coordinates. Unlike the
+# upstream do/while span (whose invalid-count I_Error never returns), the port
+# writes no pixels for a nonpositive count, so that boundary is checked here,
+# apart from the upstream equivalence test, which uses only valid nonempty inputs.
 DRAW_SCALAR_REFERENCE = """
 static void maintained_R_DrawColumn(void) {
     int count = dc_yh - dc_yl + 1;
@@ -197,11 +195,10 @@ int main(void) {
 }
 """
 
-# Host harness: one random visplane workload (frames of R_FindPlane,
-# R_CheckPlane and seg-loop top[] writes) through the upstream and the lazily
-# filling bodies. Plane selection, ranges and every top[] byte a reader can see
-# (top[minx..maxx]) must match; stale bytes outside the range are left behind
-# from earlier frames on purpose.
+# Why: lazy fill must match upstream wherever a reader can see (plane
+# selection, ranges and top[minx..maxx]), so the harness drives one random
+# visplane workload (R_FindPlane, R_CheckPlane, seg-loop top[] writes) through
+# both; stale bytes outside the range are left from earlier frames on purpose.
 VISPLANE_HARNESS_PRELUDE = """#include <stdio.h>
 #include <string.h>
 typedef unsigned char byte;
@@ -345,7 +342,7 @@ class N2dDoomToolTests(unittest.TestCase):
             self.assertEqual(build.call_args.kwargs, {"engine_opt": "Os", "engine_lto": False})
 
     def test_variant_default_compiler_profiles(self) -> None:
-        # #75: the measured O2 + engine-LTO profile for production/deterministic;
+        # Why: production and deterministic use the measured O2 + engine-LTO profile;
         # render verification keeps -Os so its call witnesses survive.
         for variant, flags in (("production", ["-O2", "-flto=1"]),
                                ("deterministic", ["-O2", "-flto=1"]),
@@ -479,7 +476,7 @@ class N2dDoomToolTests(unittest.TestCase):
                     n2d_doom._verify_picolibc(prefix)
 
     def test_deb_extraction_needs_no_host_package_tools(self) -> None:
-        # xz exercises the ar walk, member selection and extraction filter on
+        # Why: xz exercises the ar walk, member selection and extraction filter on
         # every supported Python; zstd decoding has its own test below.
         package_root = self.enterContext(tempfile.TemporaryDirectory())
         root = Path(package_root)
@@ -533,7 +530,8 @@ class N2dDoomToolTests(unittest.TestCase):
         package_root = self.enterContext(tempfile.TemporaryDirectory())
         package = Path(package_root) / "fixture.deb"
         package.write_bytes(b"!<arch>\n" + _ar_member("data.tar.zst", b"x"))
-        # A None entry makes the import raise ModuleNotFoundError on any Python.
+        # Why: a None entry makes the import raise ModuleNotFoundError on any Python, so
+        # the test runs everywhere.
         with mock.patch.dict(sys.modules,
                              {"compression": None, "compression.zstd": None}):
             with self.assertRaisesRegex(
@@ -574,7 +572,6 @@ class N2dDoomToolTests(unittest.TestCase):
         self.assertEqual(adapted, n2d_doom._adapt_framebuffer_acquire(adapted))
         self.assertIn(n2d_doom.DISPLAY_SEAM + n2d_doom.DISPLAY_ACQUIRE, adapted)
         self.assertIn(n2d_doom.WIPE_SEAM + "\tN2D_FramebufferAcquire();\n", adapted)
-        # A tree prepared before status-bar-only persistence is upgraded.
         prior = ('#include "doomstat.h"\nextern void N2D_FramebufferAcquire(void);\n'
                  + n2d_doom.DISPLAY_SEAM + "    N2D_FramebufferAcquire();\n"
                  + "\t\t\n    redrawsbar = false;\n" + n2d_doom.WIPE_SEAM
@@ -604,7 +601,7 @@ class N2dDoomToolTests(unittest.TestCase):
         adapted = n2d_doom._adapt_draw_loops(upstream)
         self.assertEqual(adapted, n2d_doom._adapt_draw_loops(adapted))
         self.assertEqual(adapted.count(n2d_doom.DRAW_LOOPS_MARKER), 2)
-        # Only the active bodies change; the unrolled #if 0 variants remain.
+        # Why: only the active bodies may change; the unrolled #if 0 variants stay upstream.
         self.assertEqual(adapted.count("void R_DrawColumn (void) \n"), 1)
         self.assertEqual(adapted.count("void R_DrawSpan (void) \n"), 1)
         for invalid in (upstream.replace("dc_source[(frac>>FRACBITS)&127]", "dc_source[0]", 1),
@@ -652,8 +649,8 @@ class N2dDoomToolTests(unittest.TestCase):
 
     def test_status_bar_persistence_keeps_full_copy_cases(self) -> None:
         hook = n2d_doom.DISPLAY_ACQUIRE
-        # Only a full-width level view, with no wipe, resize, menu or automap,
-        # skips the rows it redraws; the wipe step always copies everything.
+        # Why: only a full-width level view, with no wipe, resize, menu or automap, may
+        # skip the rows it redraws; the wipe step always copies everything.
         for condition in ("gamestate == GS_LEVEL", "gamestate == wipegamestate",
                           "gametic", "!setsizeneeded", "!automapactive", "!menuactive",
                           "scaledviewwidth == SCREENWIDTH", "? viewheight : 0"):
@@ -705,7 +702,8 @@ class N2dDoomToolTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         match = re.search(r"checks=(\d+) grows=(\d+) splits=(\d+) identical", result.stdout)
         self.assertIsNotNone(match, result.stdout)
-        # The workload must exercise creation, growth on both kinds and splits.
+        # Why: the equivalence means little unless the workload exercises creation, growth
+        # on both kinds and splits.
         self.assertTrue(all(int(value) > 1000 for value in match.groups()), result.stdout)
 
     def test_build_maps_disposable_paths_out_of_firmware(self) -> None:
@@ -742,7 +740,7 @@ class N2dDoomToolTests(unittest.TestCase):
         self.assertEqual(select("build", "all", None),
                          ["production", "deterministic", "render-verification"])
         self.assertEqual(select("build", "deterministic", None), ["deterministic"])
-        # An explicit output without a variant keeps meaning the production image.
+        # Why: an explicit output without a variant has always meant the production image.
         self.assertEqual(select("build", None, "workdir/software/x"), ["production"])
         self.assertEqual(select("build", "deterministic", "workdir/software/x"),
                          ["deterministic"])
@@ -778,7 +776,6 @@ class N2dDoomToolTests(unittest.TestCase):
                              b"libc")
             self.assertEqual((target / "downloads/archive.zip").stat().st_ino,
                              (source / "downloads/archive.zip").stat().st_ino)
-            # Production itself and an already-populated tree are left alone.
             n2d_doom._seed_inputs(source.resolve(), repository)
             (source / "downloads/new.zip").write_bytes(b"new")
             n2d_doom._seed_inputs(target.resolve(), repository)
@@ -787,15 +784,14 @@ class N2dDoomToolTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=REPO_ROOT / "workdir") as temporary:
             repository = Path(temporary)
             source = repository / n2d_doom.VARIANTS["production"]["output"]
-            # Interrupted production extraction: some files, no libc.a.
             partial = source / "toolchain/usr/include/stdio.h"
             partial.parent.mkdir(parents=True)
             partial.write_bytes(b"production")
             target = (repository / n2d_doom.VARIANTS["deterministic"]["output"]).resolve()
             n2d_doom._seed_inputs(target, repository)
             self.assertFalse((target / "toolchain").exists())
-            # A partial tree that does share a link is re-extracted from
-            # scratch: the link is removed, never written through.
+            # Why: a partial tree that shares a link must be re-extracted from scratch: the
+            # link is removed, never written through.
             shared = target / "toolchain/usr/include/stdio.h"
             shared.parent.mkdir(parents=True)
             os.link(partial, shared)
@@ -810,7 +806,7 @@ class N2dDoomToolTests(unittest.TestCase):
             with mock.patch.object(n2d_doom, "_download"), \
                  mock.patch.object(n2d_doom, "_extract_deb_data", side_effect=extract):
                 n2d_doom._picolibc(target, None)
-            self.assertFalse(package.exists())  # download mocked
+            self.assertFalse(package.exists())  # Why: the download is mocked, so no package file appears
             self.assertEqual(shared.read_bytes(), b"extracted")
             self.assertEqual(partial.read_bytes(), b"production")
 
@@ -831,13 +827,12 @@ class N2dDoomToolTests(unittest.TestCase):
     def test_deterministic_time_is_compiled_out_of_production(self) -> None:
         doom = REPO_ROOT / "src/nand2doom/sw/doom"
         clock = (doom / "clock.c").read_text()
-        # Production reads only the cycle counter; minstret is variant-only.
         production = clock.split("#elif defined(N2D_DETERMINISTIC_TIME)")[0] + \
             clock.split("#else\nstatic uint32_t n2d_clock_read_tick")[1]
         self.assertNotIn("minstret", production)
         self.assertIn("csrr %0, minstret", clock)
-        # The production binary's byte identity is the real guarantee; this
-        # only checks that the frame-seam waits are compiled out of it.
+        # Why: the production binary's byte identity is the real guarantee; this only
+        # checks that the frame-seam waits are compiled out of it.
         platform = (doom / "platform.c").read_text()
         for symbol in ("video_wait(", "video_mark("):
             for line in platform.splitlines():
@@ -845,8 +840,8 @@ class N2dDoomToolTests(unittest.TestCase):
                     self.assertTrue(self._guarded(platform, line), line)
         capture = (doom / "capture.c").read_text()
         self.assertIn("#define N2D_WAIT_BEGIN() ((void)0)", capture)
-        # Production capture.c must not need clock.h: host probes copy only
-        # capture.c and capture.h.
+        # Why: host probes copy only capture.c and capture.h, so production capture.c
+        # must not need clock.h.
         self.assertTrue(capture.index('#include "clock.h"') > capture.index(
             "#ifdef N2D_DETERMINISTIC_TIME"))
 

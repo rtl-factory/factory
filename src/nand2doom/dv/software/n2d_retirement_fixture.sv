@@ -25,8 +25,9 @@ module n2d_retirement_fixture (
     output logic [3:0] observation_memory_read_mask_o,
     output logic observation_rd_write_o
 );
-    // Independent physical-clock witness; tick_i remains an architectural
-    // vector field and is never used to manufacture edge ordering.
+    // Why: an independent physical-clock witness; tick_i stays an
+    // architectural vector field and is never used to manufacture edge
+    // ordering, so the observer cannot pass on a fabricated order.
     assign uart_rx_o = uart_rx_i;
     always_ff @(posedge clk_i) begin
         if (clock_reset_i)

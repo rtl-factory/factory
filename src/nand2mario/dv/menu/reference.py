@@ -34,33 +34,28 @@ WIDTH, HEIGHT = 160, 144
 COLUMNS, ROWS = 20, 18
 SLOTS = 16
 PACKED_BYTES = WIDTH * HEIGHT // 4
-# Font atlas order: A-Z, 0-9, dash, blank, cursor arrow.
+# Why: the font atlas order is A-Z, 0-9, dash, blank, cursor arrow.
 TILE_DIGIT, TILE_DASH, TILE_BLANK, TILE_ARROW = 26, 36, 37, 38
 FONT_TILES = 39
-# The bank: the 39 font tiles, the same 39 on a mid-grey page, the six authored
-# grey cells and the two pointer phases. Adding TILE_GREY to a font tile moves
-# it onto the grey page.
+# Why: TILE_GREY = FONT_TILES because the bank holds the 39 font tiles, the same 39 on a
+# mid-grey page, the six authored grey cells and the two pointer phases, so adding
+# TILE_GREY to a font tile moves it onto the grey page.
 TILE_GREY = FONT_TILES
 GREY_ART_TILES, POINTER_TILES = 6, 2
-# The authored grey cells, in atlas order.
 TILE_CAP_LEFT, TILE_CAP_RIGHT = 78, 79
 TILE_FADE32, TILE_FADE21, TILE_FADE10, TILE_SHADOW = 80, 81, 82, 83
-# The two pointer phases, the same arrow one pixel apart. They are object
+# Why: the two pointer phases, the same arrow one pixel apart. They are object
 # tiles; no map cell ever names them.
 TILE_POINTER = 84
-# The boot splash badge, four cells by two, the only cells above the list.
 TILE_BADGE, BADGE_COLUMNS, BADGE_TILES = 86, 4, 8
-# The star field's four cells, the last tiles of the bank.
 TILE_STAR, STAR_TILES = 94, 4
 BANK_TILES = 98
-# The grey page shade: the font's shade 0 becomes 2, its ink stays 3.
 GREY_PAGE = 2
-# Cells between the two plate caps of the header and bottom plates.
 PLATE_CELLS = COLUMNS - 2
-# Frames the cursor holds each nudge phase. The same bit twinkles the stars.
+# Why: frames the cursor holds each nudge phase. The same bit twinkles the stars.
 PHASE_HOLD = 16
 PHASES = 2
-# The star field: the two columns the list always leaves blank, column 0 (the
+# Why: the star field: the two columns the list always leaves blank, column 0 (the
 # page the cursor object draws on) and column 3 (between the slot number and
 # the title). The rule reads map coordinates, so the field wraps with the
 # 32-row map and rides the list's own SCY; DMG has one background layer and
@@ -69,11 +64,10 @@ PHASES = 2
 # the catalogue, and the slot-row draw path stays off the star rule.
 STAR_COLUMNS = (0, 3)
 STAR_MASK = 3
-# The window: the bottom plate alone, pinned to the last two screen rows.
 WINDOW_X, WINDOW_Y = 7, 128
 WINDOW_ROWS = 2
 FOOTER_ROW, WINDOW_STATUS_ROW = 0, 1
-# The boot splash (wiki/src/nand2mario/sw/HAS.md#boot-splash). The background map is
+# Why: the background map is
 # 32 rows: the splash fills the 18 rows the screen shows at SCY 0, the list
 # follows it, and the list's last four rows wrap into map rows 0..3 as the
 # splash's own top rows scroll off. The settled view is SCY 144, at which the
@@ -82,7 +76,7 @@ MAP_ROWS = 32
 LIST_MAP_ROW = ROWS
 SETTLED_SCY = 8 * LIST_MAP_ROW
 WRAPPED_ROWS = LIST_MAP_ROW + ROWS - MAP_ROWS
-# The fade: the page first, then the ink, then the mid shades, ending on the
+# Why: the fade: the page first, then the ink, then the mid shades, ending on the
 # identity palette. Each step holds FADE_HOLD frames; the slide then raises
 # SCY by SLIDE_STEP a frame. These two constants are the whole schedule, here
 # and mirrored in the image; they are chosen as the longest splash whose
@@ -92,23 +86,20 @@ FADE_HOLD = 2
 SLIDE_STEP = 16
 FADE_FRAMES = len(FADE) * FADE_HOLD
 SLIDE_FRAMES = SETTLED_SCY // SLIDE_STEP
-# The first frame that carries the settled list: the last slide frame.
 SETTLED_FRAME = FADE_FRAMES + SLIDE_FRAMES - 1
-# A skip draws at most this many wrapped rows in one VBlank, which keeps the
+# Why: a skip draws at most this many wrapped rows in one VBlank, which keeps the
 # frame's work well inside the VBlank budget the testbench measures.
 SKIP_ROWS = 2
-# The splash art, from the approved sheet: the badge and its two lines.
 BADGE_ROW, BADGE_COLUMN = 4, 8
 SPLASH_TITLE, SPLASH_TITLE_ROW, SPLASH_TITLE_COLUMN = 'GAME LIBRARY', 8, 4
 SPLASH_HINT, SPLASH_HINT_ROW, SPLASH_HINT_COLUMN = 'SELECT A GAME', 10, 3
-# Header 0x143 values that mark a 15-byte title: the CGB flag and CGB-only flag.
+# Ref: Pan Docs "The Cartridge Header": $0143 values $80 and $C0 (the CGB flags) cut the title to 15 bytes.
 CGB_FLAG, CGB_ONLY = 0x80, 0xC0
 HEADER, HEADER_COLUMN = 'GAME LIBRARY', 4
 SLOT_ROW, NUMBER_COLUMN, TITLE_COLUMN, STATUS_ROW = 1, 1, 4, 17
 RESULT_NONE, RESULT_OK, RESULT_INVALID_SLOT, RESULT_CRC_MISMATCH, RESULT_NOT_READY = 0, 1, 2, 3, 4
 WORDS = {RESULT_INVALID_SLOT: 'INVALID', RESULT_CRC_MISMATCH: 'BAD CRC', RESULT_NOT_READY: 'NOT READY'}
 NO_INDEX = 255
-# The identity palette, for the background and for the pointer.
 IDENTITY_PALETTE = (0, 1, 2, 3)
 
 

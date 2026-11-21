@@ -27,7 +27,7 @@ These workflows run outside the levels; they are workflow rules, not regression 
 
 | Level | Job | What it runs |
 |---|---|---|
-| L0 | `l0` (`.github/workflows/l0.yml`), on every pull request into `main` or an epic branch and every merge to `main` | the unit tests of every project's scripts and of the tools, and every L0 simulation target (`tools/sim/sim.py test --level L0`) |
+| L0 | `l0` (`.github/workflows/l0.yml`), on every pull request into `main` or an epic branch and every merge to `main` | the comment lint (`tools/lint/comment_lint.py`), the unit tests of every project's scripts and of the tools, and every L0 simulation target (`tools/sim/sim.py test --level L0`) |
 
 L1 to L4 have no job yet: until the L1 job exists, a pull request into `main` runs only L0 in CI.
 

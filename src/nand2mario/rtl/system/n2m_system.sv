@@ -160,35 +160,31 @@ module n2m_system #(
   logic                                cart_ready, backing_ready, backing_initialized;
   n2m_cartridge_pkg::backing_request_t  backing_request;
   n2m_cartridge_pkg::backing_response_t backing_response;
-  // Load port shared by the loader and the direct preload port.
   n2m_cartridge_pkg::backing_request_t  loader_request, direct_request, load_request;
   n2m_cartridge_pkg::backing_response_t load_response, loader_response;
   logic                                load_owner_direct_q;
   logic                                load_outstanding_q, load_outstanding_d, direct_valid;
   logic                                load_ready, loader_ready, loader_hold, loader_busy;
   logic                                load_accept, header_write;
-  // Frame snapshot between the loader (system reset) and the display (core
-  // reset), in one clock domain.
+  // Why: the snapshot joins two reset domains (loader: system reset; display:
+  // core reset) in one clock domain, so it needs reset handling but no
+  // synchronizer.
   logic                                snapshot_pin, snapshot_release, snapshot_pinned, snapshot_ready;
   n2m_snapshot_pkg::snapshot_request_t  snapshot_request;
   n2m_snapshot_pkg::snapshot_response_t snapshot_response;
   logic                                lcd_enable;
-  // Display tier outputs before the DISPLAY selection.
   logic [3:0]                          display_red, display_green, display_blue;
   logic                                display_hsync, display_vsync, display_pixel_start;
   logic                                display_swapped, display_dropped, display_repeated;
   logic                                display_valid, display_pinned, display_snapshot_ready;
   n2m_snapshot_pkg::snapshot_response_t display_snapshot_response;
 
-  // Core reset: the console runs only when the system reset is released, the
-  // loader is not holding it and the backing is initialized.
   assign core_reset = reset_i || loader_hold || !backing_initialized || library_hold;
   assign core_reset_o = core_reset;
 
-  // Boot VRAM clear (no boot ROM): while the core is held in reset (system
-  // reset, cartridge load or backing initialization) the sweep writes $00
-  // to one VRAM byte per edge, so a hold of at least 8192 edges leaves VRAM
-  // zeroed as the DMG boot ROM does.
+  // Why: there is no boot ROM, so while the core is held in reset the sweep
+  // writes $00 to one VRAM byte per edge; a hold of at least 8192 edges
+  // leaves VRAM zeroed as the DMG boot ROM does.
   logic [12:0] vram_clear_q, vram_clear_d;
   assign vram_clear_d = core_reset ? vram_clear_q + 13'd1 : 13'd0;
   `N2A_DFF(vram_clear_q, vram_clear_d, clk_i)
@@ -219,10 +215,10 @@ module n2m_system #(
     .divider_reset_o        (divider_reset)
   );
 
-  // The DMA block is the bus owner in front of the memory map: it forwards
-  // the CPU's requests, answers restricted ones during a transfer and
-  // injects its own source reads (which reach the cartridge port like any
-  // CPU read, one outstanding at a time).
+  // Why: the DMA block sits in front of the memory map so one place decides bus
+  // ownership: it forwards the CPU's requests, answers restricted ones during a
+  // transfer and injects its own source reads (which reach the cartridge port
+  // like any CPU read, one outstanding at a time).
   n2m_dma u_dma (
     .clk_i                  (clk_i),
     .reset_i                (core_reset),
@@ -268,8 +264,8 @@ module n2m_system #(
     .cart_response_i    (cart_response)
   );
 
-  // Cartridge mapper on the memory's cartridge port; it observes the header
-  // bytes as accepted ROM load writes pass into the backing.
+  // Why: the mapper learns its type from the header bytes as accepted ROM load
+  // writes pass into the backing, so a load needs no separate configuration step.
   assign load_accept = load_request.valid && load_ready;
   assign header_write = load_accept && load_request.write && !load_request.ram;
   n2m_cartridge u_cartridge (
@@ -286,9 +282,9 @@ module n2m_system #(
     .load_data_i        (load_request.write_data)
   );
 
-  // Keep the ordinary mapper instance and hierarchy unchanged for existing
-  // CPU/DMA/cartridge consumers. The library configuration owns the backing
-  // reader and serves CPU reads from its private active image instead.
+  // Why: the ordinary mapper instance and hierarchy stay unchanged for
+  // existing CPU/DMA/cartridge consumers. The library configuration owns the
+  // backing reader and serves CPU reads from its private active image instead.
   `N2A_ASSERT_PARAM(g_one_backing, (CART_SDRAM == 0) || (CART_EXTERNAL == 0),
       "n2m_system selects one cartridge backing: CART_SDRAM or CART_EXTERNAL")
   `N2A_ASSERT_PARAM(g_library_capacity,
@@ -318,10 +314,9 @@ module n2m_system #(
     end
   endgenerate
 
-  // Load port arbitration: while the direct preload port presents a write it
-  // owns the port; otherwise the loader's request is presented. The two are
-  // never used within one loader frame (assertion below); each response is
-  // routed to its owner below.
+  // Why: the direct preload port wins while it presents a write; the two are
+  // never used within one loader frame (asserted below), so no arbitration
+  // state is needed.
   always_comb begin
     direct_request.valid = direct_valid;
     direct_request.write = 1'b1;
@@ -330,8 +325,8 @@ module n2m_system #(
     direct_request.write_data = rom_load_data_i;
     load_request = rom_load_write_i ? direct_request : loader_request;
   end
-  // The direct port is a ready/valid requester of the backing's load port
-  // like the loader: a direct write reaches the backing only while no load
+  // Why: the direct port is a ready/valid requester of the backing's load
+  // port like the loader: a direct write reaches the backing only while no load
   // is outstanding, so it presents its next write after the previous
   // response. load_outstanding_q resets with the system reset (the backing
   // drops responses then), so a preload during reset proceeds one write per
@@ -343,21 +338,19 @@ module n2m_system #(
   assign rom_load_ready_o = load_ready && !load_outstanding_q;
   assign loader_ready = load_ready && !rom_load_write_i;
 
-  // Load response routing: the owner of each accepted load request is
-  // recorded on its acceptance edge, and its response goes back to that
-  // owner only. The direct preload port is fire-and-forget (no response
-  // consumer); the loader sees only responses to its own requests. At most
-  // one load is outstanding and its response arrives on an edge after its
-  // acceptance, so the owner recorded at acceptance is the owner of the next
-  // response.
+  // Why: the owner of each accepted load request is recorded on its
+  // acceptance edge and only that owner sees the response. The direct preload
+  // port is fire-and-forget (no response consumer). At most one load is
+  // outstanding and its response arrives on a later edge, so the owner recorded
+  // at acceptance is the owner of the next response.
   `N2A_DFF_RST_EN(load_owner_direct_q, rom_load_write_i, clk_i, load_accept, reset_i, 1'b0)
   always_comb begin
     loader_response = load_response;
     loader_response.valid = load_response.valid && !load_owner_direct_q;
   end
 
-  // Cartridge backing behind the mapper: on-chip or SDRAM. Both live in the
-  // system reset domain so the loader can fill them while the core is held.
+  // Why: every backing lives in the system reset domain so the loader can
+  // fill it while the core is held.
   generate
     if (CART_SDRAM != 0) begin : g_sdram
       n2m_sdram_backing u_backing (
@@ -386,16 +379,16 @@ module n2m_system #(
       );
       assign cart_bus_request_o = '0;
     end else if (CART_EXTERNAL != 0) begin : g_external
-      // Off-chip backing (ASIC chip): the mapper's backing port and the load
-      // port share the cartridge bus through the SDRAM backing's arbiter
-      // (the mapper first). The bus carries the backing records unchanged:
-      // a request is held until sampled with cart_bus_ready_i, exactly one
-      // response follows on a later edge, one request is outstanding and the
-      // next is presented after the edge that sampled the response. Each
-      // response goes to the owner recorded at acceptance; the system reset
-      // clears the outstanding flag, so a response then is dropped. With a
-      // device that is always ready and answers on the next edge the mapper
-      // sees exactly the on-chip backing's timing.
+      // Why: the ASIC chip keeps the cartridge off-chip, and the mapper must see
+      // the on-chip backing's timing from a device that is always ready and answers
+      // on the next edge. So the mapper's backing port and the load port share the
+      // cartridge bus through the SDRAM backing's arbiter (the mapper first), and the
+      // bus carries the backing records unchanged: a request is held until sampled
+      // with cart_bus_ready_i, exactly one response follows on a later edge, one
+      // request is outstanding and the next is presented after the edge that
+      // sampled the response. Each response goes to the owner recorded at
+      // acceptance; the system reset clears the outstanding flag, so a response
+      // then is dropped.
       logic ext_outstanding_q, ext_outstanding_d, ext_owner_load_q;
       logic ext_accept, ext_response_valid;
       assign backing_ready = !ext_outstanding_q && cart_bus_ready_i;
@@ -422,7 +415,6 @@ module n2m_system #(
           !cart_bus_response_i.valid || ext_outstanding_q)
       `N2A_ASSERT_NEVER(cart_bus_rom_write_rejected, clk_i, reset_i,
           backing_request.valid && !backing_request.ram && backing_request.write)
-      // The SDRAM pins idle as in the on-chip configuration.
       assign dram_addr_o = '0;
       assign dram_ba_o = '0;
       assign dram_cas_n_o = 1'b1;
@@ -454,7 +446,6 @@ module n2m_system #(
         .load_response_o (load_response),
         .initialized_o   (backing_initialized)
       );
-      // The SDRAM pins idle: device deselected, clock and data bus parked.
       assign dram_addr_o = '0;
       assign dram_ba_o = '0;
       assign dram_cas_n_o = 1'b1;
@@ -475,7 +466,8 @@ module n2m_system #(
     end
   endgenerate
 
-  // UART cartridge loader in the system reset domain.
+  // Why: the loader runs in the system reset domain because it holds the
+  // core in reset while it loads.
   n2m_uart_loader #(
     .CLKS_PER_BIT (UART_CLKS_PER_BIT)
   ) u_loader (
@@ -535,12 +527,11 @@ module n2m_system #(
     .tx_data_o              (serial_tx_data_o)
   );
 
-  // Interrupt sources in IF bit order: VBlank, STAT, timer, serial, joypad.
-  // Each source is a one-cycle pulse per event.
+  // Ref: Pan Docs "Interrupts": IF bit order VBlank, STAT, timer, serial,
+  // joypad. Each source is a one-cycle pulse per event.
   assign interrupt_sources = {joypad_interrupt, serial_interrupt, timer_interrupt,
                               stat_interrupt, vblank_interrupt};
 
-  // Powered-off APU: audio register read masks and wave RAM ($FF10-$FF3F).
   n2m_apu u_apu (
     .clk_i           (clk_i),
     .reset_i         (core_reset),
@@ -561,7 +552,7 @@ module n2m_system #(
     .interrupt_flags_o (interrupt_flags)
   );
 
-  // The raster observation ports are consumed by the focused video target.
+  // Why: the raster observation ports are consumed by the focused video target.
   /* verilator lint_off PINCONNECTEMPTY */
   n2m_ppu u_ppu (
     .clk_i          (clk_i),
@@ -595,7 +586,7 @@ module n2m_system #(
   );
   /* verilator lint_on PINCONNECTEMPTY */
 
-  // The frame-completion pulse is consumed by the focused display target.
+  // Why: the frame-completion pulse is consumed by the focused display target.
   /* verilator lint_off PINCONNECTEMPTY */
   n2m_display u_display (
     .clk_i            (clk_i),
@@ -647,9 +638,9 @@ module n2m_system #(
     snapshot_response.valid = DISPLAY_ON && display_snapshot_response.valid;
   end
 
-  // I/O fan-out: the block that claims the forwarded address answers in the
-  // same cycle; an unclaimed address reads open-bus $FF and ignores writes.
-  // A later block joins by adding its selected/response pair here.
+  // Why: an unclaimed address must read open-bus $FF and ignore writes as on
+  // the DMG, so the fan-out defaults to that; the claiming block answers in the
+  // same cycle.
   always_comb begin
     io_response.valid = io_request.valid;
     io_response.fault = 1'b0;
@@ -663,16 +654,13 @@ module n2m_system #(
     else if (apu_selected) io_response = apu_response;
   end
 
-  // The transfer level is observed by the system tests only.
+  // Why: the transfer level is observed by the system tests only.
   logic unused_dma_active;
   assign unused_dma_active = dma_active;
 
   `N2A_ASSERT(system_io_claim_exclusive, clk_i, core_reset,
       $onehot0({timer_selected, interrupts_selected, ppu_selected, joypad_selected,
                 serial_selected, dma_selected, apu_selected}))
-  // The direct preload port and the loader never use the load port together,
-  // no load response arrives without an accepted load request, and no load
-  // request is accepted while one is outstanding.
   `N2A_ASSERT_NEVER(system_load_ports_exclusive, clk_i, reset_i,
       rom_load_write_i && (loader_request.valid || loader_busy))
   `N2A_ASSERT(system_load_response_requested, clk_i, reset_i,

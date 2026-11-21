@@ -22,7 +22,7 @@ from .rv32im_model import MASK32, m_result
 
 CLOCK_HZ = 25_000_000
 CLOCK_PERIOD_NS = 40
-MUL_LATENCY = 2  # issue edge to the edge that registers the product
+MUL_LATENCY = 2  # Ref: core MAS "Multiply and divide": the product registers two edges after issue
 
 
 def _magnitude(value: int, signed_op: bool) -> int:
@@ -37,7 +37,7 @@ def divide_cycles(funct3: int, left: int, right: int, reused: bool) -> int:
     dividend = _magnitude(left, signed_op)
     divisor = _magnitude(right, signed_op)
     if dividend == 0 or dividend.bit_length() < divisor.bit_length():
-        return 2  # setup decides quotient zero
+        return 2  # Ref: core MAS "Multiply and divide": setup decides quotient zero
     return 2 + dividend.bit_length() - divisor.bit_length() + 1
 
 
@@ -45,7 +45,8 @@ class Harness:
     def __init__(self, dut) -> None:
         self.dut = dut
         self.cycle = 0
-        # Reuse key of the last divide that completed (raw operands, signedness).
+        # Ref: core MAS "Multiply and divide" (Reuse): reuse key of the last
+        # divide that completed (raw operands, signedness).
         self.last_key: tuple[int, int, bool] | None = None
 
     def idle_inputs(self) -> None:
@@ -91,7 +92,8 @@ class Harness:
         self.drive_issue(funct3, left, right)
         await self.tick()
         self.idle_inputs()
-        # Scribble the operand ports: the divider must not depend on them.
+        # Why: scribbling the operand ports after issue catches a divider that
+        # reads them instead of its registered operands.
         dut.rs1_i.value = left ^ MASK32
         dut.rs2_i.value = right ^ 0x5A5A_5A5A
         edges = 1
@@ -154,8 +156,10 @@ async def _multiply_stream(harness: Harness, rng: random.Random, pairs) -> int:
 async def _divide_corners(harness: Harness, rng: random.Random, pairs) -> int:
     count = 0
     for left, right in pairs:
-        # DIV then REM (reuse), DIVU then REMU (reuse), then the reverse
-        # order within each signedness, which reuses too.
+        # Ref: core MAS "Multiply and divide" (Reuse): a divide identical to
+        # the last completed one finishes at issue, so DIV then REM, DIVU then
+        # REMU and then the reverse order within each signedness all take the
+        # reuse path.
         for funct3 in (4, 6, 5, 7, 6, 4):
             await harness.divide(funct3, left, right, hold=rng.choice((0, 0, 1, 3)))
             count += 1
@@ -171,7 +175,8 @@ async def _kill_phases(harness: Harness, rng: random.Random) -> None:
             total = divide_cycles(funct3, left, right, reused=False)
             for kill_after in range(0, total + 2):
                 harness.last_key = None
-                # A divide over other operands makes the next one a fresh start.
+                # Why: a divide over other operands first, so the divide that
+                # is killed below is a fresh start, not a reuse hit.
                 await harness.divide(funct3, left ^ 0x10, right | 1)
                 harness.drive_issue(funct3, left, right)
                 await harness.tick()
@@ -183,11 +188,13 @@ async def _kill_phases(harness: Harness, rng: random.Random) -> None:
                 await harness.tick()
                 dut.kill_i.value = 0
                 assert not int(dut.busy_o.value) and not int(dut.result_valid_o.value)
-                # A finished divide stays reusable; an abandoned one must not.
+                # Ref: core MAS "Multiply and divide" (Reuse): a finished
+                # divide stays reusable; an abandoned one must not.
                 harness.last_key = (left, right, funct3 in (4, 6)) if finished else None
                 await harness.divide(funct3 | 2, left, right)
                 await harness.divide(funct3, left, right)
-    # Kill on the issue edge itself wins over the issue.
+    # Why: a kill on the issue edge must win over the issue, or a killed
+    # instruction's divide would run and could be reused.
     harness.drive_issue(4, 1000, 7)
     dut.kill_i.value = 1
     await harness.tick()
@@ -204,7 +211,8 @@ async def _reset_cancels(harness: Harness) -> None:
     await harness.tick()
     assert int(dut.busy_o.value)
     await harness.reset()
-    # Reset forgets the reusable result: the same divide recomputes.
+    # Ref: core MAS "Multiply and divide" (Reuse): reset forgets the reusable
+    # result: the same divide recomputes.
     await harness.divide(5, 0xFFFF_FFFF, 3)
 
 
@@ -216,7 +224,9 @@ async def _reset_forgets_consumed_divide(harness: Harness) -> None:
         fresh = divide_cycles(funct3, left, right, reused=False)
         assert fresh > 1, "fixture must distinguish recompute from reuse"
         assert await harness.divide(funct3, left, right) == fresh
-        # Consume a paired remainder too: the cache is known valid before reset.
+        # Why: consuming the paired remainder proves the reuse mark was set
+        # before reset, so the recompute after reset shows that reset cleared
+        # it.
         assert await harness.divide(funct3 | 2, left, right) == 1
         await harness.reset()
         assert await harness.divide(funct3, left, right) == fresh

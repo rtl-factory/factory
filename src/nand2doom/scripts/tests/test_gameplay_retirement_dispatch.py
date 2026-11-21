@@ -72,7 +72,7 @@ class DispatcherTests(unittest.IsolatedAsyncioTestCase):
                 w = InputWitness(a, initialized_trace(a), lambda: None, lambda: None)
                 w.boundary_tick = w.ready_tick = w.make_ack_tick = 42
                 start = getattr(w, 'start_' + role)
-                event.set()  # Retirement ReadOnly callback precedes driver wait.
+                event.set()  # Why: set first: the retirement ReadOnly callback precedes the driver wait.
 
                 async def old_driver():
                     await event.wait()
@@ -81,7 +81,7 @@ class DispatcherTests(unittest.IsolatedAsyncioTestCase):
 
                 old = asyncio.create_task(old_driver())
                 await settle()
-                falling.fire()  # Same retirement cycle, writable phase only.
+                falling.fire()  # Why: the falling edge is the same retirement cycle's writable phase.
                 with self.assertRaises(AssertionError):
                     await old
                 with patch.object(monitors, 'RisingEdge', lambda _: rising.wait()), patch.object(monitors, 'FallingEdge', lambda _: falling.wait()):
@@ -189,18 +189,18 @@ class DispatcherTests(unittest.IsolatedAsyncioTestCase):
                     dut.observation_memory_write_o.fire()
                 dut.clk_i.fire()
                 await settle()
-            # Contiguous startup stores use the actual existing trace checker.
+            # Why: contiguous startup stores go through the real trace checker, not a stub.
             for address in (0x100, 0x104, 0x108):
                 await drive(write=1, address=address)
             self.assertEqual({'gametic': 0, 'maketic': 0, 'ticdup': 0}, trace.counters)
             await drive(valid=0)
-            # Arm between samples. No stale valid/load/store is replayed.
+            # Why: arming between samples must not replay a stale valid, load or store.
             witness.armed = True
             armed.set()
             await settle()
             self.assertEqual([], received)
             await drive(data=5)
-            await drive(data=5)  # Adjacent equal values are separate retirements.
+            await drive(data=5)  # Why: adjacent equal values are separate retirements, so both must be received.
             await drive(valid=0)
             await drive(write=1, address=0x104, data=1)
             self.assertEqual([5, 6, 8], [r['order'] for r, _ in received])
@@ -211,7 +211,7 @@ class DispatcherTests(unittest.IsolatedAsyncioTestCase):
             await drive(write=1, address=0x104, data=1)
             self.assertEqual(3, len(received))
             self.assertEqual(10, trace.last_order)
-            # A malformed later store still fails the original checker and saves
+            # Why: a malformed later store must still fail the original checker and save
             # evidence after the supplemental witness has completed.
             await drive(write=1, address=0x104, data=9)
             with self.assertRaisesRegex(AssertionError, 'reset/decreased/jumped'):

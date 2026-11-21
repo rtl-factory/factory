@@ -1,7 +1,6 @@
 `include "src/common/rtl/pkg/macros.vh"
 
 // Q102H execute: operand forwarding, ALU, control transfer, address, traps
-//----------------------------------------------------------
 // 1. Read rs1/rs2 from the common register file and forward the newest
 //    in-flight value: Q103H (results already formed in Q102H), then Q104H,
 //    then Q105H. Q105H forwarding is required because the common register
@@ -19,8 +18,6 @@
 //    a predicted transfer resolves to another target.
 // 4. Form the effective address, byte lanes and aligned store word.
 // 5. Report the precise synchronous exception of the Q102H slot, if any.
-//----------------------------------------------------------
-
 module n2d_exe (
     // Shared stage records: this stage reads only the fields it needs.
     /* verilator lint_off UNUSEDSIGNAL */
@@ -81,7 +78,6 @@ module n2d_exe (
     assign rf_rs1_index_o = dec_Q102H_i.rs1;
     assign rf_rs2_index_o = dec_Q102H_i.rs2;
 
-    // The common decode/ALU slice computes from the forwarded operands.
     n2d_rv32i_decode_alu u_base_decode_alu (
         .instruction_i(slot_Q102H_i.instruction),
         .rs1_data_i(rs1_value_o),
@@ -98,8 +94,8 @@ module n2d_exe (
     );
 
     always_comb begin
-        // Forwarding, newest producer first; x0 never forwards because a
-        // record's rd_write is zero for x0.
+        // Why: forwarding takes the newest producer first; x0 never forwards because
+        // a record's rd_write is zero for x0.
         q103_forwardable = q103_i.valid && q103_i.rd_write && !q103_i.is_load && !q103_i.is_mul;
 
         rs1_value_o = rf_rs1_data_i;
@@ -151,11 +147,12 @@ module n2d_exe (
             (dec_Q102H_i.is_branch && taken);
         next_pc_o = taken_o ? control_target : pc_plus4;
         target_misaligned = taken_o && (control_target[1:0] != 2'b00);
-        // Fetch is on the wrong path: an unpredicted transfer, a
-        // predicted-taken branch that falls through (next_pc_o = pc + 4), or
-        // a predicted transfer whose stacked or buffered target differs
-        // (a stale entry, a BTB partial-tag alias, or a JALR whose rs1
-        // changed). Static JAL and branch targets always match.
+        // Why: these are every way fetch can be on the wrong path: an unpredicted
+        // transfer, a predicted-taken branch that falls through (next_pc_o = pc + 4),
+        // or a predicted transfer whose stacked or buffered target differs (a stale
+        // entry, a BTB partial-tag alias, or a JALR whose rs1 changed). Static JAL
+        // and branch targets always match, so only taken predictions compare the
+        // target.
         redirect_o = (taken_o != slot_Q102H_i.predicted_taken) ||
             (slot_Q102H_i.predicted_taken && taken_o &&
              (control_target[31:1] != slot_Q102H_i.predicted_target[31:1]));
@@ -208,7 +205,7 @@ module n2d_exe (
         end
     end
 
-    // Base decode/ALU outputs not used by the pipeline: operand-use and
+    // Why: these base decode/ALU outputs are unused because operand-use and
     // destination intent are decoded by n2d_dec for every class.
     `N2A_UNUSED_BITS(unused_base, {base_rs1_index, base_rs2_index, base_rd_index, base_rs1_read,
                            base_rs2_read, base_rd_write, base_immediate})

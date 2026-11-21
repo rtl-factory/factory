@@ -47,6 +47,10 @@ def _csrw(csr: int, rs1: int) -> int:
 
 
 PROGRAM = (
+    # Why: each faulting store's mtvec points at the next step, so its handler is
+    # the following code: the front-view store at 16 traps to 20, the lane-less
+    # byte store to 0x2000_1009 at 36 traps to 40, and the swap plus palette
+    # commit at 48 falls into the loop at 52.
     _lui(5, 0x10020),             # 0:  x5 = front view
     _i(0x13, 6, 0, 0, 20),        # 4:  x6 = 20
     _csrw(MTVEC, 6),              # 8:  mtvec = 20
@@ -76,7 +80,8 @@ async def _observe(dut, state: dict) -> None:
                                        int(dut.observation_trap_value_o.value)))
             state["retired"].append(pc)
             if pc == 40:
-                # The lane-less store's handler: that store requested no swap.
+                # Why: pc 40 is the lane-less store's handler, so the state
+                # sampled here shows that store requested no swap.
                 state["after_byte_store"] = (int(dut.framebuffer_swap_pending_o.value),
                                              int(dut.framebuffer_front_bank_o.value))
         if int(dut.framebuffer_swap_pending_o.value):

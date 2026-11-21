@@ -65,7 +65,6 @@ class Cartridge:
         self.reset()
         self.load_image(image)
 
-    # -- load port and reset -------------------------------------------------
     def load(self, address, byte):
         """One load-port write: the physical ROM byte and, for $0147-$0149,
         the header register the mapper captures."""
@@ -84,7 +83,6 @@ class Cartridge:
         header and both stores are the inserted cartridge and stay."""
         self.registers = {BANK1: BANK1_RESET, BANK2: 0, MODE: 0, RAMG: False}
 
-    # -- header-derived facts ------------------------------------------------
     def header_byte(self, offset):
         value = self.header[offset]
         if value is None:
@@ -112,7 +110,6 @@ class Cartridge:
     def ram_mask(self):
         return ram_bank_mask(self.header_byte(HEADER_RAM_SIZE))
 
-    # -- translation ---------------------------------------------------------
     def rom_bank(self, address):
         """Effective ROM bank of a CPU address in $0000-$7FFF. A ROM-only or
         unsupported type is the identity whatever the (possibly stale) MBC1
@@ -146,7 +143,6 @@ class Cartridge:
             return 'local', None
         return 'ram', (self.ram_bank() << 13) | (address & 0x1FFF)
 
-    # -- byte-level behavior -------------------------------------------------
     def write(self, address, value):
         value &= 0xFF
         store, physical = self.translate(address, write=True)

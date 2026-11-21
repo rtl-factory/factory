@@ -32,7 +32,8 @@ def symbols(text: str) -> list[tuple[int, int, str]]:
 
 
 def gameplay_windows(report: dict) -> list[tuple[int, int]]:
-    # Frame/report cycles are resume-relative; the text trace is absolute.
+    # Why: frame and report cycles are resume-relative while the text trace is
+    # absolute, so the resume origin is added.
     origin = report["result"]["resumed"]
     return [(v["start"] + origin, v["end"] + origin)
             for v in report["result"]["frames"] if v["after_scene"]]
@@ -78,8 +79,8 @@ def profile(lines, entries, windows, wait_ranges=()) -> dict:
                 row["branches"] += opcode == 99
                 totals[number]["instructions"] += 1
                 pcs[pc] += 1
-        # Direct and indirect calls use ra/t0; returns leave the prior wait
-        # context only after this retirement interval has been labelled.
+        # Why: returns leave the prior wait context only after this retirement
+        # interval has been labelled. Direct and indirect calls link ra or t0.
         opcode, rd, rs1 = insn & 127, (insn >> 7) & 31, (insn >> 15) & 31
         if opcode in (103, 111) and rd in (1, 5):
             stack.append(waiting)

@@ -57,7 +57,7 @@ def main(argv=None):
         pal = Image.new("P", (1, 1))
         pal.putpalette([v for c in (0, 85, 170, 255) for v in (c, c, c)])
         uniq, durs = [], []
-        for im in ims:  # identical consecutive samples become one longer frame
+        for im in ims:
             if uniq and uniq[-1].tobytes() == im.tobytes():
                 durs[-1] += 1000
             else:

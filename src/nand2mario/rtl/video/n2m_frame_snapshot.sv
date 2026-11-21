@@ -47,8 +47,8 @@ module n2m_frame_snapshot (
   assign read_enable_o = state_q.busy && (state_q.issued != 3'd4) && !scan_busy_i;
   assign read_index_o = state_q.index + frame_index_t'(state_q.issued);
   assign pixel_byte = request_i.offset - HEADER_END;
-  // The captured shade enters at the top; after four captures pixel 4m+j
-  // sits in bits [2j+1:2j].
+  // Why: the captured shade enters at the top, so after four captures pixel
+  // 4m+j sits in bits [2j+1:2j] as the snapshot record requires.
   assign shifted_data = {read_shade_i, state_q.data[7:2]};
 
   always_comb begin

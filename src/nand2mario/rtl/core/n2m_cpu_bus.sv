@@ -32,7 +32,7 @@ module n2m_cpu_bus (
     end
     assign transfer = request_o.valid && response_i.valid;
     assign read_data_o = accepted ? data_q : response_i.read_data;
-    // HALT admits a fresh wake fetch only on a qualified machine boundary.
+    // Why: HALT admits a fresh wake fetch only on a qualified machine boundary.
     // Once admitted, decode its response on the system edge so execution can
     // resume at the next boundary rather than charging another fetch cycle.
     // The IME-enabled idle plan and every executing phase remain synchronous

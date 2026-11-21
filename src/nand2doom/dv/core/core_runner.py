@@ -19,7 +19,7 @@ from cocotb.triggers import FallingEdge, ReadOnly, RisingEdge, Timer
 from .observation import read_observation
 from .rv32im_model import DEFAULT_INSTRUCTION, Rv32imModel
 
-MEMORY_SIZE = 0x1000  # minimum; a larger initial image extends it
+MEMORY_SIZE = 0x1000  # Why: 4 KiB holds the hand-encoded programs and their data; a larger initial image extends it
 
 
 @dataclass
@@ -208,8 +208,8 @@ async def run_program(
     if reset:
         await reset_core(dut, settle_cycles)
 
-    pending_instruction: list | None = None  # [address, remaining]
-    pending_data: list | None = None  # [write, address, data, mask, remaining]
+    pending_instruction: list | None = None  # Why: a list, not a tuple, so remaining counts down in place: [address, remaining]
+    pending_data: list | None = None  # Why: a list so remaining counts down in place: [write, address, data, mask, remaining]
     held_data: tuple | None = None
     observations: list = []
     result = RunResult(observations, memory, 0, model)
@@ -221,7 +221,6 @@ async def run_program(
     halt_on_data_armed = halt_on_first_data
 
     for cycle in range(max_cycles):
-        # ---- drive responses and ready for this cycle --------------------
         instruction_now = pending_instruction is not None and pending_instruction[1] == 0
         data_now = pending_data is not None and pending_data[4] == 0
         dut.instruction_response_valid_i.value = int(instruction_now)
@@ -245,8 +244,10 @@ async def run_program(
             dut.data_response_read_data_i.value = 0
             dut.data_response_error_i.value = 0
 
-        # One outstanding per port: ready only when the port is free or its
-        # response is sampled on this edge.
+        # Ref: core MAS "Pipelined memory handshake": one request outstanding
+        # per port, the next accepted on the edge that samples the response, so
+        # ready may rise only when the port is free or its response is sampled
+        # on this edge.
         instruction_free = pending_instruction is None or instruction_now
         data_free = pending_data is None or data_now
         dut.instruction_request_ready_i.value = int(
@@ -254,7 +255,6 @@ async def run_program(
         )
         dut.data_request_ready_i.value = int(data_free and data.ready(cycle, rng))
 
-        # ---- debug controls ----------------------------------------------
         dut.resume_i.value = 0
         dut.reset_pc_request_i.value = 0
         if active_halt is None and halt_queue and cycle >= halt_queue[0].cycle:
@@ -281,7 +281,6 @@ async def run_program(
                 platform_now |= window_events
         dut.pmon_platform_events_i.value = platform_now
 
-        # ---- sample requests ----------------------------------------------
         next_instruction = None
         if int(dut.instruction_request_valid_o.value):
             address = int(dut.instruction_request_address_o.value)
@@ -322,13 +321,14 @@ async def run_program(
         await RisingEdge(dut.clk_i)
         await ReadOnly()
         if platform_observe_mask:
-            # The registered PMON vector shows this cycle's legal events.
+            # Why: sampled after the edge, the registered pmon_events_o must
+            # hold exactly the legal events driven before it, so a dropped,
+            # extra or unregistered event fails here.
             observed_events = int(dut.pmon_events_o.value) & platform_observe_mask
             assert observed_events == platform_now & platform_observe_legal, (
                 f"cycle {cycle}: pmon_events_o {observed_events:#x}"
             )
 
-        # ---- apply the responses sampled on this edge ---------------------
         if data_now:
             write, address, value, mask, _ = pending_data
             if write and not data_error(address):
@@ -374,7 +374,6 @@ async def run_program(
             if active_halt is not None and halted_cycles > active_halt.hold:
                 resume_pending = True
 
-        # ---- advance the responders ---------------------------------------
         if instruction_now:
             pending_instruction = None
         elif pending_instruction is not None:
@@ -392,8 +391,8 @@ async def run_program(
 
         result.cycles = cycle + 1
         if stop:
-            # A halt still draining when the stop observation retires is the
-            # only request allowed to end unacknowledged.
+            # Why: a halt still draining when the stop observation retires is
+            # the only request allowed to end unacknowledged.
             pending = int(active_halt is not None and halted_cycles == 0)
             assert result.halts_acknowledged + pending == result.halts_requested
             await FallingEdge(dut.clk_i)

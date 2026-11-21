@@ -35,7 +35,8 @@ class ProjectTargetTests(unittest.TestCase):
         files += board_files
         targets = target_view.load_targets()
         consumers = {source for target in targets.values() for source in target.sources}
-        # Intel backend files are consumed only by a board's Quartus source list.
+        # Why: Intel backends are consumed only by a board's Quartus source list, so
+        # that list counts as their consumer.
         quartus_sources = {source for board in quartus.BOARDS for source in quartus.load_config(
             REPO_ROOT, "src/nand2doom/cfg/n2d_quartus.json", board)["sources"]}
         for source in files:
@@ -47,8 +48,8 @@ class ProjectTargetTests(unittest.TestCase):
                 self.assertIn(relative, consumers)
 
     def test_verilator_targets_select_portable_backends_only(self):
-        # Finite backend selection: no Verilator target lists an Intel backend,
-        # and every board-top target lists exactly one clock backend (portable).
+        # Why: Verilator targets must simulate the portable backends, so none lists an
+        # Intel backend and every board-top target lists exactly one clock backend.
         targets = target_view.load_targets()
         for board in ("de10_lite", "de2_115"):
             other = f"src/nand2doom/fpga/{board}"
@@ -57,7 +58,7 @@ class ProjectTargetTests(unittest.TestCase):
             board_targets = 0
             for target in targets.values():
                 if not target.name.startswith("n2d_"):
-                    continue  # common stub targets deliberately lint Intel wiring
+                    continue  # Why: common stub targets deliberately lint Intel wiring
                 with self.subTest(board=board, target=target.name):
                     self.assertFalse([s for s in target.sources if s.endswith("_intel.sv")])
                     if f"{other}/n2d_{board}.sv" in target.sources:
@@ -102,7 +103,7 @@ class ProjectTargetTests(unittest.TestCase):
             "src.common.dv.riscv.test_rv32_regfile",
             targets["n2d_rv32_regfile"].test_module,
         )
-        # The Doom cores instantiate the common register file directly; the
+        # Why: the Doom cores instantiate the common register file directly, so the
         # Doom-named target keeps its oracle, seed and bound on that module.
         self.assertEqual("n2a_rv32_regfile", targets["n2d_rv32_regfile"].top)
         self.assertEqual(

@@ -16,7 +16,7 @@ class GameplayTests(unittest.TestCase):
         trace = GameplayTrace(SYMBOLS)
         for name, address in SYMBOLS.items():
             for lane in range(4):
-                # Disabled lanes deliberately contain poison, not implicit zero.
+                # Why: disabled lanes hold poison, not zero, so a reader that ignores the mask fails.
                 self.store(trace, 0, address + lane,
                            0xFFFFFFFF ^ (0xFF << (8 * lane)), 1 << lane)
                 if lane < 3:
@@ -75,9 +75,9 @@ class GameplayTests(unittest.TestCase):
     def test_frame_statistics_count_colors_nonblack_pixels_and_rows(self):
         self.assertEqual((1, 0, 0), frame_statistics(bytes(320 * 200)))
         frame = bytearray(320 * 200)
-        frame[0] = 7                      # row 0
-        frame[320 * 5 + 3] = 7            # row 5, repeated color
-        frame[320 * 199 + 319] = 200      # last row, last column
+        frame[0] = 7
+        frame[320 * 5 + 3] = 7
+        frame[320 * 199 + 319] = 200
         self.assertEqual((3, 3, 3), frame_statistics(bytes(frame)))
         self.assertEqual((3, 2, 2), frame_statistics(b"\x00\x01\x00\x02", width=2))
         with self.assertRaises(AssertionError):

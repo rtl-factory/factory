@@ -76,15 +76,7 @@ module n2d_rv32im_core #(
 );
     import n2d_core_pkg::*;
 
-    //----------------------------------------------------------
-    // Stage registers
-    //----------------------------------------------------------
-
     t_pipe_regs pipe_q, pipe_d;
-
-    //----------------------------------------------------------
-    // Internal signals
-    //----------------------------------------------------------
 
     t_fetch_slot slot_Q101H;
     logic        fetch_owed;
@@ -155,10 +147,6 @@ module n2d_rv32im_core #(
     t_retire     q104_Q104H;
     t_q103       q103_next;
 
-    //----------------------------------------------------------
-    // Q100H/Q101H fetch and instruction queue
-    //----------------------------------------------------------
-
     n2d_if #(
         .RAS_DEPTH(RAS_DEPTH),
         .BTB_ENTRIES(BTB_ENTRIES)
@@ -187,10 +175,6 @@ module n2d_rv32im_core #(
         .predict_target_Q101H_o(predict_target_Q101H),
         .fetch_owed_o(fetch_owed)
     );
-
-    //----------------------------------------------------------
-    // Q102H decode, register read, execute
-    //----------------------------------------------------------
 
     n2d_dec u_dec (
         .instruction_i(pipe_q.slot_Q102H.instruction),
@@ -261,7 +245,7 @@ module n2d_rv32im_core #(
         csr_trap_cause = trap_Q103H ? trap_cause_Q103H : exception_cause_Q102H;
         csr_trap_value = trap_Q103H ? pipe_q.q103.mem_address : exception_value_Q102H;
         csr_op_Q102H = dec_Q102H.funct3[1:0];
-        // CSR and MRET retire architecturally on their serialized Q102H
+        // Why: CSR and MRET retire architecturally on their serialized Q102H
         // commit edge, so their own minstret and INSTRET count use the
         // controls of that edge (a minstret write replaces the increment).
         instret_increment = (pipe_q.q104.valid && !pipe_q.q104.trap &&
@@ -295,10 +279,6 @@ module n2d_rv32im_core #(
         .mepc_o(mepc)
     );
 
-    //----------------------------------------------------------
-    // Q103H memory completion
-    //----------------------------------------------------------
-
     n2d_ma u_ma (
         .q103_i(pipe_q.q103),
         .data_response_valid_i(data_response_valid_i),
@@ -310,10 +290,6 @@ module n2d_rv32im_core #(
         .trap_cause_o(trap_cause_Q103H),
         .retire_Q104H_o(retire_Q104H)
     );
-
-    //----------------------------------------------------------
-    // Control
-    //----------------------------------------------------------
 
     n2d_ctrl u_ctrl (
         .clk_i(clk_i),
@@ -369,12 +345,9 @@ module n2d_rv32im_core #(
         data_request_byte_enable_o = dec_Q102H.is_store ? mem_mask_Q102H : 4'b0000;
     end
 
-    //----------------------------------------------------------
-    // Stage advance
-    //----------------------------------------------------------
-
-    // Q104H record with a multiply's registered product: the source of
-    // Q104H forwarding and of the Q105H record.
+    // Why: the multiply's registered product is substituted into the Q104H
+    // record, where it first exists, so Q104H forwarding and the Q105H record
+    // both see the result.
     always_comb begin
         q104_Q104H = pipe_q.q104;
         if (pipe_q.q104.valid && pipe_q.q104.is_mul && pipe_q.q104.rd_write)
@@ -382,7 +355,8 @@ module n2d_rv32im_core #(
     end
 
     always_comb begin
-        // Q102H to Q103H record; a trap record carries no effect.
+        // Why: the record starts from zero so a trap record carries no effect
+        // (rd_write, result and memory flags stay clear).
         q103_next = '0;
         q103_next.valid = advance_Q102H;
         q103_next.pc = pipe_q.slot_Q102H.pc;
@@ -426,10 +400,6 @@ module n2d_rv32im_core #(
 
     `N2A_DFF_RST(pipe_q, pipe_d, clk_i, rst_i)
 
-    //----------------------------------------------------------
-    // Q105H writeback and observation
-    //----------------------------------------------------------
-
     n2d_wb u_wb (
         .q105_i(pipe_q.q105),
         .rf_write_enable_o(rf_write_enable),
@@ -455,13 +425,10 @@ module n2d_rv32im_core #(
         .observation_trap_value_o(observation_trap_value_o)
     );
 
-    // Stage invariants: a held Q103H always owes a memory response, and a
-    // Q103H access trap never coincides with a Q102H commit.
     `N2A_ASSERT_NEVER(pipe_hold_without_memory, clk_i, rst_i,
         hold_Q103H && !(pipe_q.q103.is_load || pipe_q.q103.is_store))
     `N2A_ASSERT_NEVER(pipe_q102_advance_under_q103_trap, clk_i, rst_i,
         advance_Q102H && trap_Q103H)
-    // Only a fetched JAL, conditional branch or JALR is ever predicted taken.
     `N2A_ASSERT(pipe_prediction_is_control_transfer, clk_i, rst_i,
         !(pipe_q.slot_Q102H.valid && pipe_q.slot_Q102H.predicted_taken) ||
         ((dec_Q102H.is_jal || dec_Q102H.is_branch || dec_Q102H.is_jalr) &&

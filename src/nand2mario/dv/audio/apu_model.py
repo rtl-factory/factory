@@ -4,7 +4,7 @@ Reference behaviour: Pan Docs and SameBoy Core/apu.c (MIT); restated, not copied
 """
 
 REGISTER_START, NR52, WAVE_START, WAVE_END = 0xFF10, 0xFF26, 0xFF30, 0xFF3F
-# Read-back masks; read = mask | stored byte. SameBoy read_mask (MIT).
+# Ref: SameBoy read_mask (MIT): read-back masks; read = mask | stored byte.
 MASKS = {
     0xFF10: 0x80, 0xFF11: 0x3F, 0xFF12: 0x00, 0xFF13: 0xFF, 0xFF14: 0xBF,
     0xFF16: 0x3F, 0xFF17: 0x00, 0xFF18: 0xFF, 0xFF19: 0xBF,
@@ -32,7 +32,7 @@ class ApuModel:
 
     def reset(self):
         self.wave = [0] * 16
-        # DMG post-boot state: power on, channel 1 active (Pan Docs).
+        # Ref: Pan Docs "Power Up Sequence": DMG post-boot state is power on, channel 1 active.
         self.regs = [0] * 22
         self.regs[NR11], self.regs[NR12], self.regs[20], self.regs[21] = 0xBF, 0xF3, 0x77, 0xF3
         self.power = 1
@@ -115,7 +115,7 @@ class ApuModel:
         if not self.power:
             return
         self.regs[index] = data
-        first_half = self.step % 2 == 1  # next step does not clock length
+        first_half = self.step % 2 == 1  # Why: the next step does not clock length.
         if index in (NR14, NR24, NR34, NR44):
             ch = index // 5
             trigger = data & 0x80

@@ -34,7 +34,7 @@ async def game_program(dut):
     dut.rom_load_address_i.value = 0
     dut.rom_load_data_i.value = 0
     idle_host(dut)
-    # The GPI clock keeps the 25 MHz edge stream in cocotb's native layer;
+    # Why: the GPI clock keeps the 25 MHz edge stream in cocotb's native layer;
     # Python wakes only for observations, never to accelerate the hardware.
     Clock(dut.clk_i, 40, unit='ns', impl='gpi').start()
     await RisingEdge(dut.clk_i)
@@ -70,7 +70,7 @@ async def game_program(dut):
                 tail.append(record)
                 opcode = record['opcode']
                 op = opcode & 255
-                # The standard GBDK high-I/O and absolute accumulator loads
+                # Why: the standard GBDK high-I/O and absolute accumulator loads
                 # expose their returned A on the public retirement record.
                 direct = op in (0xE0, 0xF0) and (opcode >> 8) & 255 == 0
                 indirect = op in (0xE2, 0xF2) and record['c'] == 0
@@ -79,7 +79,7 @@ async def game_program(dut):
                     if op in (0xE0, 0xE2, 0xEA):
                         joypad.edge(write=record['a'])
                     elif get_sim_time(unit='ns') - input_epoch_ns > 5120:
-                        # A held-input interval: exclude only an instruction
+                        # Why: a held-input interval: exclude only an instruction
                         # spanning a button transition (128 clocks guard).
                         expected = joypad.read()
                         assert record['a'] == expected, (
@@ -103,7 +103,7 @@ async def game_program(dut):
             await ReadOnly()
             x, y = int(dut.pixel_x_o.value), int(dut.pixel_y_o.value)
             if int(dut.frame_start_o.value):
-                # LCD-off may abort a partial frame. Only complete frames
+                # Why: LCD-off may abort a partial frame. Only complete frames
                 # enter the evidence; a new frame must start at (0, 0).
                 aborted_frames += bool(buffer)
                 buffer.clear()

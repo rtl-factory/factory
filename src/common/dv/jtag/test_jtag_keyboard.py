@@ -28,15 +28,15 @@ def first_64_bits(word, pad):
 
 
 class Bench:
-    READY = 'inject_ready_i'      # the sink handshake the test samples
-    EXTRA_INPUTS = ()             # consumer inputs zeroed by reset()
+    READY = 'inject_ready_i'      # Why: the bare endpoint's sink is its own input; a consumer bench overrides it
+    EXTRA_INPUTS = ()             # Why: the bare endpoint has no consumer inputs; a consumer bench adds its own
 
     def __init__(self, d):
         self.d = d
         self.half_ns = 500_000_000 // int(os.environ.get("DV_CLOCK_HZ", "25000000"))
         self.cycles = 0
         self.accepted = []
-        self.limit = None         # inject_ready_i: 1, or len(accepted) < limit when set
+        self.limit = None
 
     async def tick(self, count=1):
         d = self.d
@@ -128,12 +128,13 @@ async def jtag_keyboard_contract(dut):
     b = Bench(dut)
     await b.reset()
     assert await b.status() == (0, 0, 0, 0, 0, 0)
-    # Ordered raw Set-2 prefixes offered to the sink; exact replay never reinjects.
+    # Why: the second identical send proves an exact replay never reinjects.
     data = bytes.fromhex('1c f0 1c e0')
     assert await b.send(0, data) == (0, 0, 1, 4, 0, 4)
     assert await b.send(0, data) == (0, 0, 1, 4, 0, 4)
     assert b.accepted == list(data)
-    # The sink's refusal ends the batch at the exact prefix; nothing is overwritten.
+    # Why: a limit is the only way to make the sink refuse mid-batch, which is
+    # what cuts a batch at an exact prefix.
     b.accepted.clear()
     b.limit = 1
     assert await b.send(1, b'abcd') == (0, 0, 2, 1, 1, 5)
@@ -144,23 +145,24 @@ async def jtag_keyboard_contract(dut):
     assert await b.send(3, b'bcd') == (0, 0, 1, 3, 3, 8)
     assert b.accepted == list(b'abcd')
     b.limit = None
-    # Status Update-DR and both bypass instructions cannot submit commands.
+    # Ref: wiki/src/common/scripts/jtag/spec.md "Wire format": only IR 1 carries commands.
     for ir in (0, 2, 3):
         await b.scan(ir, packet(4, b'z'))
     assert await b.status() == (0, 0, 1, 3, 3, 8)
-    # Changing IR aborts a partial command without admitting its bytes.
+    # Why: an IR change mid-scan leaves a partial command, which must never be admitted.
     await b.scan(1, packet(4, b'z'), bits=31, update=False)
     assert await b.status() == (0, 0, 1, 3, 3, 8)
     assert await b.send(4, b'z') == (0, 0, 1, 1, 4, 9)
     assert b.accepted[-1] == ord('z')
-    # Short scans latch a transport error; later valid packets fail closed.
+    # Why: a short scan may have shifted a partial command, so the endpoint must
+    # fail closed rather than guess.
     for bits in (0, 1, 63):
         await b.reset()
         await b.scan(1, packet(0, b'x'), bits=bits)
         assert (await b.status())[1] == 1
         await b.scan(1, packet(0, b'y'))
         assert b.accepted == []
-    # The real hub's late TDI and extra Shift-DR cycles: the command is the
+    # Why: the real hub's late TDI and extra Shift-DR cycles: the command is the
     # last 64 bits shifted in (>= 64 shifts accepted) and the status readout is
     # unchanged. The pre-fix capture of the FIRST 64 bits is a malformed command
     # for every pad, so that RTL fails here exactly as it failed on the board.
@@ -173,7 +175,8 @@ async def jtag_keyboard_contract(dut):
         assert status[1:] == (0, 1, 1, 0, 1), status
         assert await b.scan(2, pad=pad) >> 56 == 0x5a
         assert b.accepted == [ord('x')]
-    # Malformed commands and wrong sequence latch their first failure.
+    # Why: after a malformed command (code 3) or wrong sequence (code 4) the host
+    # cannot know which later bytes are safe, so the first failure latches.
     for command, code in ((packet(0, b'') ,3), (packet(0,b'12345'),3),
                           (packet(0,b'x') ^ (1 << 56),3),
                           (packet(0,b'x') | (1 << 32),3), (packet(1,b'x'),4)):
@@ -185,13 +188,14 @@ async def jtag_keyboard_contract(dut):
         await b.scan(1, packet(0,b'z'))
         assert b.accepted == []
         assert (await b.status())[2] == code
-    # A stopped TCK never stalls accepted system-side delivery.
+    # Why: the host may stop TCK at any time, so delivery must not depend on it.
     await b.reset()
     await b.launch_stopped(0, b'abcd')
     await b.tick(32)
     assert b.accepted == list(b'abcd')
     assert await b.completion() == (0, 0, 1, 4, 0, 4)
-    # Reset cancels every possible staged/prefix point with TCK stopped.
+    # Why: a reset can land at any point of a batch, so each staged/prefix point
+    # is tried with TCK stopped.
     for prefix in range(4):
         await b.reset()
         await b.launch_stopped(0, b'abcd')
@@ -209,8 +213,9 @@ async def jtag_keyboard_contract(dut):
         assert await b.completion() == (0, 0, 0, 0, 0, 0)
         assert await b.send(0, b'z') == (0, 0, 1, 1, 0, 1)
         assert b.accepted == [ord('z')]
-    # Busy submit cannot overwrite the held mailbox. Pause only the system
-    # clock so two complete scans occur before the first command is consumed.
+    # Why: pausing only the system clock lets two complete scans occur before
+    # the first command is consumed; the busy submit must not overwrite the
+    # held mailbox.
     await b.reset()
     async def scan_without_system(word):
         async def edge(**signals):
@@ -233,7 +238,6 @@ async def jtag_keyboard_contract(dut):
     await b.tick(32)
     assert b.accepted == [ord('a')]
     assert await b.completion() == (0, 1, 1, 1, 0, 1)
-    # Sequence wraps naturally.
     await b.reset()
     for seq in range(257):
         assert await b.send(seq & 255, b'x') == (0, 0, 1, 1, seq & 255, seq + 1)

@@ -135,7 +135,7 @@ module n2m_ppu_fixture (
   assign dot_enable_o = dot_enable;
   assign vram_read_o = vram_read;
   assign oam_read_o = oam_read;
-  // The machine enable is not needed here; the PPU consumes dots only.
+  // Why: the machine enable is not needed here; the PPU consumes dots only.
   logic unused_machine_cycle_enable;
   assign unused_machine_cycle_enable = machine_cycle_enable;
 endmodule

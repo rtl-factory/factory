@@ -31,28 +31,28 @@ COMMANDS = {'ping': CMD_PING, 'hold': CMD_HOLD, 'release': CMD_RELEASE, 'write':
 STATUS_NAMES = {STATUS_OK: 'ok', STATUS_BAD_CRC: 'bad-crc', STATUS_BAD_COMMAND: 'bad-command',
                 STATUS_BAD_ARGUMENT: 'bad-argument', STATUS_NOT_HELD: 'not-held', STATUS_BAD_ADDRESS: 'bad-address',
                 STATUS_NO_FRAME: 'no-frame', STATUS_NOT_PINNED: 'not-pinned'}
-# Answers that a retry cannot change.
+# Why: retrying cannot change these answers, so the session reports them at once.
 FINAL_CODES = (STATUS_BAD_COMMAND, STATUS_BAD_ARGUMENT, STATUS_NOT_HELD, STATUS_BAD_ADDRESS, STATUS_NO_FRAME,
                STATUS_NOT_PINNED)
 PAYLOAD_COMMANDS = (CMD_READ, CMD_SNAP_READ)
-# Frame snapshot record (wiki/src/nand2mario/rtl/video/mas.md, frame snapshot).
+# Ref: wiki/src/nand2mario/scripts/board/spec.md "Frame snapshot" (record layout).
 SNAPSHOT_HEADER_BYTES = 8
-SNAPSHOT_RECORD_BYTES = SNAPSHOT_HEADER_BYTES + 160 * 144 // 4      # 5768
+SNAPSHOT_RECORD_BYTES = SNAPSHOT_HEADER_BYTES + 160 * 144 // 4
 ADDRESS_RAM_BIT = 21
 ROM_BYTES, RAM_BYTES = 1 << 21, 1 << 15
 MAX_PAYLOAD = 256
-HEADER_BYTES = 7                 # SYNC status command address(3) length-1
+HEADER_BYTES = 7                 # Ref: board spec "Loader protocol": SYNC, status, command, 24-bit address, length minus one.
 CRC_BYTES = 2
 DEFAULT_BAUD = 115200
-# Recovery bounds: bytes skipped while looking for a SYNC, stale frames
-# discarded per exchange, and bytes drained before a retry.
+# Why: each recovery loop (the SYNC search, the stale-frame discard, the drain
+# before a retry) is bounded, so a noisy or stuck link ends in an error, not a hang.
 RESYNC_LIMIT = 2 * (HEADER_BYTES + MAX_PAYLOAD + CRC_BYTES)
 STALE_FRAME_LIMIT = 4
 DRAIN_LIMIT = 64 * 1024
-# Serial I/O bounds: each read and each write of the port is bounded (a
-# blocked write never hangs a session); during a snapshot both shrink to the
-# time left before its deadline, and the closing release gets its own short
-# bound even after the deadline.
+# Why: every read and write of the port is bounded so a blocked write never hangs
+# a session; during a snapshot both shrink to the time left so the deadline holds,
+# and the closing release gets its own short bound past the deadline so the pin
+# is still released.
 IO_TIMEOUT = 1.0
 MIN_IO_TIMEOUT = 0.05
 RELEASE_IO_TIMEOUT = 0.5
@@ -181,7 +181,7 @@ class Session:
         self.retries = retries
         self.retry_pause = retry_pause
         self.log = log or (lambda message: None)
-        self.deadline = None            # (deadline, clock) while a snapshot runs
+        self.deadline = None
 
     def bound_io(self, seconds, problems=None):
         """Bound the transport's per-read and per-write waits (pyserial's
@@ -349,9 +349,8 @@ class Session:
                     or closing[4:] != record[4:SNAPSHOT_HEADER_BYTES]:
                 raise LoaderError(f'snapshot identity changed during the read: {record[:8].hex()} then {closing.hex()}')
         except BaseException as failure:
-            # The cleanup never raises: the original failure stays the error
-            # and the release outcome (and any port reconfiguration failure)
-            # is added to it.
+            # Why: the cleanup must not raise, or its error would hide the original failure;
+            # the release outcome (and any port reconfiguration failure) is added to it.
             unconfirmed, problems = self._release_after(failure)
             outcome = unconfirmed or 'the pin was released'
             if problems:
@@ -437,8 +436,8 @@ def open_serial(port, baud):
         import serial
     except ImportError as error:
         raise LoaderError('live serial requires optional pyserial; install pyserial in the host Python environment') from error
-    # Both directions bounded: a write that cannot drain (a stuck adapter)
-    # raises SerialTimeoutException, an OSError, instead of blocking forever.
+    # Why: without write_timeout a write that cannot drain (a stuck adapter) blocks
+    # forever; with it pyserial raises SerialTimeoutException, an OSError.
     return serial.Serial(port, baud, timeout=IO_TIMEOUT, write_timeout=IO_TIMEOUT)
 
 

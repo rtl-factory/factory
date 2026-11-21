@@ -103,7 +103,7 @@ class Session:
             raise TransferError('JTAG session uncertain; explicit recovery required')
         deadline = deadline or time.monotonic() + self.timeout
         try:
-            # A reset or another owner between batches must not silently establish a new baseline.
+            # Ref: wiki/src/common/scripts/jtag/spec.md "Delivery" step 2: a reset or another host stops.
             if self._ready(deadline) != self.last:
                 raise TransferError('JTAG status discontinuity before submit')
             self.transport.scan(1, packet(self.seq, data), deadline=deadline)
@@ -138,9 +138,6 @@ def send_all(session, codes, *, deadline, sleep=time.sleep):
     return sent
 
 
-# ----------------------------------------------------------------------------------------------
-# Keyboard: host bytes -> Set-2 scancode sequences a PS/2 set-2 decoder understands
-# ----------------------------------------------------------------------------------------------
 SET2 = {'a': 0x1C, 'b': 0x32, 'c': 0x21, 'd': 0x23, 'e': 0x24, 'f': 0x2B, 'g': 0x34, 'h': 0x33, 'i': 0x43, 'j': 0x3B,
         'k': 0x42, 'l': 0x4B, 'm': 0x3A, 'n': 0x31, 'o': 0x44, 'p': 0x4D, 'q': 0x15, 'r': 0x2D, 's': 0x1B, 't': 0x2C,
         'u': 0x3C, 'v': 0x2A, 'w': 0x1D, 'x': 0x22, 'y': 0x35, 'z': 0x1A,
@@ -150,9 +147,9 @@ SET2 = {'a': 0x1C, 'b': 0x32, 'c': 0x21, 'd': 0x23, 'e': 0x24, 'f': 0x2B, 'g': 0
 SHIFTED = {'!': '1', '@': '2', '#': '3', '$': '4', '%': '5', '^': '6', '&': '7', '*': '8', '(': '9', ')': '0',
            '_': '-', '+': '=', '{': '[', '}': ']', '|': '\\', ':': ';', '"': "'", '~': '`', '<': ',', '>': '.', '?': '/'}
 SHIFT, CTRL, RELEASE, EXTENDED = 0x12, 0x14, 0xF0, 0xE0
-EXTENDED_KEYS = {b'\x1b[A': 0x75, b'\x1b[B': 0x72, b'\x1b[C': 0x74, b'\x1b[D': 0x6B,   # arrows
-             b'\x1b[H': 0x6C, b'\x1b[F': 0x69, b'\x1b[5~': 0x7D, b'\x1b[6~': 0x7A,  # home end pgup pgdn
-             b'\x1b[2~': 0x70, b'\x1b[3~': 0x71}                                    # insert delete
+EXTENDED_KEYS = {b'\x1b[A': 0x75, b'\x1b[B': 0x72, b'\x1b[C': 0x74, b'\x1b[D': 0x6B,   # Ref: xterm ctlseqs: up, down, right, left
+             b'\x1b[H': 0x6C, b'\x1b[F': 0x69, b'\x1b[5~': 0x7D, b'\x1b[6~': 0x7A,  # Ref: xterm ctlseqs: home, end, pgup, pgdn
+             b'\x1b[2~': 0x70, b'\x1b[3~': 0x71}                                    # Ref: xterm ctlseqs: insert, delete
 
 
 def _press(code, extended=False):
@@ -177,7 +174,7 @@ def keys_to_scancodes(data: bytes) -> tuple[bytes, bytes]:
                 out += [SHIFT] + _press(SET2[ch.lower()]) + [RELEASE, SHIFT]
             elif ch in SHIFTED:
                 out += [SHIFT] + _press(SET2[SHIFTED[ch]]) + [RELEASE, SHIFT]
-            elif 1 <= ord(ch) <= 26 and chr(ord(ch) + 96) in SET2:              # Ctrl-A .. Ctrl-Z
+            elif 1 <= ord(ch) <= 26 and chr(ord(ch) + 96) in SET2:              # Ref: ASCII 1..26 are Ctrl-A .. Ctrl-Z
                 out += [CTRL] + _press(SET2[chr(ord(ch) + 96)]) + [RELEASE, CTRL]
             else:
                 rest.append(ord(ch))
@@ -249,7 +246,7 @@ class WindowsJob:
         self.api.CloseHandle.argtypes = [w.HANDLE]
         self.handle = self.api.CreateJobObjectW(None, None)
         info = Extended()
-        info.basic.flags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        info.basic.flags = 0x2000  # Ref: Win32 JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
         if not self.handle:
             raise OSError(ctypes.get_last_error(), 'CreateJobObjectW failed')
         if not self.api.SetInformationJobObject(self.handle, 9, ctypes.byref(info), ctypes.sizeof(info)):
@@ -281,7 +278,7 @@ class WindowsJob:
         api.OpenThread.restype = w.HANDLE
         api.ResumeThread.argtypes = [w.HANDLE]
         api.ResumeThread.restype = w.DWORD
-        snapshot = api.CreateToolhelp32Snapshot(4, 0)  # TH32CS_SNAPTHREAD
+        snapshot = api.CreateToolhelp32Snapshot(4, 0)  # Ref: Win32 TH32CS_SNAPTHREAD
         if snapshot == ctypes.c_void_p(-1).value:
             raise OSError(ctypes.get_last_error(), 'thread snapshot failed')
         threads = []
@@ -300,7 +297,7 @@ class WindowsJob:
             api.CloseHandle(snapshot)
         if len(threads) != 1:
             raise TransferError('suspended child does not have exactly one primary thread')
-        thread = api.OpenThread(2, False, threads[0])  # THREAD_SUSPEND_RESUME
+        thread = api.OpenThread(2, False, threads[0])  # Ref: Win32 THREAD_SUSPEND_RESUME
         if not thread:
             raise OSError(ctypes.get_last_error(), 'OpenThread failed')
         try:
@@ -407,7 +404,7 @@ class ProcessTransport:
             return self.cleanup
         self.closed = True
         self.cleanup = 'device release unconfirmed'
-        # EOF lets the native owner finish its bounded operation and kill its own
+        # Why: EOF lets the native owner finish its bounded operation and kill its own
         # Windows tree. A WSL PID is never mistaken for a Windows Quartus PID.
         try:
             self.process.stdin.close()

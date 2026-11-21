@@ -55,12 +55,12 @@ class Model:
         self.memory = memory
         self.valid_a = self.valid_b = 0
         self.data_a = self.data_b = 0
-        self.pending = False          # the backend's posted-write state (stimulus rule)
+        self.pending = False
 
     def edge(self, read_a, write_a, address_a, data_a, read_b, address_b, reset_a=0, reset_b=0):
         old_b = self.memory[address_b]
         old_a = self.memory[address_a]
-        write_a = write_a and not reset_a     # RAM-R5: reset suppresses the request
+        write_a = write_a and not reset_a
         read_a = read_a and not reset_a
         read_b = read_b and not reset_b
         if read_a:
@@ -70,7 +70,6 @@ class Model:
         self.valid_a, self.valid_b = int(read_a), int(read_b)
         if write_a:
             self.memory[address_a] = data_a
-        # Port B owns the store only on a read edge outside its reset.
         self.pending = (write_a and (read_b or self.pending)) or (self.pending and read_b)
 
 
@@ -111,9 +110,6 @@ async def shared_sram_contract(dut):
     cocotb.start_soon(Clock(dut.clk_i, CLOCK_PERIOD_NS, unit='ns').start())
     edges = 0
 
-    # Directed: write 0x3C to 0x1234 on the first edge of a port-B burst that
-    # reads 0x1234 on the write edge (old word), twice more (posted word,
-    # forwarded) and another address, then the edge that retires it.
     await drive(dut, model, read_a=1, address_a=0x1234)
     old = model.data_a
     await drive(dut, model, write_a=1, address_a=0x1234, data_a=0x3C, read_b=1, address_b=0x1234)
@@ -121,19 +117,15 @@ async def shared_sram_contract(dut):
     for address in (0x1234, 0x0042, 0x1234):
         await drive(dut, model, read_b=1, address_b=address)
     assert model.data_b == 0x3C and model.pending
-    await drive(dut, model)                                   # retire
+    await drive(dut, model)
     await drive(dut, model, read_a=1, address_a=0x1234)
     assert model.data_a == 0x3C and not model.pending
-    # Same-port read and write: write-first; the holds keep the last words.
     await drive(dut, model, read_a=1, write_a=1, address_a=0x0007, data_a=0xA5)
     await drive(dut, model, read_b=1, address_b=0x0007)
     for _ in range(3):
         await drive(dut, model)
     edges += 12
 
-    # Reset keeps a posted write. Port-B reset with the PPU still reading and
-    # port A sweeping zeros (the VRAM boot clear): the posted byte retires on
-    # the first reset edge and each clear write lands, none dropped.
     await drive(dut, model, write_a=1, address_a=0x0300, data_a=0x5A, read_b=1, address_b=0x0200)
     assert model.pending
     for address in range(4):
@@ -141,8 +133,6 @@ async def shared_sram_contract(dut):
                     reset_b=1)
     await drive(dut, model)
     assert [store.read(a) for a in (0x0300, 0, 1, 2, 3)] == [0x5A, 0, 0, 0, 0], 'reset_b kept writes'
-    # Port-A reset alone under a port-B burst: the posted byte is forwarded to
-    # the burst's reads of its address and retires on the first free edge.
     await drive(dut, model, write_a=1, address_a=0x0301, data_a=0xC3, read_b=1, address_b=0x0301)
     for _ in range(3):
         await drive(dut, model, read_b=1, address_b=0x0301, reset_a=1)
@@ -152,7 +142,6 @@ async def shared_sram_contract(dut):
     assert store.read(0x0301) == 0xC3, 'reset_a kept the posted write'
     edges += 13
 
-    # Random phase under the sharing rule, with PPU-like bursts on port B.
     burst = 0
     hot = [rng.randrange(DEPTH) for _ in range(8)]
     while edges < bound:
@@ -166,7 +155,7 @@ async def shared_sram_contract(dut):
         write_a = int(not model.pending and rng.random() < 0.3)
         await drive(dut, model, read_a, write_a, address_a, rng.randrange(256), read_b, address_b)
         edges += 1
-    await drive(dut, model)                                   # retire a last posted write
+    await drive(dut, model)                                   # Why: retires a last posted write.
     observed = [store.read(a) for a in hot]
     assert observed == [model.memory[a] for a in hot], 'final store contents'
     cocotb.log.info('shared SRAM contract passed: edges=%d', edges)

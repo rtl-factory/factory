@@ -40,7 +40,7 @@ module n2d_uart_debug
     logic [7:0] rx_byte, tx_byte, engine_rx_byte, engine_tx_byte;
     logic [7:0] phy_rx_byte, phy_tx_byte;
     logic phy_rx_valid, phy_rx_error, phy_tx_valid, phy_tx_ready;
-    // ep_owner is read only by an assertion, which SYNTHESIS builds compile out.
+    // Why: ep_owner is read only by an assertion, which SYNTHESIS builds compile out.
     /* verilator lint_off UNUSEDSIGNAL */
     logic ep_owner;
     /* verilator lint_on UNUSEDSIGNAL */
@@ -72,9 +72,9 @@ module n2d_uart_debug
         .byte_ready_o(phy_tx_ready), .byte_i(phy_tx_byte), .busy_o(tx_busy),
         .tx_o(uart_tx_o)
     );
-    // The common UART memory endpoint is outermost: it claims its SOF only
-    // when the stream, bulk and legacy paths are all between frames, and
-    // passes every other byte through to them.
+    // Why: the common UART memory endpoint is outermost: it claims its SOF only
+    // when the stream, bulk and legacy paths are all between frames, so it never
+    // splits another path's frame, and passes every other byte through to them.
     n2a_uart_mem #(
         .PROJECT_ID(N2D_MEM_PROJECT_ID), .WINDOW_COUNT(3), .WINDOWS(N2D_MEM_WINDOWS),
         .ENTRY_ADDR(32'h0000_0000), .MAX_LENGTH(4096),
@@ -107,7 +107,7 @@ module n2d_uart_debug
         .mem_req_o(port_mem_req), .mem_rsp_i(mem_rsp_i),
         .screen_req_o(screen_req_o), .screen_rsp_i(screen_rsp_i)
     );
-    // Hold joins the engine's halt request; release drops both, so a bench
+    // Why: hold joins the engine's halt request; release drops both, so a bench
     // release runs the CPU even though the engine resets with halt requested.
     // Entry restarts the core at its reset vector, as Reset-PC does.
     always_comb begin
@@ -119,8 +119,9 @@ module n2d_uart_debug
         end
     end
 
-    // The stream router is first on the shared PHY: it claims the link only
-    // at an idle bulk/legacy boundary and owns memory only during a session.
+    // Why: the stream router is first on the shared PHY and claims the link only
+    // at an idle bulk/legacy boundary, so it never cuts into their frames; it
+    // owns memory only during a session.
     n2d_uart_stream #(
         .GAP_TIMEOUT_CYCLES(STREAM_GAP_TIMEOUT_CYCLES),
         .SESSION_IDLE_CYCLES(STREAM_IDLE_CYCLES),
@@ -172,14 +173,15 @@ module n2d_uart_debug
         .mem_rsp_i(engine_mem_rsp)
     );
 
-    // One memory owner: the endpoint port while it is busy, else the stream
-    // during a session, else the engine; an idle owner sees no completions.
+    // Why: exactly one memory owner at a time (the endpoint port while it is
+    // busy, else the stream during a session, else the engine), so completions
+    // never reach an idle owner.
     assign txn_req_o = port_busy ? port_txn_req :
         (stream_session ? stream_txn_req : engine_txn_req);
     assign mem_req_o = port_busy ? port_mem_req :
         (stream_session ? stream_mem_req : engine_mem_req);
-    // Explicit field assignments: Quartus cannot type an assignment pattern
-    // that is an operand of the conditional operator.
+    // Why: explicit field assignments, because Quartus cannot type an assignment
+    // pattern that is an operand of the conditional operator.
     always_comb begin
         engine_txn_status = txn_status_i;
         if (stream_session || port_busy) begin

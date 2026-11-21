@@ -62,7 +62,8 @@ module n2m_sdram_backing (
   logic                           source_d, lane_d, complete;
   logic [7:0]                     read_byte;
 
-  // Arbitration: the mapper wins an edge on which both present a request.
+  // Why: the mapper wins an edge on which both present a request because the
+  // CPU waits on it, while a load simply retries.
   assign ready_o = !busy_q && ctrl_ready;
   assign load_ready_o = ready_o && !request_i.valid;
   assign accept_mapper = request_i.valid && ready_o;
@@ -73,8 +74,9 @@ module n2m_sdram_backing (
   assign selected_address = accept_mapper ? request_i.address : load_request_i.address;
   assign selected_write_data = accept_mapper ? request_i.write_data : load_request_i.write_data;
 
-  // ROM bytes at 0, RAM bytes at 2 MiB; the byte lane is address bit 0 and
-  // the written byte is duplicated on both lanes behind its mask.
+  // Why: RAM starts at 2 MiB, above the largest MBC1 ROM, so the two never
+  // overlap. The byte lane is address bit 0 and the written byte is duplicated
+  // on both lanes so the mask alone selects it.
   always_comb begin
     device_address = '0;
     device_address[RAM_REGION_BIT] = selected_ram;
@@ -113,8 +115,9 @@ module n2m_sdram_backing (
     .dram_dq_i             (dram_dq_i)
   );
 
-  // One transaction in flight: which port owns it and which byte lane it
-  // reads. The completion pulse ends it and is routed to that port.
+  // Why: the controller serves one access at a time, so one transaction is in
+  // flight; busy_q records which port owns it and which byte lane it reads so
+  // the completion pulse reaches that port.
   assign complete = busy_q && ctrl_response_valid;
   assign busy_d = accept || (busy_q && !ctrl_response_valid);
   assign source_d = accept_loader;

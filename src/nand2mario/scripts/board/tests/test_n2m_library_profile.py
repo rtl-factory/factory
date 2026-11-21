@@ -67,8 +67,8 @@ class LibraryProfileTests(unittest.TestCase):
         targets = json.loads((ROOT / 'src/nand2mario/cfg/targets.json').read_text())['targets']
         self.assertEqual(targets['n2m_system_menu_sdram']['parameters']['CART_LIBRARY'], 1)
         simulation = [s for s in targets['n2m_de2_115']['sources'] if '/dv/' not in s]
-        # Both lists bind the common n2a_jtag_virtual; only simulation adds
-        # the dv/ stand-in of its vendor primitive.
+        # Why: the dv/ stand-in of the vendor primitive is simulation-only and both lists
+        # bind the common n2a_jtag_virtual, so they match once dv/ is dropped.
         synthesis = [s.replace('_intel.sv', '_portable.sv') for s in self.library['sources']]
         self.assertEqual(simulation, synthesis)
         with tempfile.TemporaryDirectory(dir=ROOT / 'workdir') as directory:
@@ -78,7 +78,7 @@ class LibraryProfileTests(unittest.TestCase):
             audit = (output / 'audit.tcl').read_text()
             self.assertIn('set_parameter -name CART_LIBRARY 1', qsf)
             self.assertIn('TOP_LEVEL_ENTITY n2m_de2_115', qsf)
-            self.assertIn('vga_dac_clock', audit)  # Different project name must not skip board gates.
+            self.assertIn('vga_dac_clock', audit)  # Why: a different project name must not skip the board gates.
 
     def test_plans_are_inert_and_reject_unsupported_or_arbitrary_profiles(self):
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()), \
@@ -170,15 +170,15 @@ class LibraryProfileTests(unittest.TestCase):
 
             package(self.library)
             args.library = False
-            refuse()  # Missing explicit library selection.
+            refuse()
             args.library = True
             package(self.ordinary)
-            refuse()  # Ordinary SOF under library selection.
+            refuse()
             for mutate in (lambda i: i['config']['parameters'].update(CART_LIBRARY=0),
                            lambda i: i['config'].update(project='n2m_de2_115'),
                            lambda i: i['config']['pins'].update(CLOCK_50='A1')):
                 package(self.library, mutate_inputs=mutate)
-                refuse()  # Rehashing a tampered companion cannot authorize it.
+                refuse()  # Why: package() rehashes after the mutation, so the refusal proves the content gate
             for mutate in (lambda e: e['resources']['ram_summary'][-1].update({'Port A Depth': '32768'}),
                            lambda e: e['resources']['ram_summary'].pop(),
                            lambda e: e.update(dac_timing=[]),

@@ -132,7 +132,6 @@ class CartLoaderTests(unittest.TestCase):
         self.assertEqual(loader.response_total_length(header), 7 + 8 + 2)
         self.assertEqual(loader.response_total_length(header[:1] + bytes([0x40 | loader.STATUS_NOT_PINNED]) + header[2:]), 9)
         self.assertEqual(loader.response_total_length(bytes([0xA5, 0x40, loader.CMD_SNAP_PIN, 0, 0, 0, 0])), 9)
-        # NO_FRAME and NOT_PINNED are final: a retry cannot change them.
         for code in (loader.STATUS_NO_FRAME, loader.STATUS_NOT_PINNED):
             device = FakeDevice()
             body = bytes([0x40 | code, loader.CMD_SNAP_PIN, 0, 0, 0, 0])
@@ -141,7 +140,6 @@ class CartLoaderTests(unittest.TestCase):
             with self.assertRaises(loader.LoaderError):
                 loader.Session(device, retry_pause=0).snap_pin()
             self.assertEqual(len(device.requests), 1, 'not retried')
-        # The dump transport fabricates a SNAP_READ payload of the asked length.
         with tempfile.TemporaryDirectory() as temporary:
             dump = loader.DumpTransport(Path(temporary) / 'frames.bin')
             self.assertEqual(loader.Session(dump).snap_read(0, 8), bytes(8))
@@ -159,7 +157,6 @@ class CartLoaderTests(unittest.TestCase):
         self.assertFalse(device.held)
         commands = [frame[1] for frame in device.requests]
         self.assertEqual(commands, [loader.CMD_HOLD] + [loader.CMD_WRITE] * 4 + [loader.CMD_READ] * 4 + [loader.CMD_RELEASE])
-        # A dropped and a corrupted response are retried; a NOT_HELD is final.
         device.requests.clear()
         device.drop_next = True
         self.assertTrue(session.ping().ok)
@@ -184,9 +181,6 @@ class CartLoaderTests(unittest.TestCase):
         self.assertTrue(session.ping().ok)
         self.assertEqual(len(device.requests), 2, 'the truncated CRC tail was retried')
         self.assertEqual(device.pending, b'', 'nothing left misframed in the queue')
-        # A truncated tail followed at once by the next frame misframes the
-        # read; the CRC rejects it, the drain restores framing, the retry
-        # succeeds and the following command is not confused.
         device.held = True
         device.truncate_next = True
         session.write(0x10, b'\x11\x22')
@@ -200,11 +194,9 @@ class CartLoaderTests(unittest.TestCase):
         device.bad_sync_next = True
         self.assertTrue(session.ping().ok)
         self.assertEqual(len(device.requests), 2)
-        # Line noise before a good frame is skipped by the SYNC search.
         device.inject(b'\x00\x5a\xff')
         self.assertTrue(session.hold().ok)
         self.assertEqual(len(device.requests), 3, 'noise before the frame needs no retry')
-        # Noise without any SYNC within the bound is a transport error, not a crash.
         noise = type('Noise', (), {'write': lambda self, f: None, 'read': lambda self, n: b'\x5a' * n})()
         with self.assertRaises(loader.LoaderError):
             loader.Session(noise, retries=1, retry_pause=0).ping()
@@ -213,17 +205,16 @@ class CartLoaderTests(unittest.TestCase):
         device = FakeDevice()
         device.held = True
         session = self.session(device, retries=1)
-        rewrites = (lambda c, e: (loader.CMD_READ, e),                       # command
-                    lambda c, e: (c, bytes([e[0] ^ 1]) + e[1:]),             # address low byte
-                    lambda c, e: (c, e[:2] + bytes([e[2] ^ 0x20]) + e[3:]),  # RAM bit
-                    lambda c, e: (c, e[:3] + bytes([e[3] ^ 1])))             # length
+        rewrites = (lambda c, e: (loader.CMD_READ, e),
+                    lambda c, e: (c, bytes([e[0] ^ 1]) + e[1:]),
+                    lambda c, e: (c, e[:2] + bytes([e[2] ^ 0x20]) + e[3:]),
+                    lambda c, e: (c, e[:3] + bytes([e[3] ^ 1])))
         for rewrite in rewrites:
             with self.subTest(rewrite=rewrite):
                 device.requests.clear()
                 device.echo_next = rewrite
                 session.write(0x40, b'\x99\x98')
                 self.assertEqual(len(device.requests), 2, 'the mismatched echo was discarded and the write retried')
-        # Every reply mismatching exhausts the bounded retries.
         always = FakeDevice()
         always.held = True
         original = always.write
@@ -235,7 +226,7 @@ class CartLoaderTests(unittest.TestCase):
         with self.assertRaises(loader.LoaderError):
             self.session(always).write(0x40, b'\x01')
         self.assertEqual(len(always.requests), 3)
-        # A BAD_CRC answer's echo is exempt: it is reported, then retried.
+        # Why: a BAD_CRC answer echoes a request the device could not trust, so its echo is exempt from the match.
         bad = loader.encode_request(loader.CMD_PING)
         self.assertEqual(self.session(FakeDevice()).exchange(bad[:-1] + bytes([bad[-1] ^ 1])).code,
                          loader.STATUS_BAD_CRC)
@@ -244,19 +235,13 @@ class CartLoaderTests(unittest.TestCase):
         device = FakeDevice()
         device.held = True
         session = self.session(device)
-        # The first WRITE's reply is delayed past its timeout: the retry
-        # resends it and both replies arrive; the duplicate stays queued.
         device.delay_next = True
         session.write(0, b'A')
         self.assertEqual(len(device.requests), 2)
         self.assertTrue(device.pending, 'a duplicate ACK for offset 0 is still queued')
-        # The next WRITE reads that stale ACK first; it must be discarded and
-        # the real reply for offset 256 awaited.
         session.write(256, b'B')
         self.assertEqual((device.rom[0], device.rom[256]), (ord('A'), ord('B')))
         self.assertEqual(device.pending, b'')
-        # A stale ACK with the real reply lost: never reported as success
-        # without a retry that actually reaches the device.
         device.inject(device.frame_for(0xC0, loader.CMD_WRITE, loader.address_field(0).to_bytes(3, 'little') + b'\x00'))
         device.drop_next = True
         before = len(device.requests)
@@ -287,7 +272,6 @@ class CartLoaderTests(unittest.TestCase):
         device.inject(stale * (loader.STALE_FRAME_LIMIT + 1))
         with self.assertRaises(loader.LoaderError):
             self.session(device, retries=0).hold()
-        # The next attempt drains the leftovers and recovers.
         device.inject(stale * 3)
         self.assertTrue(self.session(device).hold().held)
 

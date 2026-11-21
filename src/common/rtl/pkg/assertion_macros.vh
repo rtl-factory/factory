@@ -1,8 +1,3 @@
-`ifndef N2A_ASSERTION_MACROS_VH
-`define N2A_ASSERTION_MACROS_VH
-
-`include "src/common/rtl/pkg/macros.vh"
-
 // Canonical assertion vocabulary. Product RTL never writes `ifdef SYNTHESIS,
 // a clocked assertion process, or a raw assert: the conditional inclusion,
 // sampling class, and failure severity of every form are fixed here.
@@ -15,9 +10,13 @@
 //          inside a macro-owned always_ff that holds no state and runs only
 //          when !(RESET).
 
-// ---------------------------------------------------------------------------
-// Concurrent, fatal severity (Verilator returns nonzero), simulation only.
+`ifndef N2A_ASSERTION_MACROS_VH
+`define N2A_ASSERTION_MACROS_VH
+
+`include "src/common/rtl/pkg/macros.vh"
+
 `ifndef SYNTHESIS
+  // Concurrent, fatal severity (Verilator returns nonzero), simulation only.
   `define N2A_ASSERT(NAME, CLK, RESET, PROPERTY) \
     NAME: assert property (@(posedge (CLK)) disable iff (RESET) (PROPERTY)) \
       else $fatal(1, "N2A assertion failed");
@@ -59,12 +58,10 @@
 `define N2A_ASSERT_KNOWN(NAME, CLK, RESET, SIGNAL) \
   `N2A_ASSERT(NAME, CLK, RESET, !$isunknown(SIGNAL))
 
-// ---------------------------------------------------------------------------
-// Immediate assertions.
-// Transition-only: procedural forms inside a caller-owned process. The caller
-// supplies the semicolon and keeps its own synthesis guard. Product RTL uses
-// the clocked forms below instead.
 `ifndef SYNTHESIS
+  // Immediate assertions, transition-only: procedural forms inside a
+  // caller-owned process. The caller supplies the semicolon and keeps its own
+  // synthesis guard. Product RTL uses the clocked forms below instead.
   `define N2A_ASSERT_IMMEDIATE(CONDITION) assert (CONDITION)
   `define N2A_ASSERT_IMMEDIATE_FATAL(CONDITION, MESSAGE) \
     assert (CONDITION) else $fatal(1, MESSAGE)
@@ -209,7 +206,6 @@
   `define N2A_ASSERT_INITIAL(CONDITION)
 `endif
 
-// ---------------------------------------------------------------------------
 // Elaboration check: module scope only (it owns its generate region). A false
 // CONDITION terminates simulation at time zero with MESSAGE, in every
 // configuration, like a generate `initial $fatal` block.
@@ -220,12 +216,11 @@
     end \
   endgenerate
 
-// ---------------------------------------------------------------------------
+`ifndef N2A_DISABLE_ASSERTIONS
+
 // Concurrent, error severity ($error, simulation continues). Disabled only by
 // N2A_DISABLE_ASSERTIONS; SYNTHESIS does not remove them. Define the switch
 // before either header is included.
-`ifndef N2A_DISABLE_ASSERTIONS
-
 `define N2A_ASSERT_ERROR(NAME, CLK, RESET, PROPERTY) \
     NAME: assert property (@(posedge CLK) disable iff (RESET) (PROPERTY)) \
         else $error("N2A_ASSERT %m.%s failed", `"NAME`");

@@ -13,7 +13,7 @@ from ...scripts.board.cart_loader import (CMD_HOLD, CMD_READ, CMD_RELEASE, CMD_W
 
 KNOWN = {CMD_PING, CMD_HOLD, CMD_RELEASE, CMD_WRITE, CMD_READ, CMD_SNAP_PIN, CMD_SNAP_RELEASE, CMD_SNAP_READ}
 CONTROL = {CMD_PING, CMD_HOLD, CMD_RELEASE, CMD_SNAP_PIN, CMD_SNAP_RELEASE}
-SNAPSHOT_RECORD_BYTES = 5768      # display HAS, frame snapshot
+SNAPSHOT_RECORD_BYTES = 5768      # Ref: board spec "Frame snapshot": an eight-byte header plus 160x144 two-bit shades.
 
 
 class LoaderModel:
@@ -24,13 +24,9 @@ class LoaderModel:
         self.initialized = initialized
         self.held = False
         self.framing = self.timeout = self.overrun = False
-        # Display side of the snapshot: whether a complete frame is shown,
-        # the pin, and the record the pinned frame reads as.
         self.available = False
         self.pinned = False
         self.record = bytes(SNAPSHOT_RECORD_BYTES)
-        # Backing operations the last answered frame implies: (write, ram,
-        # offset, byte) in load-port order.
         self.last_ops = []
 
     def event(self, kind):

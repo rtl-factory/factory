@@ -25,7 +25,6 @@ module n2a_rv32_regfile (
 
     assign write_x1_to_x31 = write_enable_i && (write_index_i != 5'd0);
 
-    // Synchronous reset sweeps x1..x31 to zero and wins over a write.
     `N2A_MEM_WRITE_RST(registers_q, clk_i, write_x1_to_x31, write_index_i,
         write_data_i, rst_i)
 

@@ -37,8 +37,10 @@ def _jal(offset):
         (((imm >> 11) & 1) << 20) | (((imm >> 12) & 0xFF) << 12) | 0x6F
 
 
-# Palette entry 0 and two back-bank words, then one palette commit plus swap;
-# afterwards an endless loop counts in SDRAM and keeps writing the back bank.
+# Why: palette entry 0 and two back-bank words, then one palette commit plus
+# swap (video control +8 = 3); afterwards an endless loop counts at COUNTER
+# in SDRAM and keeps writing the back bank, so the live reads below contend
+# with a running CPU.
 PROGRAM = (
     _u(0x37, 7, 0x10010),            # lui  x7, palette
     _i(0x13, 6, 0, 0, COLOR),        # addi x6, x0, COLOR
@@ -210,7 +212,6 @@ async def endpoint_load_and_readback(link, half_width=False):
         (0, 0x0400_0000, 3), (SCREEN, 64000, 6), (PALETTE, 0x400, 6)]
     assert identity.held, "the engine holds the CPU from reset"
 
-    # Load transaction: hold, write and verify, entry, release.
     await exchange(link, um.HOLD)
     await exchange(link, um.WRITE, 0, len(IMAGE), IMAGE)
     assert await exchange(link, um.READ, 0, len(IMAGE)) == IMAGE
@@ -221,9 +222,9 @@ async def endpoint_load_and_readback(link, half_width=False):
     monitor = LiveMonitor(link.dut.u_board.u_system)
     monitor.start()
 
-    # The bank swap and palette commit land at the next vertical blank; poll
-    # the live front view until the program's words are displayed.
-    # A half-width bank stores only even-x bytes and reads each one for both
+    # Ref: the bank swap and palette commit land at the next vertical blank;
+    # poll the live front view until the program's words are displayed. A
+    # half-width bank stores only even-x bytes and reads each one for both
     # source pixels it represents (wiki/src/nand2doom/rtl/video/mas.md).
     expected = b"".join(w.to_bytes(4, "little") for w in PATTERN)
     if half_width:
@@ -237,16 +238,18 @@ async def endpoint_load_and_readback(link, half_width=False):
         raise AssertionError(f"front view never showed the program's words: {front.hex()}")
     palette = await exchange(link, um.READ, PALETTE, 4)
     assert int.from_bytes(palette, "little") == COLOR, palette.hex()
-    # A longer contending read of the displayed bank.
+    # Why: a 1 KiB read of the displayed bank contends with the running program,
+    # so a starved CPU or a stalled read shows.
     frame = await exchange(link, um.READ, SCREEN, 1024, timeout_us=40000)
     assert frame[:8] == expected
-    await exchange(link, um.READ, COUNTER, 4, expect=0x07)  # SDRAM is held-only
+    await exchange(link, um.READ, COUNTER, 4, expect=0x07)  # Ref: io MAS "UART memory endpoint": SDRAM reads need a hold (0x07, not halted)
     stalls = monitor.check()
     cocotb.log.info("live phase: %d clocks, %d screen reads, %d CPU port accesses, "
                     "%d stall clocks (bound %d)", monitor.cycles, len(monitor.screen_cycles),
                     monitor.cpu_port_accesses, stalls, monitor.cycles // LIVE_GAP + 1)
 
-    # The program kept running through the live reads.
+    # Why: a stopped program would leave the counter unchanged, so the hold
+    # below proves it kept running through the live reads.
     await exchange(link, um.HOLD)
     counter = int.from_bytes(await exchange(link, um.READ, COUNTER, 4), "little")
     assert counter > 1000, f"program loop count {counter}"

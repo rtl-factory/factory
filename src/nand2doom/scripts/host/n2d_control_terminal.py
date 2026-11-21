@@ -16,19 +16,19 @@ import time
 
 from src.nand2doom.scripts.host.n2d_control import BINDINGS, ControlError
 
-PUSH_FLAGS = b"\x1b[>11u"     # disambiguate (1) + press/repeat/release (2) + every key as a code (8)
+PUSH_FLAGS = b"\x1b[>11u"     # Ref: kitty keyboard protocol flags: disambiguate (1) + press/repeat/release (2) + every key as a code (8)
 POP_FLAGS = b"\x1b[<u"
-QUERY = b"\x1b[?u\x1b[c"      # kitty flags query, then primary DA so a silent terminal still answers
+QUERY = b"\x1b[?u\x1b[c"      # Ref: kitty flags query, then primary DA so a silent terminal still answers
 FOCUS_ON, FOCUS_OFF = b"\x1b[?1004h", b"\x1b[?1004l"
 CSI = re.compile(rb"\x1b\[([0-9:;?<>=]*)([A-Za-z~])")
 
-# Kitty functional key codes and the Tk keysyms BINDINGS already uses.
+# Ref: kitty keyboard protocol functional key codes, mapped to the Tk keysyms BINDINGS already uses.
 KITTY_KEYS = {9: "Tab", 13: "Return", 27: "Escape", 32: "space", 57414: "KP_Enter",
               57441: "Shift_L", 57442: "Control_L", 57443: "Alt_L",
               57447: "Shift_R", 57448: "Control_R", 57449: "Alt_R"}
 ARROWS = {b"A": "Up", b"B": "Down", b"C": "Right", b"D": "Left"}
-F10 = b"21"  # CSI 21 ~ : quit key in both modes
-CTRL_C = 99  # 'c' with the Ctrl modifier quits in kitty mode
+F10 = b"21"  # Ref: CSI 21 ~ is F10, the quit key in both modes
+CTRL_C = 99  # Why: kitty mode reports Ctrl-C as key 99 with a modifier, not a signal, so it must quit explicitly
 
 
 def key_symbol(code):
@@ -57,9 +57,9 @@ class KittyParser:
             match = CSI.match(self.buffer)
             if match is None:
                 if len(self.buffer) > 64 or (len(self.buffer) > 1 and self.buffer[1:2] != b"["):
-                    self.buffer = self.buffer[1:]  # not a CSI sequence: resynchronize
+                    self.buffer = self.buffer[1:]  # Why: not a CSI sequence, so drop one byte to resynchronize
                     continue
-                return events  # incomplete sequence; wait for more bytes
+                return events  # Why: the sequence is incomplete; the next read completes it
             self.buffer = self.buffer[match.end():]
             event = self.decode(match.group(1), match.group(2))
             if event:
@@ -72,7 +72,7 @@ class KittyParser:
         if final == b"O" and not params:
             return ("focus-out", None)
         if params[:1] in (b"?", b">", b"<", b"="):
-            return None  # protocol replies
+            return None  # Why: protocol replies, not keys
         fields = params.split(b";")
         modifier = fields[1].split(b":") if len(fields) > 1 else [b"1"]
         try:
@@ -118,10 +118,10 @@ class TapParser:
                     continue
                 match = CSI.match(self.buffer)
                 if match:
-                    self.buffer = self.buffer[match.end():]  # unsupported sequence
+                    self.buffer = self.buffer[match.end():]
                     continue
                 if not flush and (len(self.buffer) == 1 or self.buffer[1:2] in (b"[", b"O")):
-                    return events  # maybe the start of a sequence
+                    return events  # Why: this may start a sequence, not be a bare Escape
                 events.append(("tap", "Escape"))
                 self.buffer = self.buffer[1:]
                 continue
@@ -145,7 +145,7 @@ class Controls:
     def __init__(self, session, *, clock=time.monotonic, first_hold=0.5, repeat_hold=0.15):
         self.session, self.clock = session, clock
         self.first_hold, self.repeat_hold = first_hold, repeat_hold
-        self.deadlines = {}  # tap mode: symbol -> release time
+        self.deadlines = {}
         self.quit = False
 
     def held(self):
@@ -229,7 +229,7 @@ def run(session, read, write, *, kitty, clock=time.monotonic, flush_after=0.05):
         return 1
     except BaseException:
         try:
-            session.close()  # Ctrl-C as a signal or another error: still release once.
+            session.close()  # Why: Ctrl-C as a signal or another error must still release once.
         except ControlError as error:
             write(f"\r\nFAULT during release: {error}\r\n".encode())
         raise

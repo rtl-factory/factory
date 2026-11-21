@@ -27,16 +27,15 @@ class FakeEndpoint:
         self.windows, self.max_length, self.entry_addr = windows, max_length, entry
         self.memory = {}
         self.hold = False
-        self.log = []          # (command, address, length) in order
+        self.log = []
         self.out = bytearray()
         self.inbox = bytearray()
-        self.corrupt = set()   # addresses whose stored byte is flipped
-        self.fail_command = {}  # command -> status
+        self.corrupt = set()
+        self.fail_command = {}
         self.prints = b""
         self.drop_response = False
-        self.chunk = 4096       # bytes per transport read (1: fragmented)
+        self.chunk = 4096
 
-    # Transport interface.
     def write(self, data):
         self.inbox += data
         self._parse()
@@ -177,7 +176,7 @@ class ClientTests(unittest.TestCase):
         fake = FakeEndpoint()
         c = client(fake)
         with self.assertRaises(um.StatusError) as caught:
-            c.read(0, 4)  # program window is not live-readable
+            c.read(0, 4)  # Why: the program window is not live-readable
         self.assertEqual(caught.exception.status, 7)
         with self.assertRaises(um.EndpointError):
             c.hold()
@@ -192,8 +191,8 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(b"".join(seen), b"hello ")
 
     def test_false_sofs_before_a_valid_response(self):
-        # Project bytes with SOFs: a bare 0x8a, a huge bogus length, and a
-        # candidate with the right header but a bad CRC, all before the reply.
+        # Why: a bare 0x8a, a huge bogus length and a bad-CRC candidate are each
+        # project data and must not end the search for the real reply.
         bogus = bytes([0x8A, 0x00, 0x00, 0x00, 0xFF, 0xFF])
         fake_header = bytearray(um.encode_response(um.HOLD, 1, b"", 0))
         fake_header[-1] ^= 0xFF
@@ -209,8 +208,9 @@ class ClientTests(unittest.TestCase):
             self.assertEqual(b"".join(seen), fake.prints, f"chunk {chunk}")
 
     def test_incomplete_plausible_candidate_before_identify(self):
-        # Project bytes form a plausible Identify header (version 1, 0x81,
-        # sequence 1, length 116) that never completes; the real reply follows.
+        # Why: these bytes form a plausible Identify header (version 1, 0x81,
+        # sequence 1, length 116) that never completes; it must not swallow the
+        # real reply that follows.
         for chunk in (4096, 1):
             fake = FakeEndpoint()
             fake.chunk = chunk
@@ -223,9 +223,8 @@ class ClientTests(unittest.TestCase):
             self.assertEqual(b"".join(seen), fake.prints, f"chunk {chunk}")
 
     def test_nested_response_in_a_fragmented_read_payload(self):
-        # Memory holding response-shaped bytes must come back as data: the
-        # outer frame keeps precedence over the nested one, with and without
-        # a false incomplete prefix before it.
+        # Why: memory can hold any bytes, so a response nested in a read payload
+        # must stay data, with and without a false incomplete prefix before it.
         nested = um.encode_response(um.READ, 2, b"abcd", 0)
         block = (nested + bytes(64))[:64]
         for prefix in (b"", bytes([0x8A, 0x01, 0x91, 0x02, 0x40, 0x00])):
@@ -262,8 +261,8 @@ class ClientTests(unittest.TestCase):
         fake.drop_response = True
         c = client(fake)
         fake.out += um.encode_response(um.HOLD, 9, b"", 0)
-        # A reply for another sequence is not this response: it is skipped
-        # as project data and the request times out.
+        # Why: a stale reply must never be taken for this request's, so it is
+        # skipped as project data and the request times out.
         with self.assertRaisesRegex(um.EndpointError, "timeout"):
             c.hold()
 
@@ -276,7 +275,7 @@ class LoadTests(unittest.TestCase):
 
     def test_multi_segment_load(self):
         fake = FakeEndpoint()
-        fake.memory[0x8007] = 0xEE  # beyond the 7-byte tail: preserved
+        fake.memory[0x8007] = 0xEE  # Why: the tail's last word is written whole, so this byte checks it survives
         um.load(client(fake), self.segments(), 0, project_id=PROJECT)
         commands = [c for c, _, _ in fake.log]
         self.assertEqual(commands.count(0x02), 1)
@@ -319,7 +318,7 @@ class LoadTests(unittest.TestCase):
         def failing(command, address, length, payload):
             if command == 0x10:
                 writes.append(address)
-                if len(writes) == 4:  # segment 1 after three segment-0 chunks
+                if len(writes) == 4:  # Why: segment 1 starts after three segment-0 chunks
                     return b"", 3
             return original(command, address, length, payload)
         fake._execute = failing

@@ -127,10 +127,12 @@ class PortLatencyMonitor:
             cycle += 1
             if int(self.cache.cpu_response_valid_o.value):
                 assert self.accepted_cycle is not None, "cache response without a request"
-                # Visible after the accept edge, sampled by the next edge.
+                # Why: +1 because the response is visible after the accept edge
+                # and sampled by the next edge.
                 self.latencies.append(cycle - self.accepted_cycle + 1)
                 self.accepted_cycle = None
-            # The accept edge is the next rising edge; sample its handshake now.
+            # Why: the accept edge is the next rising edge, so its handshake is
+            # sampled now, before it changes.
             await FallingEdge(self.dut.clk_i)
             await ReadOnly()
             if int(self.cache.cpu_request_valid_i.value) and int(self.cache.cpu_request_ready_o.value):
@@ -210,15 +212,16 @@ async def cached_rv32im_memory_traffic(dut):
     assert service.d_hits > 0 and service.d_misses > 0
     assert len(service.i_transactions) >= 3
     assert len(service.d_transactions) == 1, "store allocation should serve both following loads"
-    # Every lookup hit completes exactly one edge after acceptance; misses
-    # take longer, so the one-edge count equals the hit-event count.
+    # Why: every lookup hit completes exactly one edge after acceptance and
+    # misses take longer, so the one-edge count must equal the hit-event count.
     assert i_monitor.latencies.count(1) == service.i_hits, (i_monitor.latencies, service.i_hits)
     assert d_monitor.latencies.count(1) == service.d_hits, (d_monitor.latencies, service.d_hits)
     assert all(latency > 1 for latency in i_monitor.latencies if latency != 1)
 
     await FallingEdge(dut.clk_i)
     dut.enable_i.value = 0
-    # A four-way walk visits 2,048 entries, plus one dirty-line writeback.
+    # Why: 2400 covers a four-way walk of 2,048 entries plus one dirty-line
+    # writeback.
     await _start_maintenance(dut, "data", 2400)
     assert not int(dut.data_maintenance_error_o.value)
     assert read_word(memory, 0x80) == 127, "D-cache maintenance did not write back signature"

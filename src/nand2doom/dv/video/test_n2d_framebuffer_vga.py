@@ -22,7 +22,8 @@ V_TOTAL = 525
 FRAME_CYCLES = H_TOTAL * V_TOTAL
 ACTIVE_PIXEL_COUNT = 320 * 200
 TOP_BORDER_LINES = 40
-# Raster CRC of the known pattern: RGB444 as two big-endian bytes per clock.
+# Why: the raster CRC covers RGB444 as two big-endian bytes per clock, the same
+# definition as the native perf harness, so the two compare.
 KNOWN_FRAME_CRC32 = {True: 0xC3AEAAEF, False: 0x39E9750F}
 
 
@@ -42,7 +43,7 @@ class BankModel:
             if not strobe & (1 << lane) or target >= ACTIVE_PIXEL_COUNT:
                 continue
             if not self.full and lane & 1:
-                continue  # odd-x bytes are not stored at half width
+                continue  # Ref: video MAS "Framebuffer and palette": odd-x bytes are not stored at half width
             for pixel in range(1 if self.full else 2):
                 self.banks[bank][target + pixel] = (data >> (8 * lane)) & 0xFF
                 self.known[bank][target + pixel] = 1
@@ -195,9 +196,9 @@ async def _cpu_palette_contract(dut, full: bool) -> None:
     assert int(dut.vga_green_o.value) == 0
     assert int(dut.vga_blue_o.value) == 0
 
-    # Full words, individual byte strobes and read-first old data. At half
-    # width each even byte is returned for both of its source pixels and odd
-    # bytes are dropped.
+    # Why: full words, individual byte strobes and read-first old data each
+    # have their own write path. At half width each even byte is returned for
+    # both of its source pixels and odd bytes are dropped.
     await _write(dut, model, 0, 0x44332211)
     await _check(dut, model, 0)
     await _write(dut, model, 0, 0x0000AA00, 0x2)
@@ -210,7 +211,8 @@ async def _cpu_palette_contract(dut, full: bool) -> None:
     await _write(dut, model, 8, 0xAABBCCDD)
     await _check(dut, model, 8)
 
-    # Last active word, then the zero-reading reserved tail.
+    # Why: the last active word, then the reserved tail, which must read zero,
+    # so an address overrun shows.
     await _write(dut, model, 63_996, 0xA5C35A7E)
     await _check(dut, model, 63_996)
     await _framebuffer_request(dut, address=64_000, write_data=0xFFFFFFFF, write_strobe=0xF)
@@ -219,7 +221,8 @@ async def _cpu_palette_contract(dut, full: bool) -> None:
                                       write_strobe=0xF) == 0
     await _check(dut, model, 63_996)
 
-    # The front view is read-only: a write presented on it changes nothing.
+    # Why: the front view is read-only, so a write presented on it must change
+    # nothing.
     await _framebuffer_request(dut, address=0, write_data=0xDEADBEEF,
                                write_strobe=0xF, front=True)
     await _check(dut, model, 0)
@@ -231,7 +234,8 @@ async def _cpu_palette_contract(dut, full: bool) -> None:
     await _palette_request(dut, index=6, write_data=0xC00, write_strobe=0x2)
     assert await _palette_request(dut, index=6) == 0xC5A
 
-    # Palette commit and bank swap requests stay pending until vertical blank.
+    # Ref: video MAS "Requirements" VID-R1, VID-R4: palette commit and bank
+    # swap requests stay pending until vertical blank.
     await FallingEdge(dut.clk_i)
     dut.palette_commit_i.value = 1
     dut.swap_request_i.value = 1
@@ -244,7 +248,8 @@ async def _cpu_palette_contract(dut, full: bool) -> None:
     await FallingEdge(dut.clk_i)
     dut.palette_commit_i.value = 0
     dut.swap_request_i.value = 0
-    # A write while the swap is pending still targets the current back bank.
+    # Why: a write while the swap is pending must still target the current back
+    # bank, or a frame would tear.
     await _write(dut, model, 12, 0x01020304)
     await _check(dut, model, 12)
     assert int(dut.front_bank_o.value) == 0
@@ -276,8 +281,8 @@ async def _wait_for_swap(dut, model: BankModel) -> None:
         await RisingEdge(dut.clk_i)
         await ReadOnly()
         if int(dut.front_bank_o.value) != previous:
-            # Public coordinates lag the raster by two clocks: the flip edge
-            # sampled raster position (0, 480).
+            # Why: public coordinates lag the raster by two clocks, so the flip
+            # edge sampled raster position (0, 480).
             position = (int(dut.pixel_x_o.value), int(dut.pixel_y_o.value))
             assert position == (H_TOTAL - 1, V_VISIBLE - 1), position
             assert int(dut.swap_pending_o.value) == 0
@@ -336,7 +341,6 @@ async def _check_reset_black(dut) -> None:
     dut.reset_i.value = 0
     assert int(dut.active_palette_bank_o.value) == 0
     assert int(dut.front_bank_o.value) == 0
-    # Through the first two image lines (one source row), visible included.
     image_pixels = 0
     for _ in range((TOP_BORDER_LINES + 2) * H_TOTAL + 4):
         await RisingEdge(dut.clk_i)
@@ -361,17 +365,15 @@ async def _actual_frame_contract(dut, full: bool) -> None:
     model = BankModel(full)
     await _start(dut)
 
-    # Draw the known image into the back bank and its palette into the
-    # inactive palette bank.
     for address in range(0, ACTIVE_PIXEL_COUNT, 4):
         await _write(dut, model, address, _known_word(address))
     for index in range(256):
         await _palette_request(dut, index=index, write_data=_palette_rgb(index),
                                write_strobe=0x3)
 
-    # Posted-write ordering: the last image word is written on the same clock
-    # as the swap request and one more on the next clock; both precede the
-    # flip, so both belong to the image that becomes visible.
+    # Why: posted-write ordering: the last image word is written on the same
+    # clock as the swap request and one more on the next clock; both precede
+    # the flip, so both belong to the image that becomes visible.
     known = _known_word(63_996)
     await _write(dut, model, 63_996, known ^ 0xFFFFFFFF)
     await FallingEdge(dut.clk_i)
@@ -389,23 +391,23 @@ async def _actual_frame_contract(dut, full: bool) -> None:
     await _check(dut, model, 63_996, front=True)
     await _check(dut, model, 0, front=True)
 
-    # The palette bank that became inactive is independently writable. Its
+    # Ref: the palette bank that became inactive is independently writable. Its
     # never-written entries are undefined after reset (wiki/src/nand2doom/rtl/video/mas.md).
     await _palette_request(dut, index=17, write_data=0x123, write_strobe=0x3)
     assert await _palette_request(dut, index=17) == 0x123
 
     await _check_frame(dut, bytearray(image), KNOWN_FRAME_CRC32[full])
 
-    # Back-bank invisibility: draw a different image into the new back bank
-    # at row, lane and end boundaries while the front frame scans unchanged.
+    # Why: drawing a different image into the new back bank at row, lane and
+    # end boundaries must leave the scanned front frame unchanged.
     for address in (0, 316, 320, 4092, 32764, 63_996):
         await _write(dut, model, address, 0x5AA5C33C ^ address)
         await _check(dut, model, address)
         await _check(dut, model, address, front=True)
     await _check_frame(dut, bytearray(image), KNOWN_FRAME_CRC32[full])
 
-    # A swap shows the back image; the other bank keeps the known image for
-    # the front view after a second swap.
+    # Why: a swap must show the back image, and the other bank must keep the
+    # known image for the front view after a second swap.
     await FallingEdge(dut.clk_i)
     dut.swap_request_i.value = 1
     await FallingEdge(dut.clk_i)
@@ -415,7 +417,7 @@ async def _actual_frame_contract(dut, full: bool) -> None:
         await _check(dut, model, address, front=True)
     assert model.banks[model.front] != image
 
-    # Palette storage has no reset. Fill palette bank 0 (inactive) with
+    # Why: palette storage has no reset. Fill palette bank 0 (inactive) with
     # white, then warm-reset: bank 0 becomes active again over the retained
     # front image, yet no commit has taken effect, so the image stays black.
     for index in range(256):
@@ -454,8 +456,9 @@ async def _swap_palette_vblank_contract(dut, full: bool) -> None:
             if raster == (vblank_offset + delta) % FRAME_CYCLES:
                 break
             await FallingEdge(dut.clk_i)
-        # The timing raster is the public coordinate plus two; the request is
-        # sampled on the next rising edge, at raster vblank_offset + delta.
+        # Why: the timing raster is the public coordinate plus two and the
+        # request is sampled on the next rising edge, so it takes effect at
+        # raster vblank_offset + delta.
         front = int(dut.front_bank_o.value)
         palette = int(dut.active_palette_bank_o.value)
         dut.swap_request_i.value = 1

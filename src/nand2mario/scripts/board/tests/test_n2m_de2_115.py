@@ -39,7 +39,7 @@ class De2Tests(unittest.TestCase):
                 standards = doom['io_standards']
                 self.assertEqual(quartus.io_standard(self.config, port),
                                  standards.get(peer, standards.get(peer.split('[')[0], '3.3-V LVTTL')), port)
-        # Terasic 2013 manual table 4-1, JP7 supply = 2.5 V for this profile.
+        # Ref: Terasic DE2-115 manual (2013) table 4-1; JP7 supply = 2.5 V for this profile.
         for index, pin in enumerate(('AB28', 'AC28', 'AC27', 'AD27', 'AB27', 'AC26', 'AD26', 'AB26')):
             self.assertEqual(self.config['pins'][f'SW[{index}]'], pin)
             self.assertEqual(quartus.io_standard(self.config, f'SW[{index}]'), '2.5 V')
@@ -53,8 +53,8 @@ class De2Tests(unittest.TestCase):
     def test_simulation_and_synthesis_closures(self):
         targets = json.loads((ROOT / 'src/nand2mario/cfg/targets.json').read_text())['targets']
         simulation = [s for s in targets['n2m_de2_115']['sources'] if '/dv/' not in s]
-        # Both lists bind the common n2a_jtag_virtual; only simulation adds
-        # the dv/ stand-in of its vendor primitive.
+        # Why: the dv/ stand-in of the vendor primitive is simulation-only and both lists
+        # bind the common n2a_jtag_virtual, so they match once dv/ is dropped.
         synthesis = [s.replace('_intel.sv', '_portable.sv') for s in self.config['sources']]
         self.assertEqual(simulation, synthesis)
         self.assertEqual('EP4CE115F29C7', self.config['device'])
@@ -113,7 +113,6 @@ class De2Tests(unittest.TestCase):
             self.assertEqual(hashlib.sha256((output / 'inputs.json').read_bytes()).hexdigest(), identity['inputs_sha256'])
             self.assertEqual(identity, json.loads(sof.with_suffix('.json').read_text()))
             self.assertIn('vga_dac_clock', (output / 'audit.tcl').read_text())
-            # A post-compile settings change cannot be accepted against old reports.
             (output / self.config['settings']).write_text('changed')
             with self.assertRaisesRegex(RuntimeError, 'staged input changed'):
                 quartus.verify_reports(output, self.config)
@@ -145,7 +144,7 @@ class De2Tests(unittest.TestCase):
                     board.run_program(args, runner=runner, which=lambda name: name)
                 self.assertEqual(before, len(calls), 'refusal must precede programmer invocation')
 
-            refuse()  # Missing receipt.
+            refuse()
             for field in identity:
                 incomplete = dict(identity)
                 incomplete.pop(field)

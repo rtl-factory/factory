@@ -69,7 +69,7 @@ module n2d_uart_stream
         reply_active: 1'b0, reply_index: '0, reply_crc: '0, reply_kind: '0,
         reply_seq: '0, reply_status: '0, reply_value: '0};
     stream_regs_t regs_q, regs_d;
-    // Gap, session-idle and operation timers: their widths follow the timeout
+    // Why: the gap, session-idle and operation timer widths follow the timeout
     // parameters, so they are registers of their own beside the packaged state.
     logic [GAP_WIDTH-1:0]  gap_q, gap_d;
     logic [IDLE_WIDTH-1:0] idle_q, idle_d;
@@ -115,9 +115,9 @@ module n2d_uart_stream
         endcase
     end
 
-    // Two 1 KiB payload slots, one write port for receive and one read port
-    // for commit. The read address changes only when the executor advances,
-    // and STREAM_X_FETCH waits for the synchronous read.
+    // Why: two 1 KiB payload slots so receive can fill one while commit reads the
+    // other. The read address changes only when the executor advances, so
+    // STREAM_X_FETCH waits for the synchronous read.
     n2a_sdp_ram #(.DATA_WIDTH(32), .DEPTH(512)) u_payload (
         .clk_i,
         .write_enable_i(ram_write),
@@ -142,8 +142,9 @@ module n2d_uart_stream
         endcase
     end
 
-    // Byte routing: outside a session the legacy path is unchanged except for
-    // the claiming start byte; inside a session nothing reaches it.
+    // Why: the legacy path sees every byte outside a session except the claiming
+    // start byte, and none inside one, so legacy framing is unchanged by the
+    // router.
     assign session_o = regs_q.session;
     assign down_rx_byte_o = rx_byte_i;
     assign down_rx_valid_o = !regs_q.session && rx_valid_i && !claim;
@@ -183,7 +184,6 @@ module n2d_uart_stream
         ram_write_address = {regs_q.wr_ptr, regs_q.payload_index[9:2]};
         ram_write_data = next_word;
 
-        // ---------------- Session open and receive parser ----------------
         if (claim) begin
             regs_d = REGS_RESET;
             gap_d = '0;
@@ -200,7 +200,8 @@ module n2d_uart_stream
             if (rx_error_i ||
                 ((regs_q.rx_state != STREAM_RX_HUNT) && !rx_valid_i &&
                  (gap_q == GAP_WIDTH'(GAP_TIMEOUT_CYCLES - 1)))) begin
-                // A broken byte or a stalled frame abandons only that frame.
+                // Why: a broken byte or a stalled frame abandons only that frame, so a line
+                // glitch does not end the session.
                 regs_d.rx_state = STREAM_RX_HUNT;
                 gap_d = '0;
             end else if (rx_valid_i) begin
@@ -238,11 +239,13 @@ module n2d_uart_stream
                                         regs_q.frame.length[10:0] :
                                     (regs_q.frame.kind == N2D_STREAM_DIGEST) ? 11'd4 : 11'd0;
                                 if (!header_good) begin
-                                    // Untrusted header: resynchronize silently.
+                                    // Why: an untrusted header gets no reply because its fields cannot be
+                                    // trusted; the parser resynchronizes silently.
                                     regs_d.rx_state = STREAM_RX_HUNT;
                                 end else if (!kind_known || !length_good) begin
-                                    // Trusted header without a usable length:
-                                    // answer in order, then resynchronize.
+                                    // Why: a trusted header without a usable length is still answered, in order,
+                                    // so the host learns of the error; the parser then resynchronizes because
+                                    // the payload extent is unknown.
                                     push = (regs_q.count != 2'd2);
                                     push_entry.status = !kind_known ? N2D_ST_COMMAND :
                                                                       N2D_ST_LENGTH;
@@ -294,7 +297,6 @@ module n2d_uart_stream
             end
         end
 
-        // ---------------- In-order executor ----------------
         if (regs_q.session && !claim) begin
             case (regs_q.x_state)
                 STREAM_X_IDLE: if ((regs_q.count != 0) && !regs_q.reply_active && !regs_q.closing) begin
@@ -401,7 +403,9 @@ module n2d_uart_stream
                     end else op_counter_d = op_counter_q + 1'b1;
                 end
                 STREAM_X_ABORT: if (txn_status_i.txn_done) begin
-                    // The adapter has discarded or rolled back the chunk.
+                    // Ref: wiki/src/nand2doom/rtl/io/mas.md "Host-memory transaction boundary":
+                    // txn_done after txn_abort means the adapter has discarded or rolled back the
+                    // chunk, so the reply follows the rollback.
                     start_reply = 1'b1;
                     start_status = regs_q.x_abort_status;
                     regs_d.x_state = STREAM_X_IDLE;
@@ -410,7 +414,6 @@ module n2d_uart_stream
             endcase
         end
 
-        // ---------------- Reply serializer ----------------
         if (regs_q.session && regs_q.reply_active && tx_ready_i) begin
             if ((regs_q.reply_index != 4'd0) && (regs_q.reply_index != 4'd9))
                 regs_d.reply_crc = n2d_crc8_byte(regs_q.reply_crc, reply_byte);
@@ -428,7 +431,6 @@ module n2d_uart_stream
             regs_d.reply_value = start_value;
         end
 
-        // ---------------- Queue update ----------------
         if (push) begin
             regs_d.entries[regs_q.wr_ptr] = push_entry;
             regs_d.wr_ptr = !regs_q.wr_ptr;
@@ -437,7 +439,6 @@ module n2d_uart_stream
         if (push && !pop) regs_d.count = regs_q.count + 1'b1;
         else if (pop && !push) regs_d.count = regs_q.count - 1'b1;
 
-        // ---------------- Session close ----------------
         if (regs_q.session && !claim) begin
             if ((regs_q.rx_state == STREAM_RX_HUNT) && (regs_q.count == 0) &&
                 (regs_q.x_state == STREAM_X_IDLE) && !regs_q.reply_active && !regs_q.closing &&

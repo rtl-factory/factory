@@ -10,7 +10,7 @@ from cocotb.triggers import Timer
 
 from src.common.dv.jtag.test_jtag_keyboard import fields, packet
 
-HUB_PAD = 7  # Late-TDI bits the DE2-115 hub inserts before the host word.
+HUB_PAD = 7  # Ref: wiki/src/nand2doom/rtl/io/mas.md "JTAG keyboard composition" (late TDI); seven on the DE2-115
 SIGNALS = ('tck', 'tdi', 'capture', 'shift', 'update', 'update_ir', 'ir')
 
 

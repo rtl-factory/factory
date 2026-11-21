@@ -21,9 +21,9 @@ VISIBLE_LINES = 144
 VISIBLE_PIXELS = 160
 MODE2_DOTS = 80
 MODE3_BASE_DOTS = 172
-MODE0_IRQ_DELAY = 3       # the mode-0 STAT source rises this many dots after mode 0 reads
-LY_READ_DOT = 452         # LY reads the next line from this dot
-PIXEL_DOT = 92            # pixel 0 is emitted at the end of dot 92 + fine
+MODE0_IRQ_DELAY = 3
+LY_READ_DOT = 452
+PIXEL_DOT = 92
 DOTS_PER_FRAME = DOTS_PER_LINE * LINES_PER_FRAME
 
 HBLANK, VBLANK, OAM_SCAN, TRANSFER = 0, 1, 2, 3
@@ -33,15 +33,13 @@ OBP0, OBP1, WY, WX = 0xFF48, 0xFF49, 0xFF4A, 0xFF4B
 PPU_REGISTERS = (LCDC, STAT, SCY, SCX, LY, LYC, BGP, OBP0, OBP1, WY, WX)
 STORED_REGISTERS = (LCDC, SCY, SCX, LYC, BGP, OBP0, OBP1, WY, WX)
 
-# LCDC bits.
 LCDC_ON, LCDC_WINDOW_MAP, LCDC_WINDOW, LCDC_TILE_DATA = 0x80, 0x40, 0x20, 0x10
 LCDC_BG_MAP, LCDC_OBJ_SIZE, LCDC_OBJ, LCDC_BG = 0x08, 0x04, 0x02, 0x01
-# OAM attribute bits.
 ATTR_PRIORITY, ATTR_Y_FLIP, ATTR_X_FLIP, ATTR_PALETTE = 0x80, 0x40, 0x20, 0x10
 OBJECTS_PER_LINE = 10
 WINDOW_LAST_WX = 166
 
-# STAT enable bits as stored in STAT[6:3].
+# Ref: Pan Docs "LCD Status Registers": the enable bits sit in STAT[6:3].
 STAT_LYC, STAT_MODE2, STAT_MODE1, STAT_MODE0 = 0x40, 0x20, 0x10, 0x08
 
 

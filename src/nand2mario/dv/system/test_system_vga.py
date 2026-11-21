@@ -41,7 +41,7 @@ async def system_vga_frame(dut):
     rng = random.Random(seed)
     cycles = 0
     power_up(dut, rng)
-    # The frame store has no power-up value either.
+    # Why: the frame store has no power-up value either.
     for bank in range(3):
         memory = dut.u_display.u_frame_ram.g_banks[bank].u_ram.u_enabled.memory
         for index in range(dm.FRAME_PIXELS):
@@ -79,10 +79,10 @@ async def system_vga_frame(dut):
 
     cocotb.start_soon(watch_frame_starts())
 
-    # Run the program against the oracle exactly as the background frame test
-    # does (system DV plan), so the VRAM and LCD registers are known.
+    # Why: run the program against the oracle exactly as the background frame test
+    # does, so the VRAM and LCD registers are known.
     peripherals = VideoPeripherals()
-    memory = GameBoyMemory(image, io_read=peripherals.read, io_write=peripherals.write)   # strict
+    memory = GameBoyMemory(image, io_read=peripherals.read, io_write=peripherals.write)
     model = CPU(mem=memory)
     retirements, interrupts = 0, []
     halted = False
@@ -120,7 +120,6 @@ async def system_vga_frame(dut):
     assert lcdc & 0x80, 'the program halts with the LCD on'
     cocotb.log.info('program halted after %d retirements and %d edges', retirements, cycles)
 
-    # One PPU frame from the public pixel stream, compared with the renderer.
     expected_frame = m.render_background(bytes(memory.vram), lcdc, scy, scx, bgp)
     observed = [[None] * m.VISIBLE_PIXELS for _ in range(m.VISIBLE_LINES)]
     await RisingEdge(dut.frame_start_o)
@@ -135,7 +134,7 @@ async def system_vga_frame(dut):
     compare_frame(observed, expected_frame)
     m.write_png(Path.cwd() / 'frame.png', observed)
 
-    # The next raster origin after the completion swaps that frame in (a
+    # Why: the next raster origin after the completion swaps that frame in (a
     # later identical frame may replace it first; the content is static).
     # Capture the output frame that starts after the swap, every clock.
     await RisingEdge(dut.pixel_start_o)
@@ -156,7 +155,7 @@ async def system_vga_frame(dut):
     next_start = int(get_sim_time(unit='ns')) // CLOCK_PERIOD_NS
     assert next_start - start_edge == dm.FRAME_CLOCKS, (start_edge, next_start)
 
-    # Negative control: the VGA comparison rejects a single changed source pixel.
+    # Why: proves the check can fail: the VGA comparison must reject a single changed source pixel.
     corrupted = [row[:] for row in observed]
     corrupted[70][80] ^= 2
     try:

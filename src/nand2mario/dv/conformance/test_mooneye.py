@@ -65,7 +65,7 @@ async def mooneye_rom(dut):
     await FallingEdge(dut.clk_i)
     dut.reset_i.value = 0
 
-    # The suite ends in an endless loop after its LD B,B breakpoint with the
+    # Why: the suite ends in an endless loop after its LD B,B breakpoint with the
     # verdict registers held, so the bench samples the latest retirement
     # record every POLL_CYCLES instead of waking per instruction.
     result = {'verdict': 'TIMEOUT', 'cycles': bound}
@@ -101,5 +101,5 @@ async def mooneye_rom(dut):
                       window_pcs=sorted(pcs)[:32], window_distinct_pcs=len(pcs))
     result_path.write_text(json.dumps(result, indent=2) + '\n')
     cocotb.log.info('mooneye verdict %s', result)
-    # The run itself succeeds whenever a verdict or timeout is recorded; the
+    # Why: the run itself succeeds whenever a verdict or timeout is recorded; the
     # conformance table, not the simulator status, carries pass/fail.

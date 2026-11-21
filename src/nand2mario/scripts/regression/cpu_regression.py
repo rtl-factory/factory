@@ -14,11 +14,9 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[4]
-# The project registry beside this tool (independent of the output root).
+# Why: tests repoint ROOT, and must still read the real registry beside this tool.
 REGISTRY = Path(__file__).resolve().parents[2] / "cfg/targets.json"
 
-# Program recipe: assembler inputs, the registry target that consumes the
-# image and the environment variable that names it.
 PROGRAMS = {
     'cpu': dict(source='src/nand2mario/sw/cpu/smoke.asm', layout='src/nand2mario/sw/cpu/layout.json',
                 entry='smoke::start', target='n2m_cpu', variable='N2M_CPU_IMAGE',
@@ -35,8 +33,6 @@ PROGRAMS = {
                            layout='src/nand2mario/sw/system/objects_layout.json',
                            entry='objects::start', target='n2m_system_objects',
                            variable='N2M_SYSTEM_IMAGE', action='mario-system-objects-preparation'),
-    # The MBC1 program is assembled as a direct image and then expanded into
-    # a 64-bank cartridge image; the simulation receives the expansion.
     'system_mbc1': dict(source='src/nand2mario/sw/system/mbc1.asm',
                         layout='src/nand2mario/sw/system/mbc1_layout.json', entry='mbc1::start',
                         target='n2m_system_mbc1', variable='N2M_SYSTEM_IMAGE',
@@ -46,16 +42,10 @@ PROGRAMS = {
                        layout='src/nand2mario/sw/system/background_layout.json',
                        entry='background::start', target='n2m_system_vga',
                        variable='N2M_SYSTEM_IMAGE', action='mario-system-vga-preparation'),
-    # The animated snapshot program, read back over the UART loader.
     'system_snapshot': dict(source='src/nand2mario/sw/system/snapshot.asm',
                             layout='src/nand2mario/sw/system/snapshot_layout.json',
                             entry='snapshot::start', target='n2m_system_snapshot',
                             variable='N2M_SYSTEM_IMAGE', action='mario-system-snapshot-preparation'),
-    # The SDRAM boot program is expanded into an 8-bank image that the bench
-    # loads over the UART into the SDRAM backing; its simulation is long.
-    # The board smoke loads the background program over the board's UART
-    # pins into the SDRAM model and runs it on the DE10-Lite top.
-    # The ASIC RAM backend runs the smoke, background and objects programs.
     'system_asic_ram': dict(source='src/nand2mario/sw/system/system_smoke.asm',
                             layout='src/nand2mario/sw/system/layout.json', entry='system_smoke::start',
                             target='n2m_system_asic_ram', variable='N2M_SYSTEM_IMAGE',
@@ -83,8 +73,6 @@ PROGRAMS = {
                          target='n2m_system_sdram', variable='N2M_SYSTEM_IMAGE',
                          action='mario-system-sdram-preparation',
                          expand=dict(banks=8, bytes=131072, name='cartridge.gb')),
-    # The same image written through the direct preload port, interleaved
-    # with the UART loader on the shared load port.
     'system_preload': dict(source='src/nand2mario/sw/system/sdram_boot.asm',
                            layout='src/nand2mario/sw/system/sdram_boot_layout.json', entry='sdram_boot::start',
                            target='n2m_system_preload', variable='N2M_SYSTEM_IMAGE',
@@ -143,7 +131,7 @@ def execute(output, workdir, program='cpu'):
         if not expanded.is_file() or expanded.is_symlink() or expanded.stat().st_size != expand['bytes']:
             raise ValueError('expander did not produce the complete cartridge image')
         image = expanded
-    # The runner keeps the registry oracle, seed, cycle bound and timeout.
+    # Why: run through sim.py so the runner keeps the registry oracle, seed, cycle bound and timeout.
     return subprocess.run([sys.executable, '-B', 'tools/sim/sim.py',
         '--workdir', str(workdir), 'test', '--direct', recipe['target']], cwd=ROOT,
         env=dict(os.environ, **{recipe['variable']: str(image)}),

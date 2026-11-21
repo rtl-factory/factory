@@ -65,7 +65,7 @@ class Bench:
         self.buttons = held
         d.reset_i.value = 0
         self.model.reset()
-        # The first edge after release samples the held buttons.
+        # Why: the first edge after release samples the held buttons.
         await RisingEdge(d.clk_i)
         self.expected_event = self.model.edge(held)
 
@@ -137,8 +137,6 @@ async def joypad_contract(dut):
     await RisingEdge(dut.clk_i)
     await b.reset()
 
-    # Reset state: both rows selected, nothing pressed, upper bits high; the
-    # address claim; writes to unclaimed addresses change nothing.
     assert await b.read() == 0xCF, 'reset P1'
     for address in UNCLAIMED:
         await b.edge(read=address)
@@ -146,7 +144,7 @@ async def joypad_contract(dut):
     assert await b.read() == 0xCF
     assert await b.pulse_count(4) == 0
 
-    # Literal row table: each button alone under every select value reads
+    # Ref: Pan Docs "Joypad Input": each button alone under every select value reads
     # its line low only when its row is selected; the select bits read back
     # and the other P1 write bits are ignored.
     rows = {RIGHT: (SELECT_DIRECTIONS, 1), LEFT: (SELECT_DIRECTIONS, 2), UP: (SELECT_DIRECTIONS, 4),
@@ -154,14 +152,13 @@ async def joypad_contract(dut):
             SELECT: (SELECT_ACTIONS, 4), START: (SELECT_ACTIONS, 8)}
     for button, (row, line) in rows.items():
         for select in (SELECT_BOTH, SELECT_ACTIONS, SELECT_DIRECTIONS, SELECT_NONE):
-            await b.write((select << 4) | 0xCF, buttons=0)      # other bits ignored
+            await b.write((select << 4) | 0xCF, buttons=0)
             await b.edge(buttons=button)
             visible = select in (row, SELECT_BOTH)
             assert await b.read() == p1_value(select, line if visible else 0), (
                 'row table', hex(button), select, hex(await b.read()))
     await b.edge(buttons=0)
 
-    # Two rows together: Right and Start under each select value.
     await b.write(SELECT_BOTH << 4, buttons=RIGHT | START)
     assert await b.read() == 0xC6
     await b.write(SELECT_ACTIONS << 4)
@@ -178,31 +175,27 @@ async def joypad_contract(dut):
     assert await b.read() == 0xC6
     await b.edge(buttons=0)
 
-    # Events: a press on a selected line pulses exactly one cycle after the
-    # sampling edge; holding, releasing and unselected presses do not.
     await b.write(SELECT_DIRECTIONS << 4, buttons=0)
     assert await b.pulse_count(2) == 0
-    await b.edge(buttons=UP)                       # sampled on this edge
+    await b.edge(buttons=UP)
     assert await b.pulse_count(1) == 1, 'pulse one cycle after the press'
     assert await b.pulse_count(8) == 0, 'a held button pulses once'
     assert int(dut.selected_active_o.value) == 1
-    await b.edge(buttons=UP | A)                   # action row not selected
+    await b.edge(buttons=UP | A)
     assert await b.pulse_count(3) == 0, 'an unselected press is silent'
-    await b.edge(buttons=UP | A | DOWN)            # second selected line
+    await b.edge(buttons=UP | A | DOWN)
     assert await b.pulse_count(1) == 1
-    await b.edge(buttons=A)                        # releases
+    await b.edge(buttons=A)
     assert await b.pulse_count(3) == 0, 'a release is silent'
     assert int(dut.selected_active_o.value) == 0
-    # A select write exposing an already pressed button is a fall.
+    # Ref: Pan Docs "Interrupt Sources": a select write exposing an already pressed button is a fall.
     await b.write(SELECT_ACTIONS << 4)
     assert await b.pulse_count(1) == 1, 'select write exposing A pulses'
     assert await b.read() == 0xDE
-    await b.write(SELECT_DIRECTIONS << 4)          # hides A: lines rise
+    await b.write(SELECT_DIRECTIONS << 4)
     assert await b.pulse_count(3) == 0
-    await b.write(SELECT_BOTH << 4)                # exposes A again
+    await b.write(SELECT_BOTH << 4)
     assert await b.pulse_count(1) == 1
-    # Two selected lines falling on one edge make one pulse; a press and an
-    # exposing select write on the same edge make one pulse.
     await b.edge(buttons=0)
     await b.write(SELECT_NONE << 4)
     await b.edge(buttons=LEFT | RIGHT)
@@ -213,8 +206,6 @@ async def joypad_contract(dut):
     assert await b.pulse_count(1) == 1
     assert await b.read() == 0xC4
 
-    # Reset clears the sample and selects both rows; a button held through
-    # reset is a fall on the first edge after release.
     await b.reset(held=START)
     assert await b.pulse_count(1) == 1, 'held button requests after reset release'
     assert await b.read() == 0xC7
@@ -222,8 +213,6 @@ async def joypad_contract(dut):
     assert await b.pulse_count(3) == 0
     assert await b.read() == 0xCF
 
-    # Seeded random traffic against the model: button changes, P1 and
-    # unclaimed writes, reads, with event coverage counted.
     events_before = b.events
     for _ in range(2000):
         roll = b.rng.random()

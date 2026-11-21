@@ -56,8 +56,8 @@ module n2d_ps2_keyboard #(
     frame_error: 1'b0,
     timeout_error: 1'b0};
   ps2_rx_t rx_q, rx_d;
-  // Frame timeout counter: its width follows FRAME_TIMEOUT_CYCLES, so it is
-  // a register of its own beside the packaged receiver record.
+  // Why: the frame timeout counter's width follows FRAME_TIMEOUT_CYCLES, so it
+  // is a register of its own beside the packaged receiver record.
   logic [TIMEOUT_WIDTH-1:0] frame_timeout_q, frame_timeout_d;
   logic [9:0] fifo_memory [0:FIFO_DEPTH-1];
   localparam ps2_fifo_t FIFO_RESET = '{
@@ -154,16 +154,18 @@ module n2d_ps2_keyboard #(
   assign clear_diagnostics = control_write_accept && mmio_request_write_data_i[2];
   assign fifo_has_push_space = (fifo_q.fifo_count < FIFO_COUNT_LIMIT) || fifo_pop;
   assign physical_push_accept = physical_event_push && fifo_has_push_space;
-  // The serialized physical source has priority. UART valid is retained by
-  // its producer until this ready signal is observed.
+  // Why: the serialized physical source has priority because its frames have
+  // no handshake to hold them off; UART valid is retained by its producer
+  // until this ready signal is observed, so it can wait.
   assign inject_ready_o = !control_write_accept && !physical_event_push &&
                           fifo_has_push_space;
   assign uart_push_accept = inject_valid_i && inject_ready_o;
   assign mmio_inject_accept = request_accept && mmio_inject_request &&
                               mmio_inject_legal;
-  // The byte stream is the lowest-priority producer: a prefix byte only
+  // Why: the byte stream is the lowest-priority producer: a prefix byte only
   // updates its qualifiers and is always taken; a completing byte owns a slot
-  // only when no other source pushes on this edge.
+  // only when no other source pushes on this edge, so it never displaces a
+  // physical or UART event.
   assign scan_inject_prefix = (scan_inject_byte_i == 8'he0) ||
                               (scan_inject_byte_i == 8'hf0);
   assign scan_inject_ready_o = scan_inject_prefix ||
@@ -235,7 +237,7 @@ module n2d_ps2_keyboard #(
     end
     if (control_write_accept) begin
       rx_d.receiver_enable = mmio_request_write_data_i[0];
-      // A control write is an explicit receive-boundary operation. Discard
+      // Why: a control write is an explicit receive-boundary operation. Discard
       // any partial frame and prefix state so a coincident pin edge cannot
       // survive the priority operation and later report a ghost timeout.
       rx_d.frame_active = 1'b0;
@@ -333,9 +335,9 @@ module n2d_ps2_keyboard #(
   end
 
   `N2A_DFF_ARST_VAL(fifo_q, fifo_d, clk_i, reset_i, FIFO_RESET)
-  // The entry write lives in the same asynchronous-reset event control as
-  // the FIFO bookkeeping: reset only inhibits the write and the storage is
-  // never reset.
+  // Why: the storage is never reset so it can infer RAM; its entry write shares
+  // the FIFO bookkeeping's asynchronous-reset event control so reset still
+  // inhibits the write.
   logic [2:0] fifo_write_address;
   assign fifo_write_address = fifo_q.fifo_write_pointer;
   `N2A_MEM_WRITE_ARST_GATED(fifo_memory, clk_i, reset_i, fifo_write, fifo_write_address, fifo_push_data)
@@ -357,9 +359,6 @@ module n2d_ps2_keyboard #(
   `N2A_DFF_ARST_VAL(mmio_response_read_data_q, mmio_response_read_data_d, clk_i, reset_i, 32'b0)
   `N2A_DFF_ARST_VAL(mmio_response_error_q, mmio_response_error_d, clk_i, reset_i, 1'b0)
 
-  // Always-present contract checks with the original asynchronous-reset
-  // event control; response_stalled_q keeps its own flop so $stable is
-  // sampled exactly as before.
   logic response_stalled_q_next;
   assign response_stalled_q_next = mmio_response_valid_q && !mmio_response_ready_i;
   `N2A_DFF_ARST_VAL(response_stalled_q, response_stalled_q_next, clk_i, reset_i, 1'b0)

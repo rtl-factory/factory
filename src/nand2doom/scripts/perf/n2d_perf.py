@@ -30,8 +30,9 @@ from src.nand2doom.scripts.host.n2d_uart_debug_host import (  # noqa: E402
 )
 
 BACKENDS = {"fast": "n2d_perf_fast", "sdram": "n2d_perf_sdram"}
-# Legacy oracle, scoped to its reference firmware. Firmware instruction changes
-# can change deterministic game tics; never repin ordinary frame ordinals.
+# Why: these legacy pins hold only for their reference firmware: an instruction
+# change can change deterministic game tics, so ordinary frame ordinals are
+# never repinned.
 DETERMINISTIC_PINS = {
     "scene": "9da80229",
     "scene_vga": "516470a8",
@@ -76,16 +77,14 @@ def render_oracle(geometry: str = "full") -> dict:
     return fixture
 
 
-# Framebuffer geometry target suffix: full width (DE2-115) or half width
-# (DE10-Lite).
 GAME_STATE_SYMBOLS = ("gametic", "maketic", "ticdup", "leveltime",
                       "prndindex", "rndindex", "fuzzpos")
 GEOMETRIES = {"full": "", "half": "_half"}
-PACKET_GAP = 0x100  # list token: wait before the next packet
-INPUT_LIMIT = 8     # the unified input FIFO depth; nothing drains it while halted
+PACKET_GAP = 0x100  # Why: above any byte value, so it cannot collide with an input token; it means wait before the next packet
+INPUT_LIMIT = 8     # Why: nothing drains the eight-entry unified input FIFO while halted
 CLOCK_HZ = 25_000_000
 
-# PMON event names by ID (wiki/src/nand2doom/rtl/core/mas.md "Performance monitor").
+# Ref: wiki/src/nand2doom/rtl/core/mas.md "Performance monitor": PMON event names by ID.
 PMON_EVENTS = {
     1: "CYCLES", 2: "INSTRET", 3: "IFETCH_WAIT", 4: "DATA_HOLD", 5: "LOAD_USE_HOLD",
     6: "MULDIV_HOLD", 8: "DATA_ADMISSION_HOLD", 9: "BRANCH_REDIRECT", 10: "TRAP_ENTRY",
@@ -104,13 +103,14 @@ PMON_EVENTS = {
     94: "DCACHE_WRITE_BUFFER_PENDING", 95: "DCACHE_WRITE_BUFFER_WAIT",
     96: "DCACHE_PREFETCH_DEFERRED", 97: "DCACHE_PREFETCH_CANCEL",
 }
-# Exclusive per-clock cycle classes in harness priority order; "other" is
-# the unattributed remainder.
+# Ref: wiki/src/nand2doom/dv/platform/dv-plan.md "Reports and CPI classification":
+# exclusive per-clock cycle classes in harness priority order; "other" is the
+# unattributed remainder.
 CYCLE_CLASSES = ("retire", "divide", "uncached_wait", "dmiss_wait", "load_use",
                "mul_use", "data_admission", "serialize", "ifetch_wait", "halted",
                "other")
-# Root-cause split of two stall classes (wiki/src/nand2doom/dv/platform/dv-plan.md "Stall split"): each
-# clock of the parent class is in exactly one of its split classes.
+# Ref: wiki/src/nand2doom/dv/platform/dv-plan.md "Stall split": each clock of the
+# parent class is in exactly one of its split classes.
 STALL_SPLIT = {
     "ifetch_wait": ("ifetch_predict", "ifetch_mispredict", "ifetch_redirect", "ifetch_miss",
                     "ifetch_other"),
@@ -300,7 +300,8 @@ def cycle_breakdown(events: dict[str, int], classes: dict[str, int],
     stack["uncached_wait_per_access"] = ratio(
         events.get("UNCACHED_WAIT", 0),
         events.get("UNCACHED_FB_STORE", 0) + events.get("UNCACHED_MMIO_ACCESS", 0), 2)
-    # Next-line D-prefetch (wiki/src/nand2doom/rtl/memory/mas.md): share of issued lines a miss used.
+    # Ref: wiki/src/nand2doom/rtl/memory/mas.md "Next-line prefetch": accuracy is the
+    # share of issued lines a miss used.
     stack["dcache_prefetch_accuracy"] = ratio(events.get("DCACHE_PREFETCH_USEFUL", 0),
                                               events.get("DCACHE_PREFETCH_ISSUE", 0), 4)
     return stack
@@ -314,7 +315,8 @@ def summarize(result: dict) -> dict:
         summary["scene_cycles"] = scene["cycle"]
         summary["scene_ipc"] = round(scene["retired"] / scene["cycle"], 4) if scene["cycle"] else None
     gameplay = [f for f in result["frames"] if f["after_scene"]]
-    # A gameplay frame interval is end-to-end between consecutive bank swaps.
+    # Why: frame intervals run end to end between consecutive bank swaps, so waits
+    # count toward them.
     ends = [f["end"] for f in result["frames"]]
     retires = [f["retired_end"] for f in result["frames"]]
     if len(gameplay) >= 1 and len(ends) >= 2:
@@ -327,8 +329,8 @@ def summarize(result: dict) -> dict:
             summary["cycles_per_frame"] = round(mean)
             summary["fps_at_25mhz"] = round(CLOCK_HZ / mean, 3)
             summary["gameplay_ipc"] = round(sum(retired) / sum(intervals), 4)
-    # Swap request to swap completion is what a frame-end blocking wait would
-    # spend; spin is what the deferred wait actually spends polling.
+    # Why: swap request to completion is what a frame-end blocking wait would spend,
+    # while spin is what the deferred wait actually spends polling.
     timed = [f for f in gameplay if "wait" in f]
     if timed:
         summary["swap_wait_cycles_per_frame"] = round(sum(f["wait"] for f in timed) / len(timed))
@@ -587,7 +589,7 @@ def main(argv: list[str] | None = None) -> int:
     for path in (image_dir, output):
         if workdir not in path.parents and path != workdir:
             raise SystemExit(f"error: {path} must be below {workdir}")
-    binary = REPO_ROOT / f"workdir/sim/cocotb/{target}/obj/{target}_sim"  # tools/sim build layout
+    binary = REPO_ROOT / f"workdir/sim/cocotb/{target}/obj/{target}_sim"  # Ref: tools/sim build layout
     try:
         uart_tokens(tuple(args.input))
     except ValueError as error:

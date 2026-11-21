@@ -101,14 +101,11 @@ async def system_objects_frame(dut):
     cocotb.start_soon(watch_frame_starts())
 
     peripherals = ObjectsPeripherals()
-    memory = GameBoyMemory(image, io_read=peripherals.read, io_write=peripherals.write)   # strict
+    memory = GameBoyMemory(image, io_read=peripherals.read, io_write=peripherals.write)
     peripherals.memory = memory
     model = CPU(mem=memory)
     retirements, interrupts = 0, []
     pixels_before_lcd = 0
-    # DMA observation: machine ticks at which the transfer level rose and
-    # fell, the retirement tick of the register write, and every retirement
-    # PC while the level was high.
     dma_edges, dma_write_ticks, pcs_during_dma = [], [], []
     dma_active = 0
     halted = False
@@ -161,14 +158,13 @@ async def system_objects_frame(dut):
     assert int(dut.halted_o.value) == 1, 'CPU must report HALT after the halting retirement'
     cocotb.log.info('program halted after %d retirements and %d edges', retirements, cycles)
 
-    # One VBlank interrupt entered from HALT at the predicted tick.
     assert peripherals.lcdc_writes == 1 and len(frame_starts) >= 1
     assert len(interrupts) == 1 and interrupts[0][1] == 0, ('VBlank interrupt entries', interrupts)
     entry_tick, visible_tick = interrupts[0][0], peripherals.vblank_tick + 1
     assert entry_tick == visible_tick + HALT_WAKE_CYCLES, (
         f'interrupt entry at tick {entry_tick}, flag visible at tick {visible_tick}')
 
-    # One DMA transfer: the level rose at the retirement tick of the HRAM
+    # Why: one DMA transfer: the level rose at the retirement tick of the HRAM
     # routine's register write (the write lands in the machine cycle before
     # the retiring one, so the retiring cycle is the armed cycle and the
     # transfer starts at the tick that ends it), lasted exactly 160 machine
@@ -182,9 +178,6 @@ async def system_objects_frame(dut):
         'instructions outside HRAM during the transfer', [f'{pc:04x}' for pc in pcs_during_dma][:5])
     assert len(pcs_during_dma) >= 80, len(pcs_during_dma)
 
-    # Signatures: the program-defined VRAM, WRAM and HRAM bytes, the OAM
-    # copied by the transfer (all 160 bytes, equal to the shadow), and the
-    # pinned register/handler evidence.
     for name, store in (('vram', dut.u_memory.u_vram), ('wram', dut.u_memory.u_wram),
                         ('hram', dut.u_memory.u_hram), ('oam', dut.u_memory.u_oam)):
         observed, expected = defined_signature(store_bytes(store_array(store)), memory, name)
@@ -200,7 +193,6 @@ async def system_objects_frame(dut):
     assert lcd[m.LCDC] == 0xF3 and len(memory.defined['vram']) == 128 + 2048
     assert int(dut.u_memory.interrupt_enable_o.value) == memory.interrupt_enable() == 0
 
-    # One complete frame from the next frame start, pixel by pixel.
     stats = {}
     expected_frame = m.render_frame(bytes(memory.vram), shadow, lcd, stats)
     observed = [[None] * m.VISIBLE_PIXELS for _ in range(m.VISIBLE_LINES)]
@@ -225,7 +217,6 @@ async def system_objects_frame(dut):
     await ReadOnly()
     assert int(dut.u_interrupts.interrupt_flags_o.value) & 0x01 and int(dut.halted_o.value) == 1
 
-    # The frame exercised every rule the program was written for.
     assert stats['window_pixels'] == 64 * 67 and stats['overflow_lines'] == 8, stats
     assert stats['object_pixels'] >= 300 and stats['priority_covered'] >= 20, stats
     assert stats['ties'] >= 1 and stats['lower_x_wins'] >= 1, stats
@@ -233,8 +224,8 @@ async def system_objects_frame(dut):
     shades = sorted({shade for row in observed for shade in row})
     assert shades == [0, 1, 2, 3], f'the frame must use all four shades, saw {shades}'
 
-    # Negative controls: a changed window pixel and a changed sprite pixel
-    # are both rejected by the frame comparison.
+    # Why: proves the check can fail: a changed window pixel and a changed sprite pixel
+    # must both be rejected by the frame comparison.
     for (x, y) in ((100, 100), (55, 102)):
         corrupted = [row[:] for row in expected_frame]
         corrupted[y][x] ^= 1

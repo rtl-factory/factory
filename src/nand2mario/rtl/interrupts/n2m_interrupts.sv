@@ -36,7 +36,8 @@ module n2m_interrupts (
     if (write_if) flags_d = io_request_i.write_data[4:0];
     flags_d = flags_d & ~interrupt_ack_i;
   end
-  // Reset leaves VBlank pending, the DMG boot-ROM handoff value (IF $E1).
+  // Ref: Pan Docs "Power Up Sequence": reset leaves VBlank pending, the DMG
+  // boot-ROM handoff value (IF $E1).
   `N2A_DFF_RST_VAL(flags_q, flags_d, clk_i, reset_i, 5'h01)
   assign interrupt_flags_o = flags_q;
 

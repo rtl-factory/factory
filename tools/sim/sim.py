@@ -93,7 +93,7 @@ def run_native(name: str, target: dict, base: Path) -> int:
         if subprocess.run(build, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT).returncode:
             return 1
     if target.get("regression_action") == "compile":
-        # A harness that needs inputs prepared elsewhere (a program image, a
+        # Why: a harness that needs inputs prepared elsewhere (a program image, a
         # script's plusargs): the regression only proves that it builds.
         return 0
     with open(base / "test.log", "w") as log:
@@ -114,11 +114,12 @@ def run_target(name: str, target: dict, workdir: Path, seed: int | None, waves: 
     base.mkdir(parents=True)
     timeout = target.get("timeout_seconds", 600) + COMPILE_ALLOWANCE_SECONDS
     if wrapped:
-        # The wrapper prepares the program image, then runs this target directly.
+        # Why: the wrapper prepares the program image before it runs this target
+        # directly, so it needs a longer budget.
         timeout *= 4
         fields = {"output": str(base / "out"), "workdir": str(base / "lane")}
         argv = [sys.executable, "-B", "-m"] + [a.format(**fields) for a in target["wrapper"]]
-        # The wrapper's own `test --direct` call picks these up.
+        # Why: the wrapper's own `test --direct` call reads these from the environment.
         env.update(SIM_SEED=str(seed), SIM_WAVES="1" if waves else "")
     else:
         argv = [sys.executable, "-B", __file__, "--workdir", str(workdir), "_child", name, "--seed", str(seed)]
@@ -127,7 +128,7 @@ def run_target(name: str, target: dict, workdir: Path, seed: int | None, waves: 
     start = time.monotonic()
     log = base / "run.log"
     with log.open("w") as handle:
-        # Own process group, so a timeout also stops the simulator and any wrapper
+        # Why: own process group, so a timeout also stops the simulator and any wrapper
         # children; a --direct run stays in its wrapper's group so the outer kill reaches it.
         proc = subprocess.Popen(argv, cwd=ROOT, stdout=handle, stderr=subprocess.STDOUT,
                                 env=env, start_new_session=not direct)
@@ -135,7 +136,7 @@ def run_target(name: str, target: dict, workdir: Path, seed: int | None, waves: 
             code, verdict = proc.wait(timeout=timeout), None
         except subprocess.TimeoutExpired:
             if direct:
-                proc.kill()  # the wrapper's group kill covers its children
+                proc.kill()  # Why: the wrapper's group kill covers its children
             else:
                 os.killpg(proc.pid, signal.SIGKILL)
             proc.wait()

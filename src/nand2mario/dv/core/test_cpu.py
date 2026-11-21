@@ -86,7 +86,7 @@ class Bench:
         if ce: self.enables += 1
         d.clk_i.value = 1
         await Timer(20, unit='ns')
-        # Model synchronous IE/IF writes: the CPU sees the old value on the
+        # Why: model synchronous IE/IF writes: the CPU sees the old value on the
         # response edge and the new value on the next edge, as in the system.
         if self.map_interrupt_registers:
             if ie_write is not None: d.interrupt_enable_i.value = ie_write
@@ -141,7 +141,7 @@ class Bench:
 
 def setup_program(rng):
     a, f = rng.randrange(256), rng.randrange(16) << 4
-    # Independent, original setup sets AF through POP and preserves safe memory.
+    # Why: AF is loadable only through POP, so the setup pushes BC and pops it into AF.
     return bytes([0x31, 0x00, 0xD0, 0x01, f, a, 0xC5, 0xF1,
                   0x01, rng.randrange(256), rng.randrange(256),
                   0x11, 0x10, 0xC1, 0x21, 0x23, 0xC1])
@@ -154,7 +154,7 @@ async def cpu_contract(dut):
     bench = Bench(dut, seed)
     rng = random.Random(seed)
     cocotb.log.info('CPU oracle seed=%d', seed)
-    # Both flag polarity sets drive every conditional path, with varied operands.
+    # Why: both flag polarity sets drive every conditional path, with varied operands.
     for trial in range(2):
         for op in range(256):
             if op in ILLEGAL or op in (0xCB, 0x10, 0x76): continue
@@ -174,7 +174,6 @@ async def cpu_contract(dut):
         mem[0xC123] = rng.randrange(256)
         await bench.reset(mem)
         await bench.check(CPU(bytearray(mem)), 8, f'CB={op:02x}')
-    # Generated straight-line programs compare every retirement, including flags.
     for trial in range(8):
         program = bytearray(setup_program(rng))
         for _ in range(40):
@@ -184,13 +183,11 @@ async def cpu_contract(dut):
         await bench.reset(mem)
         bench.delay = trial % 5
         await bench.check(CPU(bytearray(mem)), 7+40*6, f'generated={trial}', timing=bench.delay == 0)
-    # Illegal opcodes cannot retire or perform any architectural memory write.
     for op in ILLEGAL:
         mem = bytearray(65536); mem[0x100] = op
         await bench.reset(mem)
         for _ in range(30): assert await bench.edge() is None
         assert int(dut.locked_o.value) and not bench.writes
-    # A responder fault is sticky and never converted into instruction success.
     await bench.reset(bytearray(65536)); bench.fault_response = True
     for _ in range(20): assert await bench.edge() is None
     assert int(dut.fault_o.value) and not int(dut.request_o.value) >> 27
@@ -212,13 +209,11 @@ async def cpu_contract(dut):
 
 async def sleep_interrupt_protocol(b):
     d = b.dut
-    # EI maturation, EI/EI, and DI cancellation are checked in retirement state.
     for program in (bytes([0xFB, 0, 0xF3, 0]), bytes([0xFB, 0xFB, 0, 0xF3]),
                     bytes([0xFB, 0xF3, 0, 0])):
         mem = bytearray(65536); mem[0x100:0x104] = program
         await b.reset(mem)
         await b.check(CPU(bytearray(mem)), 4, 'EI delay/DI cancellation')
-    # Priority, every vector, exact five-cycle entry, stack order and RETI.
     for pending in (1, 2, 4, 8, 16, 31, 24):
         mem = bytearray(65536); mem[0x100:0x104] = bytes([0xFB, 0, 0, 0x76])
         bit = (pending & -pending).bit_length()-1
@@ -246,7 +241,7 @@ async def sleep_interrupt_protocol(b):
         got = await b.retire()
         assert all(got[k] == v for k, v in expected.items()), (expected, got)
         assert b.enables-previous == cycles == 4
-    # IRQ withdrawal after entry recognition vectors to zero without ack;
+    # Ref: Pan Docs, interrupt dispatch: an IRQ withdrawn after entry recognition vectors to $0000 without ack;
     # stack effects and the five-cycle entry still complete.
     mem = bytearray(65536); mem[0x100:0x103] = bytes([0xFB, 0, 0])
     await b.reset(mem); d.interrupt_enable_i.value = 1; d.interrupt_flags_i.value = 1
@@ -256,7 +251,6 @@ async def sleep_interrupt_protocol(b):
     got = await b.retire()
     assert got['is_interrupt'] and got['pc_after'] == 0 and not b.acks
     assert b.enables-previous == 5 and b.writes == [(0xFFFD, 1), (0xFFFC, 2)]
-    # IME-enabled late HALT wake enters the interrupt after sleeping.
     mem[0x100:0x104] = bytes([0xFB, 0, 0x76, 0])
     await b.reset(mem)
     await b.retire(); await b.retire(); got = await b.retire()
@@ -266,7 +260,7 @@ async def sleep_interrupt_protocol(b):
     got = await b.retire()
     assert got['is_interrupt'] and got['pc_before'] == 0x103 and got['pc_after'] == 0x50
     assert b.writes == [(0xFFFD, 1), (0xFFFC, 3)]
-    # HALT no-IME wake and HALT bug, including duplicated immediate fetch.
+    # Ref: Pan Docs, HALT behaviour: the no-IME wake and the HALT bug, which fetches the next byte twice.
     mem = bytearray(65536); mem[0x100:0x105] = bytes([0x76, 0x3E, 0x42, 0, 0])
     await b.reset(mem)
     got = await b.retire()
@@ -278,8 +272,6 @@ async def sleep_interrupt_protocol(b):
     got = await b.retire()
     assert (got['pc_before'], got['pc_after'], got['a']) == (0x101, 0x103, 0x42)
     assert not got['halted'] and not b.acks
-    # An IRQ may disappear after it woke HALT and launched a delayed read.
-    # That read must remain valid and complete exactly once.
     await b.reset(mem)
     await b.retire()
     b.delay = 8
@@ -298,14 +290,13 @@ async def sleep_interrupt_protocol(b):
         got = await b.retire()
         assert all(got[k] == v for k, v in expected.items()), ('HALT bug', expected, got)
     assert got['a'] == 0x3E and got['opcode'] == 0x3E3E
-    # EI/HALT with already pending IRQ returns to HALT, not the next opcode.
+    # Ref: Pan Docs, HALT behaviour: EI then HALT with an IRQ already pending returns to the HALT, not the next opcode.
     mem[0x100:0x104] = bytes([0xFB, 0x76, 0, 0])
     await b.reset(mem); d.interrupt_enable_i.value = 1; d.interrupt_flags_i.value = 1
     await b.retire(); got = await b.retire()
     assert got['pc_after'] == 0x101 and got['ime'] and not got['halted']
     got = await b.retire()
     assert got['is_interrupt'] and got['pc_before'] == 0x101
-    # All four digital STOP entry decisions, padding and qualified wake.
     for selected in (0, 1):
         for pending in (0, 1):
             mem = bytearray(65536); mem[0x100:0x104] = bytes([0x10, 0, 0, 0])
@@ -324,8 +315,6 @@ async def sleep_interrupt_protocol(b):
                 await b.edge(False); d.wake_i.value = 0
                 got = await b.retire()
                 assert got['pc_before'] == 0x101+(not pending) and not got['stopped']
-    # Response completion is buffered during an enable pause; writes occur once.
-    # LD [$C000],A stores the post-boot A ($01).
     mem = bytearray(65536); mem[0x100:0x104] = bytes([0xEA, 0, 0xC0, 0])
     await b.reset(mem)
     for _ in range(12):
@@ -336,7 +325,6 @@ async def sleep_interrupt_protocol(b):
     assert b.writes == [(0xC000, 1)]
     got = await b.retire()
     assert got['pc_before'] == 0x100 and b.writes == [(0xC000, 1)]
-    # Reset cancels a waiting request and all execution/fault/sleep state.
     await b.reset(mem); b.delay = 100
     await b.edge()
     assert b.pending is not None
@@ -376,8 +364,6 @@ async def wake_sampling_boundaries(b):
     for _ in range(120): assert await b.edge() is None
     assert int(d.halted_o.value) and b.reads == reads and not b.writes
 
-    # A pulse present at a real boundary admits a request; later withdrawal
-    # cannot cancel that request, including waits spanning another boundary.
     await b.reset(mem)
     await b.retire()
     b.delay = 30
@@ -389,7 +375,7 @@ async def wake_sampling_boundaries(b):
     d.interrupt_flags_i.value = 0
     got = await b.retire()
     assert (got['pc_before'], got['pc_after'], got['a']) == (0x101, 0x103, 0x42)
-    assert b.reads.count(0x101) == 2  # discarded pre-HALT fetch, then fresh wake
+    assert b.reads.count(0x101) == 2  # Why: the discarded pre-HALT fetch, then the fresh wake fetch.
     assert not b.acks and not b.writes
     b.period = 3
 
@@ -398,7 +384,7 @@ async def interrupt_stack_selection(b):
     """IE changes by the upper push affect selection; lower push is too late."""
     d = b.dut
     b.period = 24
-    # Independent expected vectors/ack masks come from the specified push
+    # Why: independent expected vectors/ack masks come from the specified push
     # ordering, not the implementation's microsteps. PC at dispatch is $0205.
     for delay in (0, 23, 29):
         for sp, pending, vector, ack, remaining in (
@@ -423,8 +409,6 @@ async def interrupt_stack_selection(b):
             assert int(d.interrupt_enable_i.value) == (2 if sp == 0 else 5), label
             cocotb.log.info('interrupt stack boundary sp=%04x pending=%02x delay=%d events=%s',
                             sp, pending, delay, b.events)
-            # Cancellation still disables IME; another pending source must
-            # not dispatch before software explicitly enables interrupts.
             d.interrupt_enable_i.value = 16
             d.interrupt_flags_i.value = 16
             got = await b.retire(bound=400)
@@ -452,8 +436,6 @@ async def interrupt_selection_adjacent(b):
         assert b.acks == [1 << bit] and int(d.interrupt_flags_i.value) == 0, b.events
         assert writes[1][0] == writes[0][0] + 1 == acks[0][0], b.events
         cocotb.log.info('interrupt adjacent vector=%04x events=%s', vector, b.events)
-    # An upper IE write may cancel on the same edge that the lower push
-    # completes. A fault or reset on that edge must suppress acknowledgement.
     for action in ('cancel', 'fault', 'reset'):
         mem = bytearray(65536)
         mem[0x100:0x106] = bytes([0x31, 0, 0, 0xFB, 0, 0])
@@ -499,7 +481,6 @@ async def interrupt_wake_timing(b):
             b.delay = delay
             await b.retire(); await b.retire(); got = await b.retire()
             assert got['halted'] == sleeping and got['ime']
-            # Let the ordinary next fetch finish before the IRQ boundary.
             for _ in range(delay+1): await b.edge(False)
             d.interrupt_enable_i.value = 1
             d.interrupt_flags_i.value = 1
@@ -524,7 +505,7 @@ async def halt_ime0_resume_timing(b):
         await b.reset(mem)
         got = await b.retire()
         assert got['halted'] and not got['ime'] and b.reads.count(0x101) == 1
-        # The pre-HALT pipeline byte was NOP. Wake must fetch the changed
+        # Why: the pre-HALT pipeline byte was NOP. Wake must fetch the changed
         # INC B, rather than silently using the stale prefetch to save time.
         b.mem[0x101] = 0x04
         for _ in range(23): assert await b.edge(False) is None
@@ -537,7 +518,7 @@ async def halt_ime0_resume_timing(b):
             got = await b.edge(offset % 24 == 0)
             if b.reads.count(0x101) == 2 and response_at is None:
                 response_at = offset
-                # Isolate wake-response latency; following accesses are
+                # Why: isolate wake-response latency; following accesses are
                 # unstalled, so retirement belongs to the next boundary.
                 b.delay = 0
             if offset == 0:
@@ -556,7 +537,6 @@ async def halt_ime0_resume_timing(b):
         cocotb.log.info('IME0 wake delay=%d response_offset=%d retire_offset=%d machine_cycles=%d events=%s',
                         delay, response_at, offset, b.enables-before, b.events)
 
-    # A faulted wake response cannot decode or retire an instruction.
     await b.reset(mem)
     await b.retire()
     b.delay = 4
@@ -569,7 +549,6 @@ async def halt_ime0_resume_timing(b):
     assert int(d.fault_o.value) and not int(d.request_o.value) >> 27
     assert b.reads.count(0x101) == 1 and not b.acks and not b.writes
 
-    # Reset cancels a qualified but uncompleted wake and its fault state.
     await b.reset(mem)
     await b.retire()
     b.delay = 29
@@ -601,8 +580,6 @@ async def interrupt_selection_hold(b):
             await b.edge()
             if b.writes: break
         else: raise AssertionError('upper push did not complete')
-        # The first response has completed. Advance to its machine boundary,
-        # then one system edge: selection precedes the held lower response.
         while b.cycles % b.period: await b.edge()
         await b.edge(False)
         assert b.pending is not None and len(b.writes) == 1, b.events
@@ -666,7 +643,6 @@ async def di_interrupt_boundary(b):
 
 
 async def original_image(b):
-    # Explicit local software build is required before this test.
     root = Path(__file__).resolve().parents[4]
     image_arg = os.environ.get('N2M_CPU_IMAGE')
     assert image_arg, 'set N2M_CPU_IMAGE to the documented locally built smoke image'

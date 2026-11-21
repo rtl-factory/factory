@@ -43,14 +43,14 @@ CONNECTIVITY_DETAIL = ("Declared by entity but not connected by instance. "
                        "Logic that only feeds a dangling port will be removed.")
 CONNECTIVITY_AGGREGATE = ("Warning (12241): 1 hierarchies have connectivity warnings - "
                           "see the Connectivity Checks report folder")
-# Every check_timing category of Quartus 25.1std; only the listed ones may be nonzero.
+# Ref: every check_timing category of Quartus 25.1std; only the listed ones may be nonzero.
 CHECK_TIMING_CATEGORIES = set(
     "no_clock multiple_clock pos_neg_clock_domain generated_clock virtual_clock no_input_delay "
     "no_output_delay partial_input_delay partial_output_delay io_min_max_delay_consistency reference_pin "
     "generated_io_delay latency_override partial_multicycle multicycle_consistency loops latches "
     "pll_cross_check uncertainty partial_min_max_delay clock_assignments_on_output_ports "
     "input_delay_assigned_to_clock".split())
-# The forwarded DRAM_CLK pin is its generated clock's target, not a data
+# Why: the forwarded DRAM_CLK pin is its generated clock's target, not a data
 # output requiring set_output_delay.
 ALLOWED_CHECK_TIMING = {"no_clock": 1, "virtual_clock": 1, "no_output_delay": 1}
 
@@ -230,7 +230,7 @@ def fitted_resources(report: str, config: dict) -> dict:
     resources = {}
     for label in ("Total logic elements", "Total registers", "M9Ks", "Total PLLs",
                   "Embedded Multiplier 9-bit elements"):
-        # The fitter's resource table marks "Total registers*" (registers in
+        # Ref: the Quartus fitter's resource table marks "Total registers*" (registers in
         # LEs and I/O); the summary's unstarred row has no device total.
         match = re.search(r";\s*" + re.escape(label) + r"\*?\s*;\s*([\d,]+)\s*/\s*([\d,]+)", report)
         if not match:
@@ -246,7 +246,7 @@ def fitted_resources(report: str, config: dict) -> dict:
             header = cells
         elif header and len(cells) == len(header):
             row = dict(zip(header, cells))
-            # The fitted M9Ks column, not the requested Type, proves physical
+            # Why: the fitted M9Ks column, not the requested Type, proves physical
             # block allocation.
             if row["M9Ks"].isdigit() and int(row["M9Ks"]) > 0:
                 memories.append(row)
@@ -304,7 +304,6 @@ def validate_clocks(clocks: dict, system_clock: str, config: dict) -> dict:
         system_clock: {"Type": "Generated", "Period": 40, "Rise": 0, "Fall": 20,
                        "Divide by": 2, "Multiply by": 1, "Inverted": "false", "Master": "reference",
                        "Source": system_clock.rsplit("|", 1)[0] + "|inclk[0]", "Targets": system_clock},
-        # DRAM_CLK: the inverted system clock at its pin (storage HAS).
         SDRAM_CLOCK: {"Type": "Generated", "Period": 40, "Rise": 20, "Fall": 40,
                       "Divide by": 1, "Multiply by": 1, "Inverted": "true", "Master": system_clock,
                       "Source": system_clock, "Targets": SDRAM_CLOCK_PORT},
@@ -519,7 +518,7 @@ def verify_reports(output: Path, config: dict) -> dict:
             raise RuntimeError("incomplete DAC timing summary")
     allowed_check = dict(ALLOWED_CHECK_TIMING)
     if de2:
-        allowed_check["no_output_delay"] = 2  # Both generated forwarded-clock ports.
+        allowed_check["no_output_delay"] = 2  # Why: the DE2-115 forwards two generated clocks to output ports, each a no_output_delay
     check = (reports / "check_timing.rpt").read_text(encoding="latin-1")
     counts = dict(re.findall(r";\s*([a-z_]+)\s*;\s*(\d+)\s*;", check))
     if (set(counts) != CHECK_TIMING_CATEGORIES or
@@ -561,7 +560,7 @@ def verify_reports(output: Path, config: dict) -> dict:
         raise RuntimeError("missing or duplicate reviewed connectivity evidence")
     if connectivity and not aggregates:
         raise RuntimeError("connectivity warnings without their aggregate diagnostic")
-    validate_library_ram_warnings(warnings, config)  # Before deduplication: duplicates are a failure.
+    validate_library_ram_warnings(warnings, config)  # Why: before deduplication, since duplicates are a failure.
     unreviewed = [line for line in warnings if line != CONNECTIVITY_AGGREGATE and not any(
         re.fullmatch(pattern, line) for pattern in config["reviewed_warnings"])]
     if unreviewed:
@@ -614,8 +613,9 @@ def validate_library_ram_warnings(warnings: list[str], config: dict) -> None:
     require(len(patterns) == 8 and len(group) == 10 and len(set(group)) == 10 and
             all(group.count(header) == 1 for header in headers), "incomplete/duplicate removed RAM warnings")
     details = [w for w in group if w not in headers]
-    # One pattern per node index, rather than accepting an arbitrary count of
-    # matching memories. Each pattern also binds the generated type to its file.
+    # Why: one pattern per node index, so an extra or a missing removed RAM node fails
+    # instead of matching an arbitrary count; each pattern also binds the generated
+    # type to its file.
     require(all(sum(re.fullmatch(pattern, w) is not None for w in details) == 1 for pattern in patterns) and
             all(sum(re.fullmatch(pattern, w) is not None for pattern in patterns) == 1 for w in details),
             "unreviewed removed RAM node")
@@ -764,7 +764,7 @@ def validate_image_identity(sof: Path, *, project: str, device: str, library: bo
         config = selected_config(ROOT, board, library=library)
         require(config["project"] == project, "selected cartridge profile mismatch")
         require(isinstance(inputs, dict) and set(inputs) == {"config", "sha256"}, "input manifest fields")
-        # The board tool must run with the reviewed profile, not an unrelated
+        # Why: the board tool must run with the reviewed profile, not an unrelated
         # checkout whose pins, constraints or warning policy differ from the fit.
         require(json.dumps(inputs["config"], sort_keys=True) == json.dumps(config, sort_keys=True), "input board profile mismatch")
         names = set(config["sources"] + config["headers"] + [config["settings"], config["constraints"]])
@@ -809,11 +809,11 @@ def record_launcher_child(sidecar: Path, process, timeout: int) -> None:
 def run(command: list[str], output: Path, log: str, timeout: int) -> None:
     print("$ " + shlex.join(command), flush=True)
     environment = os.environ.copy()
-    # Quartus 25.1 TBB allocator interposition can fail before compilation;
+    # Why: Quartus 25.1 TBB allocator interposition can fail before compilation;
     # this process-local setting does not change synthesis.
     environment["TBB_MALLOC_DISABLE_REPLACEMENT"] = "1"
     with (output / log).open("w") as stream:
-        # A new session lets a timeout kill the whole tool process group.
+        # Why: a new session lets a timeout kill the whole tool process group.
         process = subprocess.Popen(command, cwd=output, env=environment,
                                    stdout=stream, stderr=subprocess.STDOUT,
                                    start_new_session=True)

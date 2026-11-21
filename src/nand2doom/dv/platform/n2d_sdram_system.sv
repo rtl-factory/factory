@@ -1,4 +1,8 @@
 `ifndef SYNTHESIS
+// Same public boundary as n2d_integrated_system, but line traffic goes
+// through the product n2d_memory_controller (arbiter plus SDRAM controller)
+// into a cycle-level SDRAM device. As on the board, the system stays in
+// reset until SDRAM initialization completes.
 module n2d_sdram_system #(
     parameter bit FRAMEBUFFER_FULL_WIDTH = 1'b1,
     // Each board's D-cache follows its framebuffer geometry: four-way with
@@ -44,11 +48,8 @@ module n2d_sdram_system #(
     output logic vga_hsync_o, vga_vsync_o, frame_start_o, frame_end_o,
     output logic [31:0] frame_sequence_o
 );
-    // Same public boundary as n2d_integrated_system, but line traffic goes
-    // through the product n2d_memory_controller (arbiter plus SDRAM
-    // controller) into a cycle-level SDRAM device. As on the board, the
-    // system stays in reset until SDRAM initialization completes.
-    // Instruction line traffic is read-only; its write payload is unused.
+    // Why: instruction line traffic is read-only, so its write payload is
+    // unused.
     /* verilator lint_off UNUSEDSIGNAL */
     logic [2:0] memory_request_prefetch;
     logic [2:0] memory_request_valid, memory_request_ready;
@@ -131,8 +132,9 @@ module n2d_sdram_system #(
         .preload_valid_i(preload_mode_i && preload_valid_i),
         .preload_address_i, .preload_data_i, .preload_byte_enable_i);
 
-    // CKE/CS are tied active by the controller; fault injection is a
-    // fast-model feature with no meaning on the real controller path.
+    // Why: CKE/CS are tied active by the controller and fault injection is a
+    // fast-model feature with no meaning on the real controller path, so these
+    // inputs are unused.
     /* verilator lint_off UNUSEDSIGNAL */
     logic unused_inputs;
     assign unused_inputs = sdram_cke ^ sdram_cs_n ^ sdram_force_error_i;

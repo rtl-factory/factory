@@ -46,8 +46,8 @@ RECORD_BYTES = cart_loader.SNAPSHOT_RECORD_BYTES
 MAGIC, VERSION = b'NM', 1
 SCHEMA = 'n2m-frame-snapshot/1'
 KIND = 'raw 160x144 frame-store snapshot read over the nand2mario UART loader (not a VGA capture)'
-# Display palette: shade 0 (lightest) .. 3 as 4-bit grey F, A, 5, 0, here in
-# 8 bits; the border of the 640x480 reconstruction is black.
+# Ref: n2m_display_pkg shade_rgb: shade 0 (lightest) .. 3 as 4-bit grey F, A, 5, 0,
+# here in 8 bits; the border of the 640x480 reconstruction is black.
 GREY = (0xFF, 0xAA, 0x55, 0x00)
 VGA_WIDTH, VGA_HEIGHT, SCALE, LEFT, TOP = 640, 480, 3, 80, 24
 MAX_GIF_FRAMES = 64
@@ -59,7 +59,7 @@ class Snapshot:
     frame_id: int
     bank: int
     on_screen: bool
-    shades: tuple          # PIXELS shades in row-major order
+    shades: tuple
     sha256: str
 
 
@@ -103,7 +103,7 @@ def apply_manifest(snapshot: Snapshot, manifest: dict | None):
     if at_end not in (None, True, False):
         raise ValueError(f'manifest on_screen_at_end is {at_end!r}, not a boolean')
     if at_end is True and not snapshot.on_screen:
-        # Only a swap revalidates the display, and none happens while pinned.
+        # Why: only a swap revalidates the display, and none happens while pinned.
         raise ValueError('manifest says on screen at the end, but the record was off screen when pinned')
     if at_end is False:
         snapshot = Snapshot(snapshot.frame_id, snapshot.bank, False, snapshot.shades, snapshot.sha256)
@@ -196,7 +196,7 @@ def lzw_encode(indices, min_code_size=2) -> bytes:
             table, next_code, size = reset()
         else:
             table[candidate] = next_code
-            # The decoder widens its codes once the next code no longer fits.
+            # Ref: GIF89a LZW: the decoder widens its codes once the next code no longer fits.
             if next_code == (1 << size) and size < 12:
                 size += 1
             next_code += 1
@@ -214,7 +214,7 @@ def gif_bytes(frames: list, durations_ms: list, comment: str) -> bytes:
     width, height = len(frames[0][0]), len(frames[0])
     palette = b''.join(bytes([level] * 3) for level in GREY)
     data = bytearray(b'GIF89a' + struct.pack('<HHBBB', width, height, 0x80 | 0x01, 0, 0) + palette)
-    data += b'\x21\xff\x0bNETSCAPE2.0\x03\x01\x00\x00\x00'          # loop forever
+    data += b'\x21\xff\x0bNETSCAPE2.0\x03\x01\x00\x00\x00'          # Ref: NETSCAPE2.0 extension, loop count 0 loops forever
     note = comment.encode('ascii')
     data += b'\x21\xfe' + b''.join(bytes([len(note[i:i + 255])]) + note[i:i + 255] for i in range(0, len(note), 255)) + b'\x00'
     for rows, duration in zip(frames, durations_ms):
@@ -353,7 +353,6 @@ def main(argv=None, *, root: Path = ROOT, open_serial=None) -> int:
                 result['vga_png' if vga else 'png'] = str(path)
             print(json.dumps(result, indent=2))
             return 0
-        # gif
         path = output_path(args.out, root)
         if not 1 <= len(args.dumps) <= MAX_GIF_FRAMES:
             raise ValueError(f'a GIF takes 1 to {MAX_GIF_FRAMES} records')

@@ -20,8 +20,8 @@ class Peripherals:
         self.serial = SerialModel()
         self.ticks = 0
         self.reload_ticks = []
-        self.completions = []          # (tick, transmitted byte) per serial byte
-        self.joypad_event_ticks = []   # ticks at which a bench press raised the flag
+        self.completions = []
+        self.joypad_event_ticks = []
         self.pending_presses = set()
 
     def advance(self, ticks):
@@ -36,7 +36,8 @@ class Peripherals:
             if self.timer.tick():
                 self.reload_ticks.append(self.ticks)
                 sources |= TIMER
-            # The serial shift clock is the falling edge of divider bit 6.
+            # Ref: Pan Docs, serial transfer: the internal clock shifts at 8192 Hz.
+            # Why: divider bit 6 falls at that rate, so its falling edge is the shift clock.
             byte = self.serial.edge(clock=self.serial_clock(bit6))
             if byte is not None:
                 self.completions.append((self.ticks, byte))
@@ -76,13 +77,13 @@ class Peripherals:
             bit6 = self.timer.divider >> SERIAL_CLOCK_BIT & 1
             self.timer.edge(write=(address, value))
             if self.serial_clock(bit6):
-                # A DIV write that drops bit 6 is a shift clock edge too; a
+                # Why: a DIV write that drops bit 6 is a shift clock edge too; a
                 # completion here is not expected by the system programs.
                 assert self.serial.edge(clock=True) is None
         elif address == IF:
             self.flags.edge(write=value)
         elif address == P1:
-            # A select write exposing a pressed button raises the flag on the
+            # Why: a select write exposing a pressed button raises the flag on the
             # edge after the write, before the program's next access.
             if self.joypad.edge(write=value):
                 self.flags.edge(sources=JOYPAD)

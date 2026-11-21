@@ -171,7 +171,7 @@ class Bench:
                 break
             await FallingEdge(d.clk_i)
             if accepted:
-                d.request_i.value = word & ~(1 << 27)   # the memory responder withdraws valid once accepted
+                d.request_i.value = word & ~(1 << 27)   # Why: a requester withdraws valid once its request is accepted.
                 d.backing_ready_i.value = 0
                 if not local and edges + 1 == response_at:
                     d.backing_response_i.value = (1 << 8) | served
@@ -195,7 +195,6 @@ class Bench:
             assert not (int(d.backing_request_o.value) >> BACKING_VALID) & 1, 'backing request without a request'
             await self.edge()
             await FallingEdge(d.clk_i)
-        # Model: apply the write or compare the read with the byte-level view.
         if write:
             self.model.write(address, data)
         else:
@@ -260,7 +259,7 @@ async def mbc1_contract(dut):
     cocotb.start_soon(Clock(dut.clk_i, CLOCK_PERIOD_NS, unit='ns').start())
     await b.reset()
 
-    # --- ROM-only: identity on 32 KiB, register writes ignored, RAM absent.
+    # Ref: Pan Docs "No MBC": ROM-only maps 32 KiB directly, ignores register writes and has no RAM.
     await b.load_header(m.ROM_ONLY, 0x00, 0x00)
     for address in (0x0000, 0x3FFF, 0x4000, 0x7FFF, 0x0150):
         assert b.model.translate(address, False) == ('rom', address)
@@ -274,14 +273,12 @@ async def mbc1_contract(dut):
         data, _, _ = await b.expect_local(address)
         assert data == m.OPEN_BUS
         await b.expect_local(address, write=True, data=0x5A)
-    # Load-port writes elsewhere do not touch the header.
     for address in (0x0146, 0x014A, 0x0100, 0x7FFF, 0x1FFFFF):
         await b.load(address, b.rng.randrange(256))
     await b.write(0x2000, 0x02)
     assert b.model.translate(0x4000, False) == ('rom', 0x4000)
     await b.read(0x4000)
 
-    # --- Other mapper types behave as ROM-only without RAM.
     for cartridge_type in (0x05, 0x13, 0x1B, 0xFC):
         await b.load_header(cartridge_type, 0x05, 0x03)
         await b.expect_local(0x2000, write=True, data=0x03)
@@ -291,48 +288,50 @@ async def mbc1_contract(dut):
         data, _, _ = await b.expect_local(0xA000)
         assert data == m.OPEN_BUS
 
-    # --- MBC1 without RAM, 2 MiB: every bank bit reaches the backing.
+    # Ref: Pan Docs "MBC1": BANK1 resets to 1, stores five bits and maps zero to 1;
+    # BANK2 (bits 5-6) reaches the high window, and the low window in mode 1;
+    # only bit 0 of the mode register is stored.
     await b.load_header(m.MBC1, 0x06, 0x00)
     await b.reset()
-    await b.expect_rom(0x4000, 1)                 # reset BANK1 = 1
+    await b.expect_rom(0x4000, 1)
     await b.expect_rom(0x0000, 0)
-    await b.write(0x2000, 0x00)                   # zero selects bank 1
+    await b.write(0x2000, 0x00)
     await b.expect_rom(0x4000, 1)
     await b.write(0x2000, 0x1F)
     await b.expect_rom(0x7FFF, 31)
-    await b.write(0x4000, 0x03)                   # BANK2 = 3: high window bank 127, low window still 0
+    await b.write(0x4000, 0x03)
     await b.expect_rom(0x7FFF, 127)
     await b.expect_rom(0x3FFF, 0)
-    await b.write(0x6000, 0x01)                   # mode 1: low window bank 96
+    await b.write(0x6000, 0x01)
     await b.expect_rom(0x0000, 96)
     await b.expect_rom(0x3FFF, 96)
     await b.expect_rom(0x4000, 127)
     await b.write(0x4000, 0x01)
     await b.expect_rom(0x0000, 32)
-    await b.write(0x2000, 0x60)                   # only five bits are stored: 0x60 & 0x1F = 0 -> bank 1
+    await b.write(0x2000, 0x60)
     await b.expect_rom(0x4000, 33)
-    await b.write(0x6000, 0xFE)                   # only bit 0 is stored: mode 0
+    await b.write(0x6000, 0xFE)
     await b.expect_rom(0x0000, 0)
     await b.expect_rom(0x4000, 33)
-    await b.write(0x0000, 0x0A)                   # RAMG accepted, but there is no RAM
+    await b.write(0x0000, 0x0A)
     data, _, _ = await b.expect_local(0xA000)
     assert data == m.OPEN_BUS
     await b.expect_local(0xBFFF, write=True, data=0x11)
 
-    # --- MBC1+RAM, 256 KiB / 32 KiB: masking, the five-bit zero check, RAM
-    # enable nibble, RAM banking in both modes.
+    # Ref: Pan Docs "MBC1": the bank number is masked to the ROM size after the
+    # five-bit zero check, RAM enables on a low nibble of $A, and BANK2 picks the
+    # RAM bank in mode 1 only.
     await b.load_header(m.MBC1_RAM_BATTERY, 0x03, 0x03)
     await b.reset()
-    await b.write(0x2000, 0x10)                   # bank 16 & 15 = 0: bank 0 in the high window
+    await b.write(0x2000, 0x10)
     await b.expect_rom(0x4000, 0)
     await b.write(0x2000, 0x12)
     await b.expect_rom(0x4000, 2)
-    await b.write(0x4000, 0x03)                   # BANK2 is beyond a 16-bank ROM
+    await b.write(0x4000, 0x03)
     await b.expect_rom(0x4000, 2)
     await b.write(0x6000, 0x01)
-    await b.expect_rom(0x0000, 0)                 # BANK2 << 5 masked away too
+    await b.expect_rom(0x0000, 0)
     await b.write(0x6000, 0x00)
-    # RAM disabled after reset: local; enable with any low nibble $A.
     data, _, _ = await b.expect_local(0xA000)
     assert data == m.OPEN_BUS
     await b.expect_local(0xA000, write=True, data=0x77)
@@ -349,9 +348,9 @@ async def mbc1_contract(dut):
     assert await b.expect_ram(0xA000, 0) == 0x80 | 0xFA, 'a disabled write is dropped'
     await b.write(0xBFFF, 0x3C)
     assert await b.expect_ram(0xBFFF, 0) == 0x3C
-    await b.write(0x4000, 0x02)                   # mode 0: RAM bank 0 regardless of BANK2
+    await b.write(0x4000, 0x02)
     assert await b.expect_ram(0xA000, 0) == 0x80 | 0xFA
-    await b.write(0x6000, 0x01)                   # mode 1: RAM bank 2
+    await b.write(0x6000, 0x01)
     await b.write(0xA000, 0xC2)
     assert await b.expect_ram(0xA000, 2) == 0xC2
     await b.write(0x4000, 0x03)
@@ -365,7 +364,7 @@ async def mbc1_contract(dut):
     await b.write(0x6000, 0x01)
     assert await b.expect_ram(0xA000, 2) == 0xC2
 
-    # --- RAM-bearing types with RAM size $00 (or the unused $01) have no RAM:
+    # Ref: Pan Docs "The Cartridge Header": RAM-bearing types with RAM size $00 (or the unused $01) have no RAM:
     # RAMG is accepted, an enabled read is local $FF and a write is dropped.
     for cartridge_type in (m.MBC1_RAM, m.MBC1_RAM_BATTERY):
         for ram_code in (0x00, 0x01):
@@ -381,15 +380,13 @@ async def mbc1_contract(dut):
             await b.write(0x6000, 0x01)
             await b.write(0x4000, 0x02)
             await b.expect_local(0xA000, write=True, data=0x5B)
-            await b.expect_rom(0x0000, 64)                # the ROM side still banks
-    await b.load_header(m.MBC1_RAM, 0x06, 0x02)          # size $02: one bank exists
+            await b.expect_rom(0x0000, 64)
+    await b.load_header(m.MBC1_RAM, 0x06, 0x02)
     await b.reset()
     await b.write(0x0000, 0x0A)
     await b.write(0xA000, 0x2C)
     assert await b.expect_ram(0xA000, 0) == 0x2C
 
-    # --- A header reloaded to ROM-only (or an unsupported type) without a
-    # reset: the stale MBC1 registers must not reach the translation.
     await b.load_header(m.MBC1_RAM_BATTERY, 0x06, 0x03)
     await b.reset()
     await b.write(0x2000, 0x02)
@@ -401,7 +398,7 @@ async def mbc1_contract(dut):
     await b.write(0xA000, 0x77)
     assert await b.expect_ram(0xA000, 3) == 0x77
     for cartridge_type in (m.ROM_ONLY, 0x13):
-        await b.load_header(cartridge_type, 0x00, 0x00)   # no reset
+        await b.load_header(cartridge_type, 0x00, 0x00)
         assert b.model.registers[m.BANK1] == 2, 'the stale registers stay'
         for address in (0x0000, 0x3FFF, 0x4000, 0x4123, 0x7FFF):
             assert b.model.translate(address, False) == ('rom', address)
@@ -410,12 +407,12 @@ async def mbc1_contract(dut):
         assert data == m.OPEN_BUS
         await b.expect_local(0x2000, write=True, data=0x05)
         await b.expect_local(0xA000, write=True, data=0x11)
-    await b.load_header(m.MBC1_RAM_BATTERY, 0x06, 0x03)   # back to MBC1: the stale state applies again
+    await b.load_header(m.MBC1_RAM_BATTERY, 0x06, 0x03)
     await b.expect_rom(0x0000, 96)
     await b.expect_rom(0x4000, 98)
     assert await b.expect_ram(0xA000, 3) == 0x77
 
-    # --- 8 KiB RAM has one bank in either mode; 1 MiB ROM uses BANK2 bit 0.
+    # Ref: Pan Docs "MBC1": 8 KiB RAM has one bank in either mode; 1 MiB ROM uses BANK2 bit 0.
     await b.load_header(m.MBC1_RAM, 0x05, 0x02)
     await b.reset()
     await b.write(0x0000, 0x0A)
@@ -423,27 +420,25 @@ async def mbc1_contract(dut):
     await b.write(0x4000, 0x03)
     await b.write(0xA000, 0x8A)
     assert await b.expect_ram(0xA000, 0) == 0x8A
-    await b.expect_rom(0x0000, 32)                # 96 & 63
+    await b.expect_rom(0x0000, 32)
     await b.expect_rom(0x4000, 33)
     await b.write(0x4000, 0x02)
-    await b.expect_rom(0x0000, 0)                 # 64 & 63
+    await b.expect_rom(0x0000, 0)
     await b.expect_rom(0x4000, 1)
 
-    # --- Oversize and odd ROM size codes keep all seven bank bits.
     for code in (0x07, 0x08, 0x52, 0x54, 0xFF):
         await b.load_header(m.MBC1, code, 0x00)
         await b.reset()
         await b.write(0x2000, 0x1F)
         await b.write(0x4000, 0x03)
         await b.expect_rom(0x4000, 127)
-    await b.load_header(m.MBC1, 0x00, 0x00)       # 32 KiB MBC1: one bank bit
+    await b.load_header(m.MBC1, 0x00, 0x00)
     await b.reset()
     await b.write(0x2000, 0x1E)
     await b.expect_rom(0x4000, 0)
     await b.write(0x2000, 0x1F)
     await b.expect_rom(0x4000, 1)
 
-    # --- Reset restores the registers but keeps the loaded header.
     await b.load_header(m.MBC1_RAM_BATTERY, 0x05, 0x03)
     await b.reset()
     await b.write(0x0000, 0x0A)
@@ -464,7 +459,6 @@ async def mbc1_contract(dut):
     await b.write(0x6000, 0x01)
     await b.write(0x4000, 0x01)
     assert await b.expect_ram(0xA000, 1) == 0x99, 'RAM contents survive reset'
-    # Reset while a backing request is outstanding drops the response path.
     await FallingEdge(dut.clk_i)
     dut.request_i.value = request_word(1, 0, DATA, 0x4000, 0)
     dut.backing_ready_i.value = 1
@@ -474,7 +468,6 @@ async def mbc1_contract(dut):
     assert not response_fields(int(dut.response_o.value))[0]
     await b.edge()
 
-    # --- Directed long stalls: the response follows the backing exactly.
     await b.write(0x6000, 0x00)
     await b.write(0x2000, 0x07)
     data, latency, expected = await b.transact(0x4000, ready_delay=6, response_delay=6)
@@ -487,8 +480,6 @@ async def mbc1_contract(dut):
     data, latency, expected = await b.transact(0xA010, ready_delay=0, response_delay=4)
     assert (data, latency, expected) == (0x42, 4, 4), ('slow read', data, latency, expected)
 
-    # --- Randomized phase over a 2 MiB MBC1+RAM cartridge with the full
-    # latency distribution; coverage is asserted for this phase alone.
     await b.load_header(m.MBC1_RAM_BATTERY, 0x06, 0x03)
     await b.reset()
     b.coverage = Coverage()

@@ -329,9 +329,10 @@ async def _run_system(dut, *, preload: bool, capture_vga: bool) -> None:
     assert halted.status == ST_OK
     sequence = (sequence + 1) & 0xFF
 
-    # The firmware's palette commit swaps banks at the next vertical blank,
-    # which may still be pending when a fast core halts. Pass one vertical
-    # blank so the inactive (readback) bank no longer depends on core speed.
+    # Why: the firmware's palette commit swaps banks at the next vertical
+    # blank, which may still be pending when a fast core halts. Pass one
+    # vertical blank so the inactive (readback) bank no longer depends on core
+    # speed.
     await _settle_palette_commit(dut)
 
     framebuffer_before = await _exchange(
@@ -398,7 +399,8 @@ async def _run_system(dut, *, preload: bool, capture_vga: bool) -> None:
     framebuffer_crc = zlib.crc32(framebuffer) & 0xFFFFFFFF
     vga_crc = None
     if capture_vga:
-        # The host pokes landed in the back bank: the display is unchanged.
+        # Why: the host pokes landed in the back bank, so the displayed frame
+        # must be unchanged.
         vga_crc = await _capture_actual_frame_crc(dut)
         assert vga_crc == _expected_vga_crc(expected_frame)
     assert state["retirements"] > 64_000

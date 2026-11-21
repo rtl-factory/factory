@@ -75,10 +75,10 @@ module n2d_framebuffer_vga #(
   localparam fb_cpu_t CPU_RESET = '{response_valid: 1'b0, in_range: 1'b0, bank: 1'b0,
                                     front_bank: 1'b0, swap_pending: 1'b0};
   fb_cpu_t cpu_q, cpu_d;
-  // Scan lane of the previous scan address; its width follows FULL_WIDTH, so
-  // it is a register of its own beside the packaged software-port record.
+  // Why: the scan lane of the previous scan address has a width that follows
+  // FULL_WIDTH, so it is a register of its own beside the packaged
+  // software-port record.
   logic [LANE_BITS-1:0] scan_lane_select_q, scan_lane_select_d;
-  // Palette RAM outputs: port A is the software view, port B the scan view.
   logic [7:0] palette_cpu_low, palette_scan_low;
   logic [3:0] palette_cpu_high, palette_scan_high;
   logic       palette_low_write, palette_high_write;
@@ -137,20 +137,21 @@ module n2d_framebuffer_vga #(
   always_comb begin
     source_x = timing_x[9:1];
     source_y = 8'((timing_y - 10'd40) >> 1);
-    // Row-major source pixel offset; its word holds the stored pixel at both
+    // Why: a row-major source pixel offset addresses the stored pixel at both
     // widths because a half-width word stores source pixels x and x+2.
     scan_address = (16'(source_y) * 16'd320) + 16'(source_x);
     cpu_word = framebuffer_request_address_i[15:2];
     cpu_in_range = 32'(cpu_word) < ACTIVE_WORD_COUNT;
-    // Writes and ordinary reads use the back bank; the front view reads the
-    // scanned bank.
+    // Ref: wiki/src/nand2doom/rtl/video/mas.md "Requirements" VID-R1: writes and
+    // ordinary reads use the back bank while VGA scans the front, so a displayed
+    // frame never tears; the front view reads the scanned bank.
     cpu_bank = framebuffer_request_front_i ? cpu_q.front_bank : ~cpu_q.front_bank;
-    // First vertical-blank line: every active pixel of the frame has been
-    // fetched, so a bank or palette flip here is frame-atomic.
+    // Why: on the first vertical-blank line every active pixel of the frame has
+    // been fetched, so a bank or palette flip here is frame-atomic.
     vertical_blank_start = timing_line_start && (timing_y == 10'd480);
   end
 
-  // Each bank has LANES byte RAMs indexed by framebuffer word; RAM index
+  // Why: each bank has LANES byte RAMs indexed by framebuffer word; RAM index
   // k holds bank k / LANES, lane k % LANES. Two copies of each lane give the
   // software port and the scan port independent read addresses: the
   // software copy reads at its request word (single port), the scan copy
@@ -186,8 +187,9 @@ module n2d_framebuffer_vga #(
   end
   endgenerate
 
-  // Software port bookkeeping and bank control. The swap request is retained
-  // until the first vertical-blank line; a request on that clock also swaps.
+  // Ref: wiki/src/nand2doom/rtl/video/mas.md "Requirements" VID-R1: the swap
+  // request is retained until the first vertical-blank line, so a swap never
+  // tears a frame; a request on that clock also swaps.
   always_comb begin
     cpu_d = cpu_q;
     cpu_d.response_valid = framebuffer_request_valid_i;
@@ -208,7 +210,7 @@ module n2d_framebuffer_vga #(
   `N2A_DFF_RST(scan_lane_select_q, scan_lane_select_d, clk_i, reset_i)
   assign framebuffer_response_valid_o = cpu_q.response_valid;
 
-  // A half-width read returns each stored byte for both source pixels it
+  // Why: a half-width read returns each stored byte for both source pixels it
   // represents, so every read sees the displayed 320-wide image.
   always_comb begin
     for (int index = 0; index < 4; index++)
@@ -217,7 +219,7 @@ module n2d_framebuffer_vga #(
     scan_index = scan_lane_q[cpu_q.front_bank][scan_lane_select_q];
   end
 
-  // The inactive palette is software-visible; the active one is scanned.
+  // Why: the inactive palette is software-visible; the active one is scanned.
   // Neither bank is reset (wiki/src/nand2doom/rtl/video/mas.md): until the first commit takes
   // effect the active bank is bank 0, which software cannot have written, so
   // scanout is forced black instead, exactly the image of a black-reset bank.
@@ -240,13 +242,13 @@ module n2d_framebuffer_vga #(
 
   `N2A_DFF_RST_VAL(pal_q, pal_d, clk_i, reset_i, PAL_RESET)
 
-  // Both banks share one block RAM per strobe lane, addressed by
+  // Why: both banks share one block RAM per strobe lane, addressed by
   // {bank, index}: bits 7:0 under strobe 0 and bits 11:8 under strobe 1.
   // Port A reads and writes the inactive bank at the request index (or only
   // reads the active bank for the endpoint's scanned-palette view); port B
   // only reads the active bank at the scanned index, so the ports never
-  // write one address while the other reads it. Reads are unconditional and read-first, like the
-  // registered lookups they replace.
+  // write one address while the other reads it. Reads are unconditional and
+  // read-first.
   n2a_tdp_ram #(.DATA_WIDTH(8), .DEPTH(512)) u_palette_low (
     .clk_i(clk_i),
     .a_write_enable_i(palette_low_write),
@@ -269,15 +271,17 @@ module n2d_framebuffer_vga #(
     .b_write_data_i(4'b0),
     .b_read_data_o(palette_scan_high)
   );
-  // Data is defined only with response_valid, as for the framebuffer port.
+  // Why: data is defined only with response_valid, as for the framebuffer
+  // port, so the RAM outputs drive it without masking.
   assign palette_response_read_data_o = {20'b0, palette_cpu_high, palette_cpu_low};
   assign palette_response_valid_o = pal_q.response_valid;
   assign palette_commit_pending_o = pal_q.commit_pending;
   assign active_palette_bank_o = pal_q.active_bank;
 
-  // Synchronous framebuffer read plus synchronous palette RAM read form a
-  // fixed two-clock pixel pipeline. Timing and event signals take the same
-  // delay; the commit flag is sampled with the bank that addresses the read.
+  // Why: synchronous framebuffer read plus synchronous palette RAM read form a
+  // fixed two-clock pixel pipeline, so timing and event signals take the same
+  // delay to stay aligned with their pixel; the commit flag is sampled with the
+  // bank that addresses the read.
   always_comb begin
     pipe_d.x_q = timing_x;
     pipe_d.x_qq = pipe_q.x_q;
@@ -298,7 +302,7 @@ module n2d_framebuffer_vga #(
 
   `N2A_DFF_RST_VAL(pipe_q, pipe_d, clk_i, reset_i, PIPE_RESET)
 
-  // Consume the common line-end event as a local contract check. This keeps
+  // Why: consuming the common line-end event as a local contract check keeps
   // scanout coupled to the shared timing definition rather than re-deriving it.
   `N2A_ASSERT_CLOCKED_FATAL_WHEN_UNGUARDED(clk_i, reset_i, timing_frame_end, timing_line_end,
       "n2d framebuffer frame end must coincide with line end")

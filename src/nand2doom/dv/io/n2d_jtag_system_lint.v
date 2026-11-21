@@ -10,7 +10,7 @@
 `verilator_config
 lint_off -rule SYNCASYNCNET -file "*src/common/rtl/sync/n2a_reset_sync.sv" -match "*'*u_jtag_keyboard.u_sys_reset.stages_q'"
 lint_off -rule SYNCASYNCNET -file "*src/common/rtl/sync/n2a_reset_sync.sv" -match "*'*u_jtag_keyboard.u_scan_reset.stages_q'"
-// Board tops elaborate the common n2a_jtag_virtual on the Verilator stand-in
-// of the vendor primitive, which keeps the vendor module name in a stub-named
-// file (https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/jtag/HAS.md).
+// Ref: board tops elaborate the common n2a_jtag_virtual on the Verilator stand-in of the
+// vendor primitive, which keeps the vendor module name in a stub-named file
+// (https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/jtag/HAS.md).
 lint_off -rule DECLFILENAME -file "*src/common/dv/jtag/sld_virtual_jtag_stub.sv" -match "*'sld_virtual_jtag'*"

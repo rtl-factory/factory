@@ -10,7 +10,7 @@ ROM_REGIONS = ('ROM0', 'ROM1')
 RAM_REGIONS = ('VRAM', 'WRAM', 'OAM', 'HRAM')
 REGIONS = {name: (getattr(hw, 'GB_' + name + '_START'), getattr(hw, 'GB_' + name + '_END') + 1)
            for name in ('ROM0', 'ROM1') + RAM_REGIONS}
-# Bank of a ROM region: sections in different banks share CPU addresses, so
+# Why: sections in different banks share CPU addresses, so
 # overlap is judged inside one bank; every RAM region and ROM0 live in bank 0.
 BANKS = {'ROM0': 0, 'ROM1': 1}
 

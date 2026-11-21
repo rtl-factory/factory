@@ -59,12 +59,10 @@ module n2m_uart_loader #(
   `N2A_ASSERT_PARAM(g_invalid_timeout, RX_TIMEOUT_CLOCKS >= 10 * CLKS_PER_BIT,
       "n2m_uart_loader RX_TIMEOUT_CLOCKS must cover at least one serial frame")
 
-  // PHY.
   logic        rx_valid, rx_framing;
   logic [7:0]  rx_byte;
   logic        tx_ready;
 
-  // Frame fields and checksums.
   loader_state_t state_q, state_d;
   logic [7:0]  cmd_q, cmd_d, len_q, len_d, crc_lo_q, crc_lo_d;
   logic [23:0] addr_q, addr_d;
@@ -78,7 +76,8 @@ module n2m_uart_loader #(
   logic [7:0]  tx_byte_q, tx_byte_d;
   logic [TIMEOUT_WIDTH-1:0] timeout_count_q, timeout_count_d;
 
-  // Payload buffer: written as the payload arrives, read during the commit.
+  // Why: the payload is buffered so nothing is committed before the whole
+  // frame, CRC included, is in.
   logic        buffer_write, buffer_read, buffer_valid;
   logic [7:0]  buffer_address, buffer_data;
   logic        receiving, executing, timed_out;
@@ -89,7 +88,7 @@ module n2m_uart_loader #(
   logic        snap_read, snap_accept, snap_lost;
   logic [12:0] snap_offset;
 
-  // The PHY busy levels are not consumed: the frame parser follows the byte
+  // Why: the PHY busy levels are not consumed: the frame parser follows the byte
   // pulses and the transmitter handshake.
   /* verilator lint_off PINCONNECTEMPTY */
   n2a_uart_rx #(
@@ -146,7 +145,6 @@ module n2m_uart_loader #(
   );
   /* verilator lint_on PINCONNECTEMPTY */
 
-  // Classification of the current state.
   assign receiving = (state_q == CMD) || (state_q == ADDR0) || (state_q == ADDR1) ||
                      (state_q == ADDR2) || (state_q == LEN) || (state_q == PAYLOAD) ||
                      (state_q == CRC_LO) || (state_q == CRC_HI);
@@ -157,9 +155,8 @@ module n2m_uart_loader #(
   assign load_busy_o = (state_q == COMMIT_REQUEST) || (state_q == COMMIT_WAIT) ||
                        (((state_q == RESPOND_READ_REQUEST) || (state_q == RESPOND_READ_WAIT)) && !snap_read);
   assign load_accept = load_request_o.valid && load_ready_i;
-  // Snapshot reads: the record offset is the address field plus the byte
-  // index. A pin that vanished under a request (the display reset with the
-  // core) will never be answered: the byte is taken as zero instead.
+  // Why: a pin that vanished under a request (the display reset with the
+  // core) will never be answered, so the byte is taken as zero instead.
   assign snap_offset = addr_q[12:0] + 13'(index_q);
   assign snapshot_request_o.valid = (state_q == RESPOND_READ_REQUEST) && snap_read && snapshot_pinned_i;
   assign snapshot_request_o.offset = snap_offset;
@@ -169,9 +166,10 @@ module n2m_uart_loader #(
   assign snapshot_release_o = (state_q == DECIDE) && (status_code == STATUS_OK) && (cmd_q == CMD_SNAP_RELEASE);
   assign tx_accept = tx_pending_q && tx_ready;
 
-  // Status decided once the whole frame is in: the CRC first, then the
-  // command, its arguments, the hold requirement, the pin, the address range
-  // and finally whether a frame is there to pin.
+  // Why: the status is decided once the whole frame is in so a bad CRC is
+  // reported ahead of anything else, then the command, its arguments, the hold
+  // requirement, the pin, the address range and finally whether a frame is
+  // there to pin.
   always_comb begin
     status_code = STATUS_OK;
     if (!crc_match_q) status_code = STATUS_BAD_CRC;
@@ -185,7 +183,6 @@ module n2m_uart_loader #(
     else if ((cmd_q == CMD_SNAP_PIN) && !snapshot_pinned_i && !snapshot_available_i) status_code = STATUS_NO_FRAME;
   end
 
-  // Response header bytes in order.
   always_comb begin
     case (resp_index_q)
       3'd0: header_byte = SYNC_BYTE;
@@ -198,8 +195,6 @@ module n2m_uart_loader #(
     endcase
   end
 
-  // Load port: the current byte of the range; the ROM/RAM select is the
-  // address field's RAM bit.
   assign byte_address = addr_q[20:0] + 21'(index_q);
   always_comb begin
     load_request_o.valid = (state_q == COMMIT_REQUEST) || ((state_q == RESPOND_READ_REQUEST) && !snap_read);
@@ -277,8 +272,8 @@ module n2m_uart_loader #(
         state_d = DECIDE;
       end
       DECIDE: begin
-        // Execute HOLD/RELEASE, latch the status byte with the flags since
-        // the previous response and clear them, then commit or answer.
+        // Why: the flags clear when latched into the status byte, so each event is
+        // reported in exactly one response.
         if ((status_code == STATUS_OK) && (cmd_q == CMD_HOLD)) hold_d = 1'b1;
         if ((status_code == STATUS_OK) && (cmd_q == CMD_RELEASE)) hold_d = 1'b0;
         status_d = {hold_d, backing_initialized_i, framing_q, timeout_q, overrun_q, status_code};
@@ -353,7 +348,8 @@ module n2m_uart_loader #(
       default: state_d = IDLE;
     endcase
 
-    // A framing error or a receive timeout drops the frame in progress.
+    // Why: a framing error or a receive timeout drops the frame in progress so
+    // the parser resynchronizes instead of waiting forever.
     if (receiving && (rx_framing || timed_out)) begin
       state_d = IDLE;
       timeout_d = timeout_q || timed_out;

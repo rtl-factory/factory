@@ -1,12 +1,9 @@
 `include "src/common/rtl/pkg/macros.vh"
 
 // Q105H writeback and retirement observation
-//----------------------------------------------------------
 // 1. Write the committed destination register from the Q105H record.
 // 2. Publish the Q105H record as the registered observation port: one
 //    valid pulse per ordinary retirement or precise trap, in program order.
-//----------------------------------------------------------
-
 module n2d_wb (
     input  n2d_core_pkg::t_retire q105_i,
 
@@ -35,7 +32,7 @@ module n2d_wb (
 );
     n2d_core_pkg::t_retire record;
 
-    // Every observation field is zero outside a valid pulse, so consumers
+    // Why: every observation field is zero outside a valid pulse, so consumers
     // that sample a field without valid see no stale or bubble payload.
     always_comb begin
         record = q105_i.valid ? q105_i : '0;
