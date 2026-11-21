@@ -118,18 +118,23 @@ async def _observe_activity(signal, state: dict[str, int], key: str) -> None:
     state[key] = 1
 
 
-async def _observe_gameplay_frames(dut, trace: GameplayTrace) -> None:
+async def _observe_gameplay_frames(dut, trace: GameplayTrace, armed: Event) -> None:
     try:
-        await _gameplay_frame_loop(dut, trace)
+        await _gameplay_frame_loop(dut, trace, armed)
     except Exception as error:
         trace.failure = repr(error)
         trace.save(REPO_ROOT / "workdir/cocotb/n2d_doom_system/gameplay-trace.json")
         raise
 
 
-async def _gameplay_frame_loop(dut, trace: GameplayTrace) -> None:
+async def _gameplay_frame_loop(dut, trace: GameplayTrace, armed: Event) -> None:
     """A gameplay frame completes at a bank swap; its start is the last
-    back-bank write before the swap, the end of that frame's drawing."""
+    back-bank write before the swap, the end of that frame's drawing.
+
+    The bank shadows follow every write from the first CPU resume, because a
+    frame may keep rows drawn before gameplay starts (status-bar-only
+    persistence copies only rows below the view). Swaps before ``armed`` is
+    set are shadowed, not recorded (#100)."""
     framebuffer = bytearray(FRAME_BYTES)
     written = bytearray(FRAME_BYTES)
     banks = FramebufferBanks(dut, framebuffer, written)
@@ -140,7 +145,7 @@ async def _gameplay_frame_loop(dut, trace: GameplayTrace) -> None:
         while True:
             await ReadOnly()
             writing = int(dut.framebuffer_write_valid_o.value)
-            if banks.sample(dut):
+            if banks.sample(dut) and armed.is_set():
                 assert last_write is not None and all(written), "incomplete gameplay frame"
                 crc = zlib.crc32(framebuffer) & 0xffffffff
                 trace.frame(last_write, int(dut.system_tick_o.value), crc)
@@ -221,8 +226,12 @@ async def doom_boot_render_contract(dut) -> None:
 async def _run_doom_contract(dut, evidence, artifact) -> None:
     seed = int(os.environ["DV_SEED"])
     maximum = int(os.environ["DV_MAX_CYCLES"])
-    output = REPO_ROOT / "workdir/software/n2d_doom"
-    manifest = build_doom(output, REPO_ROOT, None)
+    # The input witness matches fixed call sites in I_StartTic, I_GetEvent and
+    # NetUpdate. The production profile (-O2, engine LTO) inlines them, so this
+    # gate builds the production variant with the -Os, no-LTO engine profile,
+    # as render verification does, into its own output (#100).
+    output = REPO_ROOT / "workdir/software/n2d_doom_gameplay"
+    manifest = build_doom(output, REPO_ROOT, None, engine_opt="Os", engine_lto=False)
     assert json.loads((output / "manifest.json").read_text()) == manifest
     gameplay = GameplayTrace(elf_symbols(output / "n2d_doom.elf"))
     input_armed, input_ready, input_boundary = Event(), Event(), Event()
@@ -277,6 +286,9 @@ async def _run_doom_contract(dut, evidence, artifact) -> None:
     framebuffer_monitor = cocotb.start_soon(
         observe_framebuffer_events(dut, framebuffer, written, health)
     )
+    gameplay_armed = Event()
+    frame_observer = cocotb.start_soon(
+        _observe_gameplay_frames(dut, gameplay, gameplay_armed))
     cache_activity = {"instruction_hits": 0, "instruction_misses": 0,
                       "data_hits": 0, "data_misses": 0}
     cache_monitors = [
@@ -382,7 +394,7 @@ async def _run_doom_contract(dut, evidence, artifact) -> None:
         retirements, manifest["segments"][0]["sha256"], manifest["segments"][1]["sha256"],
     )
 
-    frame_observer = cocotb.start_soon(_observe_gameplay_frames(dut, gameplay))
+    gameplay_armed.set()
 
     await FallingEdge(dut.clk_i)
     gameplay.begin_phase(0, int(dut.system_tick_o.value))
