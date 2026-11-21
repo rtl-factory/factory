@@ -14,7 +14,7 @@ test --test_timeout=-1,-1,-1,36000
 # Why: logs, results and traces stay browsable under bazel-testlogs/.../test.outputs/.
 test --nozip_undeclared_test_outputs
 
-# Regression levels (wiki/bkm/workflow/ci-levels.md); levels are cumulative.
+# Regression levels (wiki/bkm/flow.md CI levels); levels are cumulative.
 test:l0 --test_tag_filters=L0
 test:l1 --test_tag_filters=L0,L1
 test:l2 --test_tag_filters=L0,L1,L2

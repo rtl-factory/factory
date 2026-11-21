@@ -23,7 +23,7 @@ How to take a hard failure (a failing simulation, a formal counterexample, a lin
 ## Steps
 
 1. **Build the red command.** Find one command, runnable unattended, that goes red on this failure's exact symptom: the failing assertion or scoreboard mismatch, the counterexample property, the lint/CDC rule ID, the timing path, the tool's error. Record everything that pins it: commit, seed, tool and version, command line, plusargs, defines. Ways to build one, cheapest first:
-   - rerun the failing test with its seed and dumping on;
+   - rerun the failing test with its seed and dumping on (per [build](flow.md#build));
    - replay a formal counterexample in simulation (export the trace as stimulus or a testbench), so the trace runs in the same flow as the fix;
    - run the lint, CDC or synthesis step alone on the block and grep the finding;
    - bisect: `git bisect run` the red command between a known-good and a known-bad commit;

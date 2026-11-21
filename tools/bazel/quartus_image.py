@@ -50,7 +50,8 @@ def clear_stale_lock(lock: Path) -> None:
 def run_script(command: list[str], root: Path, env: dict) -> int:
     """Run the build script; turn Bazel's SIGTERM into SIGINT so its cleanup runs."""
     # Why: the script removes its build lock only when it exits normally or on
-    # KeyboardInterrupt; a SIGTERM from a cancelled action would leave the lock.
+    # KeyboardInterrupt; a SIGTERM sent to this wrapper alone would leave the lock.
+    # A cancelled Bazel action kills the whole tree; clear_stale_lock covers that.
     child = subprocess.Popen(command, cwd=root, env=env, start_new_session=True)
     signal.signal(signal.SIGTERM, lambda *_: child.send_signal(signal.SIGINT))
     signal.signal(signal.SIGINT, lambda *_: child.send_signal(signal.SIGINT))

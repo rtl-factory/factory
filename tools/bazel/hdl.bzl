@@ -239,7 +239,10 @@ def _wrapped_test(target_name, project, tags, timeout, python):
             "@verilator//:verilator",
         ],
         deps = python + [requirement("cocotb"), requirement("pillow")],
-        env = {"SIM_PATH_PREPEND": "$(rootpaths @verilator//:verilator)"},
+        env = select({
+            "//tools/bazel:waves_on": {"SIM_PATH_PREPEND": "$(rootpaths @verilator//:verilator)", "SIM_WAVES": "1"},
+            "//conditions:default": {"SIM_PATH_PREPEND": "$(rootpaths @verilator//:verilator)"},
+        }),
         # Why: the wrapper builds its program and writes under the checkout's workdir/,
         # which a sandbox would forbid and a cache would not see, so it always reruns.
         tags = tags + ["external", "no-sandbox", "no-cache", "wrapped"],
