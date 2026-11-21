@@ -120,8 +120,6 @@ def serial_ports() -> list[str]:
     return sorted(p.device for p in list_ports.comports())
 
 
-# --- program -------------------------------------------------------------
-
 def program_plan(board: Board, sof: Path, cable: str | None, quartus_bin: str | None) -> dict:
     return {"board": board.key, "sof": str(sof), "exists": sof.is_file(),
             "cable": cable or f"<the one cable with IDCODE {board.idcode}>",
@@ -148,8 +146,6 @@ def program(board: Board, sof: Path, *, cable=None, quartus_bin=None, runner=jta
     out(f"programmed {sof.name} through {cable}")
     return cable
 
-
-# --- load ----------------------------------------------------------------
 
 def load_command(board: Board, program_file: Path, port: str, *, python=sys.executable,
                  root: Path = ROOT) -> list[str]:
@@ -178,8 +174,6 @@ def load(board: Board, program_file: Path, port: str, *, out=print, popen=subpro
     if process.wait():
         raise BoardError(f"loader exited {process.returncode}")
 
-
-# --- keyboard ------------------------------------------------------------
 
 def jtag_device(board: Board, *, cable=None, device=None, quartus_bin=None,
                 runner=jtag_chain.run_tool) -> tuple[str, str]:
@@ -219,8 +213,6 @@ class Keyboard:
     def close(self) -> str:
         return self.transport.close()
 
-
-# --- command line --------------------------------------------------------
 
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="board.py", description=__doc__.split("\n\n", 1)[0])
