@@ -304,7 +304,11 @@ def sdram_timing(reports: Path, config: dict, system_clock: str) -> dict:
                              target is not None and int(target[1]) < 128 and
                              values["Launch Clock"] == "sdram_clock" and values["Latch Clock"] == system_clock)
                 else:
-                    valid = (values["From Node"].startswith("n2d_memory_controller:u_memory|") and
+                    # Why: the common controller drives CKE as !reset and CS_n as reset, so the
+                    # board reset synchronizer launches those two pins.
+                    valid = ((values["From Node"].startswith("n2d_memory_controller:u_memory|") or
+                              (values["To Node"] in {"DRAM_CKE", "DRAM_CS_N"} and
+                               values["From Node"].startswith("n2a_reset_sync:u_reset|"))) and
                              values["To Node"] in {pin for pin in config["pins"]
                                                    if pin.startswith("DRAM_") and pin != "DRAM_CLK"} and
                              values["Launch Clock"] == system_clock and values["Latch Clock"] == "sdram_clock")
