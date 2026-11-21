@@ -32,10 +32,6 @@ class TargetViewTests(unittest.TestCase):
         self.assertEqual(set(sim.target_views()), set(sim.load_targets()))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class BazelCommandTests(unittest.TestCase):
     def test_prune_model_keeps_only_the_executable(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -58,3 +54,7 @@ class BazelCommandTests(unittest.TestCase):
             with unittest.mock.patch.dict("os.environ", {"SIM_PATH_PREPEND": str(tool), "PATH": "/usr/bin"}):
                 sim.prepend_tool_paths()
                 self.assertEqual([str(tool.parent), "/usr/bin"], os.environ["PATH"].split(os.pathsep))
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,20 +1,67 @@
 """Repositories the factory's HDL rules need (wiki/tools/bazel/spec.md).
 
-hdl_registry: the simulation targets of every src/<project>/cfg/targets.json, as
-Starlark data the project packages turn into Bazel targets.
+hdl_registry: the simulation targets of every src/<project>/cfg/targets.json and
+the formal targets of every src/<project>/fv/<block>/<target>.sby, as Starlark
+data the project packages turn into Bazel targets.
 verilator: the Verilator install the toolchain pinned (cfg/toolchain.json),
 found on PATH or under ~/verilator, version-checked and fingerprinted.
+oss_cad_suite: the OSS CAD Suite install the toolchain pinned, found under its
+install directory, release-checked.
 """
+
+def _normalize(path):
+    parts = []
+    for part in path.split("/"):
+        if part == "..":
+            parts.pop()
+        elif part and part != ".":
+            parts.append(part)
+    return "/".join(parts)
+
+def _parse_sby(text, folder):
+    """The runner's header fields and the repository paths the [files] section copies."""
+    fields = {"level": None, "timeout_seconds": 600}
+    files = []
+    section = None
+    for line in text.splitlines():
+        stripped = line.strip()
+        if section == None and stripped.startswith("#"):
+            key, _, value = stripped.lstrip("#").partition(":")
+            if key.strip() == "level":
+                fields["level"] = value.strip()
+            elif key.strip() == "timeout":
+                fields["timeout_seconds"] = int(value.strip())
+        elif stripped.startswith("[") and stripped.endswith("]"):
+            section = stripped[1:-1].strip()
+        elif section == "files" and stripped and not stripped.startswith("#"):
+            words = stripped.replace("\t", " ").split(" ")
+            files.append(_normalize(folder + "/" + words[-1]))
+    return dict(fields, files = files)
 
 def _registry_impl(rctx):
     src = rctx.workspace_root.get_child("src")
-    sim = {}
+    sim, formal = {}, {}
     for project in sorted(src.readdir(), key = lambda p: p.basename):
+        name = project.basename
         registry = project.get_child("cfg").get_child("targets.json")
         if registry.exists:
-            sim[project.basename] = json.decode(rctx.read(registry))["targets"]
+            sim[name] = json.decode(rctx.read(registry))["targets"]
+        fv = project.get_child("fv")
+        if not fv.exists:
+            continue
+        for block in sorted(fv.readdir(), key = lambda p: p.basename):
+            if not block.is_dir:
+                continue
+            for sby in sorted(block.readdir(), key = lambda p: p.basename):
+                if not sby.basename.endswith(".sby"):
+                    continue
+                folder = "src/%s/fv/%s" % (name, block.basename)
+                target = _parse_sby(rctx.read(sby), folder)
+                target["sby"] = folder + "/" + sby.basename
+                formal.setdefault(name, {})[sby.basename[:-len(".sby")]] = target
     rctx.file("BUILD.bazel", "")
-    rctx.file("targets.bzl", "SIM_TARGETS = json.decode(%r)\n" % json.encode(sim))
+    rctx.file("targets.bzl", "SIM_TARGETS = json.decode(%r)\nFV_TARGETS = json.decode(%r)\n" %
+                             (json.encode(sim), json.encode(formal)))
 
 hdl_registry = repository_rule(implementation = _registry_impl)
 
@@ -62,9 +109,51 @@ verilator_repository = repository_rule(
     environ = ["PATH", "VERILATOR", "HOME"],
 )
 
+def _oss_cad_suite_impl(rctx):
+    pin = json.decode(rctx.read(rctx.attr.toolchain))["oss_cad_suite"]
+    home = rctx.getenv("HOME") or ""
+    install = rctx.getenv("OSS_CAD_SUITE") or pin["install_dir"].replace("~", home, 1)
+    root = rctx.path(install)
+    stamp = root.get_child("VERSION")
+    # Why: installing the suite after a first fetch must refetch, or the stand-in sby stays.
+    rctx.watch(stamp)
+    want = pin["version"].replace("-", "")
+    if stamp.exists and rctx.read(stamp).strip() == want:
+        # Why: the suite's wrappers find their install through their own folder, so the
+        # whole bin/ folder is linked, not single files.
+        rctx.symlink(root.get_child("bin"), "bin")
+        rctx.symlink(stamp, "VERSION")
+    else:
+        # Why: a host without the suite still builds and runs every simulation; only its
+        # formal tests fail, each with the fix.
+        message = "OSS CAD Suite %s is not installed in %s: install it per wiki/tools/toolchain/spec.md" % (
+            pin["version"],
+            root,
+        )
+        rctx.file("bin/sby", "#!/bin/sh\necho '%s' >&2\nexit 1\n" % message, executable = True)
+        rctx.file("VERSION", "missing\n")
+    rctx.file("BUILD.bazel", """\
+# OSS CAD Suite {version} from {root}; its release stamp is an input of every
+# formal test, so another release reruns them.
+exports_files(["bin/sby"], visibility = ["//visibility:public"])
+
+filegroup(
+    name = "oss_cad_suite",
+    srcs = ["VERSION", "bin/sby"],
+    visibility = ["//visibility:public"],
+)
+""".format(version = pin["version"], root = root))
+
+oss_cad_suite_repository = repository_rule(
+    implementation = _oss_cad_suite_impl,
+    attrs = {"toolchain": attr.label(default = "//cfg:toolchain.json")},
+    environ = ["OSS_CAD_SUITE", "HOME"],
+)
+
 def _hdl_impl(mctx):
     hdl_registry(name = "hdl_registry")
     verilator_repository(name = "verilator")
+    oss_cad_suite_repository(name = "oss_cad_suite")
     return mctx.extension_metadata(reproducible = False)
 
 hdl = module_extension(implementation = _hdl_impl)

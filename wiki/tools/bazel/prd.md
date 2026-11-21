@@ -6,7 +6,7 @@ The L0 regression took about 18 minutes, and every run rebuilt every Verilator m
 
 ## Requirements
 
-1. Make every simulation target of every project's registry a test, without listing targets anywhere but the registry.
+1. Make every simulation and formal target of every project a test, without listing targets anywhere but the simulation registry and the formal targets' own files.
 2. Select the tests of a regression level and the levels below it in one command.
 3. Build each distinct model (top, sources, parameters) once, share it between targets that differ only in their test, and rebuild it only when one of its inputs changes.
 4. Rerun a test only when its model, its test code, its data or the runner changed.
@@ -20,13 +20,13 @@ The L0 regression took about 18 minutes, and every run rebuilt every Verilator m
 
 - A remote cache or remote execution server.
 - Building Verilator, the OSS CAD Suite or Quartus from Bazel; the toolchain installs them.
-- Formal targets, unit tests, the comment lint and Quartus builds; later stages of the migration add them.
+- Unit tests, the comment lint and Quartus builds; later stages of the migration add them.
 
 ## Acceptance
 
 | Requirement | Check |
 |---|---|
-| 1 | Every non-manual registry target appears as a test in `bazel query 'tests(//src/...)'` |
+| 1 | Every non-manual simulation and formal target appears as a test in `bazel query 'tests(//src/...)'` |
 | 2 | `bazel test --config=l0 //src/...` runs exactly the L0 targets |
 | 3 | Targets with the same top, sources and parameters share one model; touching a test module verilates nothing |
 | 4 | A rerun with no change reports every test cached |
