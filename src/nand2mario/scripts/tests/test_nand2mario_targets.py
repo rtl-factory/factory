@@ -276,7 +276,7 @@ class ProjectTargetTests(unittest.TestCase):
             self.assertEqual(("n2m_sdram_backing_fixture", "src.nand2mario.dv.storage.test_sdram_backing"),
                              (target.top, target.test_module))
             self.assertIn("src/nand2mario/rtl/storage/n2m_sdram_backing.sv", target.sources)
-            self.assertIn("src/nand2mario/dv/storage/n2m_sdram_model.sv", target.sources)
+            self.assertIn("src/common/dv/sdram/n2a_sdram_model.sv", target.sources)
         self.assertEqual(("backing_contract", "rom_write_is_rejected", 79), (backing.testcase, negative.testcase, backing.default_seed))
         loader = targets["n2m_uart_loader"]
         self.assertEqual(("n2m_uart_loader_fixture", "src.nand2mario.dv.uart.test_uart_loader", "loader_contract", 83),

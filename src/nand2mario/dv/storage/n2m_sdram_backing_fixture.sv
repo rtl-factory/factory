@@ -56,8 +56,9 @@ module n2m_sdram_backing_fixture #(
     assign dram_clk_unused = dram_clk;
     /* verilator lint_on UNUSEDSIGNAL */
 
-    n2m_sdram_model #(
-        .FILL_SEED (FILL_SEED)
+    n2a_sdram_model #(
+        .INIT_REFRESHES (8),
+        .FILL_SEED      (FILL_SEED)
     ) u_sdram (
         .clk_i   (clk_i),
         .cke_i   (dram_cke),
@@ -70,6 +71,10 @@ module n2m_sdram_backing_fixture #(
         .dqm_i   ({dram_dqmh, dram_dqml}),
         .dq_i    (dram_dq_o),
         .dq_oe_i (dram_dq_oe),
-        .dq_o    (dram_dq_i)
+        .dq_o    (dram_dq_i),
+        .preload_valid_i       (1'b0),
+        .preload_address_i     ('0),
+        .preload_data_i        ('0),
+        .preload_byte_enable_i ('0)
     );
 endmodule

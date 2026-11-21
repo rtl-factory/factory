@@ -1001,7 +1001,7 @@
       "sources": [
         "src/nand2mario/rtl/storage/n2m_sdram_pkg.sv",
         "src/nand2mario/rtl/storage/n2m_sdram_ctrl.sv",
-        "src/nand2mario/dv/storage/n2m_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model.sv",
         "src/nand2mario/dv/storage/n2m_sdram_ctrl_fixture.sv"
       ],
       "clock_hz": 25000000,
@@ -1019,7 +1019,7 @@
       "sources": [
         "src/nand2mario/rtl/storage/n2m_sdram_pkg.sv",
         "src/nand2mario/rtl/storage/n2m_sdram_ctrl.sv",
-        "src/nand2mario/dv/storage/n2m_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model.sv",
         "src/nand2mario/dv/storage/n2m_sdram_ctrl_fixture.sv"
       ],
       "clock_hz": 25000000,
@@ -1033,9 +1033,9 @@
         "REFRESH_DEADLINE_CLOCKS": 250
       },
       "expected_fatal": {
-        "file": "n2m_sdram_model.sv",
+        "file": "n2a_sdram_model.sv",
         "hierarchy": "n2m_sdram_ctrl_fixture.u_sdram",
-        "message": "n2m_sdram_model: refresh interval exceeded"
+        "message": "n2a_sdram_model: refresh interval exceeded"
       },
       "level": "L0"
     },
@@ -1048,7 +1048,7 @@
         "src/nand2mario/rtl/storage/n2m_sdram_pkg.sv",
         "src/nand2mario/rtl/storage/n2m_sdram_ctrl.sv",
         "src/nand2mario/rtl/storage/n2m_sdram_backing.sv",
-        "src/nand2mario/dv/storage/n2m_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model.sv",
         "src/nand2mario/dv/storage/n2m_sdram_backing_fixture.sv"
       ],
       "clock_hz": 25000000,
@@ -1068,7 +1068,7 @@
         "src/nand2mario/rtl/storage/n2m_sdram_pkg.sv",
         "src/nand2mario/rtl/storage/n2m_sdram_ctrl.sv",
         "src/nand2mario/rtl/storage/n2m_sdram_backing.sv",
-        "src/nand2mario/dv/storage/n2m_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model.sv",
         "src/nand2mario/dv/storage/n2m_sdram_backing_fixture.sv"
       ],
       "clock_hz": 25000000,
@@ -1171,7 +1171,7 @@
         "src/nand2mario/rtl/cartridge/n2m_library_pkg.sv",
         "src/nand2mario/rtl/cartridge/n2m_library.sv",
         "src/nand2mario/rtl/system/n2m_system.sv",
-        "src/nand2mario/dv/storage/n2m_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model.sv",
         "src/nand2mario/dv/system/n2m_system_sdram_fixture.sv"
       ],
       "clock_hz": 25000000,
@@ -1337,7 +1337,7 @@
         "src/nand2mario/rtl/cartridge/n2m_library_pkg.sv",
         "src/nand2mario/rtl/cartridge/n2m_library.sv",
         "src/nand2mario/rtl/system/n2m_system.sv",
-        "src/nand2mario/dv/storage/n2m_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model.sv",
         "src/nand2mario/dv/system/n2m_system_sdram_fixture.sv"
       ],
       "clock_hz": 25000000,
@@ -1420,7 +1420,7 @@
         "src/nand2mario/rtl/cartridge/n2m_library_pkg.sv",
         "src/nand2mario/rtl/cartridge/n2m_library.sv",
         "src/nand2mario/rtl/system/n2m_system.sv",
-        "src/nand2mario/dv/storage/n2m_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model.sv",
         "src/common/rtl/sync/n2a_reset_sync.sv",
         "src/common/rtl/jtag/n2a_jtag_keyboard.sv",
         "src/common/fpga/de10_lite/n2a_de10_lite_clock_portable.sv",
@@ -1515,7 +1515,7 @@
         "src/nand2mario/rtl/cartridge/n2m_library_pkg.sv",
         "src/nand2mario/rtl/cartridge/n2m_library.sv",
         "src/nand2mario/rtl/system/n2m_system.sv",
-        "src/nand2mario/dv/storage/n2m_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model.sv",
         "src/common/rtl/sync/n2a_reset_sync.sv",
         "src/common/rtl/jtag/n2a_jtag_keyboard.sv",
         "src/common/fpga/de2_115/n2a_de2_115_clock_portable.sv",
@@ -2102,7 +2102,7 @@
         "src/nand2mario/rtl/cartridge/n2m_library_pkg.sv",
         "src/nand2mario/rtl/cartridge/n2m_library.sv",
         "src/nand2mario/rtl/system/n2m_system.sv",
-        "src/nand2mario/dv/storage/n2m_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model.sv",
         "src/nand2mario/dv/system/n2m_system_sdram_fixture.sv"
       ],
       "clock_hz": 25000000,
