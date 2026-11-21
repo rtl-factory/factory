@@ -21,10 +21,14 @@ Received bits are sampled at each bit's centre. A start bit that is not low or a
 
 | ID | Feature | Stimulus | Checker | Test | Level |
 |---|---|---|---|---|---|
-| W1 | Send, both forms | 40 random bytes, back to back; time form a quarter clock off the edges | the receiver's bytes equal the sent bytes, with no framing error | `n2a_uart_wire` | L0 |
-| W2 | Receive, both forms | 40 random bytes from the transmitter | the helper's bytes equal them; time form within a ±100 ns window | `n2a_uart_wire` | L0 |
-| W3 | Framing-error hook | a frame with `stop=0` | the receiver reports a framing error | `n2a_uart_wire` | L0 |
-| W4 | Bad-frame detection | all-low frame and an all-ones frame forced on tx | the helper raises on the low stop bit and reads 0xFF from the good frame | `n2a_uart_wire` | L0 |
+| W1 | Send, all three forms | 40 random bytes, back to back; time form a quarter clock off the edges | the receiver's bytes equal the sent bytes, with no framing error | `n2a_uart_wire` | L0 |
+| W2 | Receive, all three forms | 40 random bytes from the transmitter | the helper's bytes equal them | `n2a_uart_wire` | L0 |
+| W3 | Send bit timing | one 0x55 frame per form (every bit boundary a transition) | clock form, rising and falling drive: the line sampled between every pair of drive edges holds bit k from edge floor(k × 12.5); time form: the line holds bit k 1 ns after round(k × bit_ps) and 1 ns before round((k+1) × bit_ps) | `n2a_uart_wire` | L0 |
+| W4 | Receive sample point | frames forced on tx whose bits are true only in the clock the helper samples (clock form) or within 120 ns of the centre (time form, ±100 ns window), wrong elsewhere | the helper reads the true byte | `n2a_uart_wire` | L0 |
+| W5 | Framing-error hook | a frame with `stop=0` | the receiver reports a framing error | `n2a_uart_wire` | L0 |
+| W6 | Bad-frame detection | forced on tx: an all-low frame, an all-ones frame, a start pulse shorter than half a bit, and (time form) a 40 ns glitch over a data bit's late window sample | the helper raises "stop bit", reads 0xFF, raises "start bit", and raises "unstable" | `n2a_uart_wire` | L0 |
+
+Each checker was seen to fail: with the start-bit assert removed, the window assert removed, the window samples dropped, 12 instead of 12.5 clocks per bit on send or on receive, or the time-form sample moved to 0.3 of a bit, `n2a_uart_wire` fails.
 
 ## Status
 

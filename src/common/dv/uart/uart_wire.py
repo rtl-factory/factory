@@ -34,15 +34,14 @@ def frame_bits(value: int, *, stop: int = 1) -> list[int]:
 class UartWire:
     def __init__(self, *, rx=None, tx=None, clock=None, clocks_per_bit: float | None = None,
                  bit_ps: float | None = None, drive_edge: str = "rising",
-                 sample_window_ps: int = 0, stop_bits: int = 1):
+                 sample_window_ps: int = 0):
         """rx is the DUT input this bench drives; tx is the DUT output it receives.
 
         drive_edge "falling" drives each level after a falling edge of clock
         (the bench then starts a frame on the next falling edge) instead of
         just after the rising edge the caller is at. sample_window_ps > 0, in
         time mode, samples each received bit at its centre and that far either
-        side and requires all three to agree. stop_bits is the idle line time
-        after each sent frame, in bits.
+        side and requires all three to agree.
         """
         if (clocks_per_bit is None) == (bit_ps is None):
             raise ValueError("give exactly one of clocks_per_bit (with clock) or bit_ps")
@@ -52,7 +51,7 @@ class UartWire:
             raise ValueError("drive_edge is 'rising' or 'falling'")
         self.rx, self.tx, self.clock = rx, tx, clock
         self.clocks_per_bit, self.bit_ps = clocks_per_bit, bit_ps
-        self.drive_edge, self.sample_window_ps, self.stop_bits = drive_edge, sample_window_ps, stop_bits
+        self.drive_edge, self.sample_window_ps = drive_edge, sample_window_ps
 
     def _edge(self, falling: bool = False):
         return FallingEdge(self.clock) if falling else RisingEdge(self.clock)
@@ -84,7 +83,7 @@ class UartWire:
         """Send bytes back to back as 8N1 frames; stop=0 sends every frame with a low stop bit."""
         levels: list[int] = []
         for value in data:
-            levels += frame_bits(value, stop=stop) + [1] * (self.stop_bits - 1)
+            levels += frame_bits(value, stop=stop)
         await self.send_levels(levels)
         self.rx.value = 1
 

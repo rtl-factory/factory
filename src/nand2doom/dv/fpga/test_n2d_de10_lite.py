@@ -11,6 +11,9 @@ from src.nand2doom.scripts.host.n2d_uart_debug_host import (
 )
 
 
+BAUD = 2_000_000
+
+
 @cocotb.test(timeout_time=8, timeout_unit="ms")
 async def board_serial_sdram_contract(dut):
     dut.RESET_N.value = 0
@@ -60,8 +63,7 @@ async def board_serial_sdram_contract(dut):
     assert int(dut.LEDR.value) == 7, "PLL/init/halt status must be set, reset clear"
     assert initial == [(0, 1, 0), (0, 0, 1), (0, 0, 1), (0, 0, 0)]
 
-    # Ref: 2 Mbaud board rate, 500 ns per bit.
-    uart = UartWire(rx=dut.UART_RXD, tx=dut.UART_TXD, bit_ps=500_000)
+    uart = UartWire(rx=dut.UART_RXD, tx=dut.UART_TXD, bit_ps=10**12 / BAUD)
 
     async def receive():
         packet = bytearray()

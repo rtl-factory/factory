@@ -16,6 +16,7 @@ from src.nand2doom.scripts.host.n2d_uart_debug_host import (
     request, decode_response,
 )
 
+BAUD = 1_000_000
 BASE = 0x10000
 # Ref: D-cache geometry of the fixture, set by _geometry() at test start: dirty lines that fill
 # every way of every set, their byte span, and the wiki/src/nand2doom/rtl/memory/mas.md "Maintained
@@ -135,8 +136,7 @@ class SerialHost:
         self.on_response_start = None
         self.request_start = None
         self.request_end = None
-        # Why: this platform target runs its UART at 1 us per bit.
-        self.uart = UartWire(rx=dut.uart_rx_i, tx=dut.uart_tx_o, bit_ps=1_000_000)
+        self.uart = UartWire(rx=dut.uart_rx_i, tx=dut.uart_tx_o, bit_ps=10**12 / BAUD)
 
     def _response_started(self):
         self.first_response = cycle()
