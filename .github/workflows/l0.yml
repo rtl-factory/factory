@@ -26,16 +26,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Comment lint
+      - name: Fetch the base branch's comment baseline
+        # Why: //tools:comment_lint fails if this change raises the base's baseline.
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          base=()
-          if [ -n "$BASE_REF" ] && git fetch -q --depth=1 origin "$BASE_REF" \
-             && git show FETCH_HEAD:tools/lint/comment_baseline.json > "$RUNNER_TEMP/base-baseline.json" 2>/dev/null; then
-            base=(--base-baseline "$RUNNER_TEMP/base-baseline.json")
+          mkdir -p workdir/lint
+          if [ -n "$BASE_REF" ] && git fetch -q --depth=1 origin "$BASE_REF"; then
+            git show FETCH_HEAD:tools/lint/comment_baseline.json > workdir/lint/base-baseline.json 2>/dev/null \
+              || rm -f workdir/lint/base-baseline.json
           fi
-          python3 tools/lint/comment_lint.py "${base[@]}"
 
       - name: Read the Verilator pin
         id: pin

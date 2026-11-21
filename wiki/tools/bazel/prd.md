@@ -20,7 +20,6 @@ The L0 regression took about 18 minutes, and every run rebuilt every Verilator m
 
 - A remote cache or remote execution server.
 - Building Verilator, the OSS CAD Suite or Quartus from Bazel; the toolchain installs them.
-- The comment lint, which compares against the base branch through git.
 - Quartus builds; a later stage of the migration adds them.
 
 ## Acceptance

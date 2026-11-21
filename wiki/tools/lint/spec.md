@@ -8,8 +8,8 @@ How the comment lint works ([requirements](prd.md)). Which comments to write is 
 |---|---|
 | `tools/lint/comment_lint.py` | The check; standard library only |
 | `tools/lint/comment_baseline.json` | Frozen violation count per file, sorted by path |
-| `tools/lint/tests/` | Unit tests, run by the `l0` unit-test step |
-| `.github/workflows/l0.yml` step `Comment lint` | Runs the check first in L0, against the target branch's baseline on pull requests |
+| `tools/lint/tests/` | Unit tests, the Bazel test `//tools:lint.unit` |
+| `//tools:comment_lint` (`tools/BUILD.bazel`) | Runs the check in L0 through Bazel, against `workdir/lint/base-baseline.json`, which the `l0` job writes from the target branch on pull requests |
 
 ## Usage
 
@@ -18,7 +18,7 @@ python3 tools/lint/comment_lint.py                    # check every tracked file
 python3 tools/lint/comment_lint.py <files>            # check only these files against the baseline
 python3 tools/lint/comment_lint.py --all [<files>]    # list every violation, ignoring the baseline
 python3 tools/lint/comment_lint.py --update-baseline  # rewrite the baseline to today's counts (whole tree only)
-python3 tools/lint/comment_lint.py --base-baseline <file>  # also fail if the baseline is higher than <file>'s
+python3 tools/lint/comment_lint.py --base-baseline <file>  # also fail if the baseline is higher than <file>'s (relative to the checkout; skipped if missing)
 ```
 
 ## Behaviour

@@ -15,6 +15,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import tempfile
 import tarfile
 import urllib.request
 import zipfile
@@ -155,29 +156,41 @@ def _validate_output_tree(output: Path) -> None:
             raise ValueError(f"output child resolves outside {output}: {child}") from error
 
 
+def _temporary_beside(path: Path) -> Path:
+    """A new, uniquely named file next to path, for writing before an atomic rename."""
+    handle, name = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".part")
+    os.close(handle)
+    return Path(name)
+
+
 def _download(url: str, destination: Path, expected: str) -> None:
     if destination.is_symlink():
         raise ValueError(f"download destination is a symbolic link: {destination}")
     destination.parent.mkdir(parents=True, exist_ok=True)
-    if not destination.exists() or _sha256(destination) != expected:
-        temporary = destination.with_suffix(destination.suffix + ".part")
-        if temporary.is_symlink():
-            raise ValueError(f"download temporary is a symbolic link: {temporary}")
-        local = VENDORED_DOWNLOADS / destination.name
+    if destination.exists() and _sha256(destination) == expected:
+        return
+    local = VENDORED_DOWNLOADS / destination.name
+    if local.exists() and (local.is_symlink() or _sha256(local) != expected):
+        raise ValueError(f"cached input changed: {local.name} (delete it to fetch it again)")
+    # Why: parallel test targets may fetch the same input, so each writes its own
+    # temporary and renames it into place.
+    temporary = _temporary_beside(destination)
+    try:
         if local.exists():
-            if local.is_symlink() or _sha256(local) != expected:
-                raise ValueError(f"cached input changed: {local.name} (delete it to fetch it again)")
             shutil.copyfile(local, temporary)
         else:
             with urllib.request.urlopen(url, timeout=60) as response, temporary.open("wb") as out:
                 shutil.copyfileobj(response, out)
         if _sha256(temporary) != expected:
-            temporary.unlink(missing_ok=True)
             raise RuntimeError(f"digest mismatch for {url}")
         if not local.exists() and local != destination:
             VENDORED_DOWNLOADS.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(temporary, local)
+            vendored = _temporary_beside(local)
+            shutil.copyfile(temporary, vendored)
+            vendored.replace(local)
         temporary.replace(destination)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def _seed_inputs(output: Path, repository: Path) -> None:

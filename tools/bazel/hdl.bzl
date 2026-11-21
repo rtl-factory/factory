@@ -256,7 +256,8 @@ def unit_tests(deps = []):
             srcs = ["//tools/bazel:pytest_main.py"],
             main = "//tools/bazel:pytest_main.py",
             args = [native.package_name() + "/" + folder],
-            data = native.glob([folder + "/**"]),
+            data = native.glob([folder + "/**"]) + ["@verilator//:verilator"],
+            env = {"UNIT_PATH_PREPEND": "$(rootpaths @verilator//:verilator)"},
             deps = deps + ["//src/%s:python" % p for p in PROJECTS] + ["//tools:python"] + [
                 requirement("cocotb"),
                 requirement("pillow"),
