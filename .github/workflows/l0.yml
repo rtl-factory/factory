@@ -1,4 +1,4 @@
-# L0 regression (wiki/bkm/workflow/ci-levels.md): the comment lint, the scripts'
+# L0 regression (wiki/bkm/flow.md CI levels): the comment lint, the scripts'
 # and tools' unit tests, every L0 simulation target (through Bazel, cached) and
 # every L0 formal target, on Verilator, cocotb and the OSS CAD Suite at the
 # versions pinned in cfg/toolchain.json, tools/sim/requirements_lock.txt and
@@ -102,12 +102,6 @@ jobs:
 
       - name: L0 simulation targets
         run: bazel test --config=ci --config=l0 //src/...
-
-      - name: Bazel profile
-        if: ${{ !cancelled() }}
-        run: |
-          bazel analyze-profile "$(bazel info output_base)/command.profile.gz" | head -n 60
-          echo "cpus: $(nproc), memory: $(free -g | awk '/Mem:/ {print $2}') GB"
 
       - name: Keep simulation logs on failure
         if: failure()

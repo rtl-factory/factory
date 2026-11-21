@@ -1,4 +1,4 @@
-# Pinned build dependencies for the wiki site (wiki/bkm/workflow/wiki-site.md).
+# Pinned build dependencies for the wiki site (wiki/bkm/layout.md).
 mkdocs==1.6.1
 mkdocs-material==9.8.2
 mkdocs-awesome-nav==3.3.0

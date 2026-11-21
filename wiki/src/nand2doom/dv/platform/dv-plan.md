@@ -54,7 +54,7 @@ replace the functional gate.
 | Target | Memory backend | Framebuffer geometry |
 | --- | --- | --- |
 | `n2d_perf_fast` | `n2d_integrated_system`: the arbiter plus the fast line model, three-cycle latency | full width (DE2-115) |
-| `n2d_perf_sdram` | `n2d_sdram_system`: the product `n2d_memory_controller` (arbiter plus `n2d_sdram_controller`) driving the common `n2a_sdram_model` | full width (DE2-115) |
+| `n2d_perf_sdram` | `n2d_sdram_system`: the product `n2d_memory_controller` (arbiter plus the common `n2a_sdram_ctrl`) driving the common `n2a_sdram_model` | full width (DE2-115) |
 | `n2d_perf_fast_half`, `n2d_perf_sdram_half` | as above | half width (DE10-Lite), `N2D_PERF_HALF_WIDTH` |
 
 Full width is the IPC measurement. Pinned first-scene CRCs: framebuffer

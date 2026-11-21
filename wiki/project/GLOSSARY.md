@@ -17,7 +17,7 @@ Best Known Method: a written, prescriptive document that defines how a recurring
 _Avoid_: guide, how-to, process doc, playbook
 
 **Principle**:
-A BKM of one engineering rule with its trigger, in `wiki/bkm/principles/`, applied whenever the trigger matches.
+A BKM of one engineering rule with its trigger, a section of `wiki/bkm/principles.md`, applied whenever the trigger matches.
 _Avoid_: guideline, best practice
 
 **Skill**:
@@ -84,7 +84,7 @@ A self-contained design the factory builds, with everything it needs under `src/
 _Avoid_: repo, product (for this meaning)
 
 **Discipline**:
-The kind of work a project's code is, and the second level of its path `src/<project>/<discipline>/`: `rtl`, `dv`, `fv`, `fpga`, `scripts` or `sw`. Each has its standard documents in the wiki (`wiki/bkm/design/standard-docs.md`); `cfg/` is a project folder, not a discipline.
+The kind of work a project's code is, and the second level of its path `src/<project>/<discipline>/`: `rtl`, `dv`, `fv`, `fpga`, `scripts` or `sw`. Each has its standard documents in the wiki (`wiki/bkm/layout.md`); `cfg/` is a project folder, not a discipline.
 _Avoid_: type, work type, layer
 
 **Block**:
@@ -96,7 +96,7 @@ An issue that delivers one narrow but complete behaviour, ending in a state a re
 _Avoid_: horizontal slice, layer, phase
 
 **PRD**:
-Product requirements document: what a tool, script or piece of software we build must do, for whom, and how we will know it does, kept as `prd.md` next to its `spec.md` in the wiki folder which mirrors its code folder (`wiki/bkm/workflow/repo-layout.md`).
+Product requirements document: what a tool, script or piece of software we build must do, for whom, and how we will know it does, kept as `prd.md` next to its `spec.md` in the wiki folder which mirrors its code folder (`wiki/bkm/layout.md`).
 _Avoid_: requirements spec, MRD
 
 **Interface**:
@@ -140,7 +140,7 @@ A review of past sessions or a landed epic that traces each mistake or slowdown 
 _Avoid_: postmortem, reflection
 
 **Template**:
-One of the four issue bodies (Enhancement, Bug, BKM, Epic) or the one pull request body in `wiki/bkm/workflow/templates.md`, mirrored in `.github/`. Every issue and pull request uses one.
+One of the four issue bodies (Enhancement, Bug, BKM, Epic) or the one pull request body in `wiki/bkm/issues.md`, mirrored in `.github/`. Every issue and pull request uses one.
 _Avoid_: form, issue type
 
 **Blast radius**:

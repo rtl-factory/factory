@@ -1,7 +1,7 @@
 # nand2mario HAS
 
 !!! note "Seed, not yet a full HAS"
-    This page is the block overview that used to sit in `src/nand2mario/README.md`, rearranged into the HAS sections ([standard documents](../../../bkm/design/standard-docs.md)). The full HAS and the block MASes live in nand2anything and are not ported yet. Sections with no content yet say so.
+    This page is the block overview that used to sit in `src/nand2mario/README.md`, rearranged into the HAS sections ([standard documents](../../../bkm/layout.md#standard-documents)). The full HAS and the block MASes live in nand2anything and are not ported yet. Sections with no content yet say so.
 
 ## Purpose
 
@@ -19,7 +19,7 @@ A Game Boy-compatible system (LR35902 CPU, memory map, cartridge mapper, timer, 
 | timer, interrupts, joypad, serial | `rtl/timer/`, `rtl/interrupts/`, `rtl/joypad/`, `rtl/serial/` | The DIV/TIMA/TMA/TAC, IF, P1 and SB/SC registers on the memory map's peripheral port |
 | video | `rtl/video/` | The PPU (registers, timing, window, objects, background, mix) and the display tier that stores complete frames and scans them out 3x scaled on 640x480 VGA through the common raster timing and RAM; also the frame snapshot |
 | dma | `rtl/dma/` | OAM DMA |
-| storage | `rtl/storage/` | The SDRAM controller and package (adapted under their MIT notice) and the SDRAM cartridge backing |
+| storage | `rtl/storage/` | The SDRAM cartridge backing, which drives the common SDRAM controller `n2a_sdram_ctrl` in the nand2mario configuration ([common MAS](../../common/rtl/sdram/mas.md)). The backing, not the board top, makes DRAM_CLK as the inverted `clk_i`, and `n2m_system` carries it to the pin |
 | uart | `rtl/uart/` | The board UART link `n2m_uart_link`: the common byte PHYs, the common UART memory endpoint `n2a_uart_mem` and the UART cartridge loader behind it. A common request (`0xA8`) at a loader frame boundary goes to the endpoint, every other byte to the loader. The endpoint (project `n2m `, entry 0x0100 only) holds the core in reset and reaches the cartridge backing's load port through `n2m_uart_mem_port`, one word as four byte requests: ROM window at 0, cartridge RAM window at 0x0020_0000, both written and read while held, sized by `CART_ROM_BYTES` and `CART_RAM_BYTES`. The link runs at the factory board rate of 2 Mbaud on both boards (12 1/2 clocks per bit at 25 MHz, through the PHY's fractional accumulator; `UART_CLKS_PER_BIT`, `UART_FRAC_NUM`, `UART_FRAC_DEN`). The host sides are the common `src/common/scripts/uart_mem/` (load) and the script `scripts/board/cart_loader.py` (loader frames, frame snapshot) |
 | audio | `rtl/audio/` | The APU: the full DMG sound register behaviour (power control, channel status, length counters, wave RAM) but **no audio output**; the system is silent by design |
 

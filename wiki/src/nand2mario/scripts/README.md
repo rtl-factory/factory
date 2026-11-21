@@ -1,6 +1,6 @@
 # nand2mario scripts
 
-The `scripts` discipline of nand2mario: host-side code bound to this design. Each script drives, builds for or checks nand2mario, and would be useless without it ([repository layout](../../../bkm/workflow/repo-layout.md)). Code: `src/nand2mario/scripts/<script>/`, with each script's tests in its `tests/` folder.
+The `scripts` discipline of nand2mario: host-side code bound to this design. Each script drives, builds for or checks nand2mario, and would be useless without it ([repository layout](../../../bkm/layout.md#repository-layout)). Code: `src/nand2mario/scripts/<script>/`, with each script's tests in its `tests/` folder.
 
 | Script | What it does |
 |---|---|

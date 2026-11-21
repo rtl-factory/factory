@@ -355,6 +355,13 @@ class ReportGateTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 n2m_quartus.sdram_timing(directory, self.config, SYSTEM_CLOCK)
 
+    def test_sdram_write_sources(self):
+        reset = n2m_quartus.SDRAM_RESET_SOURCE + "stages_q[1]"
+        self.assertTrue(n2m_quartus.sdram_write_source(self.config, reset, "DRAM_CKE"))
+        self.assertTrue(n2m_quartus.sdram_write_source(self.config, reset, "DRAM_CS_N"))
+        self.assertFalse(n2m_quartus.sdram_write_source(self.config, reset, "DRAM_ADDR[4]"))
+        self.assertFalse(n2m_quartus.sdram_write_source(self.config, "u_other|q", "DRAM_CKE"))
+
     def test_audit_requests_sdram_paths(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "workdir") as temporary:
             output = Path(temporary) / "project"

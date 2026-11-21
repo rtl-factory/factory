@@ -56,7 +56,6 @@ async def _uart_send(dut, packet: bytes) -> None:
 
 async def _uart_receive_byte(dut) -> int:
     value = await _wire(dut).receive_byte()
-    # Why: return at the end of the stop bit, as this bench did before the shared helper.
     await ClockCycles(dut.clk_i, CLKS_PER_BIT // 2)
     return value
 

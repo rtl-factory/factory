@@ -4,4 +4,4 @@ description: Run a retro: turn what went wrong into proposed BKM changes and che
 disable-model-invocation: true
 ---
 
-Follow `wiki/bkm/writing/improving-bkms.md`.
+Follow the Learning from mistakes section of `wiki/bkm/writing.md`.

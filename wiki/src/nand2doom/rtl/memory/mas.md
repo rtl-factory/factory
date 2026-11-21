@@ -36,8 +36,10 @@ Every port is in the `clk_i` domain; the SDRAM pins are bound by the board top
 ([composition](../../fpga/de10_lite/board-spec.md#composition)). Parameters:
 `n2d_dcache` `WAYS` (2 or 4, default 4) and `PREFETCH_LINES` (0, 1 or 2,
 default 0); `n2d_cached_rv32im` `DCACHE_WAYS` (default 4);
-`n2d_sdram_controller` `POWERUP_CYCLES` (5,000), `REFRESH_CYCLES` (195) and
-`REFRESH_RESERVE_CYCLES` (32); `n2d_debug_memory_adapter` `MAX_WORDS` (8).
+the common SDRAM controller `n2a_sdram_ctrl` takes the nand2doom configuration
+(`BURST_BEATS` 8, `OPEN_ROW` 1, `ROW_XOR_BANK` 1, `INIT_WAIT_MIN` 2, the rest at
+their defaults; [common MAS](../../../common/rtl/sdram/mas.md));
+`n2d_debug_memory_adapter` `MAX_WORDS` (8).
 
 | Module | Port group | Ports (direction, width) | Contract |
 | --- | --- | --- | --- |
@@ -49,7 +51,7 @@ default 0); `n2d_cached_rv32im` `DCACHE_WAYS` (default 4);
 | `n2d_memory_arbiter` | Masters | `master_request_valid_i`, `master_request_prefetch_i`, `master_request_write_i` (3 each), `master_request_address_i` (78), `master_request_write_data_i` (384), `master_request_byte_enable_i` (48) in, `master_request_ready_o` (3) out; `master_response_valid_o` (3), `master_response_data_o` (384), `master_response_error_o` (3) out | Three packed line ports, owner order instruction, data, debug ([arbitration](#arbitration-and-debug-adaptation)) |
 | `n2d_memory_arbiter` | Memory | one line port (`memory_request_*` out, `memory_request_ready_i` in, `memory_response_*` in) | [Line port](#line-port) |
 | `n2d_memory_controller` | Owners | `instruction_request_valid_i`, `instruction_request_address_i` (26) in, `instruction_request_ready_o` out, `instruction_response_valid_o`, `instruction_response_data_o` (128), `instruction_response_error_o` out; `data_request_*` with `data_request_prefetch_i` and `debug_request_*` as full line ports | The instruction owner is read-only: it has no write or byte-enable input |
-| `n2d_memory_controller`, `n2d_sdram_controller` | SDRAM | `init_done_o` out; `sdram_address_o` (13), `sdram_bank_o` (2), `sdram_cke_o`, `sdram_cs_n_o`, `sdram_ras_n_o`, `sdram_cas_n_o`, `sdram_we_n_o`, `sdram_dqm_o` (2), `sdram_dq_o` (16), `sdram_dq_oe_o` out; `sdram_dq_i` (16) in | [SDRAM controller](#sdram-controller); `n2d_sdram_controller` takes one line port (`request_*`, `response_*`) |
+| `n2d_memory_controller`, `n2a_sdram_ctrl` | SDRAM | `init_done_o` out; `sdram_address_o` (13), `sdram_bank_o` (2), `sdram_cke_o`, `sdram_cs_n_o`, `sdram_ras_n_o`, `sdram_cas_n_o`, `sdram_we_n_o`, `sdram_dqm_o` (2), `sdram_dq_o` (16), `sdram_dq_oe_o` out; `sdram_dq_i` (16) in | [SDRAM controller](#sdram-controller); `n2a_sdram_ctrl` takes one line port (`request_*`, `response_*`) |
 | `n2d_debug_memory_adapter` | Transaction and word | `transaction_begin_i`, `transaction_commit_i`, `transaction_abort_i` in, `transaction_done_o`, `transaction_error_o` out; `word_request_valid_i`, `word_request_write_i`, `word_request_address_i` (32), `word_request_write_data_i` (32), `word_request_byte_enable_i` (4) in, `word_request_ready_o` out; `word_response_valid_o`, `word_response_data_o` (32), `word_response_error_o` out; one line port out | [Debug adapter](#arbitration-and-debug-adaptation), driven per the [host-memory transaction boundary](../io/mas.md#host-memory-transaction-boundary) |
 | `n2d_cached_rv32im` | Composition | `enable_i` in; instruction and data line ports, both maintenance handshakes, I/D hit and miss events, the core observation record and `halt_ack_o` | [Arbitration and debug adaptation](#arbitration-and-debug-adaptation) |
 
@@ -277,8 +279,10 @@ halted.
 
 ### SDRAM controller
 
-`n2d_sdram_controller`: one transaction, open row, 25 MHz, one burst of eight
-x16 beats per line. The board top binds commands, DQ output enable and the
+The controller is the common `n2a_sdram_ctrl` in the nand2doom configuration
+([common MAS](../../../common/rtl/sdram/mas.md), which owns its design and lists
+where it differs from the earlier nand2doom controller): one transaction, open
+row, 25 MHz, one burst of eight x16 beats per line. The board top binds commands, DQ output enable and the
 inverted clock to pins ([FPGA](../../fpga/de10_lite/board-spec.md#composition)).
 
 | SDRAM field | Byte-address bits |
@@ -364,7 +368,7 @@ Pulse outputs default low each clock.
 | `src/nand2doom/rtl/memory/n2d_cached_rv32im.sv` | Core plus caches |
 | `src/nand2doom/rtl/memory/n2d_memory_arbiter.sv`, `n2d_memory_controller.sv` | Arbitration and composition |
 | `src/nand2doom/rtl/memory/n2d_debug_memory_adapter.sv` | Debug word adapter |
-| `src/nand2doom/rtl/memory/n2d_sdram_controller.sv` | SDRAM controller |
+| `src/common/rtl/sdram/n2a_sdram_ctrl.sv` | SDRAM controller (common) |
 | `src/nand2doom/rtl/memory/n2d_ls_types_pkg.sv` | State records |
 | `src/nand2doom/dv/memory/n2d_sdram_fast_model.sv` | Fast model |
 

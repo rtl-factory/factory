@@ -11,4 +11,4 @@ The shared project: blocks and scripts that every project reuses, with no design
 | [Scripts](scripts/README.md) | The `scripts` discipline of `common`: host-side scripts bound to its blocks |
 
 !!! note "MASes not ported yet"
-    `common` has no HAS: it is a shelf of blocks, not one design. Each block gets a MAS at `rtl/<block>/mas.md` ([standard documents](../../bkm/design/standard-docs.md)); the SDRAM controller has one; the others live in nand2anything and are not ported yet.
+    `common` has no HAS: it is a shelf of blocks, not one design. Each block gets a MAS at `rtl/<block>/mas.md` ([standard documents](../../bkm/layout.md#standard-documents)); the SDRAM controller has one; the others live in nand2anything and are not ported yet.

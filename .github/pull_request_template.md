@@ -1,4 +1,4 @@
-<!-- Template: wiki/bkm/workflow/templates.md -->
+<!-- Template: wiki/bkm/issues.md -->
 
 ## Spec references
 - <the issue's spec references, plus any the change touched>

@@ -125,7 +125,7 @@ def load_config(root: Path, filename: str, board: str = BASE_BOARD) -> dict:
         raise ValueError("invalid board clock wiring")
     warnings = config["reviewed_warnings"]
     if (set(warnings) != {"constant_outputs", "pll_output", "electrical_pins", "logiclock_count"}
-            or not warnings["constant_outputs"] or not warnings["electrical_pins"]
+            or not warnings["electrical_pins"]
             or not set(warnings["constant_outputs"]) <= set(pins)
             or set(warnings["constant_outputs"].values()) - {"VCC", "GND"}
             or warnings["pll_output"] not in clocks.values()
@@ -298,13 +298,17 @@ def sdram_timing(reports: Path, config: dict, system_clock: str) -> dict:
                 if slack < 0 or slack != float(summary[1]) or slack != float(detail[0]):
                     raise RuntimeError(f"failing or inconsistent SDRAM timing margin: {name}")
                 if direction == "read":
-                    target = re.fullmatch(r"n2d_memory_controller:u_memory\|n2d_sdram_controller:u_sdram\|"
+                    target = re.fullmatch(r"n2d_memory_controller:u_memory\|n2a_sdram_ctrl:u_sdram\|"
                                           r"regs_q\.read_data\[(\d+)\]", values["To Node"])
                     valid = (values["From Node"] in {f"DRAM_DQ[{i}]" for i in range(16)} and
                              target is not None and int(target[1]) < 128 and
                              values["Launch Clock"] == "sdram_clock" and values["Latch Clock"] == system_clock)
                 else:
-                    valid = (values["From Node"].startswith("n2d_memory_controller:u_memory|") and
+                    # Why: the common controller drives CKE as !reset and CS_n as reset, so the
+                    # board reset synchronizer launches those two pins.
+                    valid = ((values["From Node"].startswith("n2d_memory_controller:u_memory|") or
+                              (values["To Node"] in {"DRAM_CKE", "DRAM_CS_N"} and
+                               values["From Node"].startswith("n2a_reset_sync:u_reset|"))) and
                              values["To Node"] in {pin for pin in config["pins"]
                                                    if pin.startswith("DRAM_") and pin != "DRAM_CLK"} and
                              values["Launch Clock"] == system_clock and values["Latch Clock"] == "sdram_clock")
@@ -441,7 +445,8 @@ def warning_rules(config: dict, *, elaboration: bool = False) -> list[dict]:
         1 if elaboration else contract["logiclock_count"])
     if elaboration:
         return rules
-    add(13024, "constant_outputs", {"summary": "VCC or GND"}, "Output pins are stuck at VCC or GND")
+    if contract["constant_outputs"]:
+        add(13024, "constant_outputs", {"summary": "VCC or GND"}, "Output pins are stuck at VCC or GND")
     source = f'src/nand2doom/fpga/{config["top"].removeprefix("n2d_")}/{config["top"]}.sv'
     for pin, value in contract["constant_outputs"].items():
         add(13410, "constant_outputs", {"source": source, "pin": pin, "value": value},

@@ -1,12 +1,21 @@
 nav:
   - README.md
-  - Workflow: workflow
-  - Design: design
-  - RTL: rtl
-  - Writing: writing
-  - DV: dv
-  - FV: fv
-  - FPGA: fpga
-  - Debug: debug
-  - Principles: principles
-  - Sources: SOURCES.md
+  - Workflow:
+      - flow.md
+      - issues.md
+      - pull-requests.md
+      - first-mate.md
+      - layout.md
+  - Design:
+      - planning.md
+  - Writing:
+      - writing.md
+      - code-comments.md
+  - Hardware:
+      - rtl.md
+      - dv.md
+      - fv.md
+      - fpga.md
+      - debug.md
+  - principles.md
+  - SOURCES.md

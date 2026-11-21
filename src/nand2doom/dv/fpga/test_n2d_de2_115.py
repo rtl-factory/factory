@@ -96,7 +96,7 @@ async def board_serial_sdram_video_contract(dut):
         dut.dram_drive_i.value = 0
 
     async def sdram():
-        edge = 0
+        edge, cke_up = 0, False
         while True:
             await RisingEdge(dut.DRAM_CLK)
             edge += 1
@@ -104,6 +104,12 @@ async def board_serial_sdram_video_contract(dut):
                    int(dut.DRAM_WE_N.value))
             bank, address = int(dut.DRAM_BA.value), int(dut.DRAM_ADDR.value)
             dqm = int(dut.DRAM_DQM.value)
+            # Why: the common controller holds CKE low and CS high while in reset;
+            # once CKE rises it must stay up with the chip selected.
+            if not cke_up and not int(dut.DRAM_CKE.value):
+                assert int(dut.DRAM_CS_N.value), "chip selected while CKE is low"
+                continue
+            cke_up = True
             assert int(dut.DRAM_CKE.value) and not int(dut.DRAM_CS_N.value)
             # Why: the high chip shares every command, so if it ever drove
             # DQ[31:16] it would corrupt the low chip's bus.

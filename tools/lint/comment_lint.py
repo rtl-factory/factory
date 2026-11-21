@@ -6,7 +6,7 @@ may only shrink.
 
     python3 tools/lint/comment_lint.py [--update-baseline] [--all] [paths ...]
 
-Spec: wiki/tools/lint/spec.md. Method: wiki/bkm/writing/code-comments.md.
+Spec: wiki/tools/lint/spec.md. Method: wiki/bkm/code-comments.md.
 """
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ SV_IMPORT = re.compile(r"^\s*import\b")
 SV_TYPE_BODY = re.compile(r"^\s*typedef\s+(enum|struct|union)\b")
 
 FIX = ("delete it, encode it in a name, type, assertion or test, or tag it "
-       "'Why:', 'Ref:' or 'TODO(#<issue>):' (wiki/bkm/writing/code-comments.md)")
+       "'Why:', 'Ref:' or 'TODO(#<issue>):' (wiki/bkm/code-comments.md)")
 
 
 class Comment(NamedTuple):

@@ -1,4 +1,4 @@
-# Workflow rule: every pull request must close an issue (wiki/bkm/workflow/flow.md, ADR 0003).
+# Workflow rule: every pull request must close an issue (wiki/bkm/flow.md, ADR 0003).
 name: issue-link
 
 on:
