@@ -67,8 +67,10 @@ module n2m_ppu_objects (
     logic [1:0]   colors [0:OBJECTS_PER_LINE-1];
     logic         candidates [0:OBJECTS_PER_LINE-1];
     logic         best_valid;
-    logic [7:0]   best_x;
     logic [3:0]   best_index;
+    logic         round_valid [0:4][0:15];
+    logic [7:0]   round_x [0:4][0:15];
+    logic [3:0]   round_index [0:4][0:15];
 
     assign visible_line = ly_i < t_line'(VISIBLE_LINES);
     assign line_end = dot_enable_i && lcd_enable_i && (dot_i == t_dot'(DOTS_PER_LINE - 1));
@@ -195,20 +197,46 @@ module n2m_ppu_objects (
     // set. The smallest X wins, the lowest index on a tie.
     assign covered_x = pixel_x_i + 8'(OBJECT_X_OFFSET);
     always_comb begin
-        best_valid = 1'b0;
-        best_x = 8'd0;
-        best_index = 4'd0;
         for (int i = 0; i < OBJECTS_PER_LINE; i++) begin
             dx[i] = covered_x - objects_q[i].x;
             colors[i] = row_color(objects_q[i].low, objects_q[i].high, dx[i][2:0],
                                   objects_q[i].attributes[ATTR_X_FLIP_BIT]);
             candidates[i] = (4'(i) < count_q) && (dx[i] < 8'd8) && (colors[i] != 2'd0);
-            if (candidates[i] && (!best_valid || (objects_q[i].x < best_x))) begin
-                best_valid = 1'b1;
-                best_x = objects_q[i].x;
-                best_index = 4'(i);
+        end
+        // Why: a pairwise tournament (lower index on the left, kept on a tie)
+        // picks the same winner as a scan in index order, in four comparator
+        // levels instead of ten, so the pixel path closes timing on both boards.
+        for (int i = 0; i < 16; i++) begin
+            if (i < OBJECTS_PER_LINE) begin
+                round_valid[0][i] = candidates[i];
+                round_x[0][i] = objects_q[i].x;
+            end else begin
+                round_valid[0][i] = 1'b0;
+                round_x[0][i] = 8'd0;
+            end
+            round_index[0][i] = 4'(i);
+        end
+        for (int level = 0; level < 4; level++) begin
+            for (int i = 0; i < 16; i++) begin
+                round_valid[level + 1][i] = 1'b0;
+                round_x[level + 1][i] = 8'd0;
+                round_index[level + 1][i] = 4'd0;
+            end
+            for (int i = 0; i < (16 >> (level + 1)); i++) begin
+                if (round_valid[level][2 * i] &&
+                    (!round_valid[level][2 * i + 1] || (round_x[level][2 * i] <= round_x[level][2 * i + 1]))) begin
+                    round_valid[level + 1][i] = 1'b1;
+                    round_x[level + 1][i] = round_x[level][2 * i];
+                    round_index[level + 1][i] = round_index[level][2 * i];
+                end else begin
+                    round_valid[level + 1][i] = round_valid[level][2 * i + 1];
+                    round_x[level + 1][i] = round_x[level][2 * i + 1];
+                    round_index[level + 1][i] = round_index[level][2 * i + 1];
+                end
             end
         end
+        best_valid = round_valid[4][0];
+        best_index = round_index[4][0];
     end
     assign candidate_valid_o = best_valid;
     assign candidate_color_o = colors[best_index];

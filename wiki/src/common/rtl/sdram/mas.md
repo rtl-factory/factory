@@ -93,11 +93,11 @@ One domain, `clk_i`. DRAM_CLK is the inverted `clk_i`, driven by the board top; 
 - Close page answers one clock after the precharge wait, to keep nand2mario's fixed 9/10 latency, rather than answering with the last beat.
 - Close page precharges with A10 high (all banks), as nand2mario did; open row precharges one bank with A10 low.
 
-Differences from the project controllers, the only ones the lockstep benches (`n2a_sdram_ctrl_lockstep_line`, `_word`) mask:
+Differences from the project controllers it replaced (#141, #142), the only ones the lockstep benches of PR #146 masked:
 
 - nand2doom: `init_done_o` rises with MODE REGISTER SET, two clocks before nand2doom's; DQM is `11` until then, where nand2doom drove it from reset; reads with byte enables are served, not rejected (above). nand2doom has no `idle_o`.
 - nand2mario: the address and bank are not held on NOP clocks; `response_data_o` on a write response is not defined (nand2mario repeated the last read, this block gives zero). The refresh age starts at MODE REGISTER SET in both, through `REFRESH_AGE_FROM_MODE`.
 
 ## Verification
 
-DV plan: [../../dv/sdram/dv-plan.md](../../dv/sdram/dv-plan.md). FV plan: [../../fv/sdram/fv-plan.md](../../fv/sdram/fv-plan.md): command spacing, refresh deadline, one response within the latency table, and misaligned errors, proven in both configurations. Each project's own controller contract runs on this block in that project's configuration (`n2a_sdram_ctrl_n2d_contract`, `n2a_sdram_ctrl_n2m_contract`), alongside the common random-traffic bench (`n2a_sdram_ctrl_line`, `n2a_sdram_ctrl_word`) and a clock-by-clock lockstep against each project controller (`n2a_sdram_ctrl_lockstep_line`, `n2a_sdram_ctrl_lockstep_word`).
+DV plan: [../../dv/sdram/dv-plan.md](../../dv/sdram/dv-plan.md). FV plan: [../../fv/sdram/fv-plan.md](../../fv/sdram/fv-plan.md): command spacing, refresh deadline, one response within the latency table, and misaligned errors, proven in both configurations. Each project's own controller contract runs on this block in that project's configuration (`n2d_sdram_controller`, `n2m_sdram_ctrl`), alongside the common random-traffic bench (`n2a_sdram_ctrl_line`, `n2a_sdram_ctrl_word`). nand2doom's `n2d_memory_controller` and nand2mario's `n2m_sdram_backing` instantiate it on both boards.
