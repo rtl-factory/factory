@@ -11,12 +11,7 @@ How a crewmate writes its pull request and carries it to landable, and how the f
 
 1. Check that no pull request already exists for the issue branch, and read the full diff against the base branch. Why: a second pull request or a stray file splits the decision.
 2. Title it as the outcome, not the mechanism: "fifo: no lost write when full and popped in the same cycle", not "fifo: change wr_en gating". Why: with squash merge the title becomes the commit on `main`.
-3. Write the description short (under about 30 lines), in this order:
-   - **Problem and outcome:** two or three sentences in the issue's words: what was wrong or missing, and what is true now. No inventory of edits. Why: the reviewer and the captain judge the outcome first.
-   - **Evidence:** which regression level you ran ([ci-levels.md](ci-levels.md)) and its result, with the numbers: tests and seeds passed, properties proven or the counterexample now closed, lint warnings, synthesis area and timing against the base. Show before and after when the change fixes a failure. Say plainly what was not run, including levels with no CI job yet. Why: a claim without evidence gets re-run by the reviewer (`wiki/bkm/principles/prove-it-works.md`).
-   - **Risk:** what else could break (interfaces, other blocks, timing) and whether it is easy to revert. Why: it tells the reviewer where to look.
-   - `Closes #<n>` for every issue it closes. Why: the `issue-link` check fails without it.
-   - One line naming the model and harness that made the change. Why: readers must know the work is agent-written.
+3. Write the description with the pull request template in [templates.md](templates.md), short (under about 30 lines). Why: the reviewer and the captain find the outcome and its evidence in a fixed place.
 4. Give it the issue's `type:`, `area:` and `block:` labels ([labels.md](labels.md)). Why: dashboards count pull requests too.
 5. Check the title, description and attachments for secrets and private details, then open it ready for review, not as a draft. Why: checks and reviewers skip drafts.
 

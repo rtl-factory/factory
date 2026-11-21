@@ -90,6 +90,46 @@
     "description": "Someday"
   },
   {
+    "name": "size:minimal",
+    "color": "c5def5",
+    "description": "A one-line or wording fix"
+  },
+  {
+    "name": "size:small",
+    "color": "c5def5",
+    "description": "One block, document or tool; under about 100 changed lines"
+  },
+  {
+    "name": "size:medium",
+    "color": "c5def5",
+    "description": "One block or tool with its spec and tests; up to about 400 lines"
+  },
+  {
+    "name": "size:large",
+    "color": "c5def5",
+    "description": "Several blocks or documents; still one crewmate and one pull request"
+  },
+  {
+    "name": "size:xlarge",
+    "color": "c5def5",
+    "description": "More than one crewmate or pull request; split it or make it an epic"
+  },
+  {
+    "name": "complexity:low",
+    "color": "bfd4f2",
+    "description": "Mechanical; the method and the answer are known"
+  },
+  {
+    "name": "complexity:medium",
+    "color": "bfd4f2",
+    "description": "Known method, design choices inside existing patterns"
+  },
+  {
+    "name": "complexity:high",
+    "color": "bfd4f2",
+    "description": "New design or open questions; grill or research first"
+  },
+  {
     "name": "status:triage",
     "color": "fbca04",
     "description": "New; not yet clear or not yet labelled"

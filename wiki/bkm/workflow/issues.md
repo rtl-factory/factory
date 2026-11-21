@@ -25,10 +25,10 @@ How to turn an aligned plan, spec or conversation into well-formed issues, when 
 
 An issue is ready when all hold:
 
-- What to build is stated as behaviour, with no decision left that only a captain can make.
+- It uses its template from [templates.md](templates.md) with Spec references filled, and its What to build (Expected behaviour for a bug, What to change for a BKM) is stated as behaviour, with no decision left that only a captain can make.
 - Every acceptance criterion is a check with a pass predicate.
 - Its labels are complete per [labels.md](labels.md), and its "blocked by" links are set.
-- It fits one crewmate, one issue branch and one pull request.
+- It fits one crewmate, one issue branch and one pull request: its size is not `size:xlarge`.
 - For a bug, the failure is reproduced: a failing test, seed, waveform or counterexample is named in the issue.
 
 ## Steps: splitting a plan into issues
@@ -37,22 +37,9 @@ An issue is ready when all hold:
 2. Look at the current blocks and specs for prefactoring that would make the slices easier.
 3. Draft the slices as a numbered list, each with a title, its blockers and what it delivers. Decide whether the set is an epic (Rules).
 4. If the split came out of an alignment session, show the list to the captain and adjust granularity and blockers until they agree. Within an already-aligned goal, go on and report the split afterwards ([never-block-on-the-human](../principles/never-block-on-the-human.md)).
-5. Open the issues blockers first, each with the body below. For an epic, open the parent with `type:epic` and attach each issue as a sub-issue (`gh issue edit <epic> --add-sub-issue <n>`).
+5. Open the issues blockers first, each with its template from [templates.md](templates.md). For an epic, open the parent with `type:epic` and attach each issue as a sub-issue (`gh issue edit <epic> --add-sub-issue <n>`).
 6. If the source was an existing issue and the set is not an epic, narrow that issue to one slice and link the others with "relates to".
 7. Triage each new issue (next steps).
-
-Issue body:
-
-```markdown
-## What to build
-<the behaviour this issue makes work>
-
-## Acceptance criteria
-- [ ] <check with a pass predicate>
-
-## Blocked by
-<#n, or "None"; omit when set as native dependencies>
-```
 
 ## Steps: triaging an issue
 
@@ -68,5 +55,5 @@ Issue body:
 
 ## Exit criteria
 
-- Every issue from the source is open, labelled, linked by its real blockers, and either `status:ready` or waiting in `status:triage` with its open questions written on it.
+- Every issue from the source is open, written with its template, labelled, linked by its real blockers, and either `status:ready` or waiting in `status:triage` with its open questions written on it.
 - An epic exists only where ADR 0004 requires one, with every issue attached as a sub-issue.
