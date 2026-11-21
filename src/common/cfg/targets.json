@@ -712,6 +712,136 @@
         "file": "n2a_sdram_model.sv",
         "message": "n2a_sdram_model: mode register is not sequential CAS-two with the configured burst"
       }
+    },
+    "n2a_sdram_ctrl_line": {
+      "kind": "cocotb",
+      "description": "Common SDRAM controller, nand2doom configuration (burst eight, open row, row-XOR-bank map): random traffic, latency table, refresh, misaligned errors, on the common model",
+      "top": "n2a_sdram_ctrl_fixture",
+      "sources": [
+        "src/common/rtl/sdram/n2a_sdram_pkg.sv",
+        "src/common/rtl/sdram/n2a_sdram_ctrl.sv",
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_ctrl_fixture.sv"
+      ],
+      "parameters": {
+        "LINE": 1
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 300,
+      "test_module": "src.common.dv.sdram.test_sdram_ctrl",
+      "testcase": "sdram_ctrl_contract",
+      "default_seed": 11,
+      "max_cycles": 200000,
+      "level": "L0"
+    },
+    "n2a_sdram_ctrl_word": {
+      "kind": "cocotb",
+      "description": "Common SDRAM controller, nand2mario configuration (burst one, close page): random traffic, fixed 9/10 latency, idle return, refresh, misaligned errors, on the common model",
+      "top": "n2a_sdram_ctrl_fixture",
+      "sources": [
+        "src/common/rtl/sdram/n2a_sdram_pkg.sv",
+        "src/common/rtl/sdram/n2a_sdram_ctrl.sv",
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_ctrl_fixture.sv"
+      ],
+      "parameters": {
+        "LINE": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 300,
+      "test_module": "src.common.dv.sdram.test_sdram_ctrl",
+      "testcase": "sdram_ctrl_contract",
+      "default_seed": 11,
+      "max_cycles": 200000,
+      "level": "L0"
+    },
+    "n2a_sdram_ctrl_n2d_contract": {
+      "kind": "cocotb",
+      "description": "Common SDRAM controller in the nand2doom configuration, run against nand2doom's own pin-timing contract test (the stage 3 drop-in check)",
+      "top": "n2a_sdram_ctrl",
+      "sources": [
+        "src/common/rtl/sdram/n2a_sdram_pkg.sv",
+        "src/common/rtl/sdram/n2a_sdram_ctrl.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 8,
+        "OPEN_ROW": 1,
+        "ROW_XOR_BANK": 1,
+        "INIT_WAIT_MIN": 2
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "test_module": "src.nand2doom.dv.memory.test_n2d_sdram_controller",
+      "testcase": "sdram_pin_timing_contract",
+      "default_seed": 31,
+      "max_cycles": 12000,
+      "level": "L0"
+    },
+    "n2a_sdram_ctrl_n2m_contract": {
+      "kind": "cocotb",
+      "description": "Common SDRAM controller in the nand2mario configuration, run against nand2mario's own controller contract test (the stage 4 drop-in check)",
+      "top": "n2a_sdram_ctrl_n2m_fixture",
+      "sources": [
+        "src/common/rtl/sdram/n2a_sdram_pkg.sv",
+        "src/common/rtl/sdram/n2a_sdram_ctrl.sv",
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_ctrl_n2m_fixture.sv"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 180,
+      "test_module": "src.nand2mario.dv.storage.test_sdram_ctrl",
+      "testcase": "sdram_ctrl_contract",
+      "default_seed": 73,
+      "max_cycles": 400000,
+      "level": "L0"
+    },
+    "n2a_sdram_ctrl_lockstep_line": {
+      "kind": "cocotb",
+      "description": "Common SDRAM controller in lockstep with nand2doom's n2d_sdram_controller on one random request stream: responses and pins compared every clock, with the listed differences masked",
+      "top": "n2a_sdram_ctrl_lockstep_fixture",
+      "sources": [
+        "src/nand2doom/rtl/memory/n2d_ls_types_pkg.sv",
+        "src/nand2doom/rtl/memory/n2d_sdram_controller.sv",
+        "src/nand2mario/rtl/storage/n2m_sdram_pkg.sv",
+        "src/nand2mario/rtl/storage/n2m_sdram_ctrl.sv",
+        "src/common/rtl/sdram/n2a_sdram_pkg.sv",
+        "src/common/rtl/sdram/n2a_sdram_ctrl.sv",
+        "src/common/dv/sdram/n2a_sdram_ctrl_lockstep_fixture.sv"
+      ],
+      "parameters": {
+        "LINE": 1
+      },
+      "test_module": "src.common.dv.sdram.test_sdram_ctrl_lockstep",
+      "testcase": "sdram_ctrl_lockstep",
+      "level": "L0",
+      "clock_hz": 25000000,
+      "default_seed": 41,
+      "max_cycles": 200000,
+      "timeout_seconds": 300
+    },
+    "n2a_sdram_ctrl_lockstep_word": {
+      "kind": "cocotb",
+      "description": "Common SDRAM controller in lockstep with nand2mario's n2m_sdram_ctrl on one random request stream: responses and pins compared every clock, with the listed differences masked",
+      "top": "n2a_sdram_ctrl_lockstep_fixture",
+      "sources": [
+        "src/nand2doom/rtl/memory/n2d_ls_types_pkg.sv",
+        "src/nand2doom/rtl/memory/n2d_sdram_controller.sv",
+        "src/nand2mario/rtl/storage/n2m_sdram_pkg.sv",
+        "src/nand2mario/rtl/storage/n2m_sdram_ctrl.sv",
+        "src/common/rtl/sdram/n2a_sdram_pkg.sv",
+        "src/common/rtl/sdram/n2a_sdram_ctrl.sv",
+        "src/common/dv/sdram/n2a_sdram_ctrl_lockstep_fixture.sv"
+      ],
+      "parameters": {
+        "LINE": 0
+      },
+      "test_module": "src.common.dv.sdram.test_sdram_ctrl_lockstep",
+      "testcase": "sdram_ctrl_lockstep",
+      "level": "L0",
+      "clock_hz": 25000000,
+      "default_seed": 43,
+      "max_cycles": 300000,
+      "timeout_seconds": 300
     }
   }
 }

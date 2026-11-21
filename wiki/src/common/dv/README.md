@@ -4,4 +4,4 @@ The `dv` discipline of `common`: simulation models and benches shared by every p
 
 | Model | Document |
 | --- | --- |
-| SDRAM device model | [DV plan](sdram/dv-plan.md) |
+| SDRAM device model and controller | [DV plan](sdram/dv-plan.md) |

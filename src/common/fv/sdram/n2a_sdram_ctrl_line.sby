@@ -1,0 +1,33 @@
+# Formal setup for n2a_sdram_ctrl, nand2doom configuration. Plan and results:
+# wiki/src/common/fv/sdram/fv-plan.md. Run: python3 tools/fv/fv.py run n2a_sdram_ctrl_line
+# level: L0
+# timeout: 600
+[tasks]
+prove
+cover
+
+[options]
+prove: mode prove
+prove: depth 24
+cover: mode cover
+cover: depth 64
+
+[engines]
+prove: smtbmc yices
+cover: smtbmc yices
+
+[script]
+read_slang --no-synthesis-define -I . -G LINE=1 src/common/rtl/sdram/n2a_sdram_pkg.sv src/common/rtl/sdram/n2a_sdram_ctrl.sv src/common/fv/sdram/n2a_sdram_ctrl_fv.sv --top n2a_sdram_ctrl_fv
+prep -top n2a_sdram_ctrl_fv
+flatten
+techmap
+opt -fast
+setundef -undriven -anyseq
+setundef -anyseq
+
+[files]
+src/common/rtl/pkg/macros.vh ../../rtl/pkg/macros.vh
+src/common/rtl/pkg/assertion_macros.vh ../../rtl/pkg/assertion_macros.vh
+src/common/rtl/sdram/n2a_sdram_pkg.sv ../../rtl/sdram/n2a_sdram_pkg.sv
+src/common/rtl/sdram/n2a_sdram_ctrl.sv ../../rtl/sdram/n2a_sdram_ctrl.sv
+src/common/fv/sdram/n2a_sdram_ctrl_fv.sv n2a_sdram_ctrl_fv.sv
