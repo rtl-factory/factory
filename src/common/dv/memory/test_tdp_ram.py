@@ -59,7 +59,7 @@ async def tdp_ram_contract(dut) -> None:
         seed, clock_hz, max_cycles, depth, data_width,
     )
 
-    # Deterministic wide patterns that differ in every lane of a wide word.
+    # Why: patterns differ in every byte lane, so a swapped or stuck lane fails.
     def pattern(index: int) -> int:
         value = 0
         for lane in range(0, data_width, 8):
@@ -85,8 +85,6 @@ async def tdp_ram_contract(dut) -> None:
     dut.b_write_data_i.value = 0
     cocotb.start_soon(Clock(dut.clk_i, clock_period_ns, unit="ns").start())
 
-    # 1. Initialize three addresses through port A; port B reads elsewhere
-    #    meanwhile and, once a word is known, sees it unchanged.
     for index, address in enumerate((a_min, a_max, a_one)):
         other = a_max if address != a_max else a_min
         _, b_word = await _cycle(dut, a_address=address, a_write=True, a_data=pattern(index),
@@ -96,16 +94,12 @@ async def tdp_ram_contract(dut) -> None:
             check("B read beside A init", b_word, model[other], other)
         model[address] = pattern(index)
 
-    # 2. Cross-port reads: both ports read every initialized word, one word
-    #    per edge on each port, from different addresses on the same edge.
     for a_address, b_address in ((a_min, a_max), (a_max, a_one), (a_one, a_min), (a_min, a_one)):
         a_word, b_word = await _cycle(dut, a_address=a_address, b_address=b_address)
         cycle += 1
         check("A registered read", a_word, model[a_address], a_address)
         check("B registered read", b_word, model[b_address], b_address)
 
-    # 3. Same-port read-first collision on port A: the write lands, the same
-    #    edge's A output is the old word; B reads the new word next edge.
     old_value = model[a_one]
     new_value = pattern(4) ^ data_mask
     assert new_value != old_value
@@ -120,7 +114,6 @@ async def tdp_ram_contract(dut) -> None:
     check("A post-collision read", a_word, model[a_one], a_one)
     check("B post-collision read", b_word, model[a_one], a_one)
 
-    # 4. Same-port read-first collision on port B.
     old_value = model[a_max]
     new_value = pattern(5) ^ data_mask
     assert new_value != old_value
@@ -135,8 +128,6 @@ async def tdp_ram_contract(dut) -> None:
     check("A post-B-collision read", a_word, model[a_max], a_max)
     check("B post-B-collision read", b_word, model[a_max], a_max)
 
-    # 5. Mixed-port read-first collision: A writes X while B reads X on the
-    #    same edge (old word), then the reverse (B writes, A reads).
     old_value = model[a_min]
     new_value = pattern(6) ^ data_mask
     assert new_value != old_value
@@ -160,8 +151,6 @@ async def tdp_ram_contract(dut) -> None:
     check("A after mixed collisions", a_word, model[a_min], a_min)
     check("B after mixed collisions", b_word, model[a_one], a_one)
 
-    # 6. Disabled writes on both ports: data and address are ignored, the
-    #    same-edge reads are ordinary reads.
     a_word, b_word = await _cycle(dut, a_address=a_max, a_write=False, a_data=pattern(8),
                                   b_address=a_min, b_write=False, b_data=pattern(9))
     cycle += 1
@@ -172,8 +161,6 @@ async def tdp_ram_contract(dut) -> None:
     check("A disabled write ignored", a_word, model[a_min], a_min)
     check("B disabled write ignored", b_word, model[a_max], a_max)
 
-    # 7. Both ports write distinct addresses on one edge; each lands and each
-    #    port's same-edge output is its own old word.
     a_new, b_new = pattern(10), pattern(11)
     a_old, b_old = model[a_min], model[a_max]
     a_word, b_word = await _cycle(dut, a_address=a_min, a_write=True, a_data=a_new,
@@ -187,9 +174,8 @@ async def tdp_ram_contract(dut) -> None:
     check("A sees B's write", a_word, model[a_max], a_max)
     check("B sees A's write", b_word, model[a_min], a_min)
 
-    # 8. No read enable: alternating addresses alternate each output every
-    #    edge, and a stable address keeps reporting its stored word while
-    #    unrelated writes proceed on the other port (stable value, not a hold).
+    # Why: with no read enable a held output would look the same as a fresh
+    # read, so writes on the other port prove each edge reads again.
     for a_address, b_address in ((a_one, a_min), (a_min, a_one), (a_one, a_max)):
         a_word, b_word = await _cycle(dut, a_address=a_address, b_address=b_address)
         cycle += 1

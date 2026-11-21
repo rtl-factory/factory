@@ -115,10 +115,6 @@ module altsyncram #(
     if (TWO_PORT && ((clock_enable_input_b != "BYPASS") || (clock_enable_output_b != "BYPASS"))) begin : g_clock_enable_b
       initial $fatal(1, "altsyncram stub requires port-B clock enables BYPASS in DUAL_PORT and BIDIR_DUAL_PORT modes");
     end
-    // BIDIR_DUAL_PORT: both ports write, so both same-port relationships and
-    // the mixed relationship are read-first, every port-B register (address,
-    // write data, write control, byte enable, read control) is on clock0 and
-    // port-B writes are full words.
     if (BIDIR && ((read_during_write_mode_port_a != "OLD_DATA") || (read_during_write_mode_port_b != "OLD_DATA"))) begin : g_bidir_port_rdw
       initial $fatal(1, "altsyncram stub requires OLD_DATA on both ports in BIDIR_DUAL_PORT mode");
     end
@@ -175,11 +171,9 @@ module altsyncram #(
 
   assign eccstatus = '0;
 
-  // Contract semantics only. Port A: registered read of the pre-edge word on
-  // every clock0 edge, write after that sample (never in ROM mode).
   generate
     if (ROM) begin : g_rom_contents
-      // The stub target is fed the same Verilog-hex image the portable
+      // Why: the stub target is fed the same Verilog-hex image the portable
       // backend reads, so one contract test covers both files. A Quartus
       // configuration passes a staged .mif here instead; the stub never
       // parses that format. A missing image name is already rejected by
@@ -190,7 +184,7 @@ module altsyncram #(
           $readmemh(init_file, memory);
         end
       end else begin : g_rom_no_image
-        // Reached only in the rejected ROM-without-image shape, where
+        // Why: reached only in the rejected ROM-without-image shape, where
         // g_rom_without_image ends the simulation at time zero. This dummy
         // driver exists solely so `memory` is driven and lint cannot abort
         // the compile before that rejection; it is not a ROM zero-fill policy
@@ -214,14 +208,11 @@ module altsyncram #(
     end
   endgenerate
 
-  // Port B: registered read on its own clock. In single-clock mode that is
-  // clock0 (read-first against port A by nonblocking order); in dual-clock
-  // mode it is clock1, and an overlapping same-word access resolves in
+  // Why: in dual-clock mode an overlapping same-word access resolves in
   // simulator delta order, which is exactly the unspecified value the
   // collision-undefined contract permits and no test may assert. In
-  // BIDIR_DUAL_PORT mode port B also writes after its own read sample
-  // (read-first per port); two enabled writes to one address in one edge
-  // have no contract winner and no test asserts one.
+  // BIDIR_DUAL_PORT mode two enabled writes to one address in one edge
+  // likewise have no contract winner and no test asserts one.
   generate
     if (DUAL_CLOCK) begin : g_read_port_b_clock1
       always_ff @(posedge clock1) begin

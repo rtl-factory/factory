@@ -31,7 +31,8 @@ module n2a_jtag_keyboard (
   always_comb begin
     scan_d = scan_q;
     if (scan_q.busy && ack_sync == scan_q.request) begin
-      // Response is held throughout acknowledgement synchronization.
+      // Why: response_q crosses from clk_i without a synchronizer. It is safe
+      // because clk_i sets it with ack and holds it until the next request.
       scan_d.response = response_q;
       scan_d.busy = 1'b0;
     end
@@ -56,7 +57,7 @@ module n2a_jtag_keyboard (
     end else if (update_i) begin
       scan_d.scan_open = 1'b0;
       if (ir_i == 2'd1) begin
-        // The Intel hub delivers TDI to the node late and pads the scan with
+        // Why: the Intel hub delivers TDI to the node late and pads the scan with
         // extra Shift-DR cycles (seven on the DE2-115), so the command is the
         // last 64 bits shifted in and a scan may exceed 64 Shift-DR cycles.
         if (!scan_q.scan_open || scan_q.bits_shifted < 7'd64 || scan_q.busy) begin
@@ -80,8 +81,9 @@ module n2a_jtag_keyboard (
   assign completion = {8'h5a, 2'b00, q.code, q.accepted, 8'h00, command_seq, q.total};
   assign ack_q = q.ack;
   assign response_q = q.response;
-  // Register both byte/valid before FIFO arbitration and acceptance afterward.
-  // Only the actual FIFO write edge counts, never staging a pending byte.
+  // Why: byte and valid leave from registers and inject_ready_i is registered
+  // into take, so only the consumer's FIFO write edge counts as acceptance,
+  // never a byte merely staged.
   assign inject_valid_o = q.valid && !sys_reset && !reset_i;
   assign inject_byte_o = q.byte_data;
 
@@ -96,7 +98,8 @@ module n2a_jtag_keyboard (
       end
       KBD_DECODE: begin
         if (q.fault) begin
-          // Preserve the first protocol failure until a system reset.
+          // Why: once faulted, commands are acknowledged but ignored, so the
+          // first protocol failure stays reported until a system reset.
           d.ack = req_sync;
           d.phase = KBD_IDLE;
         end else if (q.command[63:56] != 8'ha3 || q.command[55:48] < 8'd1 ||

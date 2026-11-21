@@ -11,7 +11,7 @@ module n2a_cdc_bit_sync #(
 );
   localparam int unsigned IMPLEMENTATION_STAGES = (STAGES < 2) ? 2 : STAGES;
 
-  // This explicit chain is only for a stable asynchronous scalar level.
+  // Why: a flop chain is safe only for a stable asynchronous scalar level.
   (* altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION FORCED" *)
   logic [IMPLEMENTATION_STAGES-1:0] stages_q;
   logic [IMPLEMENTATION_STAGES-1:0] stages_d;

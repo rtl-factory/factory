@@ -9,7 +9,7 @@ module n2a_reset_sync #(
 );
   localparam int unsigned IMPLEMENTATION_STAGES = (STAGES < 2) ? 2 : STAGES;
 
-  // Keep every stage visible so synthesis can identify the reset synchronizer.
+  // Why: every stage stays visible so synthesis can identify the reset synchronizer.
   (* altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION FORCED" *)
   logic [IMPLEMENTATION_STAGES-1:0] stages_q;
   logic [IMPLEMENTATION_STAGES-1:0] stages_d;

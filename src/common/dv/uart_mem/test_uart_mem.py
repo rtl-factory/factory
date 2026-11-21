@@ -142,7 +142,7 @@ class Bench:
             self.releases.append(self.cycle)
         if int(d.entry_valid_o.value):
             self.entries.append((self.cycle, int(d.entry_addr_o.value)))
-        # Leave the read-only phase so the test may drive inputs before the
+        # Why: leave the read-only phase so the test may drive inputs before the
         # next rising edge.
         await Timer(1, unit="ps")
 
@@ -265,8 +265,7 @@ async def uart_mem_load_readback(dut):
     screen = bytes(rng.getrandbits(8) for _ in range(0x400))
     segments = [(0x0000, program), (0x1000, screen)]
 
-    # One load transaction: hold once, write and verify each segment, set the
-    # entry state, release once.
+    # Ref: wiki/src/common/scripts/uart_mem/spec.md "Load transaction".
     await bench.call(HOLD)
     held_from = bench.cycle
     assert int(dut.hold_ack_o.value) == 1
@@ -281,7 +280,6 @@ async def uart_mem_load_readback(dut):
     await bench.call(RELEASE)
     assert len(bench.releases) == 1 and int(dut.hold_o.value) == 0
 
-    # Live readback while the CPU keeps drawing into the screen window.
     begin = bench.cycle
     cpu_before = len(bench.cpu_accepts)
     for _ in range(2):
@@ -295,7 +293,8 @@ async def uart_mem_load_readback(dut):
     dut._log.info("live readback: %d cycles, %d CPU accesses, %d stall cycles (bound %d)",
                   span, ran, stalls, span // LIVE_GAP + 1)
 
-    # The program the CPU never writes is still the loaded image.
+    # Why: the CPU never writes the program window, so it must still hold the
+    # loaded image.
     await bench.call(HOLD)
     assert await bench.read(0x0000, 0x800) == program
     await bench.call(RELEASE)
@@ -308,7 +307,8 @@ async def uart_mem_contract(dut):
     await bench.start()
     dut.cpu_enable_i.value = 1
 
-    # Pass-through: other bytes, and a SOF while the project is mid-frame.
+    # Why: a SOF inside a project frame is project data, so the endpoint must not
+    # claim it.
     bench.tx_queue += bytes([0x41, 0x5A])
     dut.down_idle_i.value = 0
     bench.tx_queue += bytes([REQ_SOF, 0x42])
@@ -317,7 +317,7 @@ async def uart_mem_contract(dut):
     assert bench.forwarded == [0x41, 0x5A, REQ_SOF, 0x42], bench.forwarded
     dut.down_idle_i.value = 1
 
-    # Project prints share the transmitter only between endpoint responses.
+    # Why: a project byte inside a response would corrupt the frame the host parses.
     prints = bytes((0x30 + i % 10) for i in range(64))
     bench.print_queue += prints
     await bench.ticks(5 * BYTE_CYCLES)
@@ -332,7 +332,8 @@ async def uart_mem_contract(dut):
     assert bytes(before) + bytes(bench.rx) == prints, "print stream lost or reordered"
     bench.rx.clear()
 
-    # Header rejections, in HAS table order; none touches memory.
+    # Why: the requests follow the endpoint's check order, so each status shows
+    # that check runs before the later ones.
     accesses = len(bench.ep_log)
     await bench.call(IDENTIFY, version=2, expect=ST_VERSION)
     await bench.call(0x7F, expect=ST_COMMAND)
@@ -348,13 +349,12 @@ async def uart_mem_contract(dut):
     await bench.call(ENTRY_CMD, ENTRY, expect=ST_NOT_HELD)
     assert len(bench.ep_log) == accesses, "a rejected request reached memory"
 
-    # Overrun: a byte before the status leaves is reported.
     seq = bench.next_seq()
     bench.tx_queue += request(READ, seq, 0x1000, 64) + bytes([0x00])
     _, cmd, rseq, data, status = await bench.response(400 * BYTE_CYCLES)
     assert (rseq, status) == (seq, ST_OVERRUN)
 
-    # Overrun boundary: Identify bytes leave back to back, so the status
+    # Why: Identify bytes leave back to back, so the status
     # (byte 50) waits one byte time after the last payload byte is accepted.
     # A host byte started D clocks after byte 47 arrives completes inside
     # that wait for small D; for large D it completes after the status left.
@@ -377,11 +377,10 @@ async def uart_mem_contract(dut):
     await bench.call(ENTRY_CMD, ENTRY + 2, expect=ST_ALIGNMENT)
     await bench.write(0x0000, bytes(range(64)))
 
-    # Payload CRC failure: reported; the trusted header bounds the damage.
+    # Why: the header is trusted, so it bounds where a corrupt payload may write.
     await bench.call(WRITE, 0x0040, payload=bytes(16), bad_payload=True, expect=ST_CHECKSUM)
     assert all(a in range(0x40, 0x50) for _, w, a, _ in bench.ep_log[-4:] if w)
 
-    # Header CRC failure: no response, no forwarding, until the line is quiet.
     forwarded = len(bench.forwarded)
     bench.tx_queue += request(READ, bench.next_seq(), 0x0000, 4, bad_header=True) + b"xyz"
     await bench.drain()
@@ -392,7 +391,8 @@ async def uart_mem_contract(dut):
     assert int(dut.owner_o.value) == 0
     assert await bench.read(0x0000, 64) == bytes(range(64))
 
-    # Framing error inside a header: dropped like a bad header.
+    # Why: after a framing error the header bytes are unreliable, so the frame is
+    # dropped like one with a bad header CRC.
     bench.tx_queue += request(READ, bench.next_seq(), 0x0000, 4)[:5]
     await bench.drain()
     dut.host_line_low_i.value = 1
@@ -401,7 +401,7 @@ async def uart_mem_contract(dut):
     await bench.no_response(GAP_CYCLES + 4 * BYTE_CYCLES)
     assert int(dut.owner_o.value) == 0
 
-    # Inter-byte gap: a partial frame is abandoned and the link returns.
+    # Why: a host that stops mid-frame must not keep the link claimed forever.
     bench.tx_queue += request(IDENTIFY, bench.next_seq())[:4]
     await bench.drain()
     await bench.no_response(GAP_CYCLES + 2 * BYTE_CYCLES)
@@ -410,7 +410,6 @@ async def uart_mem_contract(dut):
     await bench.ticks(2 * BYTE_CYCLES)
     assert bench.forwarded[-1] == 0x55
 
-    # Memory error and timeout: reported, read payload zero-filled.
     dut.mem_error_i.value = 1
     assert await bench.read(0x0000, 16, expect=ST_MEMORY) == bytes(16)
     await bench.call(WRITE, 0x0100, payload=bytes(8), expect=ST_MEMORY)
@@ -421,9 +420,9 @@ async def uart_mem_contract(dut):
     dut.mem_stall_i.value = 0
     assert await bench.read(0x0000, 8) == bytes(range(8))
 
-    # Accepted request that times out: the late response is an orphan. It is
-    # dropped, no request is issued until it arrives, and the next frame
-    # recovers with the right data.
+    # Why: an accepted bus request cannot be recalled, so its late response must
+    # be dropped and no request issued until it arrives, or the next frame would
+    # read stale data.
     late = 3000
     dut.mem_rsp_delay_i.value = late
     accepted = len(bench.ep_log)
@@ -439,8 +438,8 @@ async def uart_mem_contract(dut):
     dut.mem_rsp_delay_i.value = late
     await bench.call(WRITE, 0x0100, payload=bytes(8), expect=ST_TIMEOUT)
     dut.mem_rsp_delay_i.value = 0
-    # A write word that completes while the orphan is outstanding cannot be
-    # issued: overrun, and nothing is written.
+    # Why: the bus allows one request outstanding, so a write word that completes
+    # while the orphan is outstanding cannot be issued: overrun, nothing written.
     accepted = len(bench.ep_log)
     await bench.call(WRITE, 0x0100, payload=bytes(range(8)), expect=ST_OVERRUN)
     assert len(bench.ep_log) == accepted
@@ -448,7 +447,6 @@ async def uart_mem_contract(dut):
     await bench.write(0x0100, bytes(range(8)))
     assert await bench.read(0x0100, 8) == bytes(range(8))
 
-    # Hold timeout keeps the hold requested; release always succeeds.
     await bench.call(RELEASE)
     await bench.ticks(50)
     dut.hold_block_i.value = 1

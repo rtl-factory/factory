@@ -115,7 +115,6 @@ module n2a_uart_mem_fixture #(
         .mem_req_wdata_o(mem_req_wdata), .mem_rsp_valid_i(mem_rsp_valid),
         .mem_rsp_rdata_i(mem_rsp_rdata), .mem_rsp_error_i(mem_rsp_error));
 
-    // ---------------- CPU model and hold ----------------
     logic [15:0] lfsr_q, lfsr_d;
     logic [7:0]  hold_count_q, hold_count_d;
     logic        cpu_valid_q, cpu_valid_d, cpu_write_q, cpu_write_d;
@@ -138,8 +137,9 @@ module n2a_uart_mem_fixture #(
         cpu_write_d = cpu_write_q;
         cpu_addr_d = cpu_addr_q;
         cpu_wdata_d = cpu_wdata_q;
-        // A new access only after the last is accepted; three in four
-        // clocks busy. Writes land in the screen window, like drawing.
+        // Why: the model mimics a running program: a new access only after
+        // the last is accepted, three clocks in four busy, and writes land in
+        // the screen window, like drawing.
         if ((!cpu_valid_q || cpu_accept) && cpu_running && (lfsr_q[1:0] != 2'b00)) begin
             cpu_valid_d = 1'b1;
             cpu_write_d = lfsr_q[2];
@@ -155,7 +155,6 @@ module n2a_uart_mem_fixture #(
     `N2A_DFF_ARST_VAL(cpu_addr_q, cpu_addr_d, clk_i, reset_i, '0)
     `N2A_DFF_ARST_VAL(cpu_wdata_q, cpu_wdata_d, clk_i, reset_i, '0)
 
-    // ---------------- Single-port memory ----------------
     logic        ram_write;
     logic [10:0] ram_address;
     logic [31:0] ram_wdata;
@@ -176,8 +175,8 @@ module n2a_uart_mem_fixture #(
     assign rsp_error_d = ep_accept && mem_error_i;
     `N2A_DFF_ARST_VAL(raw_valid_q, rsp_valid_d, clk_i, reset_i, 1'b0)
     `N2A_DFF_ARST_VAL(raw_error_q, rsp_error_d, clk_i, reset_i, 1'b0)
-    // A delayed response holds the read data captured on the clock after
-    // acceptance, then answers after mem_rsp_delay_i further clocks.
+    // Why: the data is captured on the clock after acceptance, as the RAM reads
+    // it, so mem_rsp_delay_i changes only when the response arrives, not its data.
     assign held_release = held_valid_q && (held_count_q == 16'd0);
     always_comb begin
         held_valid_d = held_valid_q && !held_release;

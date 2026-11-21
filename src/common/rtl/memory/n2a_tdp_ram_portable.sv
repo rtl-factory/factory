@@ -37,7 +37,7 @@ module n2a_tdp_ram #(
   logic [REQUIRED_ADDR_WIDTH-1:0] a_address;
   logic [REQUIRED_ADDR_WIDTH-1:0] b_address;
 
-  // Explicit sizes keep an invalid ADDR_WIDTH probe lint-clean until its
+  // Why: explicit sizes keep an invalid ADDR_WIDTH probe lint-clean until its
   // elaboration diagnostic fires. Both are no-ops for supported values.
   assign a_address = REQUIRED_ADDR_WIDTH'(a_address_i);
   assign b_address = REQUIRED_ADDR_WIDTH'(b_address_i);
@@ -49,14 +49,13 @@ module n2a_tdp_ram #(
   `N2A_ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
       "n2a_tdp_ram ADDR_WIDTH must equal $clog2(DEPTH)")
 
-  // Two read/write ports on one array, one read process and one write
-  // process per port. Nonblocking semantics make every same-edge collision
-  // read-first: each port's output captures the pre-edge word (same-port and
-  // mixed-port old data) and the enabled writes land afterwards. Two enabled
-  // writes to one address in one edge are forbidden by the contract; the
-  // process order below is not a promise of a winner. This is the
-  // conventional inferred true-dual-port template; there is no reset,
-  // enable, initialization, or bypass path.
+  // Why: this is the conventional inferred true-dual-port template, one read
+  // and one write process per port. Nonblocking semantics make every
+  // same-edge collision read-first: each port's output captures the pre-edge
+  // word (same-port and mixed-port old data) and the enabled writes land
+  // afterwards. Two enabled writes to one address in one edge are forbidden
+  // by the contract; the process order below is not a promise of a winner.
+  // There is no reset, enable, initialization, or bypass path.
   `N2A_MEM_READ(a_read_data_o, memory, clk_i, a_address)
   `N2A_MEM_WRITE(memory, clk_i, a_write_enable_i, a_address, a_write_data_i)
   `N2A_MEM_READ(b_read_data_o, memory, clk_i, b_address)
