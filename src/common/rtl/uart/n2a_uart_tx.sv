@@ -25,15 +25,15 @@ module n2a_uart_tx #(
     // Protocol state: one packaged struct register, one owner. The bit clock
     // and fractional remainder widths follow the parameters, so each is a
     // register of its own beside it with the same reset value.
-    localparam uart_protocol_t PROTOCOL_RESET = '{
+    localparam t_uart_protocol PROTOCOL_RESET = '{
         state: UART_IDLE,
         bit_index: '0,
         shift: '0,
         extra: 1'b0
     };
 
-    uart_protocol_t protocol_q;
-    uart_protocol_t protocol_d;
+    t_uart_protocol protocol_q;
+    t_uart_protocol protocol_d;
     logic [COUNTER_WIDTH-1:0] bit_clock_q;
     logic [COUNTER_WIDTH-1:0] bit_clock_d;
     logic [ACC_WIDTH-1:0] frac_acc_q;
@@ -41,9 +41,9 @@ module n2a_uart_tx #(
     logic bit_done;
     logic [ACC_WIDTH:0] frac_sum;
 
-    `N2A_ASSERT_PARAM(g_invalid_clks_per_bit, CLKS_PER_BIT >= 2,
+    `ASSERT_PARAM(g_invalid_clks_per_bit, CLKS_PER_BIT >= 2,
         "n2a_uart_tx CLKS_PER_BIT must be at least 2")
-    `N2A_ASSERT_PARAM(g_invalid_fraction, (FRAC_DEN >= 1) && (FRAC_NUM < FRAC_DEN),
+    `ASSERT_PARAM(g_invalid_fraction, (FRAC_DEN >= 1) && (FRAC_NUM < FRAC_DEN),
         "n2a_uart_tx FRAC_NUM must be below FRAC_DEN")
 
     assign bit_done = (bit_clock_q ==
@@ -123,13 +123,13 @@ module n2a_uart_tx #(
     end
 
     // Why: an asynchronous reset holds the line idle even before clk_i runs.
-    `N2A_DFF_ARST_VAL(protocol_q, protocol_d, clk_i, reset_i, PROTOCOL_RESET)
-    `N2A_DFF_ARST_VAL(bit_clock_q, bit_clock_d, clk_i, reset_i, '0)
-    `N2A_DFF_ARST_VAL(frac_acc_q, frac_acc_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(protocol_q, protocol_d, clk_i, reset_i, PROTOCOL_RESET)
+    `DFF_ARST_VAL(bit_clock_q, bit_clock_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(frac_acc_q, frac_acc_d, clk_i, reset_i, '0)
 
-    `N2A_ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, !$isunknown(byte_valid_i),
+    `ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, !$isunknown(byte_valid_i),
         "n2a_uart_tx byte_valid_i is unknown")
-    `N2A_ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i,
+    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i,
         (byte_valid_i && byte_ready_o), !$isunknown(byte_i),
         "n2a_uart_tx accepted unknown byte_i")
 endmodule

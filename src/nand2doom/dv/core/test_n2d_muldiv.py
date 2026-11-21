@@ -65,10 +65,10 @@ class Harness:
 
     async def reset(self) -> None:
         self.idle_inputs()
-        self.dut.rst_i.value = 1
+        self.dut.reset_i.value = 1
         await self.tick()
         await self.tick()
-        self.dut.rst_i.value = 0
+        self.dut.reset_i.value = 0
         self.last_key = None
         assert not int(self.dut.busy_o.value) and not int(self.dut.result_valid_o.value)
 

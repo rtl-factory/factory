@@ -556,7 +556,7 @@ class QuartusTests(unittest.TestCase):
                      "set_global_assignment -name DEVICE EP4CE115F29C7",
                      "set_global_assignment -name TOP_LEVEL_ENTITY n2d_de2_115",
                      'set_global_assignment -name VERILOG_MACRO "SYNTHESIS=1"',
-                     'set_global_assignment -name VERILOG_MACRO "N2A_DISABLE_ASSERTIONS=1"',
+                     'set_global_assignment -name VERILOG_MACRO "DISABLE_ASSERTIONS=1"',
                      'source "src/nand2doom/fpga/de2_115/n2d_de2_115.qsf"',
                      'set_global_assignment -name SDC_FILE "src/nand2doom/fpga/de2_115/n2d_de2_115.sdc"',
                      "set_location_assignment PIN_Y2 -to CLOCK_50",
@@ -726,10 +726,10 @@ class QuartusTests(unittest.TestCase):
         quartus.stage(ROOT, output, self.config)
         qsf = (output / f'{self.config["project"]}.qsf').read_text()
         self.assertIn('set_global_assignment -name VERILOG_MACRO "SYNTHESIS=1"', qsf)
-        self.assertIn('set_global_assignment -name VERILOG_MACRO "N2A_DISABLE_ASSERTIONS=1"', qsf)
+        self.assertIn('set_global_assignment -name VERILOG_MACRO "DISABLE_ASSERTIONS=1"', qsf)
         registry = json.loads((ROOT / "src/nand2doom/cfg/targets.json").read_text())
         for target in registry["targets"].values():
-            self.assertNotIn("N2A_DISABLE_ASSERTIONS", target.get("defines", []))
+            self.assertNotIn("DISABLE_ASSERTIONS", target.get("defines", []))
         hardware = (output / "src/nand2doom/fpga/de10_lite/n2d_de10_lite_clock_intel.sv").read_text()
         self.assertIn("altpll #(", hardware)
         self.assertIn(") u_pll (", hardware)

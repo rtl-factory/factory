@@ -74,7 +74,7 @@ async def register_file_contract(dut) -> None:
         await Timer(1, unit="ps")
 
     cocotb.start_soon(Clock(dut.clk_i, 40, unit="ns").start())
-    dut.rst_i.value = 1
+    dut.reset_i.value = 1
     dut.read_a_index_i.value = 0
     dut.read_b_index_i.value = 0
     dut.write_enable_i.value = 0
@@ -84,7 +84,7 @@ async def register_file_contract(dut) -> None:
     await active_edge()
     model.reset()
     await FallingEdge(dut.clk_i)
-    dut.rst_i.value = 0
+    dut.reset_i.value = 0
 
     for index_a in range(REGISTER_COUNT):
         for index_b in range(REGISTER_COUNT):
@@ -128,7 +128,7 @@ async def register_file_contract(dut) -> None:
     assert int(dut.read_b_data_o.value) == new_value
 
     await FallingEdge(dut.clk_i)
-    dut.rst_i.value = 1
+    dut.reset_i.value = 1
     dut.write_enable_i.value = 1
     dut.write_index_i.value = 31
     dut.write_data_i.value = WORD_MASK
@@ -138,7 +138,7 @@ async def register_file_contract(dut) -> None:
         for index_b in range(REGISTER_COUNT):
             await _check_reads(dut, model, index_a, index_b)
     await FallingEdge(dut.clk_i)
-    dut.rst_i.value = 0
+    dut.reset_i.value = 0
 
     for operation in range(RANDOM_OPERATIONS):
         enable = rng.randrange(2)

@@ -95,17 +95,17 @@ module n2d_system
     /* verilator lint_off UNUSEDSIGNAL */
     logic icache_maintenance_valid, dcache_maintenance_valid;
     logic cache_maintenance_done;
-    localparam system_maint_t MAINT_RESET = '{halt_request_prev: 1'b1, required: 1'b0,
+    localparam t_system_maint MAINT_RESET = '{halt_request_prev: 1'b1, required: 1'b0,
                                               icache_complete: 1'b0, dcache_complete: 1'b0};
-    system_maint_t maint_q, maint_d;
+    t_system_maint maint_q, maint_d;
     logic reset_pc_valid;
-    n2d_debug_control_t    debug_control;
-    n2d_debug_status_t     debug_status;
-    n2d_input_event_t      uart_input;
-    n2d_debug_txn_req_t    debug_txn_req;
-    n2d_debug_txn_status_t debug_txn_status;
-    n2d_debug_mem_req_t    debug_word_request;
-    n2d_debug_mem_rsp_t    debug_word_response;
+    t_n2d_debug_control    debug_control;
+    t_n2d_debug_status     debug_status;
+    t_n2d_input_event      uart_input;
+    t_n2d_debug_txn_req    debug_txn_req;
+    t_n2d_debug_txn_status debug_txn_status;
+    t_n2d_debug_mem_req    debug_word_request;
+    t_n2d_debug_mem_rsp    debug_word_response;
     /* verilator lint_on UNUSEDSIGNAL */
     logic debug_line_valid, debug_line_ready, debug_line_write;
     logic [25:0] debug_line_address;
@@ -120,7 +120,7 @@ module n2d_system
     logic [3:0] debug_word_byte_enable;
     logic debug_word_response_valid, debug_word_response_error;
     logic [31:0] debug_word_response_data;
-    system_debug_owner_t debug_owner_q, debug_owner_d;
+    t_system_debug_owner debug_owner_q, debug_owner_d;
     logic debug_select_sdram, debug_select_device;
     logic debug_sdram_begin, debug_device_begin;
     logic debug_sdram_commit, debug_device_commit;
@@ -200,9 +200,9 @@ module n2d_system
     logic scan_inject_valid, scan_inject_ready;
     logic [7:0] scan_inject_byte;
     logic system_request_valid;
-    localparam system_regs_t SYS_RESET = '{response_valid: 1'b0, response_data: '0,
+    localparam t_system_regs SYS_RESET = '{response_valid: 1'b0, response_data: '0,
                                            response_error: 1'b0, completion: '0, tick: '0};
-    system_regs_t sys_q, sys_d;
+    t_system_regs sys_q, sys_d;
     logic debug_framebuffer_request_valid, debug_framebuffer_request_ready;
     logic debug_framebuffer_request_write;
     logic [15:0] debug_framebuffer_request_address;
@@ -217,8 +217,8 @@ module n2d_system
     // Ref: wiki/src/nand2doom/rtl/io/mas.md "UART memory endpoint": screen reads
     // of the endpoint cover the front bank and the scanned palette, while the
     // CPU runs.
-    n2d_screen_req_t screen_request;
-    n2d_screen_rsp_t screen_response;
+    t_n2d_screen_req screen_request;
+    t_n2d_screen_rsp screen_response;
     logic screen_framebuffer_valid, screen_palette_valid;
     logic screen_framebuffer_pending_q, screen_framebuffer_pending_d;
     logic screen_palette_pending_q, screen_palette_pending_d;
@@ -235,7 +235,7 @@ module n2d_system
     logic system_address_selected, video_control_address_selected;
     logic ps2_address_selected, sdram_address_selected;
     logic invalid_response_q, invalid_response_d;
-    system_data_owner_t data_owner_q, data_owner_d;
+    t_system_data_owner data_owner_q, data_owner_d;
 
     assign sdram_address_selected = data_request_address < 32'h0400_0000;
     assign framebuffer_back_address_selected =
@@ -300,8 +300,8 @@ module n2d_system
     // tracks each read.
     assign screen_framebuffer_pending_d = screen_framebuffer_valid && framebuffer_request_ready;
     assign screen_palette_pending_d = screen_palette_valid && palette_request_ready;
-    `N2A_DFF_RST(screen_framebuffer_pending_q, screen_framebuffer_pending_d, clk_i, reset_i)
-    `N2A_DFF_RST(screen_palette_pending_q, screen_palette_pending_d, clk_i, reset_i)
+    `DFF_RST(screen_framebuffer_pending_q, screen_framebuffer_pending_d, clk_i, reset_i)
+    `DFF_RST(screen_palette_pending_q, screen_palette_pending_d, clk_i, reset_i)
     assign screen_response = '{
         ready: screen_request.palette ? (palette_request_ready && !debug_palette_request_valid) :
             (framebuffer_request_ready && !debug_framebuffer_request_valid),
@@ -394,8 +394,8 @@ module n2d_system
         end
     end
 
-    `N2A_DFF_RST_VAL(data_owner_q, data_owner_d, clk_i, reset_i, DATA_NONE)
-    `N2A_DFF_RST(invalid_response_q, invalid_response_d, clk_i, reset_i)
+    `DFF_RST_VAL(data_owner_q, data_owner_d, clk_i, reset_i, DATA_NONE)
+    `DFF_RST(invalid_response_q, invalid_response_d, clk_i, reset_i)
 
     // Ref: wiki/src/nand2doom/rtl/core/mas.md "Performance monitor": platform PMON
     // event sources, derived from existing handshakes. pmon_events is the
@@ -407,7 +407,7 @@ module n2d_system
     /* verilator lint_on UNUSEDSIGNAL */
 
     n2d_pmon_platform_events u_pmon_events (
-        .clk_i, .rst_i(reset_i),
+        .clk_i, .reset_i,
         .instruction_hit_event_i(instruction_hit_event_o),
         .instruction_miss_event_i(instruction_miss_event_o),
         .data_hit_event_i(data_hit_event_o),
@@ -435,7 +435,7 @@ module n2d_system
     );
 
     n2d_rv32im_core u_core (
-        .clk_i, .rst_i(reset_i), .enable_i(1'b1),
+        .clk_i, .reset_i, .enable_i(1'b1),
         .halt_request_i(halt_request),
         .reset_pc_request_i(reset_pc_valid), .resume_i(!halt_request),
         .instruction_request_valid_o(instruction_request_valid),
@@ -467,7 +467,7 @@ module n2d_system
     );
 
     n2d_icache u_icache (
-        .clk_i, .rst_i(reset_i),
+        .clk_i, .reset_i,
         .cpu_request_valid_i(instruction_request_valid),
         .cpu_request_ready_o(instruction_request_ready),
         .cpu_request_address_i(instruction_request_address),
@@ -491,7 +491,7 @@ module n2d_system
     );
 
     n2d_dcache #(.WAYS(DCACHE_WAYS), .PREFETCH_LINES(DCACHE_PREFETCH_LINES)) u_dcache (
-        .clk_i, .rst_i(reset_i),
+        .clk_i, .reset_i,
         .cpu_request_valid_i(dcache_cpu_valid),
         .cpu_request_ready_o(dcache_cpu_ready),
         .cpu_request_write_i(data_request_write),
@@ -686,7 +686,7 @@ module n2d_system
         end
     end
 
-    `N2A_DFF_RST_VAL(sys_q, sys_d, clk_i, reset_i, SYS_RESET)
+    `DFF_RST_VAL(sys_q, sys_d, clk_i, reset_i, SYS_RESET)
 
     // Ref: wiki/src/nand2doom/rtl/memory/mas.md "Maintenance": a rising halt
     // request arms one I-cache invalidate and one D-cache writeback, and both
@@ -718,7 +718,7 @@ module n2d_system
         end
     end
 
-    `N2A_DFF_RST_VAL(maint_q, maint_d, clk_i, reset_i, MAINT_RESET)
+    `DFF_RST_VAL(maint_q, maint_d, clk_i, reset_i, MAINT_RESET)
     assign icache_maintenance_valid = maint_q.required && halt_ack_o &&
         !maint_q.icache_complete;
     assign dcache_maintenance_valid = maint_q.required && halt_ack_o &&
@@ -805,7 +805,7 @@ module n2d_system
         end
     end
 
-    `N2A_DFF_RST_VAL(debug_owner_q, debug_owner_d, clk_i, reset_i, DEBUG_NONE)
+    `DFF_RST_VAL(debug_owner_q, debug_owner_d, clk_i, reset_i, DEBUG_NONE)
 
     n2d_debug_memory_adapter u_debug_adapter (
         .clk_i, .reset_i,
@@ -916,18 +916,18 @@ module n2d_system
     assign dcache_line_response_error = memory_response_error_i[1];
     assign debug_line_response_error = memory_response_error_i[2];
 
-    `N2A_ASSERT_CLOCKED(clk_i, reset_i, !((cpu_framebuffer_request_valid ||
+    `ASSERT_CLOCKED(clk_i, reset_i, !((cpu_framebuffer_request_valid ||
         debug_framebuffer_request_valid) && dcache_cpu_valid))
-    `N2A_ASSERT_CLOCKED(clk_i, reset_i, ($onehot0({sdram_address_selected,
+    `ASSERT_CLOCKED(clk_i, reset_i, ($onehot0({sdram_address_selected,
                               framebuffer_back_address_selected,
                               framebuffer_front_address_selected,
                               palette_address_selected,
                               system_address_selected,
                               video_control_address_selected,
                               ps2_address_selected})))
-    `N2A_ASSERT_CLOCKED_WHEN(clk_i, reset_i, framebuffer_write_valid_o,
+    `ASSERT_CLOCKED_WHEN(clk_i, reset_i, framebuffer_write_valid_o,
         framebuffer_write_address_o < 16'd64000)
-    `N2A_ASSERT_CLOCKED_FATAL_WHEN(clk_i, reset_i,
+    `ASSERT_CLOCKED_FATAL_WHEN(clk_i, reset_i,
         dcache_maintenance_done && dcache_maintenance_error,
         !cache_maintenance_done, "failed D-cache maintenance exposed debug")
 endmodule

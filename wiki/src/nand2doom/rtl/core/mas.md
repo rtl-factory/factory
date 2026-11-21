@@ -48,7 +48,7 @@ in the `clk_i` domain.
 
 | Group | Ports (direction, width) | Meaning |
 | --- | --- | --- |
-| Clock, reset, enable | `clk_i`, `rst_i`, `enable_i` in | Clock; synchronous active-high reset; `enable_i` gates new requests without creating a clock domain. |
+| Clock, reset, enable | `clk_i`, `reset_i`, `enable_i` in | Clock; synchronous active-high reset; `enable_i` gates new requests without creating a clock domain. |
 | Debug control | `halt_request_i`, `resume_i`, `reset_pc_request_i` in; `halt_ack_o` out | Precise stop by drain ([reset and debug behavior](#reset-and-debug-behavior)). |
 | Instruction port | `instruction_request_valid_o` out, `instruction_request_ready_i` in, `instruction_request_address_o` out (32); `instruction_response_valid_i`, `instruction_response_data_i` (32), `instruction_response_error_i` in | Fetch requests on the [pipelined handshake](#pipelined-memory-handshake). |
 | Data port | `data_request_valid_o` out, `data_request_ready_i` in, `data_request_write_o`, `data_request_address_o` (32), `data_request_write_data_o` (32), `data_request_byte_enable_o` (4) out; `data_response_valid_i`, `data_response_read_data_i` (32), `data_response_error_i` in | Loads and stores: effective byte address, aligned-word data and byte-lane masks. |
@@ -409,7 +409,7 @@ change; fitted slack is in [BTB storage](../../fpga/de10_lite/board-spec.md#btb-
 ## Clocks and resets
 
 One clock, `clk_i`, the 25 MHz system clock; the core has no crossing.
-`rst_i` is synchronous and active high; the platform synchronizes its release
+`reset_i` is synchronous and active high; the platform synchronizes its release
 and holds the core stopped until SDRAM initialization and a host resume
 ([reset and debug behavior](#reset-and-debug-behavior)). `enable_i` gates new
 requests without creating a clock domain.

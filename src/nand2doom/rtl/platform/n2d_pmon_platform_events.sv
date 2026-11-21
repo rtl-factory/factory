@@ -20,7 +20,7 @@
 // perf harness splits D-miss waits by them (wiki/src/nand2doom/dv/platform/dv-plan.md).
 module n2d_pmon_platform_events (
     input  logic         clk_i,
-    input  logic         rst_i,
+    input  logic         reset_i,
     input  logic         instruction_hit_event_i,
     input  logic         instruction_miss_event_i,
     input  logic         data_hit_event_i,
@@ -55,7 +55,7 @@ module n2d_pmon_platform_events (
 );
     import n2d_types_pkg::*;
 
-    pmon_track_t track_q, track_d;
+    t_pmon_track track_q, track_d;
     logic [2:0] line_accept;
     logic       uncached_accept;
     logic [4:0] accept_owner;
@@ -95,7 +95,7 @@ module n2d_pmon_platform_events (
         end
     end
 
-    `N2A_DFF_RST(track_q, track_d, clk_i, rst_i)
+    `DFF_RST(track_q, track_d, clk_i, reset_i)
 
     always_comb begin
         events_o = 128'b0;
@@ -128,8 +128,8 @@ module n2d_pmon_platform_events (
         events_o[97] = data_prefetch_cancel_event_i;
     end
 
-    `N2A_ASSERT_CLOCKED(clk_i, rst_i, $onehot0(line_accept))
-    `N2A_ASSERT_CLOCKED_WHEN(clk_i, rst_i, track_q.memory_busy, line_accept == 3'b000)
-    `N2A_ASSERT_CLOCKED(clk_i, rst_i, $onehot0(events_o[91:87]))
-    `N2A_ASSERT_CLOCKED(clk_i, rst_i, track_q.memory_busy == (track_q.owner != 5'b0))
+    `ASSERT_CLOCKED(clk_i, reset_i, $onehot0(line_accept))
+    `ASSERT_CLOCKED_WHEN(clk_i, reset_i, track_q.memory_busy, line_accept == 3'b000)
+    `ASSERT_CLOCKED(clk_i, reset_i, $onehot0(events_o[91:87]))
+    `ASSERT_CLOCKED(clk_i, reset_i, track_q.memory_busy == (track_q.owner != 5'b0))
 endmodule

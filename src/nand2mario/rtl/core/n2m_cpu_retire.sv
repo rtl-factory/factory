@@ -4,10 +4,10 @@
 // Map donor architectural capture onto the compact retirement observation.
 module n2m_cpu_retire (
     input logic clk_i, reset_i,
-    input n2m_cpu_pkg::cpu_retire_capture_t capture_i,
-    output n2m_interfaces_pkg::retirement_t retirement_o
+    input n2m_cpu_pkg::t_cpu_retire_capture capture_i,
+    output n2m_interfaces_pkg::t_retirement retirement_o
 );
-    n2m_interfaces_pkg::retirement_t next_record;
+    n2m_interfaces_pkg::t_retirement next_record;
     always_comb begin
         next_record = '0;
         next_record.valid = capture_i.valid;
@@ -30,7 +30,7 @@ module n2m_cpu_retire (
         next_record.halted = capture_i.halted_after;
         next_record.stopped = capture_i.stopped_after;
     end
-    `N2A_DFF_RST(retirement_o, next_record, clk_i, reset_i)
-    `N2A_ASSERT(CPU_RETIRE_FLAGS, clk_i, reset_i,
+    `DFF_RST(retirement_o, next_record, clk_i, reset_i)
+    `ASSERT(CPU_RETIRE_FLAGS, clk_i, reset_i,
         capture_i.valid |-> capture_i.registers_after.f[3:0] == 0)
 endmodule

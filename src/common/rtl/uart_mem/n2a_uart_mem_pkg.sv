@@ -69,11 +69,11 @@ package n2a_uart_mem_pkg;
         UART_MEM_DISCARD,  // owning; consume until the line is quiet
         UART_MEM_EXEC,     // command execution
         UART_MEM_RESPOND   // response bytes
-    } uart_mem_phase_t;
+    } t_uart_mem_phase;
 
     // Endpoint state. Timers are separate registers in the module.
     typedef struct packed {
-        uart_mem_phase_t phase;
+        t_uart_mem_phase phase;
         logic [15:0] index;        // header, payload or response byte index
         logic [7:0]  version;
         logic [7:0]  command;
@@ -104,5 +104,5 @@ package n2a_uart_mem_pkg;
         logic        cur_valid;
         logic [31:0] nxt_word;     // prefetched read word
         logic        nxt_valid;
-    } uart_mem_regs_t;
+    } t_uart_mem_regs;
 endpackage

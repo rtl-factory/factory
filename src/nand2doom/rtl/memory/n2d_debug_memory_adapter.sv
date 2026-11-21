@@ -26,11 +26,11 @@ module n2d_debug_memory_adapter #(
     localparam int unsigned INDEX_WIDTH = (MAX_WORDS < 2) ? 1 : $clog2(MAX_WORDS);
     localparam logic [COUNT_WIDTH-1:0] MAX_WORD_COUNT = COUNT_WIDTH'(MAX_WORDS);
 
-    localparam debug_mem_regs_t REGS_RESET = '{
+    localparam t_debug_mem_regs REGS_RESET = '{
         state: DEBUG_MEM_IDLE, transaction: 1'b0, abort_pending: 1'b0, read_address: '0,
         word_response_valid: 1'b0, word_response_data: '0,
         word_response_error: 1'b0, transaction_done: 1'b0, transaction_error: 1'b0};
-    debug_mem_regs_t regs_q, regs_d;
+    t_debug_mem_regs regs_q, regs_d;
     // Why: staged-word count and index widths follow MAX_WORDS, so they are
     // registers of their own beside the packaged adapter state.
     logic [COUNT_WIDTH-1:0] count_q, count_d;
@@ -215,22 +215,22 @@ module n2d_debug_memory_adapter #(
         end
     end
 
-    `N2A_DFF_RST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
-    `N2A_DFF_RST(count_q, count_d, clk_i, reset_i)
-    `N2A_DFF_RST(committed_count_q, committed_count_d, clk_i, reset_i)
-    `N2A_DFF_RST(index_q, index_d, clk_i, reset_i)
-    `N2A_DFF_RST(rollback_index_q, rollback_index_d, clk_i, reset_i)
+    `DFF_RST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
+    `DFF_RST(count_q, count_d, clk_i, reset_i)
+    `DFF_RST(committed_count_q, committed_count_d, clk_i, reset_i)
+    `DFF_RST(index_q, index_d, clk_i, reset_i)
+    `DFF_RST(rollback_index_q, rollback_index_d, clk_i, reset_i)
     logic [INDEX_WIDTH-1:0] stage_write_index;
     assign stage_write_index = count_q[INDEX_WIDTH-1:0];
-    `N2A_MEM_WRITE_RST(stage_address, clk_i, stage_write, stage_write_index, word_request_address_i, reset_i)
-    `N2A_MEM_WRITE_RST(stage_data, clk_i, stage_write, stage_write_index, word_request_write_data_i, reset_i)
-    `N2A_MEM_WRITE_RST(stage_enable, clk_i, stage_write, stage_write_index, word_request_byte_enable_i, reset_i)
+    `MEM_WRITE_RST(stage_address, clk_i, stage_write, stage_write_index, word_request_address_i, reset_i)
+    `MEM_WRITE_RST(stage_data, clk_i, stage_write, stage_write_index, word_request_write_data_i, reset_i)
+    `MEM_WRITE_RST(stage_enable, clk_i, stage_write, stage_write_index, word_request_byte_enable_i, reset_i)
     logic [INDEX_WIDTH-1:0] original_line_index;
     assign original_line_index = index_q;
-    `N2A_MEM_WRITE_RST(original_line, clk_i, original_write, original_line_index, line_response_data_i, reset_i)
+    `MEM_WRITE_RST(original_line, clk_i, original_write, original_line_index, line_response_data_i, reset_i)
 
-    `N2A_ASSERT_INITIAL(MAX_WORDS > 0)
-    `N2A_ASSERT_CLOCKED_WHEN(clk_i, reset_i, word_request_valid_i && word_request_write_i,
+    `ASSERT_INITIAL(MAX_WORDS > 0)
+    `ASSERT_CLOCKED_WHEN(clk_i, reset_i, word_request_valid_i && word_request_write_i,
         regs_q.transaction || transaction_begin_i)
-    `N2A_ASSERT_CLOCKED(clk_i, reset_i, !(transaction_commit_i && transaction_abort_i))
+    `ASSERT_CLOCKED(clk_i, reset_i, !(transaction_commit_i && transaction_abort_i))
 endmodule

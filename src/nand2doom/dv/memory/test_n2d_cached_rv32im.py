@@ -179,14 +179,14 @@ async def cached_rv32im_memory_traffic(dut):
     i_task = cocotb.start_soon(i_monitor.run())
     d_task = cocotb.start_soon(d_monitor.run())
 
-    dut.rst_i.value = 1
+    dut.reset_i.value = 1
     dut.enable_i.value = 0
     dut.instruction_maintenance_valid_i.value = 0
     dut.data_maintenance_valid_i.value = 0
     await RisingEdge(dut.clk_i)
     await RisingEdge(dut.clk_i)
     await FallingEdge(dut.clk_i)
-    dut.rst_i.value = 0
+    dut.reset_i.value = 0
     dut.enable_i.value = 1
 
     load_results = []

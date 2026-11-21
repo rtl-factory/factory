@@ -27,7 +27,7 @@ async def rv32i_program_smoke(dut) -> None:
         maximum,
     )
 
-    dut.rst_i.value = 1
+    dut.reset_i.value = 1
     dut.run_i.value = 0
     dut.program_write_enable_i.value = 0
     dut.program_write_address_i.value = 0
@@ -48,7 +48,7 @@ async def rv32i_program_smoke(dut) -> None:
     dut.program_write_enable_i.value = 0
     await RisingEdge(dut.clk_i)
     await FallingEdge(dut.clk_i)
-    dut.rst_i.value = 0
+    dut.reset_i.value = 0
     dut.run_i.value = 1
 
     observed = []

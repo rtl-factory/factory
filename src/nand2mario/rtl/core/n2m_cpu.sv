@@ -5,17 +5,17 @@ module n2m_cpu (
     input logic clk_i, reset_i, machine_cycle_enable_i,
     input logic [4:0] interrupt_enable_i, interrupt_flags_i,
     input logic joyp_selected_active_i, wake_i,
-    input n2m_interfaces_pkg::bus_response_t response_i,
-    output n2m_interfaces_pkg::bus_request_t request_o,
-    output n2m_interfaces_pkg::retirement_t retirement_o,
+    input n2m_interfaces_pkg::t_bus_response response_i,
+    output n2m_interfaces_pkg::t_bus_request request_o,
+    output n2m_interfaces_pkg::t_retirement retirement_o,
     output logic [4:0] interrupt_ack_o,
     output logic halted_o, stopped_o, locked_o, fault_o, divider_reset_o
 );
-    n2m_cpu_pkg::cpu_execute_request_t execute_request;
-    n2m_cpu_pkg::cpu_execute_result_t execute_result;
-    n2m_cpu_pkg::cpu_bus_plan_t bus_plan;
-    n2m_cpu_pkg::cpu_retire_capture_t capture;
-    n2m_cpu_pkg::cpu_stop_action_t stop_action;
+    n2m_cpu_pkg::t_cpu_execute_request execute_request;
+    n2m_cpu_pkg::t_cpu_execute_result execute_result;
+    n2m_cpu_pkg::t_cpu_bus_plan bus_plan;
+    n2m_cpu_pkg::t_cpu_retire_capture capture;
+    n2m_cpu_pkg::t_cpu_stop_action stop_action;
     logic stop_padding, active, complete_enable, pending_irq, cycle_end, bus_fault;
     logic stop_execute;
     logic [7:0] read_data;

@@ -1,6 +1,6 @@
 module n2d_rv32i_program_smoke (
     input  logic        clk_i,
-    input  logic        rst_i,
+    input  logic        reset_i,
     input  logic        run_i,
     input  logic        program_write_enable_i,
     input  logic [5:0]  program_write_address_i,
@@ -78,7 +78,7 @@ module n2d_rv32i_program_smoke (
             data_ram_address = debug_data_address_i;
             data_ram_write_data = 32'h0000_0000;
         end else begin
-            data_ram_write_enable = !rst_i && data_response_valid_q &&
+            data_ram_write_enable = !reset_i && data_response_valid_q &&
                 data_response_write_q && !data_response_error_q &&
                 (&data_response_byte_enable_q);
             data_ram_address = data_response_valid_q
@@ -100,7 +100,7 @@ module n2d_rv32i_program_smoke (
     );
 
     always_ff @(posedge clk_i) begin
-        if (rst_i) begin
+        if (reset_i) begin
             instruction_response_valid_q <= 1'b0;
             instruction_response_error_q <= 1'b0;
             data_response_valid_q <= 1'b0;
@@ -132,7 +132,7 @@ module n2d_rv32i_program_smoke (
 
     n2d_rv32i_core_step u_core (
         .clk_i(clk_i),
-        .rst_i(rst_i),
+        .reset_i(reset_i),
         .enable_i(run_i),
         .instruction_request_valid_o(instruction_request_valid),
         .instruction_request_ready_i(run_i),

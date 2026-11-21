@@ -19,10 +19,10 @@ module n2d_de10_lite_clock (
     logic [2:0] lock_q;
     logic clock_q_next;
     assign clock_q_next = ~clock_q;
-    `N2A_DFF_ARST_VAL(clock_q, clock_q_next, reference_clk_i, reset_i, 1'b0)
+    `DFF_ARST_VAL(clock_q, clock_q_next, reference_clk_i, reset_i, 1'b0)
     logic [2:0] lock_q_next;
     assign lock_q_next = ({lock_q[1:0], 1'b1});
-    `N2A_DFF_ARST_VAL(lock_q, lock_q_next, reference_clk_i, reset_i, '0)
+    `DFF_ARST_VAL(lock_q, lock_q_next, reference_clk_i, reset_i, '0)
     assign clk_25_o = clock_q;
     assign locked_o = lock_q[2];
 endmodule

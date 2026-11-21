@@ -487,11 +487,11 @@ async def check_divide_halt_and_reset(dut, rng: random.Random) -> None:
         for _ in range(4):
             await RisingEdge(dut.clk_i)
         await FallingEdge(dut.clk_i)
-        dut.rst_i.value = 1
+        dut.reset_i.value = 1
         dut.enable_i.value = 0
         await RisingEdge(dut.clk_i)
         await FallingEdge(dut.clk_i)
-        dut.rst_i.value = 0
+        dut.reset_i.value = 0
         dut.instruction_response_valid_i.value = 0
         dut.data_response_valid_i.value = 0
         for _ in range(36):
@@ -529,12 +529,12 @@ async def check_reset_and_halt_ports(dut) -> None:
                 return retired
         raise AssertionError("halt not acknowledged")
 
-    dut.rst_i.value = 1
+    dut.reset_i.value = 1
     await reset_core(dut)  # Why: leaves ready low, so nothing is accepted until the test raises it
-    dut.rst_i.value = 1
+    dut.reset_i.value = 1
     await tick()
     assert not int(dut.instruction_request_valid_o.value)
-    dut.rst_i.value = 0
+    dut.reset_i.value = 0
     for _ in range(3):
         await tick()
         assert int(dut.instruction_request_valid_o.value)
@@ -543,11 +543,11 @@ async def check_reset_and_halt_ports(dut) -> None:
     dut.instruction_request_ready_i.value = 1
     await tick()
     dut.instruction_request_ready_i.value = 0
-    dut.rst_i.value = 1
+    dut.reset_i.value = 1
     await tick()
     assert not int(dut.observation_valid_o.value)
     assert not int(dut.instruction_request_valid_o.value)
-    dut.rst_i.value = 0
+    dut.reset_i.value = 0
     dut.halt_request_i.value = 1
     assert not await wait_ack(8)
     for _ in range(3):

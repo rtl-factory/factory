@@ -10,16 +10,16 @@ package n2a_types_pkg;
         UART_START,
         UART_DATA,
         UART_STOP
-    } uart_state_t;
+    } t_uart_state;
 
     // n2a_uart_rx and n2a_uart_tx protocol state. The parameter-sized bit
     // clock and fractional remainder are separate registers in each block.
     typedef struct packed {
-        uart_state_t state;
+        t_uart_state state;
         logic [2:0]  bit_index;
         logic [7:0]  shift;
         logic        extra;
-    } uart_protocol_t;
+    } t_uart_protocol;
 
     // n2a_ps2_rx frame state. The parameter-sized timeout counter is a
     // separate register in the receiver.
@@ -29,7 +29,7 @@ package n2a_types_pkg;
         logic [3:0] index;
         logic [7:0] data;
         logic       parity;
-    } ps2_rx_state_t;
+    } t_ps2_rx_state;
 
     // n2a_jtag_keyboard TCK-domain scan state.
     typedef struct packed {
@@ -37,7 +37,7 @@ package n2a_types_pkg;
         logic [6:0]  bits_shifted;
         logic [1:0]  instruction;
         logic        scan_open, request, busy, error_seen, bypass;
-    } jtag_keyboard_scan_t;
+    } t_jtag_keyboard_scan;
 
     // n2a_jtag_keyboard system-domain command phase.
     typedef enum logic [2:0] {
@@ -46,15 +46,15 @@ package n2a_types_pkg;
         KBD_OFFER,
         KBD_ACCOUNT,
         KBD_FINISH
-    } jtag_keyboard_phase_t;
+    } t_jtag_keyboard_phase;
 
     // n2a_jtag_keyboard system-domain command state.
     typedef struct packed {
-        jtag_keyboard_phase_t phase;
+        t_jtag_keyboard_phase phase;
         logic [63:0] command, last_command, response;
         logic        ack, have_last, fault, valid, take;
         logic [7:0]  expected_seq, byte_data;
         logic [2:0]  accepted, code;
         logic [31:0] total;
-    } jtag_keyboard_system_t;
+    } t_jtag_keyboard_system;
 endpackage

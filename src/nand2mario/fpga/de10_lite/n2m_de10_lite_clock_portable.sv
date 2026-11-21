@@ -9,18 +9,18 @@
 // Intel file. The board top never selects a backend itself.
 /* verilator lint_off DECLFILENAME */
 module n2m_de10_lite_clock (
-  input  logic reference_clk_i,
-  input  logic reset_i,
-  output logic clk_25_o,
-  output logic locked_o
+    input  logic reference_clk_i,
+    input  logic reset_i,
+    output logic clk_25_o,
+    output logic locked_o
 );
-  logic       clock_q, clock_d;
-  logic [2:0] lock_q, lock_d;
-  assign clock_d = ~clock_q;
-  assign lock_d = {lock_q[1:0], 1'b1};
-  `N2A_DFF_ARST_VAL(clock_q, clock_d, reference_clk_i, reset_i, 1'b0)
-  `N2A_DFF_ARST_VAL(lock_q, lock_d, reference_clk_i, reset_i, '0)
-  assign clk_25_o = clock_q;
-  assign locked_o = lock_q[2];
+    logic       clock_q, clock_d;
+    logic [2:0] lock_q, lock_d;
+    assign clock_d = ~clock_q;
+    assign lock_d = {lock_q[1:0], 1'b1};
+    `DFF_ARST_VAL(clock_q, clock_d, reference_clk_i, reset_i, 1'b0)
+    `DFF_ARST_VAL(lock_q, lock_d, reference_clk_i, reset_i, '0)
+    assign clk_25_o = clock_q;
+    assign locked_o = lock_q[2];
 endmodule
 /* verilator lint_on DECLFILENAME */

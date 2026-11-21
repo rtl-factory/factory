@@ -207,6 +207,6 @@ module n2d_exe (
 
     // Why: these base decode/ALU outputs are unused because operand-use and
     // destination intent are decoded by n2d_dec for every class.
-    `N2A_UNUSED_BITS(unused_base, {base_rs1_index, base_rs2_index, base_rd_index, base_rs1_read,
+    `UNUSED_BITS(unused_base, {base_rs1_index, base_rs2_index, base_rd_index, base_rs1_read,
                            base_rs2_read, base_rd_write, base_immediate})
 endmodule

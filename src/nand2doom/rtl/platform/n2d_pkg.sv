@@ -14,19 +14,19 @@ package n2d_pkg;
         logic        cache_invalidate;
         logic        reset_pc_valid;
         logic [31:0] reset_pc;
-    } n2d_debug_control_t;
+    } t_n2d_debug_control;
 
     // Platform -> engine status (halt acknowledged, cache maintenance done).
     typedef struct packed {
         logic halt_ack;
         logic cache_maint_done;
-    } n2d_debug_status_t;
+    } t_n2d_debug_status;
 
     // Engine -> keyboard injected Set-2 event request (valid level, code).
     typedef struct packed {
         logic       valid;
         logic [9:0] code;
-    } n2d_input_event_t;
+    } t_n2d_input_event;
 
     // Engine -> memory arbitration request level and transaction pulses.
     typedef struct packed {
@@ -34,14 +34,14 @@ package n2d_pkg;
         logic txn_begin;
         logic txn_commit;
         logic txn_abort;
-    } n2d_debug_txn_req_t;
+    } t_n2d_debug_txn_req;
 
     // Memory -> engine arbitration grant level and transaction completion.
     typedef struct packed {
         logic arb_grant;
         logic txn_done;
         logic txn_error;
-    } n2d_debug_txn_status_t;
+    } t_n2d_debug_txn_status;
 
     // Engine -> memory word request.
     typedef struct packed {
@@ -50,7 +50,7 @@ package n2d_pkg;
         logic [31:0] addr;
         logic [31:0] wdata;
         logic [3:0]  wstrb;
-    } n2d_debug_mem_req_t;
+    } t_n2d_debug_mem_req;
 
     // Memory -> engine request handshake and word response.
     typedef struct packed {
@@ -58,7 +58,7 @@ package n2d_pkg;
         logic        rsp_valid;
         logic [31:0] rdata;
         logic        rsp_error;
-    } n2d_debug_mem_rsp_t;
+    } t_n2d_debug_mem_rsp;
 
     // n2d_uart_debug -> platform screen read of the UART memory endpoint:
     // the front framebuffer bank or the scanned palette, by byte offset.
@@ -66,14 +66,14 @@ package n2d_pkg;
         logic        valid;
         logic        palette;
         logic [15:0] offset;
-    } n2d_screen_req_t;
+    } t_n2d_screen_req;
 
     // Platform -> n2d_uart_debug screen request handshake and next-clock data.
     typedef struct packed {
         logic        ready;
         logic        rsp_valid;
         logic [31:0] rdata;
-    } n2d_screen_rsp_t;
+    } t_n2d_screen_rsp;
 
     // UART memory endpoint map (wiki/src/nand2doom/rtl/io/mas.md "UART memory endpoint"): SDRAM is
     // loaded and read while held; the front framebuffer view and the scanned

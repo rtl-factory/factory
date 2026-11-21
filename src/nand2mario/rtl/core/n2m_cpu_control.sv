@@ -13,12 +13,12 @@ module n2m_cpu_control (
     input var logic wake_request,
     input var logic cycle_end,
     input var logic bus_fault,
-    input var n2m_cpu_pkg::cpu_execute_result_t execute_result,
-    input var n2m_cpu_pkg::cpu_stop_action_t stop_action,
+    input var n2m_cpu_pkg::t_cpu_execute_result execute_result,
+    input var n2m_cpu_pkg::t_cpu_stop_action stop_action,
     input var logic stop_padding,
-    output n2m_cpu_pkg::cpu_execute_request_t execute_request,
-    output n2m_cpu_pkg::cpu_bus_plan_t bus_plan,
-    output n2m_cpu_pkg::cpu_retire_capture_t retire_capture,
+    output n2m_cpu_pkg::t_cpu_execute_request execute_request,
+    output n2m_cpu_pkg::t_cpu_bus_plan bus_plan,
+    output n2m_cpu_pkg::t_cpu_retire_capture retire_capture,
     output logic active,
     output logic complete_enable,
     output logic pending_irq,
@@ -30,10 +30,10 @@ module n2m_cpu_control (
     output logic stop_execute
 );
 
-    n2m_cpu_pkg::cpu_control_t control;
-    n2m_cpu_pkg::cpu_control_t control_next;
-    n2m_cpu_pkg::cpu_registers_t registers;
-    n2m_cpu_pkg::cpu_registers_t registers_next;
+    n2m_cpu_pkg::t_cpu_control control;
+    n2m_cpu_pkg::t_cpu_control control_next;
+    n2m_cpu_pkg::t_cpu_registers registers;
+    n2m_cpu_pkg::t_cpu_registers registers_next;
     logic [4:0] dispatch;
     logic [15:0] selected_vector;
 
@@ -249,11 +249,11 @@ module n2m_cpu_control (
         retire_capture.ime_after = control_next.ime;
     end
 
-    localparam n2m_cpu_pkg::cpu_control_t CONTROL_RESET = n2m_cpu_pkg::reset_control();
-    `N2A_DFF_RST_VAL(control, control_next, clk_sys, reset_sys, CONTROL_RESET)
-    localparam n2m_cpu_pkg::cpu_registers_t REGISTERS_RESET = n2m_cpu_pkg::reset_registers();
-    `N2A_DFF_RST_VAL(registers, registers_next, clk_sys, reset_sys, REGISTERS_RESET)
+    localparam n2m_cpu_pkg::t_cpu_control CONTROL_RESET = n2m_cpu_pkg::reset_control();
+    `DFF_RST_VAL(control, control_next, clk_sys, reset_sys, CONTROL_RESET)
+    localparam n2m_cpu_pkg::t_cpu_registers REGISTERS_RESET = n2m_cpu_pkg::reset_registers();
+    `DFF_RST_VAL(registers, registers_next, clk_sys, reset_sys, REGISTERS_RESET)
 
-    `N2A_ASSERT(CPU_IRQ_ACK_ONEHOT, clk_sys, reset_sys, $onehot0(irq_ack))
-    `N2A_ASSERT(CPU_F_LOW_ZERO, clk_sys, reset_sys, registers.f[3:0] == 0)
+    `ASSERT(CPU_IRQ_ACK_ONEHOT, clk_sys, reset_sys, $onehot0(irq_ack))
+    `ASSERT(CPU_F_LOW_ZERO, clk_sys, reset_sys, registers.f[3:0] == 0)
 endmodule

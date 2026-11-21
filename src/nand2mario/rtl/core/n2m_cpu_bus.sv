@@ -5,9 +5,9 @@
 module n2m_cpu_bus (
     input logic clk_i, reset_i, machine_cycle_enable_i,
     input logic active_i, complete_enable_i, halted_i,
-    input n2m_cpu_pkg::cpu_bus_plan_t plan_i,
-    input n2m_interfaces_pkg::bus_response_t response_i,
-    output n2m_interfaces_pkg::bus_request_t request_o,
+    input n2m_cpu_pkg::t_cpu_bus_plan plan_i,
+    input n2m_interfaces_pkg::t_bus_response response_i,
+    output n2m_interfaces_pkg::t_bus_request request_o,
     output logic [7:0] read_data_o,
     output logic cycle_end_o, fault_o
 );
@@ -54,10 +54,10 @@ module n2m_cpu_bus (
         end
         if (cycle_end_o) accepted_next = 0;
     end
-    `N2A_DFF_RST(accepted, accepted_next, clk_i, reset_i)
-    `N2A_DFF_RST(data_q, data_next, clk_i, reset_i)
-    `N2A_DFF_RST(fault_o, fault_next, clk_i, reset_i)
-    `N2A_DFF_RST(outstanding, outstanding_next, clk_i, reset_i)
-    `N2A_ASSERT(CPU_REQUEST_HELD, clk_i, reset_i,
+    `DFF_RST(accepted, accepted_next, clk_i, reset_i)
+    `DFF_RST(data_q, data_next, clk_i, reset_i)
+    `DFF_RST(fault_o, fault_next, clk_i, reset_i)
+    `DFF_RST(outstanding, outstanding_next, clk_i, reset_i)
+    `ASSERT(CPU_REQUEST_HELD, clk_i, reset_i,
         request_o.valid && !response_i.valid |=> $stable(request_o))
 endmodule

@@ -27,7 +27,7 @@ async def rv32i_core_step_contract(dut) -> None:
         maximum,
     )
 
-    dut.rst_i.value = 1
+    dut.reset_i.value = 1
     dut.enable_i.value = 1
     dut.instruction_request_ready_i.value = 1
     dut.instruction_response_valid_i.value = 0
@@ -40,7 +40,7 @@ async def rv32i_core_step_contract(dut) -> None:
     cocotb.start_soon(Clock(dut.clk_i, CLOCK_PERIOD_NS, unit="ns").start())
     await RisingEdge(dut.clk_i)
     await FallingEdge(dut.clk_i)
-    dut.rst_i.value = 0
+    dut.reset_i.value = 0
 
     pending_instruction = None
     pending_data = None

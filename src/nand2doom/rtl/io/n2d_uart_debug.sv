@@ -25,17 +25,17 @@ module n2d_uart_debug
     output logic                  uart_tx_o,
 
     // Port groups (n2d_pkg), one direction each; see wiki/src/nand2doom/rtl/io/mas.md.
-    output n2d_debug_control_t    debug_control_o,
-    input  n2d_debug_status_t     debug_status_i,
-    output n2d_input_event_t      input_event_o,
+    output t_n2d_debug_control    debug_control_o,
+    input  t_n2d_debug_status     debug_status_i,
+    output t_n2d_input_event      input_event_o,
     input  logic                  input_event_ready_i,
-    output n2d_debug_txn_req_t    txn_req_o,
-    input  n2d_debug_txn_status_t txn_status_i,
-    output n2d_debug_mem_req_t    mem_req_o,
-    input  n2d_debug_mem_rsp_t    mem_rsp_i,
+    output t_n2d_debug_txn_req    txn_req_o,
+    input  t_n2d_debug_txn_status txn_status_i,
+    output t_n2d_debug_mem_req    mem_req_o,
+    input  t_n2d_debug_mem_rsp    mem_rsp_i,
     // UART memory endpoint screen reads (wiki/src/nand2doom/rtl/io/mas.md "UART memory endpoint").
-    output n2d_screen_req_t       screen_req_o,
-    input  n2d_screen_rsp_t       screen_rsp_i
+    output t_n2d_screen_req       screen_req_o,
+    input  t_n2d_screen_rsp       screen_rsp_i
 );
     logic [7:0] rx_byte, tx_byte, engine_rx_byte, engine_tx_byte;
     logic [7:0] phy_rx_byte, phy_tx_byte;
@@ -47,18 +47,18 @@ module n2d_uart_debug
     logic ep_hold, ep_release, ep_entry_valid, port_busy;
     logic ep_req_valid, ep_req_ready, ep_req_write, ep_rsp_valid, ep_rsp_error;
     logic [31:0] ep_entry_addr, ep_req_addr, ep_req_wdata, ep_rsp_rdata;
-    n2d_debug_control_t    engine_control;
-    n2d_debug_txn_req_t    port_txn_req;
-    n2d_debug_mem_req_t    port_mem_req;
+    t_n2d_debug_control    engine_control;
+    t_n2d_debug_txn_req    port_txn_req;
+    t_n2d_debug_mem_req    port_mem_req;
     logic [7:0] bulk_rx_byte, bulk_tx_byte;
     logic rx_valid, rx_error, rx_busy, tx_valid, tx_ready, tx_busy;
     logic bulk_rx_valid, bulk_rx_error, bulk_tx_valid, bulk_tx_ready, bulk_idle;
     logic engine_rx_valid, engine_rx_error, engine_tx_valid, engine_tx_ready;
     logic engine_idle, engine_frame_idle, stream_session;
-    n2d_debug_txn_req_t    engine_txn_req, stream_txn_req;
-    n2d_debug_txn_status_t engine_txn_status;
-    n2d_debug_mem_req_t    engine_mem_req, stream_mem_req;
-    n2d_debug_mem_rsp_t    engine_mem_rsp;
+    t_n2d_debug_txn_req    engine_txn_req, stream_txn_req;
+    t_n2d_debug_txn_status engine_txn_status;
+    t_n2d_debug_mem_req    engine_mem_req, stream_mem_req;
+    t_n2d_debug_mem_rsp    engine_mem_rsp;
 
     n2a_uart_rx #(.CLKS_PER_BIT(CLKS_PER_BIT), .FRAC_NUM(FRAC_NUM),
                   .FRAC_DEN(FRAC_DEN)) uart_rx (
@@ -191,16 +191,16 @@ module n2d_uart_debug
     end
     assign engine_mem_rsp = (stream_session || port_busy) ? '0 : mem_rsp_i;
 
-    `N2A_ASSERT_CLOCKED_FATAL(clk_i, reset_i, (!$isunknown({rx_busy, tx_busy})),
+    `ASSERT_CLOCKED_FATAL(clk_i, reset_i, (!$isunknown({rx_busy, tx_busy})),
         "UART PHY busy status is unknown")
-    `N2A_ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, stream_session,
+    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, stream_session,
         ((engine_txn_req == '0) && !engine_mem_req.valid),
         "legacy engine requested memory during a stream session")
-    `N2A_ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, port_busy,
+    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, port_busy,
         ((engine_txn_req == '0) && !engine_mem_req.valid && !stream_session),
         "another path requested memory while the endpoint port is busy")
-    `N2A_ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, ep_owner, !rx_valid && !rx_error,
+    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, ep_owner, !rx_valid && !rx_error,
         "a byte reached the n2d routers during an endpoint frame")
-    `N2A_ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, ep_release,
+    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, ep_release,
         engine_idle && engine_frame_idle, "endpoint release while the engine owns a frame")
 endmodule

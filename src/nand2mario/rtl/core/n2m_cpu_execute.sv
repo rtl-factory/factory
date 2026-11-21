@@ -3,8 +3,8 @@
 // One execution M-cycle. The front end owns cycle enables, fetch overlap, reset,
 // sleep and interrupt dispatch. This block never changes state itself.
 module n2m_cpu_execute (
-    input var n2m_cpu_pkg::cpu_execute_request_t request,
-    output n2m_cpu_pkg::cpu_execute_result_t result
+    input var n2m_cpu_pkg::t_cpu_execute_request request,
+    output n2m_cpu_pkg::t_cpu_execute_result result
 );
 
     logic [4:0] alu_operation;

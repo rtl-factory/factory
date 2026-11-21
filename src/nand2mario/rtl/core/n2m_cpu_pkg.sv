@@ -31,7 +31,7 @@ package n2m_cpu_pkg;
         ALU_BIT = 5'd26,
         ALU_RES = 5'd27,
         ALU_SET = 5'd28
-    } alu_operation_t;
+    } t_alu_operation;
     typedef struct packed {
         logic [7:0] a;
         logic [7:0] f;
@@ -42,7 +42,7 @@ package n2m_cpu_pkg;
         logic [7:0] h;
         logic [7:0] l;
         logic [15:0] sp;
-    } cpu_registers_t;
+    } t_cpu_registers;
 
     typedef enum logic [2:0] {
         ACCESS_IDLE = 3'd0,
@@ -50,31 +50,31 @@ package n2m_cpu_pkg;
         ACCESS_OPERAND = 3'd2,
         ACCESS_DATA = 3'd3,
         ACCESS_STACK = 3'd4
-    } access_kind_t;
+    } t_access_kind;
 
     // Prepared transaction; the bus owner acknowledges effects once.
     typedef struct packed {
         logic [15:0] address;
         logic [7:0] write_data;
         logic write_enable;
-        access_kind_t access_kind;
-    } cpu_bus_plan_t;
+        t_access_kind access_kind;
+    } t_cpu_bus_plan;
 
     typedef struct packed {
-        cpu_registers_t registers;
+        t_cpu_registers registers;
         logic [7:0] opcode;
         logic cb_bank;
         logic [2:0] step;
         logic [15:0] pc;
         logic [15:0] temporary;
         logic [7:0] data;
-    } cpu_execute_request_t;
+    } t_cpu_execute_request;
 
     typedef struct packed {
-        cpu_registers_t registers_after;
+        t_cpu_registers registers_after;
         logic [15:0] pc_after;
         logic [15:0] temporary_after;
-        cpu_bus_plan_t plan;
+        t_cpu_bus_plan plan;
         logic finish;
         logic prefix;
         logic halt_request;
@@ -83,13 +83,13 @@ package n2m_cpu_pkg;
         logic enable_interrupts;
         logic disable_interrupts;
         logic return_interrupt;
-    } cpu_execute_result_t;
+    } t_cpu_execute_result;
 
     // Architectural payload captured on a completing machine enable.
     typedef struct packed {
         logic valid;
         logic is_interrupt;
-        cpu_registers_t registers_after;
+        t_cpu_registers registers_after;
         logic [15:0] pc_before;
         logic [15:0] pc_after;
         logic [23:0] fetched_bytes;
@@ -97,15 +97,15 @@ package n2m_cpu_pkg;
         logic ime_after;
         logic halted_after;
         logic stopped_after;
-    } cpu_retire_capture_t;
+    } t_cpu_retire_capture;
 
     typedef enum logic [1:0] {
         STOP_CONTINUE = 2'd0,
         STOP_HALT = 2'd1,
         STOP_OSCILLATOR = 2'd2
-    } cpu_stop_action_t;
+    } t_cpu_stop_action;
 
-    function automatic logic [7:0] read_byte(input cpu_registers_t r, input logic [2:0] index);
+    function automatic logic [7:0] read_byte(input t_cpu_registers r, input logic [2:0] index);
         case (index)
             0: read_byte = r.b;
             1: read_byte = r.c;
@@ -118,8 +118,8 @@ package n2m_cpu_pkg;
         endcase
     endfunction
 
-    function automatic cpu_registers_t write_byte(input cpu_registers_t r, input logic [2:0] index, input logic [7:0] data);
-        cpu_registers_t result;
+    function automatic t_cpu_registers write_byte(input t_cpu_registers r, input logic [2:0] index, input logic [7:0] data);
+        t_cpu_registers result;
         result = r;
         case (index)
             0: result.b = data;
@@ -134,7 +134,7 @@ package n2m_cpu_pkg;
         return result;
     endfunction
 
-    function automatic logic [15:0] read_pair(input cpu_registers_t r, input logic [1:0] index, input logic stack_pair);
+    function automatic logic [15:0] read_pair(input t_cpu_registers r, input logic [1:0] index, input logic stack_pair);
         case (index)
             0: read_pair = {r.b, r.c};
             1: read_pair = {r.d, r.e};
@@ -143,8 +143,8 @@ package n2m_cpu_pkg;
         endcase
     endfunction
 
-    function automatic cpu_registers_t write_pair(input cpu_registers_t r, input logic [1:0] index, input logic stack_pair, input logic [15:0] data);
-        cpu_registers_t result;
+    function automatic t_cpu_registers write_pair(input t_cpu_registers r, input logic [1:0] index, input logic stack_pair, input logic [15:0] data);
+        t_cpu_registers result;
         result = r;
         case (index)
             0: {result.b, result.c} = data;
@@ -168,9 +168,9 @@ package n2m_cpu_pkg;
             default: condition_true = f[4];
         endcase
     endfunction
-    typedef enum logic [2:0] {MODE_FETCH, MODE_EXECUTE, MODE_HALT, MODE_STOP, MODE_INTERRUPT, MODE_LOCK} cpu_mode_t;
+    typedef enum logic [2:0] {MODE_FETCH, MODE_EXECUTE, MODE_HALT, MODE_STOP, MODE_INTERRUPT, MODE_LOCK} t_cpu_mode;
     typedef struct packed {
-        cpu_mode_t mode;
+        t_cpu_mode mode;
         logic [15:0] pc;
         logic [15:0] instruction_pc;
         logic [15:0] temporary;
@@ -183,12 +183,12 @@ package n2m_cpu_pkg;
         logic cb_bank;
         logic ime;
         logic ime_delay;
-    } cpu_control_t;
+    } t_cpu_control;
 
     // Architectural reset values: the DMG ABC post-boot state (Pan Docs),
     // since there is no boot ROM. Consumed by n2m_cpu_control.
-    function automatic cpu_registers_t reset_registers;
-        cpu_registers_t r;
+    function automatic t_cpu_registers reset_registers;
+        t_cpu_registers r;
         r.a = 8'h01;
         r.f = 8'hb0;
         r.b = 8'h00;
@@ -201,8 +201,8 @@ package n2m_cpu_pkg;
         return r;
     endfunction
 
-    function automatic cpu_control_t reset_control;
-        cpu_control_t c;
+    function automatic t_cpu_control reset_control;
+        t_cpu_control c;
         c = '0;
         c.mode = MODE_FETCH;
         c.pc = 16'h0100;

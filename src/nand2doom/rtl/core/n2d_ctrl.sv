@@ -31,7 +31,7 @@
 
 module n2d_ctrl (
     input  logic                      clk_i,
-    input  logic                      rst_i,
+    input  logic                      reset_i,
     input  logic                      enable_i,
     input  logic                      halt_request_i,
     input  logic                      reset_pc_request_i,
@@ -132,7 +132,7 @@ module n2d_ctrl (
             ((dec_Q102H_i.uses_rs1 && (dec_Q102H_i.rs1 == q103_i.rd)) ||
              (dec_Q102H_i.uses_rs2 && (dec_Q102H_i.rs2 == q103_i.rd)));
 
-        data_request_valid_o = !rst_i && enable_i && slot_valid && memory_op &&
+        data_request_valid_o = !reset_i && enable_i && slot_valid && memory_op &&
             !source_hazard_Q102H && !hold_Q103H_i && !trap_Q103H_i;
     end
 
@@ -220,7 +220,7 @@ module n2d_ctrl (
         halt_ack_o = ctrl_q.state == RUN_STATE_HALTED;
     end
 
-    `N2A_DFF_RST_VAL(ctrl_q, ctrl_d, clk_i, rst_i, CTRL_RESET)
+    `DFF_RST_VAL(ctrl_q, ctrl_d, clk_i, reset_i, CTRL_RESET)
 
     // Why: fetch-refill attribution records the flush cause of this edge, so the
     // next clock's IFETCH_WAIT can name it. A Q102H mispredict outranks the
@@ -239,7 +239,7 @@ module n2d_ctrl (
         else refill_d = FETCH_REFILL_NONE;
     end
 
-    `N2A_DFF_RST_VAL(refill_q, refill_d, clk_i, rst_i, FETCH_REFILL_NONE)
+    `DFF_RST_VAL(refill_q, refill_d, clk_i, reset_i, FETCH_REFILL_NONE)
 
     // Why: these PMON observations are passive, so no event may feed functional
     // control. Hold events exclude clocks already explained by a Q103H memory
@@ -287,12 +287,12 @@ module n2d_ctrl (
             (fetch_owed_i || fetch_request_stalled_i);
     end
 
-    `N2A_ASSERT(ctrl_halted_is_drained, clk_i, rst_i,
+    `ASSERT(ctrl_halted_is_drained, clk_i, reset_i,
         (ctrl_q.state != RUN_STATE_HALTED) || drained)
-    `N2A_ASSERT_NEVER(ctrl_q102_trap_and_q103_trap, clk_i, rst_i,
+    `ASSERT_NEVER(ctrl_q102_trap_and_q103_trap, clk_i, reset_i,
         trap_commit_Q102H_o && trap_Q103H_i)
-    `N2A_ASSERT_NEVER(ctrl_predict_redirect_with_late_flush, clk_i, rst_i,
+    `ASSERT_NEVER(ctrl_predict_redirect_with_late_flush, clk_i, reset_i,
         predict_redirect_Q101H && late_flush)
-    `N2A_ASSERT(ctrl_ifetch_causes_exclusive, clk_i, rst_i,
+    `ASSERT(ctrl_ifetch_causes_exclusive, clk_i, reset_i,
         $onehot0(pmon_events_o[86:83]) && (ifetch_wait || pmon_events_o[86:83] == 4'b0))
 endmodule

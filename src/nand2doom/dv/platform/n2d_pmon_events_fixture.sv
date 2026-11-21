@@ -48,7 +48,7 @@ module n2d_pmon_events_fixture (
     );
 
     n2d_pmon_platform_events u_events (
-        .clk_i, .rst_i(reset_i),
+        .clk_i, .reset_i,
         .instruction_hit_event_i(1'b0),
         .instruction_miss_event_i(1'b0),
         .data_hit_event_i(1'b0),

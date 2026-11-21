@@ -32,14 +32,14 @@ module n2d_uart_stream_memory
     logic [31:0] word_response_data;
     logic adapter_reset_q;
     /* verilator lint_off UNUSEDSIGNAL */
-    n2d_debug_control_t debug_control;
-    n2d_input_event_t   input_event_unused;
+    t_n2d_debug_control debug_control;
+    t_n2d_input_event   input_event_unused;
     /* verilator lint_on UNUSEDSIGNAL */
-    n2d_debug_txn_req_t    txn_req;
-    n2d_debug_mem_req_t    word_request;
-    n2d_debug_mem_rsp_t    word_response;
-    n2d_debug_status_t     debug_status;
-    n2d_debug_txn_status_t txn_status;
+    t_n2d_debug_txn_req    txn_req;
+    t_n2d_debug_mem_req    word_request;
+    t_n2d_debug_mem_rsp    word_response;
+    t_n2d_debug_status     debug_status;
+    t_n2d_debug_txn_status txn_status;
 
     // Why: the same registered adapter reset release as n2d_uart_debug_memory,
     // so publication cannot start during reset release.
@@ -52,7 +52,7 @@ module n2d_uart_stream_memory
     assign txn_status = '{arb_grant: arb_grant_i, txn_done: transaction_done_o,
                           txn_error: transaction_error_o};
 
-    n2d_pkg::n2d_screen_req_t unused_screen_req;
+    n2d_pkg::t_n2d_screen_req unused_screen_req;
     n2d_uart_debug #(
         .BAUD(N2D_UART_LOAD_BAUD),
         .STREAM_GAP_TIMEOUT_CYCLES(4000),

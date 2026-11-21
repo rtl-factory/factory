@@ -11,7 +11,7 @@
 // 26-bit space or unaligned) also responds through that register.
 module n2d_icache (
     input  logic         clk_i,
-    input  logic         rst_i,
+    input  logic         reset_i,
 
     input  logic         cpu_request_valid_i,
     output logic         cpu_request_ready_o,
@@ -42,7 +42,7 @@ module n2d_icache (
     localparam int unsigned SET_WIDTH = 9;
     localparam int unsigned TAG_WIDTH = 13;
 
-    localparam icache_regs_t REGS_RESET = '{
+    localparam t_icache_regs REGS_RESET = '{
         state: ICACHE_IDLE,
         request_address: 32'b0,
         victim_way: 1'b0,
@@ -53,7 +53,7 @@ module n2d_icache (
         maintenance_done: 1'b0,
         hit_event: 1'b0,
         miss_event: 1'b0};
-    icache_regs_t regs_q, regs_d;
+    t_icache_regs regs_q, regs_d;
 
     logic [TAG_WIDTH-1:0] tag_read_q [0:1];
     logic [SET_COUNT-1:0] valid_q [0:1];
@@ -121,8 +121,8 @@ module n2d_icache (
     end
     logic replacement_update;
     assign replacement_update = invalidate || refill_ok || lookup_hit;
-    `N2A_DFF_RST_EN(replacement_q, replacement_d, clk_i,
-                    replacement_update, rst_i, '0)
+    `DFF_RST_EN(replacement_q, replacement_d, clk_i,
+                    replacement_update, reset_i, '0)
 
     // Why: one synchronous read and one full-line write per way, so each infers a
     // simple dual-port M9K. Only validity/control state resets, never RAM
@@ -139,13 +139,13 @@ module n2d_icache (
             valid_state_d = valid_state_q;
             valid_state_d[metadata_set] = !invalidate;
         end
-        `N2A_DFF_RST_EN(valid_state_q, valid_state_d, clk_i,
-                        valid_update, rst_i, '0)
+        `DFF_RST_EN(valid_state_q, valid_state_d, clk_i,
+                        valid_update, reset_i, '0)
         // Why: tag and line share one write enable and the read address equals the
         // write address, so one packed {tag, line} word per set keeps the
         // single-port shape (common memory contract, https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/memory/HAS.md).
         logic refill_write;
-        assign refill_write = !rst_i && refill_ok && regs_q.victim_way == 1'(way);
+        assign refill_write = !reset_i && refill_ok && regs_q.victim_way == 1'(way);
         logic [TAG_WIDTH+127:0] way_write;
         assign way_write = {request_tag, line_response_data_i};
         logic [TAG_WIDTH+127:0] way_read;
@@ -227,7 +227,7 @@ module n2d_icache (
         endcase
     end
 
-    `N2A_DFF_RST_VAL(regs_q, regs_d, clk_i, rst_i, REGS_RESET)
+    `DFF_RST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
     // Why: a hit responds combinationally in LOOKUP; a refill or local error
     // responds from the registered fields. They never coincide, so OR-ing the
     // valids is safe.
@@ -238,7 +238,7 @@ module n2d_icache (
     assign hit_event_o = regs_q.hit_event;
     assign miss_event_o = regs_q.miss_event;
 
-    `N2A_ASSERT_CLOCKED_ERROR_UNGUARDED(clk_i, rst_i,
+    `ASSERT_CLOCKED_ERROR_UNGUARDED(clk_i, reset_i,
         !(lookup_hit && regs_q.cpu_response_valid),
         "I-cache hit and registered response coincide")
 endmodule

@@ -36,7 +36,7 @@ module n2d_uart_bulk
     localparam logic [7:0] WRITE = 8'h31, READ = 8'h32;
     localparam int unsigned CHUNK_BYTES = 4 * ((MAX_WORDS < 8) ? MAX_WORDS : 8);
     logic legacy_drain;
-    localparam bulk_regs_t REGS_RESET = '{
+    localparam t_bulk_regs REGS_RESET = '{
         state: BULK_IDLE,
         version: '0,
         command: '0,
@@ -60,7 +60,7 @@ module n2d_uart_bulk
         engine_status: '0,
         engine_count: '0,
         engine_bad: 1'b0};
-    bulk_regs_t regs_q, regs_d;
+    t_bulk_regs regs_q, regs_d;
     // Why: the inter-byte gap and whole-frame timer widths follow the timeout
     // parameters, so they are registers of their own beside the packaged state.
     logic [$clog2(INTERBYTE_TIMEOUT_CYCLES)-1:0] gap_q, gap_d;
@@ -84,12 +84,12 @@ module n2d_uart_bulk
     assign response_length = ((regs_q.status == 0) && (regs_q.command == READ)) ?
                              regs_q.length[12:0] : 13'd0;
 
-    `N2A_ASSERT_AFTER_RESET(bulk_prefix_advances_after_confirmation, clk_i, reset_i,
+    `ASSERT_AFTER_RESET(bulk_prefix_advances_after_confirmation, clk_i, reset_i,
         ((regs_q.completed != $past(regs_q.completed)) && ($past(regs_q.state) != BULK_IDLE)) |->
         (($past(regs_q.state) == BULK_CHECK_ENGINE) && $past(engine_idle_i) &&
          !$past(regs_q.engine_bad) && ($past(regs_q.engine_status) == 0) &&
          (regs_q.completed == $past(regs_q.completed) + {7'b0, $past(regs_q.chunk_bytes)})))
-    `N2A_ASSERT_AFTER_RESET(bulk_tx_stable, clk_i, reset_i,
+    `ASSERT_AFTER_RESET(bulk_tx_stable, clk_i, reset_i,
         ((regs_q.state == BULK_TX_HEADER || regs_q.state == BULK_TX_DATA || regs_q.state == BULK_TX_CRC) &&
          tx_valid_o && !tx_ready_i) |=> (tx_valid_o && $stable(tx_byte_o)))
 
@@ -353,14 +353,14 @@ module n2d_uart_bulk
         end
     end
 
-    `N2A_DFF_ARST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
-    `N2A_DFF_ARST_VAL(gap_q, gap_d, clk_i, reset_i, '0)
-    `N2A_DFF_ARST_VAL(frame_cycles_q, frame_cycles_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
+    `DFF_ARST_VAL(gap_q, gap_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(frame_cycles_q, frame_cycles_d, clk_i, reset_i, '0)
 
-    `N2A_ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, regs_q.state != BULK_IDLE,
+    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, regs_q.state != BULK_IDLE,
         ({3'b0, regs_q.completed} <= regs_q.length && regs_q.completed[1:0] == 0),
         "bulk completed prefix escaped request")
-    `N2A_ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, regs_q.state != BULK_IDLE,
+    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, regs_q.state != BULK_IDLE,
         !(engine_rx_valid_o && regs_q.state != BULK_SEND_ENGINE),
         "bulk residue reached legacy engine")
 

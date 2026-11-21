@@ -24,14 +24,14 @@ module n2d_uart_debug_engine
     input  logic                  release_i,
 
     // Port groups are defined in n2d_pkg; each carries one direction.
-    output n2d_debug_control_t    debug_control_o,
-    input  n2d_debug_status_t     debug_status_i,
-    output n2d_input_event_t      input_event_o,
+    output t_n2d_debug_control    debug_control_o,
+    input  t_n2d_debug_status     debug_status_i,
+    output t_n2d_input_event      input_event_o,
     input  logic                  input_event_ready_i,
-    output n2d_debug_txn_req_t    txn_req_o,
-    input  n2d_debug_txn_status_t txn_status_i,
-    output n2d_debug_mem_req_t    mem_req_o,
-    input  n2d_debug_mem_rsp_t    mem_rsp_i
+    output t_n2d_debug_txn_req    txn_req_o,
+    input  t_n2d_debug_txn_status txn_status_i,
+    output t_n2d_debug_mem_req    mem_req_o,
+    input  t_n2d_debug_mem_rsp    mem_rsp_i
 );
     import n2d_types_pkg::*;
 
@@ -50,7 +50,7 @@ module n2d_uart_debug_engine
     localparam int unsigned HALT_COUNTER_WIDTH =
         (HALT_TIMEOUT_CYCLES <= 1) ? 1 : $clog2(HALT_TIMEOUT_CYCLES);
 
-    localparam debug_rx_t RX_RESET = '{
+    localparam t_debug_rx RX_RESET = '{
         rx_state: DEBUG_RX_WAIT_SOF,
         rx_header_index: '0,
         rx_discard_remaining: '0,
@@ -67,14 +67,14 @@ module n2d_uart_debug_engine
         parser_error_status: N2D_ST_OK,
         parser_error_command: '0,
         parser_error_sequence: '0};
-    debug_rx_t rx_q, rx_d;
+    t_debug_rx rx_q, rx_d;
     // Why: parser fields whose widths follow MAX_WORDS or INTERBYTE_TIMEOUT_CYCLES
     // are registers of their own beside the packaged parser record.
     logic [RX_PAYLOAD_INDEX_WIDTH-1:0]  rx_payload_index_q, rx_payload_index_d;
     logic [RX_INDEX_WIDTH-1:0]          rx_payload_length_q, rx_payload_length_d;
     logic [INTERBYTE_COUNTER_WIDTH-1:0] interbyte_counter_q, interbyte_counter_d;
     logic [8*RX_PAYLOAD_BYTES-1:0]      req_payload_q, req_payload_d;
-    localparam debug_busy_t BUSY_RESET = '{
+    localparam t_debug_busy BUSY_RESET = '{
         busy_rx_state: DEBUG_RX_WAIT_SOF,
         busy_header_index: '0,
         busy_payload_remaining: '0,
@@ -83,9 +83,9 @@ module n2d_uart_debug_engine
         busy_sequence: '0,
         busy_count: '0,
         busy_packet_valid: 1'b0};
-    debug_busy_t busy_q, busy_d;
+    t_debug_busy busy_q, busy_d;
     logic [INTERBYTE_COUNTER_WIDTH-1:0] busy_interbyte_counter_q, busy_interbyte_counter_d;
-    localparam debug_exec_t EXEC_RESET = '{
+    localparam t_debug_exec EXEC_RESET = '{
         exec_state: DEBUG_EXEC_IDLE,
         transaction_active: 1'b0,
         abort_status: N2D_ST_MEMORY,
@@ -105,7 +105,7 @@ module n2d_uart_debug_engine
         txn_begin: 1'b0,
         txn_commit: 1'b0,
         txn_abort: 1'b0};
-    debug_exec_t exec_q, exec_d;
+    t_debug_exec exec_q, exec_d;
     // Why: executor fields whose widths follow the timeout parameters or MAX_WORDS
     // are registers of their own beside the packaged executor record.
     logic [OP_COUNTER_WIDTH-1:0]   op_counter_q, op_counter_d;
@@ -292,11 +292,11 @@ module n2d_uart_debug_engine
         end
     end
 
-    `N2A_DFF_ARST_VAL(rx_q, rx_d, clk_i, reset_i, RX_RESET)
-    `N2A_DFF_ARST_VAL(rx_payload_index_q, rx_payload_index_d, clk_i, reset_i, '0)
-    `N2A_DFF_ARST_VAL(rx_payload_length_q, rx_payload_length_d, clk_i, reset_i, '0)
-    `N2A_DFF_ARST_VAL(interbyte_counter_q, interbyte_counter_d, clk_i, reset_i, '0)
-    `N2A_DFF_ARST_VAL(req_payload_q, req_payload_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(rx_q, rx_d, clk_i, reset_i, RX_RESET)
+    `DFF_ARST_VAL(rx_payload_index_q, rx_payload_index_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(rx_payload_length_q, rx_payload_length_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(interbyte_counter_q, interbyte_counter_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(req_payload_q, req_payload_d, clk_i, reset_i, '0)
 
     // Why: a second, discard-only parser takes frames that arrive while service
     // is occupied, so the active request registers are preserved. One complete
@@ -374,8 +374,8 @@ module n2d_uart_debug_engine
         end
     end
 
-    `N2A_DFF_ARST_VAL(busy_q, busy_d, clk_i, reset_i, BUSY_RESET)
-    `N2A_DFF_ARST_VAL(busy_interbyte_counter_q, busy_interbyte_counter_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(busy_q, busy_d, clk_i, reset_i, BUSY_RESET)
+    `DFF_ARST_VAL(busy_interbyte_counter_q, busy_interbyte_counter_d, clk_i, reset_i, '0)
 
     always_comb begin
         exec_d = exec_q;
@@ -680,25 +680,25 @@ module n2d_uart_debug_engine
         end
     end
 
-    `N2A_DFF_ARST_VAL(exec_q, exec_d, clk_i, reset_i, EXEC_RESET)
-    `N2A_DFF_ARST_VAL(op_counter_q, op_counter_d, clk_i, reset_i, '0)
-    `N2A_DFF_ARST_VAL(halt_counter_q, halt_counter_d, clk_i, reset_i, '0)
-    `N2A_DFF_ARST_VAL(word_index_q, word_index_d, clk_i, reset_i, '0)
-    `N2A_DFF_ARST_VAL(response_index_q, response_index_d, clk_i, reset_i, '0)
-    `N2A_DFF_ARST_VAL(response_payload_bytes_q, response_payload_bytes_d, clk_i, reset_i, '0)
-    `N2A_DFF_ARST_VAL(response_payload_q, response_payload_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(exec_q, exec_d, clk_i, reset_i, EXEC_RESET)
+    `DFF_ARST_VAL(op_counter_q, op_counter_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(halt_counter_q, halt_counter_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(word_index_q, word_index_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(response_index_q, response_index_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(response_payload_bytes_q, response_payload_bytes_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(response_payload_q, response_payload_d, clk_i, reset_i, '0)
 
-    `N2A_ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, !(mem_txn_commit && mem_txn_abort),
+    `ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, !(mem_txn_commit && mem_txn_abort),
         "debug memory transaction commit and abort overlap")
-    `N2A_ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, mem_req_valid,
+    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, mem_req_valid,
         debug_status_i.halt_ack && debug_status_i.cache_maint_done && txn_status_i.arb_grant,
         "debug memory request escaped halt/grant boundary")
-    `N2A_ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, !(exec_q.cache_invalidate && exec_q.halt_req),
+    `ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, !(exec_q.cache_invalidate && exec_q.halt_req),
         "resume invalidation overlaps asserted halt request")
 
-    `N2A_ASSERT_PARAM(g_invalid_max_words, (MAX_WORDS != 0) && (MAX_WORDS <= 63),
+    `ASSERT_PARAM(g_invalid_max_words, (MAX_WORDS != 0) && (MAX_WORDS <= 63),
         "n2d_uart_debug MAX_WORDS must be in 1..63")
-    `N2A_ASSERT_PARAM(g_invalid_timeouts,
+    `ASSERT_PARAM(g_invalid_timeouts,
         (INTERBYTE_TIMEOUT_CYCLES >= (CLKS_PER_BIT * 10)) &&
         (OP_TIMEOUT_CYCLES >= 2) && (HALT_TIMEOUT_CYCLES >= 2),
         "n2d_uart_debug timeout parameters are too small")

@@ -5,7 +5,7 @@ module n2m_cpu_stop_policy (
     input var logic selected_active,
     input var logic enabled_pending,
     input var logic execute,
-    output n2m_cpu_pkg::cpu_stop_action_t action,
+    output n2m_cpu_pkg::t_cpu_stop_action action,
     output logic padding,
     output logic divider_reset
 );

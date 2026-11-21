@@ -62,7 +62,7 @@ package n2d_core_types_pkg;
         logic [3:0]       pending;
         logic [31:0]      inhibit;
         logic [127:0]     events;
-    } pmon_regs_t;
+    } t_pmon_regs;
 
     // n2d_rv32i_core_step sequencing state.
     typedef enum logic [2:0] {
@@ -71,12 +71,12 @@ package n2d_core_types_pkg;
         STEP_EXECUTE,
         STEP_DATA_RESPONSE,
         STEP_HALTED
-    } step_state_t;
+    } t_step_state;
 
     // n2d_rv32i_core_step state, in-flight memory operation and the
     // registered retirement observation record (observation pulses reset low).
     typedef struct packed {
-        step_state_t state;
+        t_step_state state;
         logic [31:0] pc;
         logic [31:0] instruction;
         logic [31:0] instruction_pc;
@@ -104,5 +104,5 @@ package n2d_core_types_pkg;
         logic        observation_trap;
         logic [31:0] observation_cause;
         logic [31:0] observation_trap_value;
-    } step_regs_t;
+    } t_step_regs;
 endpackage
