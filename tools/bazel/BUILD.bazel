@@ -1,4 +1,5 @@
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+load("@rules_python//python:py_binary.bzl", "py_binary")
 
 exports_files(
     ["comment_lint_main.py", "extensions.bzl", "hdl.bzl", "pytest_main.py"],
@@ -15,5 +16,12 @@ bool_flag(
 config_setting(
     name = "waves_on",
     flag_values = {":waves": "true"},
+    visibility = ["//visibility:public"],
+)
+
+# The board image action's entry point (hdl.bzl quartus_image).
+py_binary(
+    name = "quartus_image",
+    srcs = ["quartus_image.py"],
     visibility = ["//visibility:public"],
 )

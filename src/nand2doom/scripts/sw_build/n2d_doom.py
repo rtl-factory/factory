@@ -160,6 +160,8 @@ def _temporary_beside(path: Path) -> Path:
     """A new, uniquely named file next to path, for writing before an atomic rename."""
     handle, name = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".part")
     os.close(handle)
+    # Why: mkstemp makes the file private; the pinned input keeps the usual mode.
+    os.chmod(name, 0o644)
     return Path(name)
 
 

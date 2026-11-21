@@ -15,12 +15,13 @@ The L0 regression took about 18 minutes, and every run rebuilt every Verilator m
 7. Use the Verilator version pinned by the toolchain, refuse any other, and treat a different binary as a changed input.
 8. Keep results between CI runs, so a pull request reruns only what it changed.
 9. Write logs, results and waveforms outside the source tree.
+10. Build each board image with one command that runs the project's Quartus script and its timing and warning gate, and rebuild it only when an input changed.
 
 ## Out of scope
 
 - A remote cache or remote execution server.
 - Building Verilator, the OSS CAD Suite or Quartus from Bazel; the toolchain installs them.
-- Quartus builds; a later stage of the migration adds them.
+- Running Quartus in CI; board images build on a host with Quartus.
 
 ## Acceptance
 
@@ -35,3 +36,4 @@ The L0 regression took about 18 minutes, and every run rebuilt every Verilator m
 | 7 | A different Verilator version on `PATH` fails the build with the pin named |
 | 8 | A second CI run on an unchanged tree runs no Verilator action |
 | 9 | After a run the source tree has no new files |
+| 10 | `bazel build //src/<project>:<board>_image` leaves the SOF and gate evidence in `bazel-bin`; a second build runs no Quartus; a failing gate fails the build |

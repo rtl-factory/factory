@@ -12,6 +12,7 @@ How the build meets its [requirements](prd.md). How agents use it day to day is 
 | `tools/bazel/extensions.bzl` | The `hdl_registry` and `verilator` repositories |
 | `tools/bazel/hdl.bzl` | `hdl_project()`, the `verilator_model` rule, the test macros and `unit_tests()` |
 | `tools/bazel/pytest_main.py` | The entry point of every unit-test target |
+| `tools/bazel/quartus_image.py` | The board image action: runs a project's Quartus script and keeps its outputs |
 | `src/<project>/BUILD.bazel` | One call, `hdl_project(name = "<project>")` |
 
 ## Repositories
@@ -61,6 +62,10 @@ A formal test runs `tools/fv/fv.py run <target>` with `FV_ROOT` set to its runfi
 ## Wrapped targets
 
 A target with a `wrapper` prepares its program image before it runs, so its test runs `sim.py --workdir workdir/bazel/<target> test <target>` unchanged, tagged `external` (always run), `no-sandbox`, `no-cache` and `wrapped`: it builds its own model and writes under the checkout's `workdir/`, and always reruns. This holds until program builds become Bazel actions.
+
+## Board images
+
+`quartus_image()` in a project package makes `//src/<project>:<board>_image` (nand2mario: `de10_lite_image`, `de2_115_image`, `de2_115_library_image`; nand2doom: `de10_lite_image`, `de2_115_image`), built with `bazel build` on a host with the pinned Quartus. The action runs `tools/bazel/quartus_image.py`, which runs the project's build script (`n2m_quartus.py`, `quartus.py`) with the board's arguments in the checkout, unchanged: the script stages `workdir/quartus/<project>/`, compiles, runs its timing audit and its report gate, and fails the build when the gate fails. The SOF, the gate's evidence and source JSON, the logs and the reports are then copied into `bazel-bin/src/<project>/<board>_image/`. The action is local and unsandboxed (Quartus is a licensed per-host install and the scripts build in the checkout), but cached: its inputs are every file of the project and of `common` plus `cfg/toolchain.json`, so a rebuild with no change runs no Quartus. Quartus is found through `QUARTUS_SH` in the shell (pass it with `--action_env=QUARTUS_SH` in `user.bazelrc`), else the pinned install directory. Image targets are tagged `manual` and `quartus`, so `//...` never builds them.
 
 ## Levels and CI
 
