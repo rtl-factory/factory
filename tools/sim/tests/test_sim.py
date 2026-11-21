@@ -18,7 +18,9 @@ class TargetViewTests(unittest.TestCase):
             registry = Path(tmp) / "src/demo/cfg/targets.json"
             registry.parent.mkdir(parents=True)
             registry.write_text(json.dumps({"targets": {"demo_top": {
-                "top": "demo_top", "sources": ["a.sv", "b.sv"], "parameters": {"W": 8}}}}))
+                "top": "demo_top", "parameters": {"W": 8}}}}))
+            (registry.parent / "libraries.json").write_text(json.dumps({"libraries": {
+                "a": {"srcs": ["a.sv"]}, "demo_top": {"srcs": ["b.sv"], "deps": ["a"]}}}))
             view = sim.target_views(Path(tmp))["demo_top"]
         self.assertEqual(view.name, "demo_top")
         self.assertEqual(view.project, "demo")

@@ -5,10 +5,6 @@
       "kind": "cocotb",
       "description": "Common SDRAM device model, burst one, bank-row-column map: masked writes, reads and preload against a shadow",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -25,10 +21,6 @@
       "kind": "cocotb",
       "description": "Common SDRAM device model, burst eight, row-XOR-bank map: masked bursts, burst order and preload against a shadow",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 8,
         "ROW_XOR_BANK": 1
@@ -45,10 +37,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (DQ driven outside a write burst) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -69,10 +57,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (DQ bus turnaround violation) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -93,10 +77,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (command inside the power-up wait) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -117,10 +97,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (first command is not PRECHARGE ALL) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -141,10 +117,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (ACTIVATE before the mode register set) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -165,10 +137,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (ACTIVATE to an open bank) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -189,10 +157,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (tRFC violation) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -213,10 +177,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (tMRD violation) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -237,10 +197,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (column command before the mode register set) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -261,10 +217,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (column command without an open row) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -285,10 +237,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (auto-precharge is not modeled) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -309,10 +257,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (masked READ is not modeled) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -333,10 +277,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (WRITE without DQ drive) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -357,10 +297,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (tRAS violation) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -381,10 +317,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (tWR violation) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -405,10 +337,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (REFRESH with an open row) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -429,10 +357,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (tRFC violation) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -453,10 +377,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (refresh interval exceeded) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -477,10 +397,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (mode register set with an open row) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -501,10 +417,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (mode register set before the initial refreshes) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -525,10 +437,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (MRS tRFC violation) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -549,10 +457,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (mode register is not sequential CAS-two with the configured burst) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 1,
         "ROW_XOR_BANK": 0
@@ -573,10 +477,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation in burst-eight mode (command interrupts a read burst) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 8,
         "ROW_XOR_BANK": 1
@@ -597,10 +497,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation in burst-eight mode (command interrupts a write burst) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 8,
         "ROW_XOR_BANK": 1
@@ -621,10 +517,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation in burst-eight mode (tWR counted from the last write beat) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 8,
         "ROW_XOR_BANK": 1
@@ -645,10 +537,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation in burst-eight mode (write beat without DQ drive) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 8,
         "ROW_XOR_BANK": 1
@@ -669,10 +557,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation in burst-eight mode (burst does not start an aligned group) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 8,
         "ROW_XOR_BANK": 1
@@ -693,10 +577,6 @@
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation in burst-eight mode (mode register is not sequential CAS-two with the configured burst) is fatal",
       "top": "n2a_sdram_model_fixture",
-      "sources": [
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
-      ],
       "parameters": {
         "BURST_BEATS": 8,
         "ROW_XOR_BANK": 1
@@ -717,12 +597,6 @@
       "kind": "cocotb",
       "description": "Common SDRAM controller, nand2doom configuration (burst eight, open row, row-XOR-bank map): random traffic, latency table, refresh, misaligned errors, on the common model",
       "top": "n2a_sdram_ctrl_fixture",
-      "sources": [
-        "src/common/rtl/sdram/n2a_sdram_pkg.sv",
-        "src/common/rtl/sdram/n2a_sdram_ctrl.sv",
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_ctrl_fixture.sv"
-      ],
       "parameters": {
         "LINE": 1
       },
@@ -738,12 +612,6 @@
       "kind": "cocotb",
       "description": "Common SDRAM controller, nand2mario configuration (burst one, close page): random traffic, fixed 9/10 latency, idle return, refresh, misaligned errors, on the common model",
       "top": "n2a_sdram_ctrl_fixture",
-      "sources": [
-        "src/common/rtl/sdram/n2a_sdram_pkg.sv",
-        "src/common/rtl/sdram/n2a_sdram_ctrl.sv",
-        "src/common/dv/sdram/n2a_sdram_model.sv",
-        "src/common/dv/sdram/n2a_sdram_ctrl_fixture.sv"
-      ],
       "parameters": {
         "LINE": 0
       },
@@ -759,13 +627,6 @@
       "kind": "cocotb",
       "description": "Common UART wire helper against the common UART PHY at 12.5 clocks per bit, clock and time modes",
       "top": "n2a_uart_wire_fixture",
-      "sources": [
-        "src/common/rtl/pkg/n2a_types_pkg.sv",
-        "src/common/rtl/sync/n2a_cdc_bit_sync.sv",
-        "src/common/rtl/uart/n2a_uart_rx.sv",
-        "src/common/rtl/uart/n2a_uart_tx.sv",
-        "src/common/dv/uart/n2a_uart_wire_fixture.sv"
-      ],
       "clock_hz": 25000000,
       "timeout_seconds": 120,
       "test_module": "src.common.dv.uart.test_uart_wire",

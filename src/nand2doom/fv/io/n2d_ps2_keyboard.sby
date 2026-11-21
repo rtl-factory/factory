@@ -2,6 +2,7 @@
 # wiki/src/nand2doom/fv/io/fv-plan.md. Run: python3 tools/fv/fv.py run n2d_ps2_keyboard
 # level: L0
 # timeout: 600
+# library: n2d_ps2_keyboard_fv
 [tasks]
 prove
 cover
@@ -16,19 +17,10 @@ prove: abc pdr
 cover: smtbmc yices
 
 [script]
-read_slang --no-synthesis-define -I . src/common/rtl/pkg/n2a_types_pkg.sv src/nand2doom/rtl/platform/n2d_types_pkg.sv src/common/rtl/sync/n2a_cdc_bit_sync.sv src/nand2doom/rtl/io/n2d_ps2_keyboard.sv src/nand2doom/fv/io/n2d_ps2_keyboard_fv.sv --top n2d_ps2_keyboard_fv
+read_slang --no-synthesis-define -I . {sources} --top n2d_ps2_keyboard_fv
 prep -top n2d_ps2_keyboard_fv
 flatten
 techmap
 opt -fast
 setundef -undriven -anyseq
 setundef -anyseq
-
-[files]
-src/common/rtl/pkg/macros.vh ../../../common/rtl/pkg/macros.vh
-src/common/rtl/pkg/assertion_macros.vh ../../../common/rtl/pkg/assertion_macros.vh
-src/common/rtl/pkg/n2a_types_pkg.sv ../../../common/rtl/pkg/n2a_types_pkg.sv
-src/common/rtl/sync/n2a_cdc_bit_sync.sv ../../../common/rtl/sync/n2a_cdc_bit_sync.sv
-src/nand2doom/rtl/platform/n2d_types_pkg.sv ../../rtl/platform/n2d_types_pkg.sv
-src/nand2doom/rtl/io/n2d_ps2_keyboard.sv ../../rtl/io/n2d_ps2_keyboard.sv
-src/nand2doom/fv/io/n2d_ps2_keyboard_fv.sv n2d_ps2_keyboard_fv.sv

@@ -216,8 +216,10 @@ def _formal_tests(project):
             srcs = ["//tools/fv:fv.py"],
             main = "//tools/fv:fv.py",
             args = ["run", target_name],
+            # Why: the runner resolves the target's library itself, from the same lists.
             data = [_source_label(f) for f in [target["sby"]] + target["files"]] +
-                   ["@oss_cad_suite//:bin/sby", "@oss_cad_suite//:oss_cad_suite"],
+                   ["//src/%s:cfg/libraries.json" % p for p in PROJECTS] +
+                   ["//tools/bazel:hdl_libraries.py", "@oss_cad_suite//:bin/sby", "@oss_cad_suite//:oss_cad_suite"],
             env = {
                 "FV_ROOT": ".",
                 "SBY": "$(rootpath @oss_cad_suite//:bin/sby)",
@@ -236,6 +238,7 @@ def _wrapped_test(target_name, project, tags, timeout, python):
             ":all_files",
             "//src/common:all_files",
             "//tools/sim:all_files",
+            "//tools/bazel:hdl_libraries.py",
             "@verilator//:verilator",
         ],
         deps = python + [requirement("cocotb"), requirement("pillow")],
@@ -327,6 +330,8 @@ def quartus_image(name, script, project, args = []):
         script = script,
         project = project,
         args = args,
-        srcs = [":all_files", "//src/common:all_files"],
+        # Why: the script resolves its manifest's libraries from every project's list.
+        srcs = [":all_files", "//src/common:all_files", "//tools/bazel:hdl_libraries.py"] +
+               ["//src/%s:cfg/libraries.json" % p for p in PROJECTS],
         tags = ["manual", "quartus"],
     )

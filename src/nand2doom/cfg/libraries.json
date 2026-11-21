@@ -1,0 +1,599 @@
+{
+  "schema_version": 1,
+  "libraries": {
+    "n2d_c_runtime_system": {
+      "deps": [
+        "n2d_memory_fast_subsystem",
+        "n2d_system"
+      ],
+      "srcs": [
+        "src/nand2doom/dv/platform/n2d_c_runtime_system.sv"
+      ]
+    },
+    "n2d_cached_rv32im": {
+      "deps": [
+        "n2d_dcache",
+        "n2d_icache",
+        "n2d_rv32im_core"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/memory/n2d_cached_rv32im.sv"
+      ]
+    },
+    "n2d_core_pkg": {
+      "srcs": [
+        "src/nand2doom/rtl/core/n2d_core_pkg.sv"
+      ]
+    },
+    "n2d_core_types_pkg": {
+      "srcs": [
+        "src/nand2doom/rtl/core/n2d_core_types_pkg.sv"
+      ]
+    },
+    "n2d_csr": {
+      "deps": [
+        "macros",
+        "n2d_core_types_pkg",
+        "n2d_pmon"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/core/n2d_csr.sv"
+      ]
+    },
+    "n2d_ctrl": {
+      "deps": [
+        "macros",
+        "n2d_core_pkg"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/core/n2d_ctrl.sv"
+      ]
+    },
+    "n2d_dcache": {
+      "deps": [
+        "macros",
+        "n2a_sdp_ram",
+        "n2d_ls_types_pkg"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/memory/n2d_dcache.sv"
+      ]
+    },
+    "n2d_de10_lite": {
+      "deps": [
+        "n2a_de10_lite_clock",
+        "n2a_jtag_virtual",
+        "n2a_reset_sync",
+        "n2d_memory_controller",
+        "n2d_pkg",
+        "n2d_system"
+      ],
+      "srcs": [
+        "src/nand2doom/fpga/de10_lite/n2d_de10_lite.sv"
+      ]
+    },
+    "n2d_de10_lite_fixture": {
+      "deps": [
+        "n2d_de10_lite"
+      ],
+      "srcs": [
+        "src/nand2doom/dv/fpga/n2d_de10_lite_fixture.sv"
+      ]
+    },
+    "n2d_de2_115": {
+      "deps": [
+        "n2a_de2_115_clock",
+        "n2a_jtag_virtual",
+        "n2a_reset_sync",
+        "n2d_memory_controller",
+        "n2d_pkg",
+        "n2d_system"
+      ],
+      "srcs": [
+        "src/nand2doom/fpga/de2_115/n2d_de2_115.sv"
+      ]
+    },
+    "n2d_de2_115_fixture": {
+      "deps": [
+        "n2d_de2_115"
+      ],
+      "srcs": [
+        "src/nand2doom/dv/fpga/n2d_de2_115_fixture.sv"
+      ]
+    },
+    "n2d_debug_device_line_bridge": {
+      "deps": [
+        "macros",
+        "n2d_types_pkg"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/platform/n2d_debug_device_line_bridge.sv"
+      ]
+    },
+    "n2d_debug_memory_adapter": {
+      "deps": [
+        "macros",
+        "n2d_ls_types_pkg"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/memory/n2d_debug_memory_adapter.sv"
+      ]
+    },
+    "n2d_debug_memory_fast": {
+      "deps": [
+        "n2d_debug_memory_adapter",
+        "n2d_sdram_fast_model"
+      ],
+      "srcs": [
+        "src/nand2doom/dv/memory/n2d_debug_memory_fast.sv"
+      ]
+    },
+    "n2d_dec": {
+      "deps": [
+        "n2d_core_pkg"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/core/n2d_dec.sv"
+      ]
+    },
+    "n2d_exe": {
+      "deps": [
+        "macros",
+        "n2d_core_pkg",
+        "n2d_rv32i_decode_alu"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/core/n2d_exe.sv"
+      ]
+    },
+    "n2d_framebuffer_vga": {
+      "deps": [
+        "macros",
+        "n2a_sdp_ram",
+        "n2a_sync_ram",
+        "n2a_tdp_ram",
+        "n2a_vga_timing",
+        "n2d_types_pkg"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/video/n2d_framebuffer_vga.sv"
+      ]
+    },
+    "n2d_halt_sdram": {
+      "deps": [
+        "n2a_sdram_ctrl",
+        "n2d_memory_arbiter",
+        "n2d_system"
+      ],
+      "srcs": [
+        "src/nand2doom/dv/platform/n2d_halt_sdram.sv"
+      ]
+    },
+    "n2d_icache": {
+      "deps": [
+        "macros",
+        "n2a_sync_ram",
+        "n2d_ls_types_pkg"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/memory/n2d_icache.sv"
+      ]
+    },
+    "n2d_if": {
+      "deps": [
+        "macros",
+        "n2a_sdp_ram",
+        "n2d_core_pkg"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/core/n2d_if.sv"
+      ]
+    },
+    "n2d_integrated_system": {
+      "deps": [
+        {
+          "unless": [
+            "SYNTHESIS"
+          ],
+          "deps": [
+            "n2d_memory_fast_preload_subsystem",
+            "n2d_system"
+          ]
+        }
+      ],
+      "srcs": [
+        "src/nand2doom/dv/platform/n2d_integrated_system.sv"
+      ]
+    },
+    "n2d_jtag_input_fixture": {
+      "deps": [
+        "n2a_jtag_keyboard",
+        "n2d_ps2_keyboard"
+      ],
+      "srcs": [
+        "src/nand2doom/dv/io/n2d_jtag_input_fixture.sv"
+      ]
+    },
+    "n2d_jtag_system_lint": {
+      "srcs": [
+        "src/nand2doom/dv/io/n2d_jtag_system_lint.v"
+      ]
+    },
+    "n2d_ls_types_pkg": {
+      "srcs": [
+        "src/nand2doom/rtl/memory/n2d_ls_types_pkg.sv"
+      ]
+    },
+    "n2d_ma": {
+      "deps": [
+        "n2d_core_pkg"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/core/n2d_ma.sv"
+      ]
+    },
+    "n2d_memory_arbiter": {
+      "deps": [
+        "macros"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/memory/n2d_memory_arbiter.sv"
+      ]
+    },
+    "n2d_memory_arbiter_fv": {
+      "deps": [
+        "n2d_memory_arbiter"
+      ],
+      "srcs": [
+        "src/nand2doom/fv/memory/n2d_memory_arbiter_fv.sv"
+      ]
+    },
+    "n2d_memory_controller": {
+      "deps": [
+        "macros",
+        "n2a_sdram_ctrl",
+        "n2d_memory_arbiter"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/memory/n2d_memory_controller.sv"
+      ]
+    },
+    "n2d_memory_fast_preload_subsystem": {
+      "deps": [
+        {
+          "unless": [
+            "SYNTHESIS"
+          ],
+          "deps": [
+            "n2d_memory_arbiter",
+            "n2d_sdram_fast_model"
+          ]
+        }
+      ],
+      "srcs": [
+        "src/nand2doom/dv/platform/n2d_memory_fast_preload_subsystem.sv"
+      ]
+    },
+    "n2d_memory_fast_subsystem": {
+      "deps": [
+        "n2d_memory_arbiter",
+        "n2d_sdram_fast_model"
+      ],
+      "srcs": [
+        "src/nand2doom/dv/memory/n2d_memory_fast_subsystem.sv"
+      ]
+    },
+    "n2d_muldiv": {
+      "deps": [
+        "macros",
+        "n2d_core_types_pkg"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/core/n2d_muldiv.sv"
+      ]
+    },
+    "n2d_perf_singletics": {
+      "headers": [
+        "src/nand2doom/dv/platform/n2d_perf_singletics.svh"
+      ]
+    },
+    "n2d_perf_state": {
+      "headers": [
+        "src/nand2doom/dv/platform/n2d_perf_state.svh"
+      ]
+    },
+    "n2d_perf_tb": {
+      "deps": [
+        {
+          "unless": [
+            "N2D_PERF_SDRAM",
+            "SYNTHESIS"
+          ],
+          "deps": [
+            "n2d_integrated_system"
+          ]
+        },
+        {
+          "unless": [
+            "SYNTHESIS"
+          ],
+          "deps": [
+            "n2d_perf_singletics",
+            "n2d_perf_state"
+          ]
+        },
+        {
+          "if": [
+            "N2D_PERF_SDRAM"
+          ],
+          "unless": [
+            "SYNTHESIS"
+          ],
+          "deps": [
+            "n2d_sdram_system"
+          ]
+        }
+      ],
+      "srcs": [
+        "src/nand2doom/dv/platform/n2d_perf_tb.sv"
+      ]
+    },
+    "n2d_pkg": {
+      "srcs": [
+        "src/nand2doom/rtl/platform/n2d_pkg.sv"
+      ]
+    },
+    "n2d_pmon": {
+      "deps": [
+        "macros",
+        "n2d_core_types_pkg"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/core/n2d_pmon.sv"
+      ]
+    },
+    "n2d_pmon_events_fixture": {
+      "deps": [
+        "n2d_memory_arbiter",
+        "n2d_pmon_platform_events"
+      ],
+      "srcs": [
+        "src/nand2doom/dv/platform/n2d_pmon_events_fixture.sv"
+      ]
+    },
+    "n2d_pmon_platform_events": {
+      "deps": [
+        "macros",
+        "n2d_types_pkg"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/platform/n2d_pmon_platform_events.sv"
+      ]
+    },
+    "n2d_ps2_keyboard": {
+      "deps": [
+        "macros",
+        "n2a_cdc_bit_sync",
+        "n2d_types_pkg"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/io/n2d_ps2_keyboard.sv"
+      ]
+    },
+    "n2d_ps2_keyboard_fv": {
+      "deps": [
+        "n2d_ps2_keyboard"
+      ],
+      "srcs": [
+        "src/nand2doom/fv/io/n2d_ps2_keyboard_fv.sv"
+      ]
+    },
+    "n2d_retirement_fixture": {
+      "srcs": [
+        "src/nand2doom/dv/software/n2d_retirement_fixture.sv"
+      ]
+    },
+    "n2d_rv32i_core_step": {
+      "deps": [
+        "macros",
+        "n2a_rv32_regfile",
+        "n2d_core_types_pkg",
+        "n2d_rv32i_decode_alu"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/core/n2d_rv32i_core_step.sv"
+      ]
+    },
+    "n2d_rv32i_decode_alu": {
+      "srcs": [
+        "src/nand2doom/rtl/core/n2d_rv32i_decode_alu.sv"
+      ]
+    },
+    "n2d_rv32i_program_smoke": {
+      "deps": [
+        "n2a_sync_ram",
+        "n2d_rv32i_core_step"
+      ],
+      "srcs": [
+        "src/nand2doom/dv/core/n2d_rv32i_program_smoke.sv"
+      ]
+    },
+    "n2d_rv32im_core": {
+      "deps": [
+        "macros",
+        "n2a_rv32_regfile",
+        "n2d_core_pkg",
+        "n2d_csr",
+        "n2d_ctrl",
+        "n2d_dec",
+        "n2d_exe",
+        "n2d_if",
+        "n2d_ma",
+        "n2d_muldiv",
+        "n2d_wb"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/core/n2d_rv32im_core.sv"
+      ]
+    },
+    "n2d_sdram_board_timing": {
+      "deps": [
+        "n2a_sdram_ctrl"
+      ],
+      "srcs": [
+        "src/nand2doom/dv/fpga/n2d_sdram_board_timing.sv"
+      ]
+    },
+    "n2d_sdram_fast_model": {
+      "srcs": [
+        "src/nand2doom/dv/memory/n2d_sdram_fast_model.sv"
+      ]
+    },
+    "n2d_sdram_system": {
+      "deps": [
+        {
+          "unless": [
+            "SYNTHESIS"
+          ],
+          "deps": [
+            "n2a_sdram_model",
+            "n2d_memory_controller",
+            "n2d_system"
+          ]
+        }
+      ],
+      "srcs": [
+        "src/nand2doom/dv/platform/n2d_sdram_system.sv"
+      ]
+    },
+    "n2d_system": {
+      "deps": [
+        "macros",
+        "n2a_jtag_keyboard",
+        "n2d_dcache",
+        "n2d_debug_device_line_bridge",
+        "n2d_debug_memory_adapter",
+        "n2d_framebuffer_vga",
+        "n2d_icache",
+        "n2d_pkg",
+        "n2d_pmon_platform_events",
+        "n2d_ps2_keyboard",
+        "n2d_rv32im_core",
+        "n2d_types_pkg",
+        "n2d_uart_debug"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/platform/n2d_system.sv"
+      ]
+    },
+    "n2d_types_pkg": {
+      "srcs": [
+        "src/nand2doom/rtl/platform/n2d_types_pkg.sv"
+      ]
+    },
+    "n2d_uart_bulk": {
+      "deps": [
+        "macros",
+        "n2a_sync_ram",
+        "n2d_pkg",
+        "n2d_types_pkg"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/io/n2d_uart_bulk.sv"
+      ]
+    },
+    "n2d_uart_bulk_limits": {
+      "deps": [
+        "n2d_uart_bulk"
+      ],
+      "srcs": [
+        "src/nand2doom/dv/io/n2d_uart_bulk_limits.sv"
+      ]
+    },
+    "n2d_uart_debug": {
+      "deps": [
+        "macros",
+        "n2a_uart_mem",
+        "n2a_uart_rx",
+        "n2a_uart_tx",
+        "n2d_pkg",
+        "n2d_uart_bulk",
+        "n2d_uart_debug_engine",
+        "n2d_uart_mem_port",
+        "n2d_uart_stream"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/io/n2d_uart_debug.sv"
+      ]
+    },
+    "n2d_uart_debug_engine": {
+      "deps": [
+        "macros",
+        "n2d_pkg",
+        "n2d_types_pkg"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/io/n2d_uart_debug_engine.sv"
+      ]
+    },
+    "n2d_uart_debug_memory": {
+      "deps": [
+        "n2d_debug_memory_adapter",
+        "n2d_pkg",
+        "n2d_uart_debug"
+      ],
+      "srcs": [
+        "src/nand2doom/dv/io/n2d_uart_debug_memory.sv"
+      ]
+    },
+    "n2d_uart_debug_pins": {
+      "deps": [
+        "n2d_pkg",
+        "n2d_uart_debug"
+      ],
+      "srcs": [
+        "src/nand2doom/dv/io/n2d_uart_debug_pins.sv"
+      ]
+    },
+    "n2d_uart_mem_port": {
+      "deps": [
+        "macros",
+        "n2d_pkg",
+        "n2d_types_pkg"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/io/n2d_uart_mem_port.sv"
+      ]
+    },
+    "n2d_uart_stream": {
+      "deps": [
+        "macros",
+        "n2a_sdp_ram",
+        "n2d_pkg",
+        "n2d_types_pkg"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/io/n2d_uart_stream.sv"
+      ]
+    },
+    "n2d_uart_stream_memory": {
+      "deps": [
+        "n2d_debug_memory_adapter",
+        "n2d_pkg",
+        "n2d_uart_debug"
+      ],
+      "srcs": [
+        "src/nand2doom/dv/io/n2d_uart_stream_memory.sv"
+      ]
+    },
+    "n2d_wb": {
+      "deps": [
+        "macros",
+        "n2d_core_pkg"
+      ],
+      "srcs": [
+        "src/nand2doom/rtl/core/n2d_wb.sv"
+      ]
+    }
+  }
+}

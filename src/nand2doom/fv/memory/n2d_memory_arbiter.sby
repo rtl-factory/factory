@@ -2,6 +2,7 @@
 # wiki/src/nand2doom/fv/memory/fv-plan.md. Run: python3 tools/fv/fv.py run n2d_memory_arbiter
 # level: L0
 # timeout: 600
+# library: n2d_memory_arbiter_fv
 [tasks]
 prove
 cover
@@ -16,16 +17,10 @@ prove: abc pdr
 cover: smtbmc yices
 
 [script]
-read_slang --no-synthesis-define -I . src/nand2doom/rtl/memory/n2d_memory_arbiter.sv src/nand2doom/fv/memory/n2d_memory_arbiter_fv.sv --top n2d_memory_arbiter_fv
+read_slang --no-synthesis-define -I . {sources} --top n2d_memory_arbiter_fv
 prep -top n2d_memory_arbiter_fv
 flatten
 techmap
 opt -fast
 setundef -undriven -anyseq
 setundef -anyseq
-
-[files]
-src/common/rtl/pkg/macros.vh ../../../common/rtl/pkg/macros.vh
-src/common/rtl/pkg/assertion_macros.vh ../../../common/rtl/pkg/assertion_macros.vh
-src/nand2doom/rtl/memory/n2d_memory_arbiter.sv ../../rtl/memory/n2d_memory_arbiter.sv
-src/nand2doom/fv/memory/n2d_memory_arbiter_fv.sv n2d_memory_arbiter_fv.sv

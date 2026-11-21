@@ -10,11 +10,12 @@ A target is one SymbiYosys file, `src/<project>/fv/<block>/<target>.sby`, next t
 |---|---|
 | `# level: L0` | Regression level, `L0` to `L4` ([CI levels](../../bkm/flow.md#ci-levels)), or `manual` (run only by name) |
 | `# timeout: 600` | Time budget in seconds for all the file's tasks together; 600 when absent, and never more |
+| `# library: <harness>` | The library the target proves, usually its harness; `# flavors:` and `# defines:` select variants and conditional needs ([Bazel spec, Libraries](../bazel/spec.md#libraries)) |
 
-The `[tasks]` section lists the tasks; by convention `prove` (`mode prove`, engine `abc pdr`) and `cover` (`mode cover`, engine `smtbmc yices`, with a depth). The `[files]` section copies each source to its repository path (`src/...`), so ``` `include ``` paths stay root-relative, and the script reads them with yosys-slang:
+The `[tasks]` section lists the tasks; by convention `prove` (`mode prove`, engine `abc pdr`) and `cover` (`mode cover`, engine `smtbmc yices`, with a depth). The file has no `[files]` section and its script names the library's sources as `{sources}`: the runner writes `<workdir>/<target>.sby` with `{sources}` replaced by the library's ordered sources and a `[files]` section that copies each source and header to its repository path (`src/...`), so ``` `include ``` paths stay root-relative, and runs that. The script reads them with yosys-slang:
 
 ```
-read_slang --no-synthesis-define -I . <packages> <rtl> <harness> --top <harness>
+read_slang --no-synthesis-define -I . {sources} --top <harness>
 prep -top <harness>
 flatten
 techmap

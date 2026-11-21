@@ -1,8 +1,9 @@
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 load("@rules_python//python:py_binary.bzl", "py_binary")
+load("//tools/bazel:hdl.bzl", "unit_tests")
 
 exports_files(
-    ["comment_lint_main.py", "extensions.bzl", "hdl.bzl", "pytest_main.py"],
+    ["comment_lint_main.py", "extensions.bzl", "hdl.bzl", "hdl_libraries.py", "pytest_main.py"],
     visibility = ["//visibility:public"],
 )
 
@@ -25,3 +26,5 @@ py_binary(
     srcs = ["quartus_image.py"],
     visibility = ["//visibility:public"],
 )
+
+unit_tests()

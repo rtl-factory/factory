@@ -2,6 +2,7 @@
 # wiki/src/common/fv/sdram/fv-plan.md. Run: python3 tools/fv/fv.py run n2a_sdram_ctrl_word
 # level: L0
 # timeout: 600
+# library: n2a_sdram_ctrl_fv
 [tasks]
 prove
 cover
@@ -17,17 +18,10 @@ prove: smtbmc yices
 cover: smtbmc yices
 
 [script]
-read_slang --no-synthesis-define -I . -G LINE=0 src/common/rtl/sdram/n2a_sdram_pkg.sv src/common/rtl/sdram/n2a_sdram_ctrl.sv src/common/fv/sdram/n2a_sdram_ctrl_fv.sv --top n2a_sdram_ctrl_fv
+read_slang --no-synthesis-define -I . -G LINE=0 {sources} --top n2a_sdram_ctrl_fv
 prep -top n2a_sdram_ctrl_fv
 flatten
 techmap
 opt -fast
 setundef -undriven -anyseq
 setundef -anyseq
-
-[files]
-src/common/rtl/pkg/macros.vh ../../rtl/pkg/macros.vh
-src/common/rtl/pkg/assertion_macros.vh ../../rtl/pkg/assertion_macros.vh
-src/common/rtl/sdram/n2a_sdram_pkg.sv ../../rtl/sdram/n2a_sdram_pkg.sv
-src/common/rtl/sdram/n2a_sdram_ctrl.sv ../../rtl/sdram/n2a_sdram_ctrl.sv
-src/common/fv/sdram/n2a_sdram_ctrl_fv.sv n2a_sdram_ctrl_fv.sv
