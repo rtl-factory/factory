@@ -1,3 +1,5 @@
+`include "src/common/rtl/pkg/macros.vh"
+
 module n2d_memory_controller (
     input  logic         clk_i,
     input  logic         reset_i,
@@ -117,9 +119,7 @@ module n2d_memory_controller (
         .sdram_ras_n_o, .sdram_cas_n_o, .sdram_we_n_o, .sdram_dqm_o,
         .sdram_dq_o, .sdram_dq_oe_o, .sdram_dq_i);
 
-    // Why: the arbiter follows request_ready_o; the engine's idle flag is not needed.
-    /* verilator lint_off UNUSEDSIGNAL */
-    logic sdram_idle_unused;
-    assign sdram_idle_unused = sdram_idle;
-    /* verilator lint_on UNUSEDSIGNAL */
+    // Why: the arbiter follows request_ready_o alone, which the controller raises
+    // only while its engine is idle.
+    `ASSERT(ready_implies_idle, clk_i, reset_i, !memory_request_ready || sdram_idle)
 endmodule
