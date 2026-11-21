@@ -20,7 +20,7 @@ nand2doom runs on the DE10-Lite and the DE2-115 at 25 MHz. A captain or a crewma
 
 - Programming a board: the [play command](../host/README.md) programs the DE2-115 with an image built here.
 - Installing Quartus or checking the host.
-- Choosing which board is attached or queueing jobs on it: the board host owns that ([fpga.md](../../../../bkm/fpga/fpga.md)).
+- Choosing which board is attached or queueing jobs on it: the board host owns that ([fpga.md](../../../../bkm/fpga.md)).
 - The board facts and the reviewed warning set themselves: the [board specs](../../fpga/README.md) own them.
 
 ## Acceptance

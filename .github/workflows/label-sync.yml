@@ -1,4 +1,4 @@
-# Creates and updates the labels in .github/labels.json (wiki/bkm/workflow/labels.md).
+# Creates and updates the labels in .github/labels.json (wiki/bkm/issues.md).
 # Never deletes a label: removing one is a deliberate manual step.
 name: label-sync
 

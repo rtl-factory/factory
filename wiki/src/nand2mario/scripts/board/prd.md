@@ -19,7 +19,7 @@ nand2mario runs on two boards, the DE10-Lite and the DE2-115. A crewmate or a ca
 ## Out of scope
 
 - Installing Quartus or checking the host: the toolchain tool does that.
-- Choosing which board is attached, or running more than one job per board: the board host's queue owns that ([fpga.md](../../../../bkm/fpga/fpga.md)).
+- Choosing which board is attached, or running more than one job per board: the board host's queue owns that ([fpga.md](../../../../bkm/fpga.md)).
 - Building the cartridge images themselves: [sw_build](../sw_build/README.md) does that.
 
 ## Acceptance

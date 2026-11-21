@@ -1,6 +1,6 @@
 # Tools
 
-The tools: code any project can use unchanged. Each has its code in `tools/<tool>/` and its requirements (`prd.md`) and spec (`spec.md`) here, in `wiki/tools/<tool>/`, mirroring the code ([repository layout](../bkm/workflow/repo-layout.md)). Code bound to one project is a script: it lives in that project's `scripts` discipline and is documented under [Blocks](../src/README.md).
+The tools: code any project can use unchanged. Each has its code in `tools/<tool>/` and its requirements (`prd.md`) and spec (`spec.md`) here, in `wiki/tools/<tool>/`, mirroring the code ([repository layout](../bkm/layout.md#repository-layout)). Code bound to one project is a script: it lives in that project's `scripts` discipline and is documented under [Blocks](../src/README.md).
 
 | Tool | What it does |
 |---|---|

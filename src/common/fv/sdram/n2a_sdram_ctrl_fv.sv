@@ -70,7 +70,7 @@ module n2a_sdram_ctrl_fv #(
         .sdram_address_o, .sdram_bank_o, .sdram_cke_o, .sdram_cs_n_o, .sdram_ras_n_o,
         .sdram_cas_n_o, .sdram_we_n_o, .sdram_dqm_o, .sdram_dq_o, .sdram_dq_oe_o, .sdram_dq_i);
 
-    // Why: every proof starts from the spec's reset state (wiki/bkm/fv/formal.md).
+    // Why: every proof starts from the spec's reset state (wiki/bkm/fv.md).
     logic init_q = 1'b1;
     always_ff @(posedge clk_i) init_q <= 1'b0;
     always_comb if (init_q) a_start_in_reset: assume (reset_i);

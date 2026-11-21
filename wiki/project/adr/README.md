@@ -1,6 +1,6 @@
 # Decisions
 
-Architecture decision records: one per decision that is hard to reverse, surprising without context, and the result of a real trade-off ([ADR format](../../bkm/design/adr-format.md)).
+Architecture decision records: one per decision that is hard to reverse, surprising without context, and the result of a real trade-off ([ADR format](../../bkm/planning.md#adr-format)).
 
 | ADR | Decision |
 |---|---|

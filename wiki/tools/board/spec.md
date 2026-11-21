@@ -2,7 +2,7 @@
 
 The board console is `tools/board/board.py`, with its window in `gui.py`, the key translation in `keys.py`, and the JTAG chain helpers in `jtag_chain.py` and `jtag_devices.tcl`. It needs Python 3.10+. The window needs Tk (`python3-tk`). Live use needs `jtagconfig`, `quartus_pgm` and `quartus_stp` on `PATH` or under `--quartus-bin`, and pyserial for the project loaders. [Requirements](prd.md).
 
-It is a tool, not a script ([repository layout](../../bkm/workflow/repo-layout.md)): it speaks no block's protocol itself. Keys go through the common JTAG keyboard host ([spec](../../src/common/scripts/jtag/spec.md)), loads go through the loader each project names, and the chain helpers know only Quartus and IDCODEs.
+It is a tool, not a script ([repository layout](../../bkm/layout.md#repository-layout)): it speaks no block's protocol itself. Keys go through the common JTAG keyboard host ([spec](../../src/common/scripts/jtag/spec.md)), loads go through the loader each project names, and the chain helpers know only Quartus and IDCODEs.
 
 ## Board declarations
 

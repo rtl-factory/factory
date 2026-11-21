@@ -5,7 +5,7 @@ title: ""
 labels: ["type:bkm", "area:workflow", "status:triage"]
 ---
 
-<!-- Template: wiki/bkm/workflow/templates.md. Labels: wiki/bkm/workflow/labels.md. Add at least one area:, any block:, one priority:, one size: and one complexity: label. -->
+<!-- Template: wiki/bkm/issues.md. Labels: wiki/bkm/issues.md. Add at least one area:, any block:, one priority:, one size: and one complexity: label. -->
 
 ## Spec references
 - <the BKMs, skills or ADRs this changes or touches>

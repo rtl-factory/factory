@@ -5,7 +5,7 @@ title: ""
 labels: ["status:triage"]
 ---
 
-<!-- Template: wiki/bkm/workflow/templates.md. Labels: wiki/bkm/workflow/labels.md. Add one type: (feature, spec, infra or research), at least one area:, any block:, one priority:, one size: and one complexity: label. -->
+<!-- Template: wiki/bkm/issues.md. Labels: wiki/bkm/issues.md. Add one type: (feature, spec, infra or research), at least one area:, any block:, one priority:, one size: and one complexity: label. -->
 
 ## Spec references
 - <wiki/... path>

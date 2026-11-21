@@ -20,7 +20,7 @@ src/<project>/<discipline>/<name>/      disciplines: rtl, dv, fv, fpga, scripts,
 tools/<tool>/                           tools any project can use
 ```
 
-The wiki mirrors both trees down to the same folder, so every document sits at the path of the code it describes, and each discipline has its standard documents: the design's HAS and each block's MAS for `rtl`, a DV plan, an FV plan, a board spec, and a PRD and spec for scripts, software and tools. The rules are in [wiki/bkm/workflow/repo-layout.md](wiki/bkm/workflow/repo-layout.md) and [wiki/bkm/design/standard-docs.md](wiki/bkm/design/standard-docs.md).
+The wiki mirrors both trees down to the same folder, so every document sits at the path of the code it describes, and each discipline has its standard documents: the design's HAS and each block's MAS for `rtl`, a DV plan, an FV plan, a board spec, and a PRD and spec for scripts, software and tools. The rules are in [wiki/bkm/layout.md](wiki/bkm/layout.md).
 
 ```
 factory/
@@ -50,7 +50,7 @@ factory/
 │   ├── tools/                  Mirrors tools/
 │   │   └── <tool>/             prd.md, spec.md
 │   ├── specs/                  External reference specifications
-│   ├── bkm/                    Best Known Methods, one directory per kind of work
+│   ├── bkm/                    Best Known Methods, one file per area
 │   └── project/                Glossary and decisions (ADRs)
 │
 ├── cfg/                        Factory settings and limits
