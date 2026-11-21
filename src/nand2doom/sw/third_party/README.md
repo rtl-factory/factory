@@ -18,6 +18,6 @@ first use, fails closed on any SHA-256 mismatch, and keeps a verified copy in
 the ignored `workdir/downloads/nand2doom/` cache for later builds.
 
 The [platform adaptation](../doom/README.md) and
-[build script](../../scripts/n2d_doom.py) retain local corresponding-source changes
+[build script](../../scripts/sw_build/n2d_doom.py) retain local corresponding-source changes
 and their recipe. Firmware/build output stays in ignored `workdir/`. Installed
 RISC-V GCC/binutils remain prerequisites. No proprietary WAD or game ROM is included.

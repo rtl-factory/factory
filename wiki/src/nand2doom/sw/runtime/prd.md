@@ -38,4 +38,4 @@ Checks are in the [software DV plan](../../dv/software/dv-plan.md#features).
 | SW-R2 | `n2d_c_runtime_system`: copied data, zeroed BSS, stack and odd-sized data/BSS guards in the signature words |
 | SW-R3 | `n2d_c_runtime_system` loads every image word over UART; the fast targets preload the exact manifest bytes ([platform DV plan](../../dv/platform/dv-plan.md#testbench)) |
 | SW-R4 | `n2d_c_runtime_system` exercises the memory primitives, heap, ticks, keyboard polling, framebuffer and palette and the completion marker; no check covers the exclusions |
-| SW-R6 | No automated check is recorded; builder unit tests check that outputs stay under `workdir/` |
+| SW-R6 | No automated check is recorded; builder unit tests check that outputs stay inside the scratch directory |

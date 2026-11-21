@@ -5,7 +5,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, with_timeout
 from .test_n2d_uart_debug import _uart_send, _uart_send_byte, _uart_receive_byte, _uart_receive, _exchange, _memory_model
-from src.nand2doom.scripts.n2d_uart_debug_host import request, CMD_PING, CMD_HALT, CMD_RESUME
+from src.nand2doom.scripts.host.n2d_uart_debug_host import request, CMD_PING, CMD_HALT, CMD_RESUME
 
 
 def packet(command, sequence, address, length, payload=b""):

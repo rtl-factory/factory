@@ -6,7 +6,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge
 
-from src.nand2doom.scripts.n2d_uart_debug_host import CMD_LOAD, CMD_PEEK, ST_MEMORY, ST_OK, request
+from src.nand2doom.scripts.host.n2d_uart_debug_host import CMD_LOAD, CMD_PEEK, ST_MEMORY, ST_OK, request
 from .test_n2d_uart_debug import _exchange
 
 

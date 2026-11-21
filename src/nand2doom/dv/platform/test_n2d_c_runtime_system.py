@@ -9,7 +9,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
 
-from src.nand2doom.scripts.n2d_uart_debug_host import (
+from src.nand2doom.scripts.host.n2d_uart_debug_host import (
     CMD_HALT, CMD_LOAD, CMD_PEEK, CMD_POKE, CMD_RESET_PC, CMD_RESUME,
     ST_NOT_HALTED, ST_OK, ST_TIMEOUT, input_request, request,
 )
@@ -18,7 +18,7 @@ from src.nand2doom.dv.io.test_n2d_uart_debug import _exchange
 from src.nand2doom.dv.platform.event_monitors import (
     observe_completion_events, observe_framebuffer_events, observe_trap_events,
 )
-from src.nand2doom.scripts.n2d_image import build_image
+from src.nand2doom.scripts.sw_build.n2d_image import build_image
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]

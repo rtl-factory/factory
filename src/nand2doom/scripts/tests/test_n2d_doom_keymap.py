@@ -18,11 +18,10 @@ import tarfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[4]
-sys.path.insert(0, str(ROOT / "src/nand2doom/scripts"))
 if str(ROOT) not in sys.path:
-    sys.path.insert(1, str(ROOT))
-import n2d_control as control  # noqa: E402
-import n2d_doom as doom  # noqa: E402
+    sys.path.insert(0, str(ROOT))
+from src.nand2doom.scripts.host import n2d_control as control  # noqa: E402
+from src.nand2doom.scripts.sw_build import n2d_doom as doom  # noqa: E402
 from src.common.scripts.jtag import n2a_jtag_keyboard as jtag  # noqa: E402
 
 OUTPUT = ROOT / "workdir/unit-tests/n2d_doom_keymap"

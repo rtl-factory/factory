@@ -33,7 +33,7 @@ The pages came over from nand2anything (its per-area HAS and DV pages and tool s
 | `fpga/de10_lite/`, `fpga/de2_115/` | Each board's top, its Intel and portable clock backends, its Quartus settings fragment and SDC. Pins and the source list are in `cfg/n2d_quartus.json` (DE2-115 as overrides under `boards`). |
 | `dv/<block>/` | cocotb tests, models and native harnesses; targets in `cfg/targets.json`. |
 | `sw/runtime/`, `sw/doom/`, `sw/third_party/` | Software that runs on the design's CPU: the C runtime and validation program, the Doom platform adaptation, and the third-party notices and pinned-input manifest. |
-| `scripts/` | Host scripts: image and Doom builds, UART host, board play and control, capture, performance, Quartus build. |
+| `scripts/` | Host scripts, one folder each: `sw_build/` (image and Doom builds), `board/` (Quartus build and timing), `host/` (UART and JTAG host, play, controls, capture), `perf/` (performance harness and oracles). |
 
 The ASIC flow (`n2d_asic_soc`, its OpenROAD files and IHP models) stayed in nand2anything, as it did for nand2mario.
 
@@ -43,10 +43,10 @@ The ASIC flow (`n2d_asic_soc`, its OpenROAD files and IHP models) stayed in nand
 # simulation (Verilator); add --level L1 or L2 for the longer targets
 python3 tools/sim/sim.py test --project nand2doom --level L0
 # script unit tests
-python3 -m pytest src/nand2doom/scripts/tests
+python3 -m pytest src/nand2doom/scripts
 # Quartus fit and timing, both boards
-python3 src/nand2doom/scripts/quartus.py --board de10_lite
-python3 src/nand2doom/scripts/quartus.py --board de2_115
+python3 src/nand2doom/scripts/board/quartus.py --board de10_lite
+python3 src/nand2doom/scripts/board/quartus.py --board de2_115
 ```
 
 The software build needs `riscv64-unknown-elf-gcc` and binutils. The Doom inputs (DoomGeneric, Freedoom, picolibc) are not committed: the build fetches each from its pinned origin, checks its SHA-256 and caches it in `workdir/downloads/nand2doom/`.

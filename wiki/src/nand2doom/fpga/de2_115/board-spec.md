@@ -49,7 +49,7 @@ a unit test compares every shared pin and standard.
 
 The JP5 voltage jumper must select 3.3 V (GND on pin 12). The host link is a
 3.3 V TTL-232R cable at 3 Mbaud 8-N-1; scripts take `--port` and
-`--baud de2_115` ([UART scripts](../../scripts/n2d_uart/spec.md)). SDRAM/VGA
+`--baud de2_115` ([UART scripts](../../scripts/host/spec.md#uart-host)). SDRAM/VGA
 8 mA; UART TX, LEDs and digits 4 mA; slew rate 2 stated on 2.5 V outputs.
 
 ## Clocks and constraints
@@ -67,7 +67,7 @@ DE2-115 SDC (`src/nand2doom/fpga/de2_115/n2d_de2_115.sdc`) differs as follows:
 
 ## Budget
 
-Last passing build in the factory (Quartus Prime Lite 25.1std, `python3 src/nand2doom/scripts/quartus.py --board de2_115`, issue #78): the full report gate passed.
+Last passing build in the factory (Quartus Prime Lite 25.1std, `python3 src/nand2doom/scripts/board/quartus.py --board de2_115`, issue #78): the full report gate passed.
 
 | Resource or check | Result |
 |---|---|
@@ -95,8 +95,8 @@ DE10-Lite's.
 ## Build and program
 
 ```sh
-python3 src/nand2doom/scripts/quartus.py --board de2_115
-python3 src/nand2doom/scripts/quartus.py --board de2_115 --elaborate-only
+python3 src/nand2doom/scripts/board/quartus.py --board de2_115
+python3 src/nand2doom/scripts/board/quartus.py --board de2_115 --elaborate-only
 ```
 
 The full build must pass the shared [report gate](../de10_lite/board-spec.md#report-gate), whose
@@ -105,10 +105,10 @@ on every RTL change ([tool compatibility](../de10_lite/board-spec.md#tool-compat
 
 ### Bring-up
 
-The [play command](../../scripts/n2d_play/spec.md) automates:
+The [play command](../../scripts/host/spec.md#play) automates:
 
 1. `jtagconfig` lists one `USB-Blaster [1-1]` with device `020F70DD`; JTAG
-   scripts [resolve its name by IDCODE](../../scripts/n2d_jtag_keyboard/spec.md#device-resolution).
+   scripts [resolve its name by IDCODE](../../scripts/host/spec.md#device-resolution).
 2. `quartus_pgm -c "USB-Blaster [1-1]" -m jtag -o "p;n2d_de2_115.sof@1"`
    with an image holding the stream loader and JTAG keyboard.
 3. `n2d_uart.py --baud de2_115 --port PORT ping` (`N2D1`), then `halt`.
@@ -116,7 +116,7 @@ The [play command](../../scripts/n2d_play/spec.md) automates:
    stream, check each segment's SDRAM digest (the play command skips matching
    segments), resume at the entry.
 5. Input is ten-bit Set-2 events (Right: make `0x274`, break `0x374`) from the
-   [local controls](../../scripts/n2d_control/spec.md) by UART `CMD_INPUT`
+   [local controls](../../scripts/host/spec.md#local-controls) by UART `CMD_INPUT`
    or JTAG.
 
 Programming resets the design and stops refresh, so it needs a full load. An

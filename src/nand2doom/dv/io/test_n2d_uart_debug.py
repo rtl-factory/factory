@@ -6,7 +6,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge
 
-from src.nand2doom.scripts.n2d_uart_debug_host import (
+from src.nand2doom.scripts.host.n2d_uart_debug_host import (
     CMD_HALT,
     CMD_INPUT,
     CMD_LOAD,

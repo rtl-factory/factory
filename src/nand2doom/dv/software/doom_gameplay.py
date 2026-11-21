@@ -5,7 +5,7 @@ from pathlib import Path
 import json
 import subprocess
 
-from src.nand2doom.scripts.n2d_image import _tool
+from src.nand2doom.scripts.sw_build.n2d_image import _tool
 
 COMPLETION = 0x20000004
 MAKE = 0xD00D39AE

@@ -206,7 +206,7 @@ The DE2-115 SDC differences are in the [DE2-115 board spec](../de2_115/board-spe
 
 ## Budget
 
-Last passing build in the factory (Quartus Prime Lite 25.1std, `python3 src/nand2doom/scripts/quartus.py --board de10_lite`, issue #78): the full report gate passed with 7 reviewed warning occurrences.
+Last passing build in the factory (Quartus Prime Lite 25.1std, `python3 src/nand2doom/scripts/board/quartus.py --board de10_lite`, issue #78): the full report gate passed with 7 reviewed warning occurrences.
 
 | Resource or check | Result |
 |---|---|
@@ -333,8 +333,8 @@ budgets.
 ## Build and program
 
 ```sh
-python3 src/nand2doom/scripts/quartus.py --board de10_lite
-python3 src/nand2doom/scripts/quartus.py --board de10_lite --elaborate-only
+python3 src/nand2doom/scripts/board/quartus.py --board de10_lite
+python3 src/nand2doom/scripts/board/quartus.py --board de10_lite --elaborate-only
 ```
 
 The full build must pass the [report gate](#report-gate) (FPGA-R6); the

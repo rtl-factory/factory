@@ -15,7 +15,7 @@ class CaptureHelperTests(unittest.TestCase):
 
 class SceneAdaptationTests(unittest.TestCase):
     def test_exact_hooks_idempotence_and_rejection(self):
-        from src.nand2doom.scripts.n2d_doom import _adapt_scene
+        from src.nand2doom.scripts.sw_build.n2d_doom import _adapt_scene
         original=('#include "doomstat.h"\n'
                   '\tI_FinishUpdate ();              // page flip or blit buffer\n\treturn;\n'
                   '    } while (!done);\n}')

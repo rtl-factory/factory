@@ -23,7 +23,7 @@ validation image with `riscv64-unknown-elf-gcc` and
 relaxation, hosted startup or libraries, deterministic object names:
 
 ```text
-python3 src/nand2doom/scripts/n2d_image.py --output workdir/software/n2d_validation
+python3 src/nand2doom/scripts/sw_build/n2d_image.py --output workdir/software/n2d_validation
 ```
 
 Outputs `n2d_validation.elf`, `.bin`, `.map` and `manifest.json` under

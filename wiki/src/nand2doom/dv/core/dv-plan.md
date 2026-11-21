@@ -54,8 +54,8 @@ Performance-affecting core changes run the
 sequentially at base and head with identical image, ELF and capture identity:
 
 ```sh
-python3 src/nand2doom/scripts/n2d_perf.py --backend sdram --variant production --frames 2
-python3 src/nand2doom/scripts/n2d_perf.py --backend <sdram|fast> --variant render-verification --frames 2
+python3 src/nand2doom/scripts/perf/n2d_perf.py --backend sdram --variant production --frames 2
+python3 src/nand2doom/scripts/perf/n2d_perf.py --backend <sdram|fast> --variant render-verification --frames 2
 ```
 
 Compare gameplay IPC, cycles per frame (moving in 420,000-cycle rasters;

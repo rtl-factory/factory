@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import subprocess
 
-from src.nand2doom.scripts.n2d_image import _confined_output, _tool, _version
+from src.nand2doom.scripts.sw_build.n2d_image import _confined_output, _tool, _version
 from .clock_vectors import CYCLES_PER_MS, MASK, RUNTIME_CASES, old_clock_fails, traces
 
 ROOT = Path(__file__).resolve().parents[4]

@@ -19,7 +19,7 @@ from src.common.dv.jtag.test_jtag_keyboard import Bench, packet
 from src.nand2doom.dv.io.test_n2d_ps2_keyboard import (
     BIT_VALID, CONTROL, DATA, INJECT, STATUS, inject_event, mmio, send_frame,
     send_through_parity)
-from src.nand2doom.scripts import n2d_jtag_keyboard as host
+from src.nand2doom.scripts.host import n2d_jtag_keyboard as host
 from src.common.scripts.jtag.n2a_jtag_keyboard import key_strokes
 
 OVERFLOW = 1 << 8
@@ -27,7 +27,7 @@ PS2_HALF_NS = 1370
 
 
 def set2(event: int) -> list[int]:
-    """Independent event -> Set-2 bytes (wiki/src/nand2doom/rtl/io/mas.md event format)."""
+    """Independent event -> Set-2 bytes (wiki/src/nand2doom/rtl/io/mas.md "JTAG keyboard")."""
     return [0xE0] * (event >> 9 & 1) + [0xF0] * (event >> 8 & 1) + [event & 0xFF]
 
 

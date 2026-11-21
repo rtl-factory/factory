@@ -4,7 +4,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge
 from .test_n2d_uart_bulk import exchange
 from .test_n2d_uart_debug import _uart_send
-from src.nand2doom.scripts.n2d_uart_debug_host import request, CMD_RESUME
+from src.nand2doom.scripts.host.n2d_uart_debug_host import request, CMD_RESUME
 
 
 @cocotb.test()
