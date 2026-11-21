@@ -49,6 +49,8 @@ def parse_target(path: Path) -> dict:
             section = stripped[1:-1].strip()
         elif section == "tasks" and stripped and not stripped.startswith("#"):
             tasks.append(stripped.split()[0].rstrip(":"))
+    if fields["timeout_seconds"] > DEFAULT_TIMEOUT_SECONDS:
+        raise ValueError(f"{path}: timeout over {DEFAULT_TIMEOUT_SECONDS} s; every proof must finish in ten minutes")
     if fields["level"] not in LEVELS + ["manual"]:
         raise ValueError(f"{path}: header needs '# level: L0..L4' or 'manual'")
     return dict(fields, sby=path, tasks=tasks or [""])

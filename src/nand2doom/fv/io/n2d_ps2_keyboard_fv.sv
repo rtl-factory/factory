@@ -145,6 +145,12 @@ module n2d_ps2_keyboard_fv (
     // suppresses every other source on its edge, even when it is dropped.
     assert ($onehot0({physical_accept, uart_accept, mmio_inject, scan_accept}));
     if (physical_event) assert (!uart_accept && !mmio_inject && !scan_accept);
+    // P_fixed_priority: a source is accepted only when no higher one is offered
+    // (UART over CPU INJECT over scan-inject), and a UART event is taken
+    // whenever a slot is free and neither CONTROL nor a physical event owns the edge.
+    if (mmio_inject) assert (!inject_valid_i);
+    if (scan_accept) assert (!inject_valid_i && !mmio_inject);
+    if (inject_valid_i && space && !physical_event && !control_write) assert (inject_ready_o);
     // P_no_accept_without_slot: a held source is accepted only into a free slot.
     if (!space) assert (!uart_accept && !mmio_inject && !scan_accept);
     // P_control_suppresses_pushes

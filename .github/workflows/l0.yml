@@ -66,20 +66,22 @@ jobs:
           cache-dependency-path: tools/sim/requirements.txt
       - run: pip install -r tools/sim/requirements.txt
 
-      - name: Install the OSS CAD Suite (formal tools)
-        run: |
-          read -r url sum < <(python3 -I -c 'import json; v = json.load(open("cfg/toolchain.json"))["oss_cad_suite"]; print(v["url"], v["sha256"])')
-          curl -fsSL --retry 4 -o "$RUNNER_TEMP/oss-cad-suite.tgz" "$url"
-          echo "$sum  $RUNNER_TEMP/oss-cad-suite.tgz" | sha256sum -c -
-          tar -xzf "$RUNNER_TEMP/oss-cad-suite.tgz" -C "$HOME"
-          rm "$RUNNER_TEMP/oss-cad-suite.tgz"
-          python3 tools/toolchain/check.py --tool oss-cad-suite
-
       - name: Unit tests (scripts and tools)
         run: python -m pytest -q src/*/scripts tools
 
       - name: L0 simulation targets
         run: python tools/sim/sim.py --workdir workdir/sim test --level L0
+
+      - name: Install the OSS CAD Suite (formal tools)
+        if: ${{ !cancelled() }}
+        run: |
+          read -r url sum < <(python3 -I -c 'import json; v = json.load(open("cfg/toolchain.json"))["oss_cad_suite"]; print(v["url"], v["sha256"])')
+          curl -fsSL --retry 4 -o "$RUNNER_TEMP/oss-cad-suite.tgz" "$url"
+          echo "$sum  $RUNNER_TEMP/oss-cad-suite.tgz" | sha256sum -c -
+          mkdir -p "$HOME/oss-cad-suite"
+          tar -xzf "$RUNNER_TEMP/oss-cad-suite.tgz" -C "$HOME/oss-cad-suite" --strip-components=1
+          rm "$RUNNER_TEMP/oss-cad-suite.tgz"
+          python3 tools/toolchain/check.py --tool oss-cad-suite
 
       - name: L0 formal targets
         if: ${{ !cancelled() }}

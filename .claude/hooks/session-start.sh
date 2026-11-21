@@ -30,8 +30,8 @@ install_oss_cad_suite() {
   log "downloading OSS CAD Suite $(suite version)"
   curl -fsSL --retry 4 -o "$cache/suite.tgz" "$url" || { log "OSS CAD Suite download failed"; return 1; }
   echo "$sum  $cache/suite.tgz" | sha256sum -c --quiet - >&2 || { log "OSS CAD Suite checksum mismatch: not installing"; return 1; }
-  rm -rf "$dir"; mkdir -p "$(dirname "$dir")"
-  tar -xzf "$cache/suite.tgz" -C "$(dirname "$dir")" && rm -rf "$cache"
+  rm -rf "$dir"; mkdir -p "$dir"
+  tar -xzf "$cache/suite.tgz" -C "$dir" --strip-components=1 && rm -rf "$cache"
   python3 -I "$ROOT/tools/toolchain/check.py" --config "$CONFIG" --tool oss-cad-suite >&2
 }
 install_oss_cad_suite || log "OSS CAD Suite not installed: formal runs will fail until it is"

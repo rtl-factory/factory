@@ -37,6 +37,11 @@ def test_default_timeout_is_ten_minutes(tmp_path):
     assert target["timeout_seconds"] == 600 and target["tasks"] == [""]
 
 
+def test_timeout_over_ten_minutes_is_an_error(tmp_path):
+    with pytest.raises(ValueError):
+        fv.parse_target(make(tmp_path, "p", "b", "t", "# level: L0\n# timeout: 7200\n"))
+
+
 def test_missing_level_is_an_error(tmp_path):
     with pytest.raises(ValueError):
         fv.parse_target(make(tmp_path, "p", "b", "t", "[options]\nmode prove\n"))
