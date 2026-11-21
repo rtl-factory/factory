@@ -103,6 +103,12 @@ jobs:
       - name: L0 simulation targets
         run: bazel test --config=ci --config=l0 //src/...
 
+      - name: Bazel profile
+        if: ${{ !cancelled() }}
+        run: |
+          bazel analyze-profile "$(bazel info output_base)/command.profile.gz" | head -n 60
+          echo "cpus: $(nproc), memory: $(free -g | awk '/Mem:/ {print $2}') GB"
+
       - name: Keep simulation logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
