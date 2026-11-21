@@ -330,6 +330,8 @@ def quartus_image(name, script, project, args = []):
         script = script,
         project = project,
         args = args,
-        srcs = [":all_files", "//src/common:all_files"],
+        # Why: the script resolves its manifest's libraries from every project's list.
+        srcs = [":all_files", "//src/common:all_files", "//tools/bazel:hdl_libraries.py"] +
+               ["//src/%s:cfg/libraries.json" % p for p in PROJECTS],
         tags = ["manual", "quartus"],
     )

@@ -67,7 +67,11 @@ def resolve(libraries: dict, roots: list[str], flavors=(), defines=()) -> tuple[
         active.append(name)
         entry = libraries[name]
         if "variants" in entry:
-            entry = entry["variants"][next((f for f in flavors if f in entry["variants"]), "default")]
+            variants = entry["variants"]
+            flavor = next((f for f in flavors if f in variants), "default")
+            if flavor not in variants:
+                raise ValueError(f"library {name} has no default variant")
+            entry = variants[flavor]
         for dep in entry.get("deps", []):
             if isinstance(dep, str):
                 visit(dep)
@@ -98,34 +102,63 @@ def _strip_comments(text: str) -> str:
     return re.sub(r"//[^\n]*", "", text)
 
 
+def _negate(condition: tuple) -> tuple:
+    kind, name = condition
+    return ("unless" if kind == "if" else "if", name)
+
+
 def _references(text: str) -> list[tuple[str, tuple]]:
-    """Each module, package or include a file names, with the `ifdef conditions around it."""
-    found, stack = [], []
-    instance = re.compile(r"^\s*(\w+)\s*(?:#\s*\(|\s+\w+\s*(?:\[[^\]]*\]\s*)*\()")
-    for line in _strip_comments(text).splitlines():
+    """Each module, package, interface or include a file names, with the `ifdef conditions around it."""
+    lines = _strip_comments(text).splitlines()
+    # Why: each open `ifdef frame keeps the conditions of its earlier branches, so an
+    # `elsif or `else branch holds only when none of them did.
+    stack, conditions_of_line = [], []
+    for i, line in enumerate(lines):
         directive = re.match(r"\s*`(ifdef|ifndef|elsif|else|endif)\b\s*(\w*)", line)
         if directive:
             kind, name = directive.groups()
             if kind in ("ifdef", "ifndef"):
-                # Why: an include guard (`ifndef X_VH) wraps a whole header and selects nothing.
-                guard = kind == "ifndef" and name.endswith("_VH")
-                stack.append(None if guard else ("if" if kind == "ifdef" else "unless", name))
-            elif kind == "else" and stack and stack[-1]:
-                cond, name_ = stack.pop()
-                stack.append(("unless" if cond == "if" else "if", name_))
-            elif kind == "elsif" and stack:
-                stack.pop()
-                stack.append(("if", name))
+                following = next((l for l in lines[i + 1:] if l.strip()), "")
+                # Why: an include guard (`ifndef X then `define X) wraps a whole header and selects nothing.
+                guard = kind == "ifndef" and re.match(rf"\s*`define\s+{name}\b", following)
+                stack.append(None if guard else {"before": [], "own": [("if" if kind == "ifdef" else "unless", name)]})
+            elif kind in ("elsif", "else") and stack and stack[-1]:
+                frame = stack[-1]
+                frame["before"] += frame["own"]
+                frame["own"] = [("if", name)] if kind == "elsif" else []
             elif kind == "endif" and stack:
                 stack.pop()
-            continue
-        names = {m.group(1) for m in re.finditer(r"\b(\w+)::", line)}
-        match = instance.match(line)
-        if match and match.group(1) not in KEYWORDS:
-            names.add(match.group(1))
-        names |= {"`" + m.group(1) for m in re.finditer(r'`include\s+"([^"]+)"', line)}
-        found += [(n, tuple(c for c in stack if c)) for n in sorted(names)]
-    return found
+            lines[i] = ""
+        active = [c for frame in stack if frame for c in [_negate(b) for b in frame["before"]] + frame["own"]]
+        conditions_of_line.append(tuple(active))
+    body = "\n".join(lines)
+    starts = [0]
+    for line in lines:
+        starts.append(starts[-1] + len(line) + 1)
+
+    def conditions_at(offset: int) -> tuple:
+        low, high = 0, len(lines) - 1
+        while low < high:
+            mid = (low + high + 1) // 2
+            low, high = (mid, high) if starts[mid] <= offset else (low, mid - 1)
+        return conditions_of_line[low] if lines else ()
+
+    # Why: matched across lines, so an instance may put its name, parameters and
+    # instance name on separate lines.
+    patterns = {
+        "parameterized instance": r"\b(\w+)\s*#\s*\(",
+        "instance": r"\b(\w+)\s+\w+\s*(?:\[[^\]]*\]\s*)*\(",
+        "package item or import": r"\b(\w+)::",
+        "interface port with a modport": r"\b(\w+)\.\w+\s+\w+\s*[,;)\[]",
+    }
+    found = set()
+    for pattern in patterns.values():
+        for match in re.finditer(pattern, body):
+            if match.group(1) not in KEYWORDS:
+                found.add((match.group(1), conditions_at(match.start(1))))
+    for match in re.finditer(r'`include\s+"([^"]+)"', body):
+        found.add(("`" + match.group(1), conditions_at(match.start())))
+    return sorted(found)
 
 
 def derive(root: Path = ROOT) -> dict:
@@ -139,20 +172,31 @@ def derive(root: Path = ROOT) -> dict:
                              _strip_comments(texts[f]), re.M):
             defines[m.group(1)].append(f)
     library_of, flavor_of = {}, {}
-    for name, defining in defines.items():
-        if len(defining) > 1:
-            # Why: one module with several implementations (portable, intel, asic) is one
-            # library with a variant per implementation; a target picks one by flavor.
-            for f in defining:
-                stem = Path(f).stem
-                library_of[f] = name
-                flavor_of[f] = "default" if stem in (name, name + "_portable") else stem[len(name) + 1:]
+    for f in files:
+        names = [n for n, defining in defines.items() if f in defining and len(defining) > 1]
+        stem = Path(f).stem
+        # Why: one module with several implementations (portable, intel, asic) is one
+        # library with a variant per implementation, named after the module the file is
+        # named after; a target picks one by flavor.
+        owners = [n for n in names if stem == n or stem.startswith(n + "_")]
+        if not owners:
+            continue
+        name = max(owners, key=len)
+        library_of[f] = name
+        flavor_of[f] = "default" if stem in (name, name + "_portable") else stem[len(name) + 1:]
     for f in files:
         library_of.setdefault(f, Path(f).stem)
     seen = {}
     for f in files:
-        if f not in flavor_of and seen.setdefault(library_of[f], f) != f:
-            raise ValueError(f"{f} and {seen[library_of[f]]} would both be library {library_of[f]}")
+        key = (library_of[f], flavor_of.get(f))
+        if seen.setdefault(key, f) != f:
+            what = f"library {key[0]}" + (f" variant {key[1]}" if key[1] else "")
+            raise ValueError(f"{f} and {seen[key]} would both be {what}")
+    for name in {library_of[f] for f in flavor_of}:
+        if (name, "default") not in seen:
+            raise ValueError(f"library {name} has variants but no default file ({name}.sv or {name}_portable.sv)")
+        if (name, None) in seen:
+            raise ValueError(f"{seen[(name, None)]} would be library {name}, which has variants")
 
     def area(path: str) -> str:
         return path.split("/")[2]
@@ -230,10 +274,13 @@ def registry(root: Path = ROOT) -> dict:
     for path in sorted(root.glob("src/*/fv/*/*.sby")):
         sby = str(path.relative_to(root))
         inputs.append(sby)
-        target = resolve_target(parse_sby(path), libraries) if parse_sby(path)["libraries"] else {}
+        header = parse_sby(path)
+        if len(header["libraries"]) != 1:
+            raise ValueError(f"{sby}: the header needs one '# library: <harness>' line")
+        target = resolve_target(header, libraries)
         formal.setdefault(path.parts[-4], {})[path.stem] = {
             "level": target["level"], "timeout_seconds": target["timeout_seconds"], "sby": sby,
-            "files": target.get("headers", []) + target.get("sources", [])}
+            "files": target["headers"] + target["sources"]}
     return {"sim": sim, "formal": formal, "inputs": inputs}
 
 

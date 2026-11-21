@@ -66,8 +66,61 @@ def test_derive_finds_instances_packages_includes_variants_and_ifdefs(tmp_path):
     libs = h.derive(tmp_path)["p"]
     assert libs["p_top"]["deps"] == ["m", "p_pkg", "p_ram"]
     assert set(libs["p_ram"]["variants"]) == {"default", "intel"}
-    assert "deps" not in libs["p_ram"]["variants"]["intel"]  # design code never needs a dv stub
+    design_code_never_needs_a_dv_stub = "deps" not in libs["p_ram"]["variants"]["intel"]
+    assert design_code_never_needs_a_dv_stub
     assert libs["p_tb"]["deps"] == [{"if": ["BIG"], "deps": ["p_top"]}]
+
+
+def _tree(tmp_path, files):
+    for name, text in files.items():
+        path = tmp_path / "src" / "p" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+    return tmp_path
+
+
+def test_instances_split_across_lines_are_found(tmp_path):
+    root = _tree(tmp_path, {
+        "rtl/a.sv": "module a;\nendmodule\n",
+        "rtl/b.sv": "module b #(parameter W = 1);\nendmodule\n",
+        "rtl/c.sv": "module c;\nendmodule\n",
+        "rtl/top.sv": "module top;\n    a\n        u_a ();\n    b\n        #(.W(2))\n        u_b ();\n"
+                      "    g: if (1) begin c u_c (); end\nendmodule\n"})
+    assert h.derive(root)["p"]["top"]["deps"] == ["a", "b", "c"]
+
+
+def test_elsif_and_else_branches_exclude_the_earlier_ones():
+    refs = dict(h._references("`ifdef A\nfoo u ();\n`elsif B\nbar u ();\n`else\nbaz u ();\n`endif\n"))
+    assert refs["foo"] == (("if", "A"),)
+    assert refs["bar"] == (("unless", "A"), ("if", "B"))
+    assert refs["baz"] == (("unless", "A"), ("unless", "B"))
+
+
+def test_an_include_guard_of_any_name_is_not_a_condition():
+    assert h._references("`ifndef FOO_SVH\n`define FOO_SVH\nfoo u ();\n`endif\n") == [("foo", ())]
+
+
+def test_a_variant_is_named_by_the_module_its_file_is_named_after(tmp_path):
+    root = _tree(tmp_path, {
+        "rtl/ram_portable.sv": "module ram;\nendmodule\nmodule ram_enabled;\nendmodule\n",
+        "rtl/ram_intel.sv": "module ram;\nendmodule\nmodule ram_enabled;\nendmodule\n"})
+    assert set(h.derive(root)["p"]["ram"]["variants"]) == {"default", "intel"}
+
+
+def test_two_files_that_would_be_one_variant_fail(tmp_path):
+    root = _tree(tmp_path, {"rtl/foo.sv": "module foo;\nendmodule\n", "dv/foo.sv": "module foo;\nendmodule\n"})
+    with pytest.raises(ValueError, match="would both be library foo variant default"):
+        h.derive(root)
+
+
+def test_a_formal_target_without_a_library_fails_clearly(tmp_path):
+    fv = tmp_path / "src" / "p" / "fv" / "x"
+    fv.mkdir(parents=True)
+    (fv / "t.sby").write_text("# level: L0\n[tasks]\nprove\n")
+    (tmp_path / "src" / "p" / "cfg").mkdir()
+    (tmp_path / "src" / "p" / "cfg" / "libraries.json").write_text(h.render({}))
+    with pytest.raises(ValueError, match="needs one '# library"):
+        h.registry(tmp_path)
 
 
 def test_the_libraries_match_the_hdl():

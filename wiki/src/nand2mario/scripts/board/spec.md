@@ -13,7 +13,7 @@ How the board flow meets its [requirements](prd.md). Code: `src/nand2mario/scrip
 
 ## Configs
 
-The board configs are `src/nand2mario/cfg/n2m_quartus.json` (DE10-Lite), `src/nand2mario/cfg/n2m_de2_115_quartus.json` (DE2-115) and `src/nand2mario/cfg/n2m_library_quartus_profile.json` (the game-library profile). Each holds project, top, family, device, clock, timeout, timing corners, the top library and its `intel` flavor (resolved into the sources and headers, [Bazel spec, Libraries](../../../../tools/bazel/spec.md#libraries)), pins and I/O standards, reviewed warnings and expected RAM geometry. `validate_config` rejects a config missing any required key before anything is staged.
+The board configs are `src/nand2mario/cfg/n2m_quartus.json` (DE10-Lite), `src/nand2mario/cfg/n2m_de2_115_quartus.json` (DE2-115) and `src/nand2mario/cfg/n2m_library_quartus_profile.json` (the game-library profile, which holds only parameters, RAM requirements and reviewed warnings). Each board manifest holds project, top, family, device, clock, timeout, timing corners, the top library and its `intel` flavor (resolved into the sources and headers, [Bazel spec, Libraries](../../../../tools/bazel/spec.md#libraries)), pins and I/O standards, reviewed warnings and expected RAM geometry. `validate_config` rejects a config missing any required key before anything is staged.
 
 ## Build and gate
 
