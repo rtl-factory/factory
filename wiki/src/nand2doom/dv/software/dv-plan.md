@@ -19,7 +19,7 @@ plans; cycle and IPC measurement uses the
 | 1 | Generated assembly program: reset, retirement, branches, loads/stores | Fast |
 | 2 | Owned C image: startup, data/BSS, stack, heap, RV32M, input, framebuffer pattern, signature and frame hash | Fast (`n2d_c_runtime_system`) |
 | 3 | Doom-shaped owned program: rendering, palettes, injected keys, working set beyond each cache | Fast |
-| 4 | Actual Doom with authorized manifests: boot marker, deterministic first frame, input, later state | Opt-in (`n2d_doom_system`) |
+| 4 | Actual Doom with authorized manifests: boot marker, deterministic first frame, input, later state | L2 (`n2d_doom_system`) |
 
 Builder unit tests check RV32IM/ILP32 flags, non-mutating planning and
 `workdir/` confinement; the integration test runs the installed GNU
@@ -40,7 +40,7 @@ or the spec section it checks. Level is the target's level in
 | SW-F02 | Keyboard map | Compiles `keymap.h` with the archive's `doomkeys.h` (SHA-256 checked); probes all 1,024 events against Doom values and the common JTAG host's independent Set-2 table; break equals make; every local-control action maps; Y/N/Tab/weapon bindings; E0 multimedia keys are not letters. | Doom values from the archive's `doomkeys.h` and the common JTAG host's independent Set-2 table | none defined | `test_n2d_doom_keymap.py` | host test (`src/nand2doom/scripts/tests/`) |
 | SW-F03 | Keyboard in game | `--input 0x016` gives `DG_GetKey` marker `0xd00d3931`, ticcmd marker `0xd00d4008` and a switch to the fist; `0x016 0x076 0x275 0x05a 0x035` gives markers `0xd00d3931`, `391b`, `39ad`, `390d`, `3979`, Up wrapping to Quit Game, then exit marker `0xd00de000`; no input passes the pinned scene CRCs. These goldens belong to their firmware and script. | Firmware markers and the pinned scene CRCs | none defined | `n2d_perf.py --input` | script run (`n2d_perf.py`), not in a level |
 | SW-F04 | Doom time contract | Production helper and callbacks at `-Os` on `n2d_rv32im_core` via the public runner with an `N2D_CLOCK_TRACE` timestamp source; results at `0x8000`; only terminal ebreak. `clock_vectors.py` oracle: nonzero init, zero elapsed, 24,999/25,000 cycles, repeated fractions, hardware wrap, >172 s, repeated wraps, `UINT32_MAX` deltas, ms rollover from a seeded state; the old fixed-origin formula agrees before a full period and fails at it; zero, fractional, wrapping and 172 s chunked sleeps with exact timestamp-read counts. A host unit test runs the same C probe as a shared library. | `clock_vectors.py` oracle | none defined | `n2d_doom_clock` (67; 300,000 cycles, 90 s) | L0 |
-| SW-F05 | Doom gate | See [actual Doom selectable gate](#actual-doom-selectable-gate). | Pinned scene CRCs, input witness and playability bounds | none defined | `n2d_doom_system` (37) | manual |
+| SW-F05 | Doom gate | See [actual Doom selectable gate](#actual-doom-selectable-gate). | Pinned scene CRCs, input witness and playability bounds | none defined | `n2d_doom_system` (37) | L2 |
 | SW-F06 | Gate observer | Byte initialization, contiguous and repeated stores, invalid/trapping/non-memory cases, load/control retirements through the dispatcher with nonzero MAKE/BREAK slots, latched MAKE chain, direct BREAK return; a falling-edge-only driver must fail strict ordering while rising-then-falling succeeds; monitors stopped through `stop_monitors` (cocotb cancels twice). Host tests: `test_input_witness.py`, `test_gameplay_retirement_dispatch.py`. | Strict-ordering observer checks | none defined | `n2d_doom_observer` (67; 128 cycles, 30 s) | L0; host tests |
 | SW-F07 | Coherent capture | See [coherent capture](#coherent-capture). | Production capture helper against fake devices and expected patterns | none defined | `n2d_capture`, `n2d_capture_system`, host tests | L1 (`n2d_capture`), L2 (`n2d_capture_system`); host tests |
 | SW-F08 | SW-R5 drawers | See [Drawer equivalence](#register-resident-drawer-equivalence). | Pinned upstream and an independent scalar form | none defined | `test_n2d_doom.py` | host test (`src/nand2doom/scripts/tests/`) |
@@ -50,9 +50,15 @@ or the spec section it checks. Level is the target's level in
 
 ### Actual Doom selectable gate
 
-`n2d_doom_system` (seed 37, outside the fast regression) rebuilds the pinned
-production manifest, preloads its two sparse segments under reset and runs
-the product CPU/cache/device path.
+`n2d_doom_system` (seed 37, L2) rebuilds the pinned production variant with
+the `-Os`, no-LTO engine profile into `workdir/software/n2d_doom_gameplay/`,
+preloads its two sparse segments under reset and runs the product
+CPU/cache/device path. The input witness matches fixed call sites in
+`I_StartTic`, `I_GetEvent` and `NetUpdate`, which the default `-O2` LTO
+profile inlines, so this gate uses the `-Os` profile, as render verification
+does (#100). It passes in about 25 minutes (1,494 s, Verilator 5.052). Its
+Picolibc package needs Python 3.14 (`compression.zstd`), or a
+`--picolibc-prefix` tree, on the host.
 
 - **Scene.** Trap-free boot, runtime/TLS self-check, engine boot marker, all
   64,000 bytes, the `D_Display` completed-scene marker (an intermediate wipe
@@ -65,6 +71,10 @@ the product CPU/cache/device path.
   player update. The physical frame completes with exactly one turn, the
   UART frame with exactly two: upper 12-bit angles `fec` then `fd8` (initial
   slow right turn −320 at 16-bit scale, 20 units per turn). No extra turns.
+- **Frames.** Both framebuffer banks are shadowed from the first CPU resume,
+  because status-bar-only persistence keeps rows drawn before gameplay
+  starts; a gameplay frame is recorded at each bank swap after input begins
+  and must have every byte known.
 - **Witness.** A passive retirement observer, started before resume, binds
   the fresh ELF and bin (instruction bytes, symbols, call targets,
   `I_StartTic` → `I_GetEvent`) and rebuilds `gametic`, `maketic`, `ticdup`
@@ -87,7 +97,7 @@ the product CPU/cache/device path.
   rows, 96 colors, 210,228 pixels on 400 rows). Images are captured before the
   assertions.
 - **Bounds.** 200,000,000 cycles to the first scene (measured renderer
-  reached after ~90 M); 50,000,000 per later observation; 28,800 s wall.
+  reached after ~90 M); 50,000,000 per later observation; 3,600 s wall.
   A passing run is ~218 M cycles, ~6 h at 9,000..15,000 cycles/s on a shared
   4-core host. Cycle bounds define acceptance.
 

@@ -679,12 +679,12 @@
         "src/nand2doom/dv/platform/n2d_integrated_system.sv"
       ],
       "clock_hz": 25000000,
-      "timeout_seconds": 28800,
+      "timeout_seconds": 3600,
       "test_module": "src.nand2doom.dv.platform.test_n2d_doom_system",
       "testcase": "doom_boot_render_contract",
       "default_seed": 37,
       "max_cycles": 200000000,
-      "level": "manual"
+      "level": "L2"
     },
     "n2d_system_product": {
       "regression_action": "compile",
