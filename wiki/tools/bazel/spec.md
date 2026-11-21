@@ -1,6 +1,6 @@
 # Bazel build: spec
 
-How the build meets its [requirements](prd.md). How agents use it day to day is in the build BKM (issue #154); this page is how it works.
+How the build meets its [requirements](prd.md). How agents use it day to day is in the [build](../../bkm/flow.md#build) BKM; this page is how it works.
 
 ## Layout
 
