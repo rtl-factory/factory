@@ -13,8 +13,8 @@ Each project declares its boards in `src/<project>/cfg/board.json`. The console 
   "schema": "n2a-board/1",
   "project": "nand2mario",
   "program": {"label": "Cartridge image", "patterns": ["*.gb", "*.bin"], "default": ""},
-  "load": ["{python}", "src/nand2mario/scripts/board/n2m_board.py", "load", "{program}",
-           "--board", "{board}", "--port", "{port}", "--baud", "{baud}", "--yes"],
+  "load": ["{python}", "src/common/scripts/uart_mem/uart_mem_load.py", "{program}",
+           "--project", "n2m ", "--port", "{port}", "--baud", "{baud}", "--yes"],
   "boards": {
     "de10_lite": {"idcode": "031050DD", "baud": 2000000,
                   "sof": "workdir/quartus/n2m_de10_lite/output_files/n2m_de10_lite.sof"}
@@ -36,9 +36,9 @@ The declared loaders today:
 | Project | Loader | Rates |
 |---|---|---|
 | nand2doom | `n2d_play.py --skip-program --controls none`: Ping and Halt, stream load with digest skip, reset PC and Resume | 2 Mbaud on both |
-| nand2mario | `n2m_board.py load --yes`: hold, write and verify the cartridge, release | 2 Mbaud on both |
+| nand2mario | `uart_mem_load.py --project 'n2m ' --yes` ([common UART memory host](../../src/common/scripts/uart_mem/spec.md#load-script)): identify, hold, write and verify the cartridge, entry, release | 2 Mbaud on both |
 
-Both projects run the factory board rate, 2 Mbaud on every board (issue #129). Issue #129 also moves nand2mario to the common UART memory endpoint, after which both declarations name one loader.
+Both projects run the factory board rate, 2 Mbaud on every board, and both board UARTs answer the common UART memory endpoint (issue #129). nand2doom's declaration keeps `n2d_play.py` because its load also drives the Doom debug protocol.
 
 ## JTAG chain
 

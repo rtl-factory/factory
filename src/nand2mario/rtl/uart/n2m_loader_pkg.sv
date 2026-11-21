@@ -34,6 +34,17 @@ package n2m_loader_pkg;
     localparam int unsigned ADDRESS_RAM_BIT = 21;
     localparam int unsigned MAX_PAYLOAD_BYTES = 256;
 
+    // Common UART memory endpoint map (n2m_uart_link): the same address field
+    // as the loader's frames, so ROM at 0 and cartridge RAM at bit 21. Both
+    // windows are written and read while held. N2M_MEM_PROJECT_ID is ASCII
+    // "n2m ", first character in the low byte; entry is the cartridge entry
+    // point the boot ROM jumps to.
+    localparam logic [31:0] N2M_MEM_PROJECT_ID        = 32'h206d_326e;
+    localparam logic [31:0] N2M_MEM_ROM_BASE          = 32'h0000_0000;
+    localparam logic [31:0] N2M_MEM_RAM_BASE          = 32'h0020_0000;
+    localparam logic [31:0] N2M_MEM_WINDOW_ATTRIBUTES = 32'h3;
+    localparam logic [31:0] N2M_MEM_ENTRY             = 32'h0000_0100;
+
     // Status byte: {held, backing initialized, framing seen, timeout seen,
     // overrun seen, code[2:0]}. The three sticky flags report events since the
     // previous response and clear when a response carrying them is sent.

@@ -19,21 +19,23 @@
 // frames and whose scanout drives the 3x scaled 640x480 VGA output; the
 // loader can pin the displayed frame and read it back over the UART.
 //
-// The cartridge backing is the on-chip store sized by parameter, with
+// The UART link (n2m_uart_link) puts the common UART memory endpoint in
+// front of the cartridge loader, so either protocol can hold the core and
+// load the backing. The cartridge backing is the on-chip store sized by parameter, with
 // CART_SDRAM set the DE10-Lite SDRAM behind the adapted controller or, with
 // CART_EXTERNAL set, the off-chip cartridge bus of the ASIC chip top. With
 // DISPLAY clear the display tier's outputs are not used (VGA pins parked,
 // the loader sees no snapshot), so synthesis removes the tier. The
-// UART cartridge loader and the backing live in the system reset domain; the
-// console core (everything else) is held in reset while the loader holds it
+// UART link and the backing live in the system reset domain; the
+// console core (everything else) is held in reset while the link holds it
 // and until the backing is initialized. The direct load port remains the
 // simulation preload path and shares the backing's load port with the
 // loader. This is the single growing full-system simulation top; later
 // subsystems attach here.
 //
-// reset_i is the synchronous system reset; the common UART PHYs inside the
-// loader assert it asynchronously by their own contract, and the mixed use
-// is intended (the loader documents the waiver).
+// reset_i is the synchronous system reset; the common UART PHYs and endpoint
+// inside the link assert it asynchronously by their own contract, and the
+// mixed use is intended (the link documents the waiver).
 /* verilator lint_off SYNCASYNCNET */
 module n2m_system #(
     parameter int unsigned CART_ROM_BYTES = 2097152,
@@ -62,10 +64,10 @@ module n2m_system #(
     input  n2m_cartridge_pkg::t_rom_address    rom_load_address_i,
     input  logic [7:0]                         rom_load_data_i,
     output logic                               rom_load_ready_o,
-    // Cartridge loader serial link (8-N-1).
+    // Board UART (8-N-1): common UART memory endpoint and cartridge loader.
     input  logic                               uart_rx_i,
     output logic                               uart_tx_o,
-    // Console core reset level: reset_i, the loader's hold or an
+    // Console core reset level: reset_i, a hold on the UART link or an
     // uninitialized backing.
     output logic                               core_reset_o,
     // Active-high buttons: Right, Left, Up, Down, A, B, Select, Start.
@@ -469,13 +471,15 @@ module n2m_system #(
         end
     endgenerate
 
-    // Why: the loader runs in the system reset domain because it holds the
+    // Why: the UART link runs in the system reset domain because it holds the
     // core in reset while it loads.
-    n2m_uart_loader #(
-        .CLKS_PER_BIT (UART_CLKS_PER_BIT),
-        .FRAC_NUM     (UART_FRAC_NUM),
-        .FRAC_DEN     (UART_FRAC_DEN)
-    ) u_loader (
+    n2m_uart_link #(
+        .CLKS_PER_BIT   (UART_CLKS_PER_BIT),
+        .FRAC_NUM       (UART_FRAC_NUM),
+        .FRAC_DEN       (UART_FRAC_DEN),
+        .CART_ROM_BYTES (CART_ROM_BYTES),
+        .CART_RAM_BYTES (CART_RAM_BYTES)
+    ) u_link (
         .clk_i                 (clk_i),
         .reset_i               (reset_i),
         .uart_rx_i             (uart_rx_i),

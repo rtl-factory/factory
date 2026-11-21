@@ -1,6 +1,6 @@
 # UART memory host: spec
 
-How the host works, against its [requirements](prd.md). Code in `src/common/scripts/uart_mem/`: `uart_mem.py` (the library) and `tests/` (a hardware-free contract against an independent fake endpoint). It talks to the `common` UART memory endpoint (`src/common/rtl/uart_mem/`), whose own spec is not ported yet; its simulation contract is `src/common/dv/uart_mem/` (targets `n2a_uart_mem_contract` and `n2a_uart_mem_load_readback`).
+How the host works, against its [requirements](prd.md). Code in `src/common/scripts/uart_mem/`: `uart_mem.py` (the library), `uart_mem_load.py` (the load script) and `tests/` (a hardware-free contract against an independent fake endpoint). It talks to the `common` UART memory endpoint (`src/common/rtl/uart_mem/`), whose own spec is not ported yet; its simulation contract is `src/common/dv/uart_mem/` (targets `n2a_uart_mem_contract` and `n2a_uart_mem_load_readback`).
 
 ## Commands
 
@@ -30,6 +30,10 @@ A request starts with `0xA8`, a response with `0x8A`; both carry the protocol ve
 3. Write each segment, then read it back and compare. A failure here raises `LoadError` and sends no entry or release, so the CPU stays held.
 4. After every segment has verified, set the entry state, then release the CPU once. If the entry or release reply is lost, the CPU state is unknown and must be inspected.
 
+## Load script
+
+`uart_mem_load.py IMAGE --port P [--baud B] [--project ID] [--address A] [--entry E] [--yes]` loads one raw image with the load transaction above, over pyserial 8-N-1 with no flow control. `--baud` defaults to 2,000,000, the factory board rate. `--project` is four ASCII characters (`'n2m '`) or 0x-prefixed hex, and a mismatch stops the load before the hold. The address defaults to the base of the first writable window, and the entry to the endpoint's advertised entry. Without `--yes` it prints a JSON plan and opens no port. A failed load exits 1 and leaves the CPU held. nand2mario's board declaration uses it ([board console](../../../../tools/board/spec.md)); nand2doom's board load stays on `n2d_play.py`, which also speaks the Doom debug protocol.
+
 ## Tests
 
-`python3 -m pytest src/common/scripts/uart_mem/tests` covers framing, identity, chunking, the load transaction (one hold, verify before entry, one release, failures leave the CPU held), readback and shared-UART project bytes.
+`python3 -m pytest src/common/scripts/uart_mem/tests` covers framing, identity, chunking, the load transaction (one hold, verify before entry, one release, failures leave the CPU held), readback and shared-UART project bytes; `test_uart_mem_load.py` covers the load script's plan, defaults, project check and held failure.

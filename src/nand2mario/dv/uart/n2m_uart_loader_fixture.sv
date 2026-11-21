@@ -1,14 +1,17 @@
-// Simulation-only composition for the n2m_uart_loader target: the loader
-// with a host-side pair of common UART PHYs so the bench exchanges bytes,
+// Simulation-only composition for the n2m_uart_loader target: the UART link
+// (common UART memory endpoint in front of the cartridge loader) with a
+// host-side pair of common UART PHYs so the bench exchanges bytes,
 // and a line override so the bench can also drive the receive line bit by
-// bit (framing errors, line noise). The loader's load port and snapshot
+// bit (framing errors, line noise). The link's load port and snapshot
 // ports are exposed so the bench plays a stalling backing and the display's
 // snapshot side.
 `default_nettype none
 
 module n2m_uart_loader_fixture #(
     parameter int unsigned CLKS_PER_BIT = 8,
-    parameter int unsigned RX_TIMEOUT_CLOCKS = 4000
+    parameter int unsigned RX_TIMEOUT_CLOCKS = 4000,
+    parameter int unsigned GAP_CYCLES = 4000,
+    parameter int unsigned HOLD_TIMEOUT_CYCLES = 4000
 ) (
     input  logic                                   clk_i,
     input  logic                                   reset_i,
@@ -63,10 +66,12 @@ module n2m_uart_loader_fixture #(
     );
     /* verilator lint_on PINCONNECTEMPTY */
 
-    n2m_uart_loader #(
-        .CLKS_PER_BIT      (CLKS_PER_BIT),
-        .RX_TIMEOUT_CLOCKS (RX_TIMEOUT_CLOCKS)
-    ) u_loader (
+    n2m_uart_link #(
+        .CLKS_PER_BIT        (CLKS_PER_BIT),
+        .RX_TIMEOUT_CLOCKS   (RX_TIMEOUT_CLOCKS),
+        .GAP_CYCLES          (GAP_CYCLES),
+        .HOLD_TIMEOUT_CYCLES (HOLD_TIMEOUT_CYCLES)
+    ) u_link (
         .clk_i                 (clk_i),
         .reset_i               (reset_i),
         .uart_rx_i             (loader_rx),
