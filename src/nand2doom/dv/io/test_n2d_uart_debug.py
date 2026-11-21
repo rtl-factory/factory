@@ -197,8 +197,8 @@ async def serial_debug_protocol_contract(dut) -> None:
     assert ping.status == ST_OK and ping.sequence == 1
     assert ping.words == (0x3144324E, 1), f"unexpected ping payload {ping.words!r}"
 
-    # A complete overlapping frame is rejected after an active memory command,
-    # without changing or replacing that transaction and response.
+    # Why: a complete overlapping frame must be rejected after an active memory
+    # command, or it could change or replace that transaction and its response.
     cocotb.log.info("starting overlapping BUSY contract")
     async def receive_active_and_busy():
         return await _uart_receive(dut), await _uart_receive(dut)
@@ -299,9 +299,9 @@ async def serial_debug_protocol_contract(dut) -> None:
     dut.halt_ack_i.value = 0
     dut.cache_maint_done_i.value = 0
 
-    # CMD_INPUT is legal while the CPU runs. It holds one exact Set-2 event
-    # under backpressure and does not enter halt, maintenance, arbitration, or
-    # debug-memory traffic.
+    # Why: CMD_INPUT is legal while the CPU runs, so it must hold one exact
+    # Set-2 event under backpressure without entering halt, maintenance,
+    # arbitration or debug-memory traffic.
     dut.input_event_ready_i.value = 0
     input_receive = cocotb.start_soon(_uart_receive(dut))
     await _uart_send(dut, input_request(40, 0x375))
@@ -326,8 +326,8 @@ async def serial_debug_protocol_contract(dut) -> None:
     assert accepted_input.status == ST_OK and accepted_input.sequence == 40
     assert stats == stats_before_input
 
-    # A FIFO that remains full produces a bounded BUSY result without a false
-    # event acceptance or any debug-memory transaction.
+    # Why: a FIFO that stays full must produce a bounded BUSY result, never a
+    # false event acceptance or a debug-memory transaction.
     dut.input_event_ready_i.value = 0
     stats_before_busy_input = dict(stats)
     busy_input = await _exchange(dut, input_request(41, 0x11D))
@@ -601,13 +601,15 @@ async def serial_debug_protocol_contract(dut) -> None:
     assert memory[0x108] == 0xA5A5A5A5, "memory-error poke changed memory"
     controls["error"] = False
 
-    # A partial header must time out and return the captured command/sequence.
+    # Why: a partial header must time out and return the captured command and
+    # sequence, so the host can match the failure to its request.
     timeout_receive = cocotb.start_soon(_uart_receive(dut))
     await _uart_send(dut, bytes((0xA5, 1, CMD_PING, 17)))
     interbyte = await timeout_receive
     assert interbyte.status == ST_TIMEOUT and interbyte.sequence == 17
 
-    # A bad physical stop bit gets a deterministic framing response.
+    # Why: a bad physical stop bit must get a deterministic framing response
+    # rather than silence.
     framing_receive = cocotb.start_soon(_uart_receive(dut))
     await _uart_send_byte(dut, 0xA5, stop=0)
     framing = await framing_receive

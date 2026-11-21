@@ -52,7 +52,8 @@ async def router_maximum_discard_and_drain(dut):
     assert response[:5] == b"\x6a\x02\xb1\x51\x06"
     assert response[9:13] == b"\0"*4
     assert zlib.crc32(response[1:-4]) == int.from_bytes(response[-4:], "little")
-    # No automatic parser recovery after the full maximum-size error response.
+    # Why: the parser must not recover on its own after the full maximum-size
+    # error response, so these valid-looking bytes must not dispatch.
     for byte in b"\xa5\x01\x03\0\0\0\0\0\0\0\0":
         await FallingEdge(dut.clk_i)
         dut.rx_byte_i.value = byte
@@ -60,8 +61,9 @@ async def router_maximum_discard_and_drain(dut):
         await Timer(1, unit="ns")
         assert not int(dut.engine_rx_valid_o.value)
     cocotb.log.info("PASS65535-byte discard; zero legacy dispatch; bounded response stalls/quarantine")
-    # Scaled frame bound70000 cycles, gap1024: continued slow input must not
-    # extend the absolute frame budget. First case proved max length itself fits.
+    # Why: with a scaled frame bound of 70000 cycles and a 1024-cycle gap,
+    # continued slow input must not extend the absolute frame budget. The first
+    # case proved the maximum length itself fits.
     await FallingEdge(dut.clk_i)
     dut.reset_i.value = 1
     dut.rx_valid_i.value = 0

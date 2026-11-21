@@ -30,7 +30,8 @@ EBREAK = 0x0010_0073
 ECALL = 0x0000_0073
 MRET = 0x3020_0073
 
-# Trap handler at word 1..4 (mtvec = 4): resume after the faulting word.
+# Why: the handler sits at words 1..4 (mtvec = 4) and returns to mepc + 4,
+# so a trapping instruction is skipped, not retried.
 HANDLER = (
     encode_csr(0x341, 0, 2, 9),  # x9 = mepc
     encode_i(4, 9, 0, 9),
@@ -52,10 +53,6 @@ def _random_timing(rng: random.Random) -> tuple[PortTiming, PortTiming]:
         PortTiming(ready_probability=rng.choice((1.0, 0.8, 0.5)), latency=rng.choice((1, (1, 3), (1, 6)))),
     )
 
-
-# ---------------------------------------------------------------------------
-# Producer/consumer distance sweep
-# ---------------------------------------------------------------------------
 
 def _producers() -> dict[str, list[int]]:
     """Each producer writes x5 from x1/x2 (x1=0x40, x2=7, x3=data base)."""
@@ -110,15 +107,15 @@ async def check_raw_distances(dut, rng: random.Random) -> None:
     cocotb.log.info("RAW distance sweep: %d model-checked programs", count)
 
 
-# ---------------------------------------------------------------------------
-# Divide under memory holds
-# ---------------------------------------------------------------------------
-
 async def check_divide_under_hold(dut, rng: random.Random) -> None:
     program = [
         *load_immediate(1, -1000),
         encode_i(7, 0, 0, 2),
         encode_i(0x40, 0, 0, 3),
+        # Why: the divide issues behind a store under a long data hold with an
+        # independent load behind it, so the REM must wait on both the divider
+        # and the load; a missed interlock shows up in the REM or its immediate
+        # consumer.
         encode_s(0, 1, 3, 2),             # store under a long data hold
         encode_r(1, 2, 1, 4, 4),          # DIV x4 = x1 / x2
         encode_i(0, 3, 2, 5, 0x03),       # independent load behind the divide
@@ -177,17 +174,13 @@ async def check_multiply_under_memory_hold(dut, rng: random.Random) -> None:
     cocotb.log.info("MUL memory lifetime: %d model-checked delayed/faulting programs", count)
 
 
-# ---------------------------------------------------------------------------
-# RV32M corner vectors, back-to-back multiply and divide/remainder pairs
-# ---------------------------------------------------------------------------
-
 M_CORNERS = (
     0x0000_0000, 0x0000_0001, 0xFFFF_FFFF, 0x0000_0002, 0xFFFF_FFFE,
     0x8000_0000, 0x7FFF_FFFF, 0x8000_0001, 0x0000_FFFF, 0x0001_0000,
     0x1234_5678, 0xFFFF_FFF9,
 )
 
-# MUL, MULH, MULHSU, MULHU, then DIV/REM and DIVU/REMU in pairs over the
+# Why: MUL, MULH, MULHSU, MULHU, then DIV/REM and DIVU/REMU in pairs over the
 # same operands, so each remainder follows its quotient.
 _M_ORDER = (0, 1, 2, 3, 4, 6, 5, 7)
 
@@ -300,10 +293,6 @@ async def check_divide_killed_by_older_trap(dut, rng: random.Random) -> None:
         )
 
 
-# ---------------------------------------------------------------------------
-# Control-transfer flush: younger stores must never reach memory
-# ---------------------------------------------------------------------------
-
 async def check_flush_suppresses_younger_store(dut, rng: random.Random) -> None:
     poison = [encode_s(0x40, 1, 0, 2), encode_s(0x44, 1, 0, 2), encode_s(0x48, 1, 0, 2)]
     transfers = {
@@ -328,19 +317,20 @@ async def check_flush_suppresses_younger_store(dut, rng: random.Random) -> None:
             for address in (0x40, 0x44, 0x48):
                 assert word(result.memory, address) == 0, f"{name}: squashed store reached memory"
             assert word(result.memory, 0x4C) == 0x5555_AAAA
-    # Not-taken branch: the younger store must happen.
+    # Why: control case, so a flush that also squashed the not-taken path's
+    # younger store would fail here.
     program = [*load_immediate(1, 0x1234_5678), encode_b(8, 0, 1, 0), encode_s(0x40, 1, 0, 2), EBREAK]
     result = await run_program(dut, program, stop_cause=3, max_cycles=100)
     assert word(result.memory, 0x40) == 0x1234_5678
 
 
-# ---------------------------------------------------------------------------
-# SYSTEM serialization and exact counters
-# ---------------------------------------------------------------------------
-
 async def check_system_serialization(dut, rng: random.Random) -> None:
     initial = (0x0BAD_F00D).to_bytes(4, "little")
     body = [
+        # Why: placing each CSR access right behind a long-latency load, a MUL or a
+        # store in flight forces SYSTEM serialization and exact minstret counting,
+        # including a minstret write. The model takes mcycle from the DUT, and the
+        # ECALL handler returns past it before mcause and mepc are read.
         encode_i(0, 0, 2, 1, 0x03),      # long-latency load
         encode_csr(0x340, 1, 1, 2),      # CSRRW consumes it immediately
         encode_csr(0xB02, 0, 2, 3),      # exact minstret after the load and CSR
@@ -362,10 +352,6 @@ async def check_system_serialization(dut, rng: random.Random) -> None:
             max_cycles=600, instruction=instruction, data=data, seed=seed,
         )
 
-
-# ---------------------------------------------------------------------------
-# Precise data-access trap ahead of younger trapping or effectful work
-# ---------------------------------------------------------------------------
 
 async def check_data_error_precedes_younger_work(dut, rng: random.Random) -> None:
     error_address = 0x80
@@ -393,10 +379,6 @@ async def check_data_error_precedes_younger_work(dut, rng: random.Random) -> Non
                 assert causes[0] == (5 if kind == "load" else 7), (kind, name, causes)
 
 
-# ---------------------------------------------------------------------------
-# Debug halt swept over every cycle offset, resume equivalence, Reset-PC
-# ---------------------------------------------------------------------------
-
 def _halt_program() -> list[int]:
     return with_handler([
         *load_immediate(1, -77),
@@ -405,6 +387,11 @@ def _halt_program() -> list[int]:
         encode_s(0, 1, 3, 2),
         encode_i(0, 3, 2, 4, 0x03),
         encode_r(1, 2, 4, 0, 5),
+        # Why: a halt only exposes a drain defect for work in flight at that moment,
+        # so the program holds every kind: a divide, a forward taken branch (not
+        # predicted) over a squashed store, a predicted backward loop that exits by
+        # mispredict, a predicted never-taken backward branch, a misaligned-load
+        # trap and return, and a JAL.
         encode_r(1, 2, 1, 4, 6),          # divide
         encode_b(8, 2, 1, 1),             # taken, forward: not predicted
         encode_s(4, 1, 3, 2),             # squashed
@@ -435,7 +422,7 @@ async def check_halt_sweep(dut, rng: random.Random, stride: int = 1) -> int:
         assert result.halts_requested == 1
         acknowledged += result.halts_acknowledged
         count += 1
-    # A halt requested while the final EBREAK is already in flight ends with
+    # Why: a halt requested while the final EBREAK is already in flight ends with
     # that stop observation during the drain; at most a pipeline's depth of
     # trailing offsets (plus the reset cycles) can do so.
     assert acknowledged >= count - 10 // stride - 1, (acknowledged, count)
@@ -458,8 +445,9 @@ async def check_halt_sweep(dut, rng: random.Random, stride: int = 1) -> int:
 
 
 async def check_reset_pc(dut, rng: random.Random) -> None:
-    # A halted Reset-PC restarts at zero with registers and CSRs preserved;
-    # the second pass therefore differs, and the model follows it exactly.
+    # Why: a halted Reset-PC restarts at zero with registers and CSRs preserved,
+    # so each pass bumps mscratch until it reaches 3; the passes differ and the
+    # model must follow them exactly.
     program = with_handler([
         encode_csr(0x340, 0, 2, 1),
         encode_i(1, 1, 0, 1),
@@ -482,7 +470,7 @@ async def check_divide_halt_and_reset(dut, rng: random.Random) -> None:
     from cocotb.triggers import FallingEdge, RisingEdge
 
     for funct3 in range(4, 8):
-        # x1 = 0x80001000, x2 = 5: a 29- or 30-iteration early-out divide, so
+        # Why: x1 = 0x80001000, x2 = 5 is a 29- or 30-iteration early-out divide, so
         # the halt sweep and the reset land inside it.
         program = [encode_u(0x8000_1000, 1, 0x37), encode_i(5, 0, 0, 2), encode_r(1, 2, 1, funct3, 3),
                    encode_i(1, 3, 0, 4), EBREAK]
@@ -495,7 +483,6 @@ async def check_divide_halt_and_reset(dut, rng: random.Random) -> None:
             acknowledged += result.halts_acknowledged
         assert acknowledged >= 12, f"divide halt sweep acknowledged only {acknowledged}"
 
-        # Reset with the divide in flight: nothing from the old epoch retires.
         await run_program(dut, program, stop_pc=4, max_cycles=64)
         for _ in range(4):
             await RisingEdge(dut.clk_i)
@@ -543,7 +530,7 @@ async def check_reset_and_halt_ports(dut) -> None:
         raise AssertionError("halt not acknowledged")
 
     dut.rst_i.value = 1
-    await reset_core(dut)  # leaves ready low
+    await reset_core(dut)  # Why: leaves ready low, so nothing is accepted until the test raises it
     dut.rst_i.value = 1
     await tick()
     assert not int(dut.instruction_request_valid_o.value)
@@ -553,7 +540,6 @@ async def check_reset_and_halt_ports(dut) -> None:
         assert int(dut.instruction_request_valid_o.value)
         assert int(dut.instruction_request_address_o.value) == 0
 
-    # Accept one request, then reset its transaction epoch before any response.
     dut.instruction_request_ready_i.value = 1
     await tick()
     dut.instruction_request_ready_i.value = 0
@@ -576,9 +562,9 @@ async def check_reset_and_halt_ports(dut) -> None:
     assert int(dut.instruction_request_valid_o.value)
     assert int(dut.instruction_request_address_o.value) == 0
 
-    # Accept a fetch, request halt while its response is owed, then answer
-    # it. The core may retire it or discard it, but resume must fetch the
-    # architectural next PC of whatever retired.
+    # Why: the core may retire or discard a fetch whose response is owed at the
+    # halt, so the check accepts both and only requires resume at the
+    # architectural next PC.
     dut.instruction_request_ready_i.value = 1
     await tick()
     dut.instruction_request_ready_i.value = 0
@@ -597,7 +583,6 @@ async def check_reset_and_halt_ports(dut) -> None:
     assert int(dut.instruction_request_valid_o.value)
     assert int(dut.instruction_request_address_o.value) == resume_pc
 
-    # Halt again, Reset-PC while halted, then resume at zero.
     dut.halt_request_i.value = 1
     await wait_ack(8)
     dut.halt_request_i.value = 0
@@ -611,10 +596,6 @@ async def check_reset_and_halt_ports(dut) -> None:
     assert int(dut.instruction_request_address_o.value) == 0
 
 
-# ---------------------------------------------------------------------------
-# Static branch prediction: backward taken, JAL early redirect, recovery
-# ---------------------------------------------------------------------------
-
 def _countdown_loop(count: int, body: list[int]) -> list[int]:
     """x10 = count; loop: body; x10 -= 1; bne x10, x0, loop (backward)."""
     loop = body + [encode_i(-1, 10, 0, 10)]
@@ -627,8 +608,9 @@ async def check_static_prediction(dut, rng: random.Random) -> None:
     on the predicted path has no effect, misaligned or faulting predicted
     targets trap exactly as unpredicted ones, and a correct prediction
     costs one refill clock."""
-    # A loop storing its count each iteration, then the fall-through store;
-    # the backward branch exits by mispredict recovery.
+    # Why: the backward branch is predicted taken, so the loop exit exercises
+    # mispredict recovery, and the per-iteration stores make a lost or doubled
+    # iteration visible in memory.
     loop_store = _countdown_loop(5, [
         encode_i(0, 3, 2, 4, 0x03),       # lw x4, 0(x3)
         encode_r(0, 10, 4, 0, 4),         # x4 += x10
@@ -642,10 +624,10 @@ async def check_static_prediction(dut, rng: random.Random) -> None:
                                    instruction=instruction, data=data, seed=seed)
         assert word(result.memory, 0x40) == 15 and word(result.memory, 0x44) == 1
 
-    # Slow, stalling fetch: the predicted redirect of the loop branch and its
-    # Q102H mispredict flush twice while one stale response is still owed;
-    # that response must be dropped, never retired (seeds 30, 38, 45, 49
-    # and 59 reach this window).
+    # Why: slow, stalling fetch makes the predicted redirect of the loop branch and
+    # its Q102H mispredict flush twice while one stale response is still owed;
+    # that response must be dropped, never retired (seeds 30, 38, 45, 49 and 59
+    # reach this window).
     slow_fetch = PortTiming(ready_probability=0.5, latency=(1, 3))
     slow_data = PortTiming(ready_probability=0.8, latency=(1, 6))
     for seed in range(64):
@@ -653,10 +635,10 @@ async def check_static_prediction(dut, rng: random.Random) -> None:
                                    instruction=slow_fetch, data=slow_data, seed=seed)
         assert word(result.memory, 0x40) == 15 and word(result.memory, 0x44) == 1
 
-    # A never-taken backward branch is predicted taken: its target block of
-    # stores is fetched speculatively but must never reach memory, and the
-    # fall-through store must. The same for a never-taken backward JAL-free
-    # block reached only through a forward JAL (predicted, taken).
+    # Why: a never-taken backward branch is predicted taken, so its target block
+    # of stores is fetched speculatively; the check fails if any of them reaches
+    # memory or the fall-through store does not. The block is reached only
+    # through a forward JAL (predicted, taken).
     prefix = [*load_immediate(1, 0x5555_AAAA), encode_i(1, 0, 0, 2)]
     poison = [encode_s(0x40, 1, 0, 2), encode_s(0x44, 1, 0, 2), encode_s(0x48, 1, 0, 2)]
     program = prefix + [encode_j(4 * (len(poison) + 1), 0)] + poison
@@ -670,9 +652,12 @@ async def check_static_prediction(dut, rng: random.Random) -> None:
             assert word(result.memory, address) == 0, "speculative store reached memory"
         assert word(result.memory, 0x4C) == 0x5555_AAAA
 
-    # Backward JAL (predicted taken, always taken) with its link consumed at
-    # once, a forward taken branch (not predicted) and a predicted loop
-    # whose body is a forward not-taken branch.
+    # Why: one program checks link forwarding behind a backward JAL (predicted
+    # taken, always taken), an unpredicted forward taken branch and a predicted
+    # loop whose body is a forward not-taken branch. Words after the base: 1
+    # forward JAL to 5; 2 target of the backward JAL; 3 x6 = link; 4 forward JAL
+    # to 8; 5 backward JAL to 2; 6, 7 skipped; 8 forward taken bne over 9; then
+    # the loop, whose beq skips its store once (x10 == 1).
     program = with_handler([
         encode_i(0x40, 0, 0, 3),
         encode_j(16, 0),                  # 1: forward JAL to 5
@@ -694,11 +679,12 @@ async def check_static_prediction(dut, rng: random.Random) -> None:
                                    instruction=instruction, data=data, seed=seed)
         assert word(result.memory, 0x40) == 0 and word(result.memory, 0x44) == 0
         assert word(result.memory, 0x48) == 0
-        assert word(result.memory, 0x4C) == 2          # stored for x10 = 3 then 2
-        assert word(result.memory, 0x50) != 0          # the backward JAL's link
+        assert word(result.memory, 0x4C) == 2          # Why: x10 = 1 skips the store, so x10 = 2 stores last
+        assert word(result.memory, 0x50) != 0          # Why: x6 stored the backward JAL's link, so zero means the link was lost
 
-    # Misaligned backward targets are not predicted and trap precisely
-    # (cause 0, mtval = target); the handler resumes past them.
+    # Ref: core MAS "Static prediction": a misaligned static target is fetched
+    # sequentially and traps in Q102H (cause 0, mtval = target); the handler
+    # resumes past both so each trap is counted.
     program = with_handler([
         encode_i(0x40, 0, 0, 3),
         encode_b(-2, 0, 0, 0),            # beq x0, x0, -2: misaligned target
@@ -711,9 +697,12 @@ async def check_static_prediction(dut, rng: random.Random) -> None:
     assert len(traps) == 2 and all(item.trap_value & 2 for item in traps)
     assert word(result.memory, 0x40) == 1
 
-    # A predicted target that fetch-faults: taken, the faulting instruction
-    # traps with cause 1 after the branch retires; not taken, the stale
-    # error response is dropped and nothing traps.
+    # Why: a fetch error on a predicted target must trap only when that path is
+    # architectural: taken, the faulting instruction traps with cause 1 after the
+    # branch retires; not taken, the stale error response is dropped and nothing
+    # traps. Word F, the 0 after the forward JAL, is the fetch-error target; the
+    # handler returns to the x5 += 1 after it, and the bne back to F is taken
+    # once.
     body = [
         encode_i(0x40, 0, 0, 3),
         encode_i(2, 0, 0, 2),
@@ -736,9 +725,9 @@ async def check_static_prediction(dut, rng: random.Random) -> None:
         assert causes == [1, 3], causes
         assert word(result.memory, 0x40) == 2
 
-    # Refill cost under the one-cycle responder: a two-instruction loop of
-    # 32 iterations costs two retirements plus one refill clock per
-    # iteration, so the span is bounded near 3 clocks per iteration.
+    # Why: under the one-cycle responder a two-instruction loop of 32 iterations
+    # costs two retirements plus one refill clock per iteration, so the span is
+    # bounded near 3 clocks per iteration.
     iterations = 32
     program = [*_countdown_loop(iterations, []), EBREAK]
     result = await run_program(dut, program, stop_cause=3, max_cycles=300,
@@ -816,31 +805,39 @@ def return_program() -> list[int]:
         encode_i(4, 0, 0, 9), encode_csr(0x305, 9, 1, 0),   # mtvec = 4
         encode_i(0x7FC, 0, 0, SP), encode_i(4, SP, 0, SP),  # sp = 0x800
         encode_i(0x600, 0, 0, 3),
-        # Underflow: a return with an empty stack is fetched sequentially.
+        # Ref: core MAS "Return-address stack": with an empty stack a return is
+        # not predicted, so it is fetched sequentially.
         *link_to(RA, "after_empty"), RET, *poison,
         "after_empty:",
         encode_s(0, RA, 3, 2),                               # 0x600 = after_empty
-        # Nesting: main -> outer -> middle -> leaf, each returning in order.
+        # Why: nesting main -> outer -> middle -> leaf makes each return pop the
+        # entry its own call pushed; a wrong pop order skips or doubles a marker.
         call("outer"),
         encode_i(1, 0, 0, 5), encode_s(4, 5, 3, 2),          # 0x604 = 1
-        # Overflow: recursion twelve deep, deeper than the stack.
+        # Ref: core MAS "Return-address stack": a push when full overwrites the
+        # oldest entry, so twelve-deep recursion, deeper than the stack,
+        # mispredicts the outer returns.
         encode_i(12, 0, 0, 10), encode_i(0, 0, 0, 11),
         call("recurse"),
         encode_s(0x80, 11, 3, 2),                            # 0x680 = 12 + 11 + .. + 1
-        # Wrong entry: the callee replaces its return address, so the
-        # predicted target (call + 4) is wrong and the poison is speculative.
+        # Why: the callee replaces its return address, so the stacked target
+        # (call + 4) is wrong and the poison behind the call is fetched only
+        # speculatively.
         call("redirect_callee"), *poison,
         "redirected:",
         encode_i(2, 0, 0, 5), encode_s(8, 5, 3, 2),          # 0x608 = 2
-        # A Q103H data trap discards a predicted return behind its load;
-        # the handler resumes at the return, now with a cleared stack.
+        # Ref: core MAS "Return-address stack": a Q103H trap clears the count,
+        # so the trap discards the predicted return behind its load and the
+        # handler resumes at the return with a cleared stack.
         call("trap_callee"),
         encode_i(3, 0, 0, 5), encode_s(12, 5, 3, 2),         # 0x60c = 3
-        # A predicted return to a misaligned address traps (cause 0) in
-        # Q102H; the handler resumes after it and the callee returns again.
+        # Why: a predicted return to a misaligned address must still trap
+        # (cause 0) in Q102H; the handler resumes after it and the callee
+        # returns again.
         call("misaligned_callee"),
         encode_i(4, 0, 0, 5), encode_s(16, 5, 3, 2),         # 0x610 = 4
-        # Back-to-back: a call whose callee is a bare return, in a loop.
+        # Why: a call whose callee is a bare return, in a loop, pushes and pops
+        # on adjacent slots, the tightest stack update timing.
         encode_i(6, 0, 0, 10),
         "spin:",
         call("leaf"),
@@ -895,8 +892,9 @@ async def check_return_prediction(dut, rng: random.Random) -> None:
                                    data_error_addresses=errors,
                                    instruction=instruction, data=data, seed=seed)
         _check_return_memory(result)
-    # Halt and resume at every offset: the drain finishes Q102H and the owed
-    # fetch while the stack keeps its entries.
+    # Ref: core MAS "Return-address stack": a debug halt keeps the stack, so
+    # halting at every offset must finish Q102H and the owed fetch without losing
+    # entries.
     for offset in range(0, reference.cycles, 2):
         result = await run_program(dut, program, stop_cause=3, max_cycles=4000,
                                    data_error_addresses=errors, halts=(HaltPlan(offset),))
@@ -905,10 +903,10 @@ async def check_return_prediction(dut, rng: random.Random) -> None:
                     reference.cycles, (reference.cycles + 1) // 2)
 
 
-# BTB alias sites: the same index and partial tag at one and two strides.
-# A stride is a multiple of the bytes an index plus 8-bit partial tag covers
-# (1024 per entry: PC bits 17..2 at the default 256 entries), at least 1 MiB,
-# so every fetch BTB size confuses them.
+# Why: BTB alias sites share the index and partial tag at one and two
+# strides. A stride is a multiple of the bytes an index plus 8-bit partial
+# tag covers (1024 per entry: PC bits 17..2 at the default 256 entries), at
+# least 1 MiB, so every fetch BTB size confuses them.
 ALIAS_BRANCH = 0x400
 ALIAS_JUMP = 0x440
 MIB = 0x10_0000
@@ -969,8 +967,9 @@ def btb_alias_program(stride: int = MIB) -> list[int]:
     return words
 
 
-# Five ALIAS_BRANCH calls, one per alias, two jumps to t1, one to t2 and
-# the non-transfer alias of the trained jump.
+# Why: each executed block adds its marker once: five ALIAS_BRANCH calls (1024
+# each), one per alias, two jumps to t1, one to t2 and the non-transfer alias
+# of the trained jump, so a skipped or doubled block changes the sum.
 BTB_ALIAS_SUM = 5 * 1024 + 1 + 4 + 2 * 16 + 256 + 2
 
 
@@ -995,10 +994,6 @@ async def check_btb_aliasing(dut, rng: random.Random) -> None:
     cocotb.log.info("BTB aliasing: 6 timings, last run %d clocks", result.cycles)
 
 
-# ---------------------------------------------------------------------------
-# Seeded random instruction streams
-# ---------------------------------------------------------------------------
-
 DATA_BASE = 0x200
 
 
@@ -1010,7 +1005,7 @@ def random_program(rng: random.Random, length: int = 160) -> tuple[list[int], se
     """
     regs = range(1, 8)
     body: list[int] = []
-    loop_counts: list[int] = []  # body indices of loop-count updates, never fetch faults
+    loop_counts: list[int] = []
     for register in regs:
         body += load_immediate(register, rng.getrandbits(32))
     body += load_immediate(8, DATA_BASE)
@@ -1068,10 +1063,10 @@ def random_program(rng: random.Random, length: int = 160) -> tuple[list[int], se
         elif kind == "ecall":
             body.append(ECALL)
         elif kind == "loop":
-            # x10 counts a bounded loop closed by a backward branch, which
-            # the core predicts taken: correct until the exit mispredicts.
-            # The count is decremented modulo 4, so the loop also exits
-            # within four iterations when a forward jump enters it.
+            # Why: x10 counts a bounded loop closed by a backward branch, which the core
+            # predicts taken: correct until the exit mispredicts. The count is
+            # decremented modulo 4, so the loop also exits within four iterations when a
+            # forward jump enters it.
             iterations = rng.randint(1, 3)
             inner = [encode_r(0, rs2, rs1, rng.choice((0, 4, 6, 7)), rd)
                      for _ in range(rng.randint(0, 2))]
@@ -1081,7 +1076,7 @@ def random_program(rng: random.Random, length: int = 160) -> tuple[list[int], se
             body += [encode_i(-1, 10, 0, 10), encode_i(3, 10, 7, 10)]
             body.append(encode_b(-4 * (len(inner) + 2), 0, 10, 1))
         elif kind == "backward_not_taken":
-            # x10 is zero outside a loop, so this backward branch is always
+            # Why: x10 is zero outside a loop, so this backward branch is always
             # predicted taken and never taken.
             body.append(encode_b(-4 * rng.randint(1, min(8, len(body))), 0, 10, 1))
         else:
@@ -1089,7 +1084,7 @@ def random_program(rng: random.Random, length: int = 160) -> tuple[list[int], se
     program = with_handler(body + [NOP] * 4)
     data_errors = {DATA_BASE + 4 * rng.randrange(16) for _ in range(2)}
     prologue = 1 + len(HANDLER) + 2
-    # A fetch fault skips its word when the handler returns, which must not
+    # Why: a fetch fault skips its word when the handler returns, which must not
     # be a loop-count update (the loop might never exit).
     candidates = [index for index in range(prologue + 40, len(program) - 2)
                   if index - prologue not in loop_counts]
@@ -1113,10 +1108,6 @@ async def check_random_streams(dut, seed: int, count: int) -> int:
     cocotb.log.info("random streams: seed=%d programs=%d observations=%d", seed, count, retired)
     return retired
 
-
-# ---------------------------------------------------------------------------
-# Doom-like inner loops for IPC
-# ---------------------------------------------------------------------------
 
 def kernel_program() -> list[int]:
     """A column-draw loop and a dot product, the shapes of Doom's hot loops.
@@ -1165,10 +1156,6 @@ def kernel_program() -> list[int]:
         EBREAK,
     ]
 
-
-# ---------------------------------------------------------------------------
-# IPC under the one-cycle-hit responder
-# ---------------------------------------------------------------------------
 
 async def measure_ipc(dut, name: str, words, **kwargs) -> RunResult:
     result = await run_program(

@@ -85,6 +85,7 @@ module n2d_uart_debug_pins
         .input_event_o(input_event), .input_event_ready_i(input_event_ready_i),
         .txn_req_o(txn_req), .txn_status_i(txn_status),
         .mem_req_o(mem_req), .mem_rsp_i(mem_rsp),
-        // No screen in this fixture: endpoint screen reads time out.
+        // Why: no screen in this fixture, so endpoint screen reads time out
+        // instead of hanging.
         .screen_req_o(unused_screen_req), .screen_rsp_i('0));
 endmodule

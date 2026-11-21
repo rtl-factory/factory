@@ -48,12 +48,14 @@ async def icache_contract(dut):
     assert actual == oracle.line_transactions
     assert oracle.hits == 3 and oracle.misses == 4
 
-    # Back-to-back hits: one accept per cycle, each answered one edge later.
+    # Ref: memory MAS "CPU port handshake": hits are sampled one edge after
+    # acceptance, so back-to-back hits accept once per cycle.
     stream = [Op(0x0000 + 4 * (i % 4)) for i in range(12)]
     _check_stream(oracle, await run_stream(dut, stream), "back-to-back hits")
 
-    # Hit under refill ordering: a hit accepted on the edge that samples a
-    # miss's refill response, alternating with further misses in other sets.
+    # Why: a hit accepted on the edge that samples a miss's refill response
+    # must not reorder against it, alternating with further misses in other
+    # sets.
     stream = [Op(0x0100), Op(0x0004), Op(0x0200), Op(0x0104), Op(0x0300), Op(0x0208)]
     _check_stream(oracle, await run_stream(dut, stream), "hit under refill")
     actual = [(write, address, data) for write, address, data, _ in responder.transactions]
@@ -78,8 +80,9 @@ async def icache_contract(dut):
     observed, error = await cpu_access(dut, 0x6000)
     assert not error and observed == oracle.access(0x6000)
 
-    # An instruction request withdrawn before acceptance has no effect:
-    # present it while maintenance holds ready low, then drop it.
+    # Ref: core MAS "Pipelined memory handshake": an instruction request may be
+    # withdrawn before acceptance, so one presented while maintenance holds
+    # ready low and then dropped must have no effect.
     await FallingEdge(dut.clk_i)
     dut.maintenance_valid_i.value = 1
     dut.cpu_request_valid_i.value = 1
@@ -100,7 +103,6 @@ async def icache_contract(dut):
         raise AssertionError("maintenance did not complete within bound")
     oracle.maintain()
 
-    # Random traffic under random line backpressure and request gaps.
     responder.rng = random.Random(seed + 1)
     responder.transactions.clear()
     oracle.line_transactions.clear()

@@ -35,13 +35,15 @@ async def board_capture_window(dut):
                         ("sdram_ras_n_o", "sdram_cas_n_o", "sdram_we_n_o"))
             writing = cmd == WRITE or model.write_burst is not None
             dut.device_drive_i.value = int(not writing)
-            # Resolve the public DQ bus after releasing device drive.
+            # Why: wait 1 ns after releasing device drive so the public DQ bus
+            # resolves before it is read.
             await Timer(1, unit="ns")
             beats = model.edge(edge, cmd, int(dut.sdram_bank_o.value),
                                int(dut.sdram_address_o.value), int(dut.device_data_o.value),
                                int(dut.sdram_dqm_o.value))
             if beats is not None:
-                # One ns already elapsed since the device clock edge.
+                # Why: 45 ns here, because 1 ns already elapsed since the
+                # device clock edge.
                 async def launch(values):
                     await Timer(45, unit="ns")
                     for index, value in enumerate(values):
@@ -78,15 +80,17 @@ async def board_capture_window(dut):
             await Timer(1, unit="ns")
         raise AssertionError("bounded SDRAM response timeout")
 
-    # Seed memory independently of controller writes. Unique halfwords make
-    # any missing/repeated/rotated beat visible, including first and last.
+    # Why: memory is seeded independently of controller writes, and unique
+    # halfwords make any missing, repeated or rotated beat visible, including
+    # first and last.
     for address in (0x120, 0x130, 0x800, 0x2000, 0x4010):
         halfwords = rng.sample(range(1, POISON), 8)
         model.words.update({address + 2*k: value for k, value in enumerate(halfwords)})
         expected = sum(value << (16*k) for k, value in enumerate(halfwords))
         observed = await transact(address)
         assert observed == expected, f"CL2 window addr={address:#x} expected={expected:032x} observed={observed:032x}"
-        # Compare physical storage directly: a faulty read cannot validate writes.
+        # Why: compare physical storage directly, because a faulty read cannot
+        # validate writes.
         for mask in (0xFFFF, 0x8001, 0x5555, 0xAAAA, 0):
             data = rng.getrandbits(128)
             old = bytes(sum((model.words[address+2*k] << (16*k)) for k in range(8)).to_bytes(16, "little"))

@@ -66,6 +66,9 @@ def encode_b(immediate: int, rs2: int, rs1: int, funct3: int) -> int:
 
 def smoke_program() -> tuple[int, ...]:
     return (
+        # Why: the signature 36 at memory[1] needs every step (x1 = 7, x2 = 5, x3 =
+        # x4 = 12, x5 = 7, x6 = 36), so a wrong ALU result, a broken load-use, a
+        # wrong branch or a retired poison word all change it.
         encode_i(7, 0, 0b000, 1),              # x1 = 7
         encode_i(5, 0, 0b000, 2),              # x2 = 5
         encode_r(0, 2, 1, 0b000, 3),           # x3 = 12

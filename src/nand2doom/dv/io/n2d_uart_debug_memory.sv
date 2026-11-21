@@ -36,9 +36,9 @@ module n2d_uart_debug_memory
     logic [9:0] input_event_unused;
     /* verilator lint_on UNUSEDSIGNAL */
 
-    // The UART uses asynchronous reset while the memory path is synchronous.
-    // Register release so the shared top-level reset is not used with mixed
-    // semantics and publication cannot start during reset release.
+    // Why: the UART uses asynchronous reset while the memory path is
+    // synchronous. Register release so the shared top-level reset is not used
+    // with mixed semantics and publication cannot start during reset release.
     always_ff @(posedge clk_i or posedge reset_i) begin
         if (reset_i) adapter_reset_q <= 1'b1;
         else adapter_reset_q <= 1'b0;
@@ -66,7 +66,8 @@ module n2d_uart_debug_memory
         .txn_status_i(txn_status),
         .mem_req_o(word_request),
         .mem_rsp_i(word_response),
-        // No screen in this fixture: endpoint screen reads time out.
+        // Why: no screen in this fixture, so endpoint screen reads time out
+        // instead of hanging.
         .screen_req_o(unused_screen_req), .screen_rsp_i('0));
     assign halt_req_o = debug_control.halt_req;
     assign cache_invalidate_o = debug_control.cache_invalidate;

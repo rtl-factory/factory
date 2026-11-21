@@ -78,7 +78,8 @@ async def capture_system_contract(dut):
     await cmd(CMD_RESET_PC,address=0)
     await cmd(CMD_RESUME)
     milestone('first-resume')
-    # Observe a real framebuffer store; request during a partially copied frame.
+    # Why: wait for a real framebuffer store, so the request arrives during a
+    # partially copied frame.
     await with_timeout(RisingEdge(dut.framebuffer_write_valid_o),25,'ms')
     milestone('first-pixel')
     await cmd(CMD_HALT)
@@ -86,7 +87,8 @@ async def capture_system_contract(dut):
     assert h[5]==0 and h[7]==0
     await poke(1)
     await cmd(CMD_RESUME)
-    # Cancel before the gameplay seam, then prove a later fresh request works.
+    # Why: cancel before the gameplay seam, then a later fresh request must
+    # still work, so a cancel cannot wedge the service.
     await ClockCycles(dut.clk_i,5000)
     await cmd(CMD_HALT)
     h=await header();assert h[5]==0
@@ -107,8 +109,9 @@ async def capture_system_contract(dut):
             assert int(dut.halt_ack_o.value), 'bulk read without maintained Halt'
             blocks.append((int.from_bytes(packet[4:8],'little'),int.from_bytes(packet[8:10],'little')))
             milestone('host-bulk',sequence=operation.sequence,block=len(blocks),length=blocks[-1][1])
-        # Observe at the actual production host's release-write boundary. Do
-        # not drive requests/READY/release or decode responses on its behalf.
+        # Why: observe at the actual production host's release-write boundary
+        # without driving requests, READY or release or decoding responses on
+        # its behalf, so the host code itself is what is tested.
         if not (code==CMD_POKE and int.from_bytes(packet[4:8],'little')==address+12
                 and int.from_bytes(packet[10:14],'little')==0):
             return
@@ -124,7 +127,8 @@ async def capture_system_contract(dut):
         first=packets.index(wire.CMD_BULK_READ)
         assert all(c not in (CMD_HALT,CMD_RESUME) for c in packets[first:])
         milestone('host-dump-checked',sequence=operation.sequence,frame=frame)
-        # One entire public 800x525 raster, not an internal palette/framebuffer peek.
+        # Why: one entire public 800x525 raster, not an internal palette/framebuffer
+        # peek, so the check covers what a monitor would show.
         await with_timeout(RisingEdge(dut.frame_start_o),20,'ms')
         await ReadOnly()
         for cycle in range(800*525):

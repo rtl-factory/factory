@@ -41,8 +41,9 @@ async def _drain_buffer(dut, limit: int = 120) -> None:
 
 
 def _by_line(transactions):
-    # Different lines may reorder; each line's operations and payloads must
-    # retain their order, and every expected operation must be present.
+    # Why: different lines may reorder, so only each line's operations and
+    # payloads are compared in order, and every expected operation must be
+    # present.
     result = {}
     for wr, addr, payload in transactions:
         result.setdefault(addr, []).append((wr, payload))
@@ -57,7 +58,8 @@ async def _check_transactions(responder: LineResponder, oracle: CacheModel, labe
 
 
 SET_COUNT = 512
-# Documented healthy-path Halt walk slot per way/set entry (wiki/src/nand2doom/rtl/memory/mas.md).
+# Ref: memory MAS "Maintained Halt bound": one 24-clock Halt walk slot per
+# way and set entry.
 WALK_SLOT_CLOCKS = 24
 
 
@@ -118,22 +120,26 @@ async def _maintain_cycles(dut, *, limit: int) -> tuple[bool, int]:
 
 
 def _plru_line(tag: int) -> int:
-    # Every tag of the replacement-order checks maps to set 0x50.
+    # Why: index bits 0x500 put every tag of the replacement-order checks in set 0x50,
+    # so the traces below share one tree.
     return (tag << 13) | 0x500
 
 
-# Hand-derived replacement traces for set 0x50, independent of the oracle:
-# (operation, expected new (write, address) line transactions). In the
-# four-way trace, the miss after "hit 0" evicts tag 2 where true LRU would
-# evict tag 1, and dirty victims leave in tree-PLRU order.
+# Why: hand-derived replacement traces for set 0x50, so an oracle bug cannot
+# hide a matching RTL bug: (operation, expected new (write, address) line
+# transactions). Two ways: tag 2 evicts tag 0 (way 0), then tag 3 evicts dirty
+# tag 1 (way 1). Four ways: once all four are full, the miss after "hit 0"
+# evicts tag 2 (way 2) where true LRU would evict tag 1; then 5 evicts 0, 6
+# evicts 4, and the dirty victims leave in tree-PLRU order (tag 1 for 7, tag 3
+# for 4).
 _PLRU_TRACES = {
     2: [
         (Op(_plru_line(0)), [(False, 0)]),
         (Op(_plru_line(1)), [(False, 1)]),
         (Op(_plru_line(0)), []),
         (Op(_plru_line(1), True, 0x1111_0001, 0b1111), []),
-        (Op(_plru_line(2)), [(False, 2)]),           # victim tag 0 (way 0)
-        (Op(_plru_line(3)), [(True, 1), (False, 3)]),  # dirty tag 1 (way 1)
+        (Op(_plru_line(2)), [(False, 2)]),
+        (Op(_plru_line(3)), [(True, 1), (False, 3)]),
         (Op(_plru_line(2)), []),
         (Op(_plru_line(3)), []),
     ],
@@ -141,15 +147,15 @@ _PLRU_TRACES = {
         (Op(_plru_line(0)), [(False, 0)]),
         (Op(_plru_line(1)), [(False, 1)]),
         (Op(_plru_line(2)), [(False, 2)]),
-        (Op(_plru_line(3)), [(False, 3)]),             # all four ways full
+        (Op(_plru_line(3)), [(False, 3)]),
         (Op(_plru_line(0)), []),
-        (Op(_plru_line(4)), [(False, 4)]),             # victim tag 2 (way 2)
+        (Op(_plru_line(4)), [(False, 4)]),
         (Op(_plru_line(1), True, 0x1111_0001, 0b1111), []),
         (Op(_plru_line(3), True, 0x3333_0003, 0b1111), []),
-        (Op(_plru_line(5)), [(False, 5)]),             # victim tag 0 (way 0)
-        (Op(_plru_line(6)), [(False, 6)]),             # victim tag 4 (way 2)
-        (Op(_plru_line(7)), [(True, 1), (False, 7)]),  # dirty tag 1 (way 1)
-        (Op(_plru_line(4)), [(True, 3), (False, 4)]),  # dirty tag 3 (way 3)
+        (Op(_plru_line(5)), [(False, 5)]),
+        (Op(_plru_line(6)), [(False, 6)]),
+        (Op(_plru_line(7)), [(True, 1), (False, 7)]),
+        (Op(_plru_line(4)), [(True, 3), (False, 4)]),
         (Op(_plru_line(5)), []),
         (Op(_plru_line(6)), []),
         (Op(_plru_line(7)), []),
@@ -185,7 +191,8 @@ async def dcache_contract(dut):
         (True, 0x0301, 0x0000_2200, 0b0010),
         (True, 0x0302, 0x4433_0000, 0b1100),
         (False, 0x0300, 0, 0),
-        # A different set proves clean-victim replacement independently.
+        # Why: a different set, so clean-victim replacement is proven
+        # independently of the dirty traffic above.
         (False, 0x0100, 0, 0),
         (False, 0x2100, 0, 0),
         (False, 0x4100, 0, 0),
@@ -208,9 +215,9 @@ async def dcache_contract(dut):
     observed, error = await cpu_access(dut, 0x0300)
     assert not error and observed == 0x4433_2211
 
-    # Back-to-back store-then-load on the same line and set: each load is
-    # accepted on the edge that writes the preceding store hit, so it reads
-    # the old RAM word and must take the forwarded line. Way one of set 0x30
+    # Why: back-to-back store-then-load on the same line and set: each load is
+    # accepted on the edge that writes the preceding store hit, so it reads the
+    # old RAM word and must take the forwarded line. Way one of set 0x30
     # (0x2300) and way zero (0x0300) are interleaved to prove the record is
     # way-specific, and a store pair checks store-after-store merging.
     stream = [
@@ -224,16 +231,15 @@ async def dcache_contract(dut):
     _check_stream(oracle, await run_stream(dut, stream), "store-then-load")
     await _check_transactions(responder, oracle, "store-then-load")
 
-    # Back-to-back hits and hit-under-refill ordering: a hit is accepted on
-    # the edge that samples a refill (and a dirty writeback) completion.
+    # Why: a hit accepted on the edge that samples a refill (and a dirty
+    # writeback) completion must not reorder against it, so back-to-back hits
+    # run under refills.
     stream = [Op(0x0010 + 4 * (i % 4)) for i in range(8)]
     stream += [Op(0x6010), Op(0x0300), Op(0x4300), Op(0x0304),
                Op(0x2018, True, 0x0BAD_F00D, 0b1111), Op(0x2018)]
     _check_stream(oracle, await run_stream(dut, stream), "hit under refill")
     await _check_transactions(responder, oracle, "hit under refill")
 
-    # Replacement order, dirty-victim writeback and an all-ways-full set,
-    # against the hand-derived trace as well as the oracle.
     for op, wanted in _PLRU_TRACES[ways]:
         before = len(responder.transactions)
         hits_before = oracle.hits
@@ -250,8 +256,8 @@ async def dcache_contract(dut):
             f"PLRU trace at {op.address:#x}: line transactions {seen}")
     await _check_transactions(responder, oracle, "replacement order")
 
-    # Every way of set 0x50 dirty: the maintenance walk below must write all
-    # of them back, in way order, and invalidate the set.
+    # Why: with every way of set 0x50 dirty, the maintenance walk below must
+    # write all of them back, in way order, and invalidate the set.
     resident = [_plru_line(tag) for tag in ((2, 3) if ways == 2 else (5, 7, 6, 4))]
     for way, address in enumerate(resident):
         expected = oracle.access(address + 4, write=True, write_data=0x5A00_0000 | way,
@@ -308,16 +314,18 @@ async def dcache_contract(dut):
 
     await _setword_cases(dut, rng, responder, oracle, memory, ways)
 
-    # Random traffic under random line backpressure, latency and request
-    # gaps, then maintenance after traffic must publish every dirty byte.
-    # The injected failures above are logged by the responder but not by the
-    # oracle, so the transaction comparison restarts here.
+    # Why: random traffic under random line backpressure, latency and request
+    # gaps reaches orderings the directed cases miss, and maintenance
+    # afterwards must publish every dirty byte. The injected failures above are
+    # logged by the responder but not by the oracle, so the transaction
+    # comparison restarts here.
     responder.rng = random.Random(seed + 1)
     responder.transactions.clear()
     oracle.line_transactions.clear()
     stream = []
     for _ in range(500):
-        # Six tags over four sets overflow four ways as well as two.
+        # Why: six tags over four sets overflow four ways as well as two, so
+        # evictions happen in both geometries.
         address = (rng.randrange(6) << 13) | (rng.randrange(4) << 4) | (rng.randrange(4) << 2)
         if rng.random() < 0.4:
             byte_enable = rng.choice((0b0001, 0b0010, 0b0100, 0b1000, 0b0011, 0b1100, 0b1111))
@@ -342,21 +350,25 @@ async def _setword_cases(dut, rng: random.Random, responder: LineResponder,
     responder.transactions.clear()
     responder.prefetches.clear()
     oracle.line_transactions.clear()
-    # Same-set back-to-back hazards. Every request after the first is
-    # accepted on the edge that writes the previous hit's word (dirty and
-    # PLRU) or follows an install, so a lost forward shows up as a wrong
-    # victim, a missing or extra writeback, or wrong data. Pinned to one
-    # set with WAYS + 2 tags, with no request gaps.
+    # Why: same-set back-to-back hazards. Every request after the first is
+    # accepted on the edge that writes the previous hit's word (dirty and PLRU)
+    # or follows an install, so a lost forward shows up as a wrong victim, a
+    # missing or extra writeback, or wrong data. Pinned to one set with WAYS +
+    # 2 tags, with no request gaps.
     def same_set(tag: int, word: int = 0) -> int:
         return (tag << 13) | 0x0A00 | (word << 2)
 
-    stream = [Op(same_set(tag)) for tag in range(ways)]            # fill every way
-    stream += [Op(same_set(tag), True, 0xD1D1_0000 | tag, 0b1111)  # store hit per way
+    # Why: this fixed prefix makes each hazard happen at least once before the
+    # random part: fill every way, store-hit each, then a load hit, a
+    # dirty-eviction miss, a store hit on the install and a load hit on its
+    # line, back to back.
+    stream = [Op(same_set(tag)) for tag in range(ways)]
+    stream += [Op(same_set(tag), True, 0xD1D1_0000 | tag, 0b1111)
                for tag in range(ways)]
-    stream += [Op(same_set(1)),                                      # load hit
-               Op(same_set(ways)),                                   # miss: dirty eviction
-               Op(same_set(ways), True, 0x0000_0E0E, 0b0011),        # store hit on the install
-               Op(same_set(ways, 1))]                                # load hit, same line
+    stream += [Op(same_set(1)),
+               Op(same_set(ways)),
+               Op(same_set(ways), True, 0x0000_0E0E, 0b0011),
+               Op(same_set(ways, 1))]
     for _ in range(300):
         address = same_set(rng.randrange(ways + 2), rng.randrange(4))
         if rng.random() < 0.4:
@@ -373,9 +385,9 @@ async def _setword_cases(dut, rng: random.Random, responder: LineResponder,
     assert not await maintain(dut)
     assert memory == oracle.memory, "maintenance after same-set hazards lost dirty bytes"
 
-    # Halt dirty walk within the documented budget: a clean walk is one
-    # entry per clock plus its read cycle and the registered done pulse, and
-    # a walk with every entry dirty stays within WALK_SLOT_CLOCKS per entry.
+    # Ref: memory MAS "Maintained Halt bound": a clean walk is one entry per
+    # clock plus its read cycle and the registered done pulse, and a walk with
+    # every entry dirty stays within WALK_SLOT_CLOCKS per entry.
     entries = ways * SET_COUNT
     error, cycles = await _maintain_cycles(dut, limit=entries + 16)
     assert not error and cycles == entries + 3, f"clean walk took {cycles} clocks"
@@ -392,9 +404,9 @@ async def _setword_cases(dut, rng: random.Random, responder: LineResponder,
                     entries, cycles, entries * WALK_SLOT_CLOCKS)
     await _check_transactions(responder, oracle, "dirty walk")
 
-    # Reset clears every word. A dirty resident line is forgotten (no
-    # writeback); an invalidate requested during the sweep waits for it and
-    # then walks a clean cache; a load held through the sweep refills.
+    # Why: reset must clear every word: a dirty resident line is forgotten (no
+    # writeback), an invalidate requested during the sweep waits for it and
+    # then walks a clean cache, and a load held through the sweep refills.
     await cpu_access(dut, 0x0A10, write=True, write_data=0x5EED_0001, byte_enable=0b1111)
     before = len(responder.transactions)
     await reset_cache(dut)
@@ -426,7 +438,8 @@ async def _setword_cases(dut, rng: random.Random, responder: LineResponder,
         "load held through the sweep did not refill exactly once")
     observed, error = await cpu_access(dut, 0x0A10, expected_cycles=1)
     assert not error and observed == read_word(memory, 0x0A10) != 0x5EED_0001
-    # The oracle restarts from reset too: empty sets, then that refill.
+    # Why: the oracle must restart from reset too, or it would expect hits on
+    # lines the cache forgot: empty sets, then that refill.
     fresh = CacheModel(oracle.memory, writable=True, ways=ways)
     oracle.entries, oracle.plru = fresh.entries, fresh.plru
     oracle.access(0x0A10)
@@ -504,18 +517,17 @@ async def dcache_prefetch_contract(dut):
             f"write={write} address={address:#x} expected={expected:#010x} "
             f"observed={observed:#010x}")
 
-    # A demand miss refills its line and then prefetches the next one.
     await access(0x1000)
     await _settle(dut)
     assert _transactions(responder) == [(False, 0x1000, 0), (False, 0x1010, 0)]
     assert responder.prefetches == [False, True]
     assert counts["issue"] == 1
 
-    # Prefetch hit: the buffered line installs without a line request and
-    # responds three edges after acceptance, then prefetches the next line.
+    # Why: a prefetch hit must install the buffered line without a line request
+    # and respond three edges after acceptance, then prefetch the next line.
     before = len(responder.transactions)
-    # Present the next demand on the response edge, without the idle gap
-    # inserted by separate cpu_access calls. It must win over selection.
+    # Why: separate cpu_access calls insert an idle gap, so the next demand is
+    # presented on the response edge here; it must win over prefetch selection.
     ops = [Op(0x1014), Op(0x1020), Op(0x1024)]
     completions = await run_stream(dut, ops)
     _check_stream(oracle, completions, "response-edge demand priority")
@@ -525,8 +537,8 @@ async def dcache_prefetch_contract(dut):
     assert responder.prefetches[before:] == [False, True]
     assert counts["useful"] == 1 and counts["issue"] == 2 and counts["cancel"] == 1, counts
 
-    # Prefetch then store: a store to a buffered line installs it with the
-    # store merged; the line is dirty and a later load and flush see it.
+    # Why: a store to a buffered line must install it with the store merged, so
+    # the line is dirty and a later load and flush see it.
     await access(0x1034, write=True, data=0xA5A5_5A5A, byte_enable=0b1111, latency=3)
     await access(0x1034, latency=1)
     await access(0x1036, write=True, data=0x00C3_0000, byte_enable=0b0100, latency=1)
@@ -538,9 +550,10 @@ async def dcache_prefetch_contract(dut):
     assert memory == oracle.memory, "flush lost a store to a prefetched line"
     await _settle(dut)
 
-    # A stale buffered copy: line C is dirty in the cache when its previous
-    # line's miss prefetches C from memory. Evicting C writes it back and
-    # must drop that copy, so the next miss on C reads the written-back line.
+    # Why: line C is dirty in the cache when its previous line's miss
+    # prefetches C from memory, so the buffered copy is stale. Evicting C
+    # writes it back and must drop that copy, or the next miss on C reads stale
+    # memory.
     line_c = 0x0500
     others = [(tag << 13) | line_c for tag in range(1, ways + 1)]
     await access(line_c + 4, write=True, data=0xC0DE_0001, byte_enable=0b1111)
@@ -551,7 +564,7 @@ async def dcache_prefetch_contract(dut):
     assert prefetch_addresses()[-1] == line_c, "previous-line miss did not prefetch line C"
     drops = counts["drop"]
     before = len(responder.transactions)
-    await access(others[-1])  # evicts dirty line C (tree PLRU after C, others)
+    await access(others[-1])  # Why: tree PLRU after C and the others makes this access evict dirty line C
     await _settle(dut)
     assert (True, line_c) in [(w, a) for (w, a, _) in _transactions(responder)[before:]], (
         "line C was not written back")
@@ -562,9 +575,9 @@ async def dcache_prefetch_contract(dut):
         "line C was served from a stale prefetch buffer")
     _check_demand_traffic(responder, oracle, "stale copy")
 
-    # Maintenance presented on the refill-response edge suppresses the
-    # queued intent. After an idle opportunity it instead discards an
-    # actually issued line; cancellation and drop must remain distinct.
+    # Why: maintenance presented on the refill-response edge must suppress the
+    # queued intent, and after an idle opportunity it discards an actually
+    # issued line instead; counting both as one would hide a lost line.
     async def maintenance_on_response():
         for _ in range(80):
             await RisingEdge(dut.clk_i)
@@ -603,8 +616,9 @@ async def dcache_prefetch_contract(dut):
         assert not responder.prefetches[before]
     _check_demand_traffic(responder, oracle, "maintenance")
 
-    # Unrelated queued intent yields to demand, and no prefetch launches
-    # during the delayed demand response. The newer install supersedes it.
+    # Why: unrelated queued intent must yield to demand, and no prefetch may
+    # launch during the delayed demand response; the newer install supersedes
+    # it.
     oracle.maintain()
     assert not await maintain(dut)
     before = len(responder.transactions)
@@ -627,8 +641,9 @@ async def dcache_prefetch_contract(dut):
     assert responder.prefetches[before:] == [False, False, True]
     assert counts["cancel"] == cancels + 1 and counts["deferred"] > 0
 
-    # A presented prefetch is held even when another demand arrives; it
-    # cannot be retracted to manufacture priority after its external offer.
+    # Why: a presented prefetch is held even when another demand arrives,
+    # because retracting it after its external offer would break the
+    # ready/valid contract.
     oracle.maintain()
     assert not await maintain(dut)
     responder.block_prefetches = True
@@ -652,8 +667,6 @@ async def dcache_prefetch_contract(dut):
     await _settle(dut, 12)
     _check_demand_traffic(responder, oracle, "priority and held contract")
 
-    # Random mostly-sequential traffic over a few streams, with stores,
-    # random line backpressure and latency, and maintenance in between.
     responder.rng = random.Random(seed + 1)
     for phase in range(3):
         stream = []
@@ -680,9 +693,9 @@ async def dcache_prefetch_contract(dut):
         oracle.maintain()
         assert not await maintain(dut)
         assert memory == oracle.memory, f"random {phase}: maintenance lost dirty bytes"
-    # Give prefetch explicit idle opportunities as well as the dense
-    # randomized demand stream. This preserves substantial useful-line
-    # coverage without requiring speculative issue during pending demand.
+    # Why: explicit idle opportunities alongside the dense randomized demand
+    # stream keep substantial useful-line coverage without requiring
+    # speculative issue during pending demand.
     for address in range(0x18000, 0x18800, 0x10):
         await access(address)
         await _settle(dut, 12)
@@ -694,7 +707,6 @@ async def dcache_prefetch_contract(dut):
     issued = responder.prefetches.count(True)
     assert counts["issue"] == issued, f"issue events {counts['issue']} != prefetches {issued}"
     assert counts["useful"] == served, f"useful events {counts['useful']} != buffer refills {served}"
-    # After the final maintenance every issued line was used or dropped.
     assert counts["useful"] + counts["drop"] == issued, counts
     assert served > 100, f"random traffic used only {served} prefetched lines"
     service.cancel()
@@ -732,8 +744,8 @@ async def dcache_write_buffer_contract(dut):
     assert int(dut.write_buffer_pending_o.value), "dirty victim was not retained after refill"
     assert read_word(memory, victim) != 0xABCD_0000 | (victim >> 13), "victim already wrote memory"
 
-    # Immediate reread while the old dirty victim's write is stalled: its
-    # result must wait for publication, never read the stale backing bytes.
+    # Why: an immediate reread while the old dirty victim's write is stalled
+    # must wait for publication, or it would read the stale backing bytes.
     reread = cocotb.start_soon(access(Op(victim)))
     await _settle(dut, 18)
     assert not reread.done(), "immediate reread bypassed the stalled victim write"
@@ -747,8 +759,8 @@ async def dcache_write_buffer_contract(dut):
     responder.block_writes = True
     await access(Op((ways + 1) << 13))
 
-    # A second dirty miss cannot overwrite the occupied slot. Ready/valid
-    # payload stability is checked by the responder during this stall.
+    # Why: a second dirty miss must not overwrite the occupied slot; the
+    # responder checks ready/valid payload stability during this stall.
     pending = cocotb.start_soon(access(Op((ways + 2) << 13)))
     await _settle(dut, 18)
     await ReadOnly()
@@ -761,8 +773,8 @@ async def dcache_write_buffer_contract(dut):
     assert read_word(memory, victim) == 0xABCD_0000 | (victim >> 13)
     await access(Op(victim))
 
-    # Refill failure leaves the dirty victim in its array rather than
-    # transferring ownership to a slot for a failed replacement.
+    # Why: a failed refill must leave the dirty victim in its array, or a
+    # failed replacement would own the only copy in a slot.
     oracle.maintain()
     assert not await maintain(dut)
     for tag in range(ways):
@@ -773,12 +785,13 @@ async def dcache_write_buffer_contract(dut):
     assert (await cpu_access(dut, failing, limit=160))[1], "refill failure was hidden"
     assert not int(dut.write_buffer_pending_o.value), "failed refill displaced a dirty array line"
     assert (await cpu_access(dut, victim, expected_cycles=1))[0] == 0xC0DE_0000 | (victim >> 13)
-    oracle.access(victim)  # The directed hit also updates replacement order.
+    oracle.access(victim)  # Why: mirror the directed hit in the oracle, since it updates replacement order
     responder.fail_read_addresses.clear()
     victim = oracle.entries[0x10][oracle.plru_victim(0x10)].tag << 13 | 0x100
 
-    # Isolate the same-line hazard from full-slot pressure: only tag zero
-    # is dirty, and touching the other clean ways makes it the next victim.
+    # Why: only tag zero is dirty and touching the other clean ways makes it
+    # the next victim, so the same-line hazard is isolated from full-slot
+    # pressure.
     oracle.maintain()
     assert not await maintain(dut)
     for tag in range(ways):
@@ -790,9 +803,10 @@ async def dcache_write_buffer_contract(dut):
     failing = 0x300 | (ways << 13)
     assert oracle.entries[0x30][oracle.plru_victim(0x30)].tag == 0
 
-    # Background error retains the displaced bytes. A same-line reread
-    # must retry/drain (and return error if that fails), never fetch stale
-    # memory. Maintenance also reports error, and a retry drains losslessly.
+    # Why: a background error must retain the displaced bytes: a same-line
+    # reread must retry or drain (and return error if that fails), never fetch
+    # stale memory; maintenance also reports error, and a retry drains
+    # losslessly.
     responder.fail_write_addresses.add(victim)
     await access(Op(failing))
     await _settle(dut, 24)
@@ -806,8 +820,9 @@ async def dcache_write_buffer_contract(dut):
     assert not await maintain(dut)
     assert memory == oracle.memory, "retry failed to publish all dirty bytes"
 
-    # Maintenance accepted while a write is presented but unaccepted must
-    # not complete or invalidate away its only copy; it drains before scan.
+    # Why: maintenance accepted while a write is presented but unaccepted must
+    # not complete or invalidate away its only copy, so it drains before the
+    # scan.
     for tag in range(ways):
         await access(Op(0x200 | (tag << 13), True, 0x5EED_0000 | tag, 15))
     responder.block_writes = True

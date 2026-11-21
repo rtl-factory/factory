@@ -149,8 +149,9 @@ async def stop_edge(dut):
 
 
 async def host_translation(dut, b):
-    # Every Doom action through the n2d host tool, then text through the
-    # shared translation: each make/break step lands as its exact events.
+    # Why: every Doom action goes through the n2d host tool and text through
+    # the shared translation, so a wrong mapping in either shows as a wrong
+    # event.
     for name, event in host.ACTIONS.items():
         make, brk = host.key_steps([name], 'tap')
         await b.deliver(make)
@@ -162,7 +163,8 @@ async def host_translation(dut, b):
         await b.deliver(make)
         await b.deliver(brk)
     assert await pop_all(dut) == expected
-    # One command carrying a whole extended break across the padded hub scan.
+    # Why: a whole extended break in one command across the padded hub scan
+    # checks that padding does not split or drop its bytes.
     await b.scan(1, packet(b.seq, bytes([0xE0, 0xF0, 0x6B])), pad=7)
     result = await b.completion()
     assert result[2:5] == (1, 3, b.seq), result
@@ -175,8 +177,9 @@ async def full_fifo_and_prefix_retention(dut, b):
         _, error = await mmio(dut, INJECT, write=True, data=0x070 + index)
         assert error == 0
     assert (await status(dut) >> 3) & 0xF == 8
-    # Both prefixes are taken while full; the completing byte is refused and
-    # the host resubmits exactly that suffix once a slot frees.
+    # Why: the host must resubmit exactly the refused suffix, so both prefixes
+    # are taken while full, the completing byte is refused, and the retry
+    # carries only that byte.
     assert (await b.submit([0xE0, 0xF0, 0x74]))[2:4] == (2, 2)
     assert (await b.submit([0x74]))[2:4] == (2, 0)
     value, _ = await mmio(dut, DATA)

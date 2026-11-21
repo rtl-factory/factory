@@ -191,6 +191,7 @@ async def ps2_keyboard_serial_mmio_contract(dut) -> None:
     assert status & (1 << 12)
     assert ((status >> 3) & 0xF) == 0
 
+    # Ref: PS/2 scan code set 2: 1D is W, E0 75 is up arrow, F0 prefixes a break.
     await send_frame(dut, 0x1D)  # W make
     await send_frame(dut, 0xF0)
     await send_frame(dut, 0x1D)  # W break
@@ -222,9 +223,9 @@ async def ps2_keyboard_serial_mmio_contract(dut) -> None:
         ) == held
     await release_response(dut)
 
-    # A lone idle-high falling edge is an invalid start. Driving the remainder
+    # Why: a lone idle-high falling edge is an invalid start; driving the rest
     # of a nominal frame would contain later low bits that are legal fresh
-    # starts on a clock-only receiver.
+    # starts on a clock-only receiver, so only the edge is driven.
     await drive_ps2_bit(dut, 1, 1370)
     await send_frame(dut, 0x22, parity=1 - odd_parity_bit(0x22))
     await send_frame(dut, 0x22, stop=0)
@@ -250,8 +251,8 @@ async def ps2_keyboard_serial_mmio_contract(dut) -> None:
     status = await read_status(dut)
     assert status & (1 << 2)
 
-    # A pop accepted on the same edge as a completed frame makes room in a
-    # full FIFO: the old head is returned and the new tail is not dropped.
+    # Why: a pop on the same edge as a completed frame must make room in a full
+    # FIFO, or the new tail would be dropped although a slot freed.
     await send_through_parity(dut, 0x18)
     data, error = await stop_edge_with_mmio(dut, address=DATA)
     assert error == 0 and (data & 0x3FF) == 0x010
@@ -260,7 +261,8 @@ async def ps2_keyboard_serial_mmio_contract(dut) -> None:
     assert ((status >> 3) & 0xF) == 8
     assert [await pop_event(dut) for _ in range(8)] == list(range(0x11, 0x19))
 
-    # With no simultaneous pop, the ninth event is dropped and overflow sticks.
+    # Why: with no simultaneous pop the ninth event must be dropped and
+    # overflow must stick, so software can see the loss.
     for code in range(0x20, 0x28):
         await send_frame(dut, code)
     await send_frame(dut, 0x28)
@@ -269,7 +271,8 @@ async def ps2_keyboard_serial_mmio_contract(dut) -> None:
     assert ((status >> 3) & 0xF) == 8
     assert [await pop_event(dut) for _ in range(8)] == list(range(0x20, 0x28))
 
-    # FIFO clear takes priority over an event completing on that same edge.
+    # Why: a FIFO clear must win over an event completing on that same edge, or
+    # a stale event would survive the clear.
     await send_frame(dut, 0x31)
     await send_through_parity(dut, 0x32)
     _, error = await stop_edge_with_mmio(
@@ -284,8 +287,8 @@ async def ps2_keyboard_serial_mmio_contract(dut) -> None:
     assert ((status >> 3) & 0xF) == 0
     assert not (status & ((1 << 8) | (1 << 9) | (1 << 10) | (1 << 11)))
 
-    # A diagnostic clear aligned with a valid stop edge abandons that frame;
-    # it cannot leave the receiver active and cause a delayed ghost timeout.
+    # Why: a diagnostic clear aligned with a valid stop edge must abandon that
+    # frame, or the receiver stays active and fires a delayed ghost timeout.
     await send_through_parity(dut, 0x33)
     _, error = await stop_edge_with_mmio(
         dut,
@@ -303,8 +306,9 @@ async def ps2_keyboard_serial_mmio_contract(dut) -> None:
     await send_frame(dut, 0x34)
     assert await pop_event(dut) == 0x034
 
-    # The same receive-boundary rule abandons an in-progress frame when a
-    # control write occurs between pin edges, followed by clean recovery.
+    # Why: a control write between pin edges must abandon the in-progress frame
+    # by the same receive-boundary rule, and the receiver must then recover
+    # cleanly.
     await drive_ps2_bit(dut, 0, 1370)
     await drive_ps2_bit(dut, 1, 1370)
     _, error = await mmio(
@@ -323,7 +327,7 @@ async def ps2_keyboard_serial_mmio_contract(dut) -> None:
     await send_frame(dut, 0x35)
     assert await pop_event(dut) == 0x035
 
-    # A control boundary also prevents a stale prefix from qualifying the next
+    # Why: without the control boundary a stale prefix could qualify the next
     # recovered event.
     await send_frame(dut, 0xE0)
     _, error = await mmio(
@@ -348,14 +352,16 @@ async def ps2_keyboard_serial_mmio_contract(dut) -> None:
     await send_frame(dut, 0x2D)
     assert await pop_event(dut) == 0x02D
 
-    # UART injection is independent of the physical receiver enable and uses
-    # the exact same 10-bit software event representation.
+    # Why: UART injection must not depend on the physical receiver enable and
+    # must use the same 10-bit software event representation, so software
+    # cannot tell the sources apart.
     await clear_all(dut, enabled=False)
     await inject_event(dut, 0x375)
     assert await pop_event(dut) == 0x375
 
-    # A real PS/2 completion wins a simultaneous UART push. The UART valid is
-    # retained and accepted on the following cycle, preserving exact order.
+    # Why: a real PS/2 completion wins a simultaneous UART push; the UART valid
+    # must be retained and accepted on the following cycle, or order or the
+    # event would be lost.
     await clear_all(dut, enabled=True)
     await send_through_parity(dut, 0x1C)
     dut.ps2_data_i.value = 1
@@ -374,8 +380,9 @@ async def ps2_keyboard_serial_mmio_contract(dut) -> None:
     dut.ps2_data_i.value = 1
     assert [await pop_event(dut) for _ in range(2)] == [0x01C, 0x11D]
 
-    # UART also wins a simultaneous software INJECT request. The MMIO request
-    # is backpressured and succeeds only after its own event can be stored.
+    # Why: UART also wins a simultaneous software INJECT request, so the MMIO
+    # request must be backpressured and succeed only after its own event can be
+    # stored.
     dut.inject_event_i.value = 0x220
     dut.inject_valid_i.value = 1
     dut.mmio_request_address_i.value = INJECT
@@ -395,8 +402,8 @@ async def ps2_keyboard_serial_mmio_contract(dut) -> None:
     assert not int(dut.mmio_response_error_o.value)
     assert [await pop_event(dut) for _ in range(2)] == [0x220, 0x121]
 
-    # Physical completion similarly backpressures a legal MMIO injection, so
-    # both sources receive success only for the events actually enqueued.
+    # Why: a physical completion also backpressures a legal MMIO injection, so
+    # each source reports success only for events actually enqueued.
     await send_through_parity(dut, 0x22)
     dut.ps2_data_i.value = 1
     await Timer(1370, unit="ns")
@@ -418,8 +425,8 @@ async def ps2_keyboard_serial_mmio_contract(dut) -> None:
     await RisingEdge(dut.clk_i)
     assert [await pop_event(dut) for _ in range(2)] == [0x022, 0x123]
 
-    # A full FIFO backpressures UART without loss. A same-cycle DATA pop makes
-    # one slot and accepts the held event, leaving the count full.
+    # Why: a full FIFO must backpressure UART without loss; a same-cycle DATA
+    # pop makes one slot and accepts the held event, so the count stays full.
     await clear_all(dut)
     for event in range(0x40, 0x48):
         await inject_event(dut, event)
@@ -435,8 +442,8 @@ async def ps2_keyboard_serial_mmio_contract(dut) -> None:
         0x248,
     ]
 
-    # CONTROL clear has priority over held UART input. The event is accepted
-    # only after the clear boundary and therefore remains as the sole entry.
+    # Why: CONTROL clear has priority over held UART input, so the event is
+    # accepted only after the clear boundary and remains the sole entry.
     await inject_event(dut, 0x055)
     dut.inject_event_i.value = 0x155
     dut.inject_valid_i.value = 1
@@ -452,7 +459,8 @@ async def ps2_keyboard_serial_mmio_contract(dut) -> None:
     assert await pop_event(dut) == 0x155
     assert (await read_status(dut) >> 3) & 0xF == 0
 
-    # The software-visible INJECT register enforces the same event encoding.
+    # Why: the software-visible INJECT register must enforce the same event
+    # encoding, or software could enqueue events the receiver never produces.
     _, error = await mmio(dut, INJECT, write=True, data=0x2AA, strobe=0xF)
     assert error == 0 and await pop_event(dut) == 0x2AA
     _, error = await mmio(dut, INJECT, write=True, data=0x400, strobe=0xF)

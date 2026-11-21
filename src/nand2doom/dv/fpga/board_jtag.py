@@ -11,7 +11,8 @@ from cocotb.triggers import ReadOnly, RisingEdge
 
 from src.common.dv.jtag.vjtag_stub_host import StubHost
 
-# W make/break and Up (extended) make/break, split across two 4-byte batches.
+# Ref: PS/2 scan code set 2: W make/break and Up (extended) make/break, split
+# across two 4-byte batches.
 BATCHES = (bytes([0x1D, 0xF0, 0x1D, 0xE0]), bytes([0x75, 0xE0, 0xF0, 0x75]))
 EVENTS = [0x01D, 0x11D, 0x275, 0x375]
 

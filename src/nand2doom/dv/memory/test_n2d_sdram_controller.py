@@ -15,7 +15,8 @@ from src.nand2doom.dv.memory.sdram_pin_model import (
 
 MAX_CYCLES = int(os.environ.get("DV_MAX_CYCLES", "12000"))
 POISON = 0xD15A
-# Line service from acceptance edge to registered response (wiki/src/nand2doom/rtl/memory/mas.md).
+# Ref: line service from acceptance edge to registered response
+# (wiki/src/nand2doom/rtl/memory/mas.md).
 LATENCY = {("read", "closed"): 10, ("read", "hit"): 9, ("read", "miss"): 11,
            ("write", "closed"): 9, ("write", "hit"): 8, ("write", "miss"): 10}
 
@@ -47,7 +48,8 @@ def check_model_rejects_violations() -> None:
     for now, cmd, bank, address in ((10, ACTIVE, 0, 5), (11, READ, 0, 0), (19, NOP, 0, 0),
                                     (20, PRECHARGE, 0, 0), (21, ACTIVE, 0, 6), (22, WRITE, 0, 0)):
         legal.edge(now, cmd, bank, address, 0, 0, 1 if cmd == WRITE else 0)
-    # tRC (two clocks) is implied by one-clock tRAS plus tRP at 25 MHz.
+    # Why: there is no separate tRC case, because at 25 MHz one-clock tRAS plus
+    # tRP already implies tRC (two clocks).
     expect("tRP violation", [(10, ACTIVE, 0, 5), (12, PRECHARGE, 0, 0), (12, ACTIVE, 0, 6)])
     expect("tRCD violation", [(10, ACTIVE, 0, 5), (10, READ, 0, 0)])
     expect("tRFC violation", [(10, REFRESH, 0, 0), (11, ACTIVE, 0, 5)])
@@ -126,8 +128,9 @@ async def sdram_pin_timing_contract(dut):
                         cycle["value"] - accepted - 1)
         raise AssertionError("SDRAM transaction timeout")
 
-    # Directed bursts: byte enables become per-beat DQM, the line lands at
-    # the mapped bank/row/column, and each open-row case has its latency.
+    # Why: each directed burst pins one mapping: byte enables become per-beat
+    # DQM, the line lands at the mapped bank/row/column, and each open-row case
+    # has its latency.
     async def directed(write, address, data=0, enables=0, case="hit"):
         hits, activates = model.row_hits, model.activates
         observed, error, latency = await transact(write, address, data, enables)
@@ -146,11 +149,12 @@ async def sdram_pin_timing_contract(dut):
         [(line0 >> (16 * beat)) & 0xFFFF for beat in range(8)], "burst write beat order"
     observed = await directed(False, 0x001230, case="hit")
     assert observed == line0, f"CAS-two burst read expected={line0:032x} observed={observed:032x}"
-    # Same bank, different row: precharge only that bank, then activate.
+    # Why: same bank, different row: only that bank may be precharged before
+    # the activate, or other banks lose their open rows.
     patch = int.from_bytes(bytes(0xE0 + i for i in range(16)), "little")
     other_row = 0x1001230
     assert split(other_row)[0] == bank and split(other_row)[1] != row
-    await directed(True, 0x000800, 0, 0x0000, "closed")  # open bank one
+    await directed(True, 0x000800, 0, 0x0000, "closed")  # Why: opens bank one, which the single-bank precharge must keep open
     await directed(True, other_row, patch, 0x00F0, "miss")
     assert 1 in model.rows, "single-bank precharge must keep other banks open"
     observed = await directed(False, other_row, case="hit")
@@ -167,9 +171,10 @@ async def sdram_pin_timing_contract(dut):
     _, error, _ = await transact(False, 0x1000, 0, 0x0001)
     assert error, "read with byte enables was not rejected"
 
-    # Back-to-back random traffic (each request presented on the clock after
-    # the previous response): every response matches a byte-level reference,
-    # refresh interrupts open rows, and the deadline holds across intervals.
+    # Why: back-to-back random traffic (each request presented on the clock
+    # after the previous response) reaches refresh interleavings the directed
+    # cases miss: every response must match a byte-level reference, refresh
+    # interrupts open rows, and the deadline holds across intervals.
     regions = [rng.randrange(0, 1 << 26, 1 << 16) for _ in range(3)]
     shadow: dict[int, int] = {}
     hits_before, activates_before = model.row_hits, model.activates

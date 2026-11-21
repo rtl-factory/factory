@@ -42,7 +42,7 @@ RASTER_CYCLES = 800 * 525
 POST_INPUT_MAX_CYCLES = 50_000_000
 EXPECTED_SCENE_CRC = 0x9DA80229
 EXPECTED_SCENE_VGA_CRC = 0x516470A8
-# Gameplay after the injected turns is real-time play, so its exact pixels
+# Why: gameplay after the injected turns is real-time play, so its exact pixels
 # depend on CPU timing and are not pinned. The settled frame after both turns
 # must instead be a sane rendered scene. Observed values on passing runs: 129
 # to 136 palette indices, about 58,000 of 64,000 non-black pixels on all 200
@@ -226,10 +226,10 @@ async def doom_boot_render_contract(dut) -> None:
 async def _run_doom_contract(dut, evidence, artifact) -> None:
     seed = int(os.environ["DV_SEED"])
     maximum = int(os.environ["DV_MAX_CYCLES"])
-    # The input witness matches fixed call sites in I_StartTic, I_GetEvent and
-    # NetUpdate. The production profile (-O2, engine LTO) inlines them, so this
-    # gate builds the production variant with the -Os, no-LTO engine profile,
-    # as render verification does, into its own output (#100).
+    # Why: the input witness matches fixed call sites in I_StartTic, I_GetEvent
+    # and NetUpdate. The production profile (-O2, engine LTO) inlines them, so
+    # this gate builds the production variant with the -Os, no-LTO engine
+    # profile, as render verification does, into its own output (#100).
     output = REPO_ROOT / "workdir/software/n2d_doom_gameplay"
     manifest = build_doom(output, REPO_ROOT, None, engine_opt="Os", engine_lto=False)
     assert json.loads((output / "manifest.json").read_text()) == manifest
@@ -278,8 +278,9 @@ async def _run_doom_contract(dut, evidence, artifact) -> None:
     written = bytearray(FRAME_BYTES)
     health = {"traps": [], "markers": set(), "framebuffer_transactions": 0}
     trap_monitor = cocotb.start_soon(observe_trap_events(dut, health))
-    # Attach before the first CPU resume: startup clears these BSS words using
-    # byte stores, and no counter value may be guessed at scene completion.
+    # Why: attach before the first CPU resume: startup clears these BSS words
+    # using byte stores, and no counter value may be guessed at scene
+    # completion.
     retirement_monitor = cocotb.start_soon(observe_gameplay_retirements(
         dut, gameplay, input_witness, input_armed, artifact))
     completion_monitor = cocotb.start_soon(observe_completion_events(dut, health))
@@ -330,8 +331,9 @@ async def _run_doom_contract(dut, evidence, artifact) -> None:
             or marker & 0xfffff000 == 0xd00de000
         ]
         assert not failures, f"Doom runtime failure/exit markers={failures}"
-        # The scene marker follows the scene's swap request; once that swap
-        # completes, the front bank holds the scene until the next request.
+        # Why: the scene marker follows the scene's swap request, and once that
+        # swap completes the front bank holds the scene until the next request,
+        # so the front frame can be checked then.
         if (SCENE_MARKER in health["markers"] and all(written)
                 and not int(dut.framebuffer_swap_pending_o.value)):
             break
@@ -402,8 +404,9 @@ async def _run_doom_contract(dut, evidence, artifact) -> None:
     await send_frame(dut, 0x74)
     await _wait_gameplay(dut, gameplay, "make", 0, health)
     await _wait_gameplay(dut, gameplay, "turn", 0, health)
-    # Release after command construction, before waiting for the slow renderer
-    # and player update. Otherwise held input accumulates timing-dependent tics.
+    # Why: release after command construction, before waiting for the slow
+    # renderer and player update. Otherwise held input accumulates
+    # timing-dependent tics.
     await FallingEdge(dut.clk_i)
     await send_frame(dut, 0xE0)
     await send_frame(dut, 0xF0)
@@ -416,7 +419,7 @@ async def _run_doom_contract(dut, evidence, artifact) -> None:
     gameplay.begin_phase(1, int(dut.system_tick_o.value))
     input_witness.arm(int(dut.system_tick_o.value))
     input_armed.set()
-    # Phase preparation may occur mid-BuildNewTic. Synchronize to a fresh
+    # Why: phase preparation may occur mid-BuildNewTic. Synchronize to a fresh
     # architectural entry before sending MAKE; partial seams remain evidence.
     await with_timeout(input_boundary.wait(), POST_INPUT_MAX_CYCLES * CLOCK_PERIOD_NS, "ns")
     input_witness.start_make(await next_writable_input_cycle(dut, input_witness.boundary_tick))
@@ -424,7 +427,7 @@ async def _run_doom_contract(dut, evidence, artifact) -> None:
     assert response.status == ST_OK
     input_witness.ack_make(int(dut.system_tick_o.value))
     sequence = (sequence + 1) & 0xff
-    # The latched event covers the same MAKE invocation's successful EMPTY
+    # Why: the latched event covers the same MAKE invocation's successful EMPTY
     # read/zero/returns, before command construction. ACK completion serializes
     # parser transactions. Neither ACK nor retired EMPTY is a device margin.
     await with_timeout(input_ready.wait(), POST_INPUT_MAX_CYCLES * CLOCK_PERIOD_NS, "ns")
@@ -442,8 +445,9 @@ async def _run_doom_contract(dut, evidence, artifact) -> None:
     settled = gameplay.settled_frame(1)
     later_crc = settled["crc"]
     assert later_crc != before_uart_crc, "UART gameplay turn did not change the rendered state"
-    # The settled frame is the first one drawn after the UART turn, its break
-    # and the neutral barrier; every earlier completed frame predates it.
+    # Why: the settled frame is the first one drawn after the UART turn, its
+    # break and the neutral barrier, so every earlier completed frame predates
+    # the input and must include the pre-turn CRC.
     earlier_crcs = [frame["crc"] for frame in gameplay.frames[:gameplay.frames.index(settled)]]
     assert before_uart_crc in earlier_crcs
     assert later_crc not in earlier_crcs, "UART gameplay turn repeated an earlier rendered frame"
@@ -461,10 +465,10 @@ async def _run_doom_contract(dut, evidence, artifact) -> None:
     assert gameplay_vga_crc != vga_crc, "input did not change the committed VGA scene"
     gameplay.check_final()
     gameplay.save(artifact)
-    # Report the actual images before the sanity assertions, so a failing run
-    # has inspectable evidence rather than only counts. The CRCs are evidence
-    # of what was rendered, not expectations: real-time play after injected
-    # input depends on CPU timing, so correct speed changes move them.
+    # Why: report the actual images before the sanity assertions, so a failing
+    # run has inspectable evidence rather than only counts. The CRCs are
+    # evidence of what was rendered, not expectations: real-time play after
+    # injected input depends on CPU timing, so correct speed changes move them.
     cocotb.log.info(
         "DOOM GAMEPLAY OBSERVED indexed=%08x vga=%08x frame_colors=%d "
         "frame_pixels=%d frame_rows=%d vga_colors=%d vga_pixels=%d vga_rows=%d "
@@ -482,7 +486,8 @@ async def _run_doom_contract(dut, evidence, artifact) -> None:
         f"gameplay VGA raster is mostly black: {gameplay_nonblack} non-black pixels"
     )
     assert gameplay_rows >= GAMEPLAY_VGA_MIN_NONBLACK_ROWS, f"gameplay VGA rows {gameplay_rows}"
-    # Finish cancelling every monitor before the test returns; see stop_monitors.
+    # Why: every monitor is cancelled before the test returns, or a monitor
+    # left running fails the next test; see stop_monitors.
     await stop_monitors(retirement_monitor, frame_observer, trap_monitor,
                         completion_monitor, *cache_monitors)
     cocotb.log.info(

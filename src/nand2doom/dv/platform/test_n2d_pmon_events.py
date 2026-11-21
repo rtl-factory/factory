@@ -40,8 +40,8 @@ class Bench:
         self.dut = dut
         self.valid = [0, 0, 0]
         self.write = [0, 0, 0]
-        self.prefetch = 0        # the D request is a next-line prefetch
-        self.outstanding = None  # (master, write, cycles until response, owner event)
+        self.prefetch = 0
+        self.outstanding = None  # Why: None or one (master, write, cycles until response, owner event), because the controller holds one transaction outstanding
         self.counts = {33: 0, 77: 0, 29: 0, 30: 0, 32: 0, 34: 0, 14: 0, 18: 0, 19: 0,
                        **{event_id: 0 for event_id in OWNER_EVENTS}}
         self.contention_cycles = 0
@@ -77,7 +77,8 @@ class Bench:
         downstream_valid = int(dut.memory_request_valid_o.value)
         ready = int(dut.master_request_ready_o.value)
         refused = downstream_valid and not memory_ready
-        # Shared n2l meaning: downstream request valid && !ready.
+        # Ref: core MAS "Performance monitor": 33 keeps its nand2linux meaning,
+        # downstream request valid && !ready.
         assert _bit(events, 33) == int(refused), (events, downstream_valid, memory_ready)
         waiting = any(self.valid[m] and not (ready >> m) & 1 for m in range(3))
         assert _bit(events, 77) == int(waiting)
@@ -141,23 +142,25 @@ async def pmon_platform_line_events(dut) -> None:
     bench = Bench(dut)
     await bench.reset()
 
-    # Contention with a ready backend: two masters, the downstream request is
-    # accepted at once; the loser waits (77) but there is no backpressure (33).
+    # Why: with a ready backend the downstream request is accepted at once, so
+    # two contending masters raise MEM_MASTER_WAIT (77) for the loser but no
+    # MEM_BACKPRESSURE (33).
     bench.valid = [1, 1, 0]
     await bench.step(memory_ready=1, latency=3)
     assert bench.counts[33] == 0 and bench.counts[77] == 1
-    # The loser keeps waiting behind the outstanding transaction while the
-    # downstream request is idle: still 77 only.
+    # Why: the loser waits behind the outstanding transaction while the
+    # downstream request is idle, which is master wait (77), not backpressure
+    # (33).
     for _ in range(3):
         await bench.step(memory_ready=1, latency=3)
     assert bench.counts[33] == 0 and bench.counts[77] == 4
-    await bench.step(memory_ready=1, latency=3)  # D accepted after the response
+    await bench.step(memory_ready=1, latency=3)  # Why: D is accepted only after the response, so the backpressure count stays zero
     while bench.outstanding is not None:
         await bench.step(memory_ready=1, latency=3)
     assert bench.counts[33] == 0
 
-    # Real downstream refusal: one master valid, backend not ready for four
-    # clocks, then accepted.
+    # Why: one master valid with the backend not ready for four clocks is a
+    # real downstream refusal, so backpressure (33) must count exactly four.
     bench.valid = [0, 1, 0]
     bench.write = [0, 1, 0]
     for _ in range(4):
@@ -168,7 +171,8 @@ async def pmon_platform_line_events(dut) -> None:
         await bench.step(memory_ready=1, latency=2)
     assert bench.counts[33] == 4 and bench.counts[19] == 1 and bench.counts[32] == 1
 
-    # Randomized traffic cross-checks every cycle against the arbiter.
+    # Why: randomized traffic cross-checks every cycle against the arbiter,
+    # reaching overlaps the directed cases miss.
     bench.write = [0, 0, 0]
     for _ in range(3000):
         for master in range(3):

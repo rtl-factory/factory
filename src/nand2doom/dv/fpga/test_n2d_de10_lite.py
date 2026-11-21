@@ -25,8 +25,8 @@ async def board_serial_sdram_contract(dut):
     model, initial = SdramPinModel(), []
 
     async def read_return(beats):
-        # CL2 data is valid by device n+2, launched after n+1+tAC;
-        # each later beat follows one device clock after the previous one.
+        # Ref: IS42S16320D datasheet: CL2 data is valid by device clock n+2, launched
+        # after n+1+tAC; each later beat follows one device clock after the previous.
         await Timer(46, unit="ns")
         for index, value in enumerate(beats):
             dut.dram_data_i.value = value
@@ -87,8 +87,9 @@ async def board_serial_sdram_contract(dut):
 
     assert await exchange(CMD_PING, 1) == (0x3144324e, 1)
     for bank in range(4):
-        # The last word of each bank's row 0; the two-word poke crosses into
-        # the next bank (or into row 1 after bank 3).
+        # Why: the last word of each bank's row 0, so the two-word poke crosses
+        # into the next bank (or into row 1 after bank 3) and a wrong bank/row
+        # split shows.
         address = join(bank, 0, 1022)
         value = 0x12345678 ^ (bank * 0x11111111)
         await exchange(CMD_POKE, 2 + bank * 3, address=address,
@@ -100,7 +101,6 @@ async def board_serial_sdram_contract(dut):
         assert model.words[address + 2] == (((value >> 16) & 0xff00) | 0xad)
     assert model.writes and model.bursts and len(model.refresh) > 5
     assert max(b - a for a, b in zip(model.refresh, model.refresh[1:])) <= 195
-    # Host keys over the board's Virtual JTAG wrapper into the input FIFO.
     await check_jtag_keys(dut.u_board)
     task.cancel()
     cocotb.log.info("PASS external falling-phase SDRAM, burst-eight, four banks, row crossing, DQM, UART, JTAG keys")

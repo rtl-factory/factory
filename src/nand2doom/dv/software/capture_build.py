@@ -19,7 +19,7 @@ def expected_results():
     values = [v for row in rows for v in row]
     values += [512,2,0,0x4332444e, 0,0,1,0, 3,4,1,0]
     values += [0,0,0,0, 3,4,0,0, 3,4,1,0, 3,4,1,0, 0,0,1,0, 0,0,2,0]
-    values += [0,0,1,0]  # eligible request injected by scene service; acquired before READY
+    values += [0,0,1,0]  # Why: models the eligible request the scene service injects, acquired before READY, the ordering the capture must handle
     values += [len(values)]
     return values
 

@@ -3,7 +3,8 @@ from types import SimpleNamespace
 
 from .doom_gameplay import GameplayTrace, MAKE, BREAK, TURN, COMPLETION
 
-# Raw ABI fixtures are independent of the ledger's state machine/SEAMS table.
+# Why: raw ABI fixtures are written independently of the ledger's state machine
+# and SEAMS table, so a shared mistake cannot pass both.
 OFFSETS = {'entry': 0, 'input_call': 48, 'post_input': 52, 'process_call': 60,
            'slot': 176, 'command_call': 188, 'publish': 256, 'return': 288}
 KEY_OFFSETS = {'status': 8, 'zero': 20, 'empty_return': 24, 'data': 32,
@@ -85,7 +86,8 @@ def rows(a, slot=7, neutral_before=0):
             load('status', 0x20002004, 0x1002)
             emit('zero', rd_write=True, rd=10, rd_data=0)
             emit('empty_return', next_pc=a.key_return_target)
-        # Actual BREAK keyup exits I_GetEvent directly, without EMPTY/zero.
+        # Why: an actual BREAK keyup exits I_GetEvent directly, so this vector
+        # has no EMPTY/zero steps.
         emit('event_return', next_pc=a.pc['post_input'])
         load('post_input', a.symbols['loop_interface'], 0x7000)
         call('process_call', a.symbols['D_ProcessEvents'])

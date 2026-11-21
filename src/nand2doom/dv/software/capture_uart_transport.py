@@ -40,8 +40,9 @@ class CaptureUartTransport:
 
     @resume
     async def read(self, count):
-        # Deliberately fragment. The production Client owns framing, exact
-        # lengths, CRC, deadlines and poison/no-retry behavior.
+        # Why: deliberately fragment reads so the production Client's framing,
+        # exact lengths, CRC, deadlines and poison/no-retry behavior are
+        # exercised, not bypassed.
         count = min(count, len(self.received), 257)
         data = bytes(self.received[:count])
         del self.received[:count]

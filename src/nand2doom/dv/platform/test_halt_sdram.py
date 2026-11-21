@@ -16,11 +16,11 @@ from src.nand2doom.scripts.host.n2d_uart_debug_host import (
 )
 
 BASE = 0x10000
-# D-cache geometry of the fixture, set by _geometry() at test start: dirty
-# lines that fill every way of every set, their byte span, and the
-# wiki/src/nand2doom/rtl/memory/mas.md "Maintained Halt bound" for that many dirty lines: a 24-clock
-# slot per line plus CPU drain 256, victim buffer drain 24 (serial: the walk
-# starts only after the buffer empties), I-cache walk 514 and coordination 16.
+# Ref: D-cache geometry of the fixture, set by _geometry() at test start: dirty lines that fill
+# every way of every set, their byte span, and the wiki/src/nand2doom/rtl/memory/mas.md "Maintained
+# Halt bound" for that many dirty lines: a 24-clock slot per line plus CPU drain 256, victim buffer
+# drain 24 (serial: the walk starts only after the buffer empties), I-cache walk 514 and
+# coordination 16.
 HALT_FIXED = 256 + 24 + 514 + 16
 LINES = 1024
 SPAN = LINES * 16
@@ -41,8 +41,9 @@ def cycle():
 
 
 def fill_program(lines, outstanding=False):
-    # Contiguous sixteen-byte lines use every way of every set without
-    # eviction. A count above the 12-bit immediate is built as 4096 + low.
+    # Why: contiguous sixteen-byte lines use every way of every set without
+    # eviction, so every line is still dirty at the Halt. A count above the
+    # 12-bit immediate is built as 4096 + low.
     count = ((encode_i(lines, 0, 0, 2),) if lines < 2048 else
              (0x00001137, encode_i(lines - 4096, 2, 0, 2)))
     prefix = (0x000100b7, *count,
@@ -52,7 +53,8 @@ def fill_program(lines, outstanding=False):
     if not lines:
         prefix = prefix[len(count) + 5:]
     if outstanding:
-        # Repeated cold reads in a distinct tag, after the dirty stores finish.
+        # Why: repeated cold reads in a distinct tag, after the dirty stores
+        # finish, keep a data request outstanding when the Halt arrives.
         return prefix + (0x00040337, encode_i(0, 6, 2, 7, 0x03),
                          encode_i(16, 6, 0, 6), encode_b(-8, 0, 0, 0))
     return prefix + (encode_i(1, 5, 0, 5), 0xffdff06f)
@@ -70,7 +72,7 @@ class PinMemory:
         self.retired_stores = []
         self.counter = []
         self.marker = False
-        # Stall the controller port on the first line response after the
+        # Why: stall the controller port on the first line response after the
         # marker (the outstanding loop's first data refill), so the next
         # request, the loop's instruction refill, is the blocked one
         # independent of SDRAM latency.
@@ -219,7 +221,8 @@ async def full_dirty_halt_contract(dut):
     assert int(dut.halt_ack_o.value)
     count = len(memory.counter)
     tx_edges = memory.tx_starts
-    # Preserve diagnostics even for old4096: no second Halt, Resume or reset.
+    # Why: no second Halt, Resume or reset, so the diagnostics are preserved
+    # even for old4096.
     await Timer(2, unit="ms")
     assert len(memory.counter) == count, "timeout must retain CPU Halt"
     assert memory.tx_starts == tx_edges, "no unsolicited late response"
@@ -297,8 +300,8 @@ async def halt_boundaries_contract(dut):
         async def block_cpu():
             dut.stall_i.value = 1
             await Timer(4, unit="us")
-            # Early permanent stall catches the first instruction refill;
-            # the later bounded stall catches an outstanding data request.
+            # Why: the early permanent stall catches the first instruction
+            # refill and the later bounded stall an outstanding data request.
             # The D-cache prefetches the line after each install, so a held
             # D-cache prefetch may sit beside the instruction refill, and the
             # owed load may wait behind its own line's prefetch.
@@ -329,8 +332,9 @@ async def halt_boundaries_contract(dut):
             assert first["halfwords"] == 0
             assert int(dut.halt_ack_o.value) == (0 if outstanding else 1)
             frozen = memory.retired
-            # Diagnostics deliberately prove device rejection; production Client
-            # must poison on the original failure (covered by host unit tests).
+            # Why: these diagnostics deliberately prove device rejection; a
+            # production Client must poison on the original failure instead
+            # (covered by host unit tests).
             denied, _ = await host.exchange(CMD_PEEK, address=BASE, count=1)
             assert denied.status == 7 and denied.words == ()
             denied, _ = await host.exchange(CMD_RESUME)
@@ -342,13 +346,14 @@ async def halt_boundaries_contract(dut):
             dut.stall_i.value = 0
             dut.reject_write_i.value = 0
             tx_edges = memory.tx_starts
-            # Removing the simulated fault is not another Halt command.
+            # Why: removing the simulated fault is not another Halt command, so
+            # the wait shows the original Halt alone completes the drain.
             await Timer(100, unit="us")
-            # The permanent stall holds an instruction refill (master 1) with
-            # nothing in execute. Under the drain contract (wiki/src/nand2doom/rtl/core/mas.md "Reset
-            # and debug behavior") a fetched instruction that has not entered
-            # execute is discarded: releasing the refill completes the drain
-            # with no retirement, and Resume refetches it from the retained PC.
+            # Ref: the permanent stall holds an instruction refill (master 1) with nothing in
+            # execute. Under the drain contract (wiki/src/nand2doom/rtl/core/mas.md "Reset and debug
+            # behavior") a fetched instruction that has not entered execute is discarded: releasing
+            # the refill completes the drain with no retirement, and Resume refetches it from the
+            # retained PC.
             assert memory.retired == frozen
             assert int(dut.halt_ack_o.value)
             assert memory.tx_starts == tx_edges, "late completion must not emit an unsolicited reply"
@@ -364,8 +369,9 @@ async def halt_boundaries_contract(dut):
         for address in sorted({BASE, BASE + max(0, lines - 1) * 16, BASE + SPAN - 4}):
             readback, _ = await host.exchange(CMD_PEEK, address=address, count=1)
             assert readback.status == 0 and readback.words == (memory.word(address),)
-        # No retirement during maintained Halt; resume from saved PC/registers,
-        # without replaying any original store or resetting the live counter.
+        # Why: maintained Halt must allow no retirement, and resume must
+        # continue from the saved PC and registers without replaying any
+        # original store or resetting the live counter.
         retired_before = memory.retired
         counter_before = memory.counter[-1] if memory.counter else 0
         resume, _ = await host.exchange(CMD_RESUME)
