@@ -108,7 +108,7 @@ You win twice: fewer tokens, and a sharper hook for the agent to hang its thinki
 
 ## Skill mechanics
 
-The skill-specific branch of [writing for agents](#writing-for-agents): what changes when the document is a skill (frontmatter, the invocation choice, and router skills).
+The skill-specific branch of [writing for agents](#writing-for-agents): what changes when the document is a skill (frontmatter, the invocation choice, and router skills). Everything else about writing it is in [writing for agents](#writing-for-agents).
 
 ### Invocation
 

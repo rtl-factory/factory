@@ -19,7 +19,7 @@ Each project lists its targets in `src/<project>/cfg/targets.json`:
 | `clock_hz`, `max_cycles` | Passed to the test as `DV_CLOCK_HZ`, `DV_MAX_CYCLES` |
 | `timeout_seconds` | Time budget of the test run (compile gets a fixed extra allowance) |
 | `parameters`, `public_depth` | Top-level parameter overrides; Verilator public-signal depth |
-| `level` | Regression level: `L0`, `L1`, `L2` (`ci-levels.md`), or `manual` (never run by `--all`) |
+| `level` | Regression level: `L0`, `L1`, `L2` ([CI levels](../../bkm/flow.md#ci-levels)), or `manual` (never run by `--all`) |
 | `wrapper` | Optional: module and arguments that prepare the program image and then run the target with `--direct`; `{output}` and `{workdir}` are filled in |
 | `expected_fatal` | Optional: makes it a negative test; `file`, `hierarchy`, `message` (or `any_of` a list of them) must appear in the log |
 
