@@ -13,6 +13,8 @@ src/<project>/cfg/targets.json into:
 and every formal target of its src/<project>/fv/<block>/<target>.sby into a test
 <target>.formal, whose inputs are the .sby file and the files it copies.
 
+unit_tests() makes one L0 test per tests/ folder of a package: pytest on that folder.
+
 A wrapped target (one whose wrapper prepares a program image first) runs through
 the runner's own test command instead, without a sandbox and never cached,
 until its program builds become Bazel actions.
@@ -238,3 +240,32 @@ def _wrapped_test(target_name, project, tags, timeout, python):
         tags = tags + ["external", "no-sandbox", "no-cache", "wrapped"],
         timeout = "eternal",
     )
+
+def unit_tests(deps = []):
+    """One pytest test, `<folder>.unit`, per tests/ folder in this package.
+
+    Args:
+      deps: Python libraries the tests import besides every project's and the tools'.
+    """
+    for folder in native.glob(["**/tests"], exclude_directories = 0, allow_empty = True):
+        if not folder.endswith("tests"):
+            continue
+        owner = folder[:-len("tests")].rstrip("/")
+        py_test(
+            name = (owner.replace("/", "_") or native.package_name().split("/")[-1]) + ".unit",
+            srcs = ["//tools/bazel:pytest_main.py"],
+            main = "//tools/bazel:pytest_main.py",
+            args = [native.package_name() + "/" + folder],
+            data = native.glob([folder + "/**"]) + ["@verilator//:verilator"],
+            env = {"UNIT_PATH_PREPEND": "$(rootpaths @verilator//:verilator)"},
+            deps = deps + ["//src/%s:python" % p for p in PROJECTS] + ["//tools:python"] + [
+                requirement("cocotb"),
+                requirement("pillow"),
+                requirement("pytest"),
+            ],
+            # Why: unit tests read the checkout (registries, wiki pages, programs) and some
+            # write its workdir/ or download pinned inputs, so they run outside the sandbox
+            # and always run; they take seconds.
+            tags = ["L0", "external", "no-sandbox", "unit"],
+            timeout = "long",
+        )

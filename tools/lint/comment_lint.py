@@ -270,7 +270,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--update-baseline", action="store_true", help="rewrite the baseline to the current counts")
     parser.add_argument("--all", action="store_true", help="list every violation, ignoring the baseline")
     parser.add_argument("--base-baseline", type=Path,
-                        help="the base branch's baseline file; fail if this baseline is higher")
+                        help="the base branch's baseline file, relative to the checkout or absolute; "
+                             "fail if this baseline is higher (skipped when it does not exist)")
     args = parser.parse_args(argv)
 
     if args.paths:
@@ -300,8 +301,9 @@ def main(argv: list[str] | None = None) -> int:
         gone = sorted(set(baseline) - set(files))
         files = files + gone
     errors = check(found, baseline, files)
-    if args.base_baseline and args.base_baseline.exists():
-        errors += raised(baseline, json.loads(args.base_baseline.read_text()))
+    base = args.base_baseline and ROOT / args.base_baseline
+    if base and base.exists():
+        errors += raised(baseline, json.loads(base.read_text()))
     for e in errors:
         print(e)
     if errors:

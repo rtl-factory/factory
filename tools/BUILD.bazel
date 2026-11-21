@@ -1,4 +1,6 @@
+load("//tools/bazel:hdl.bzl", "unit_tests")
 load("@rules_python//python:py_library.bzl", "py_library")
+load("@rules_python//python:py_test.bzl", "py_test")
 
 # The tools' Python that tests import (tools.board, ...); tools with their own
 # package (sim, bazel) are not part of it.
@@ -8,4 +10,18 @@ py_library(
     data = glob(["**"], exclude = ["**/*.py", "BUILD.bazel"]),
     imports = [".."],
     visibility = ["//visibility:public"],
+)
+
+unit_tests()
+
+# The comment lint as an L0 test. CI writes the base branch's baseline to
+# workdir/lint/base-baseline.json first; without it the lint checks this tree only.
+py_test(
+    name = "comment_lint",
+    srcs = ["//tools/bazel:comment_lint_main.py"],
+    main = "//tools/bazel:comment_lint_main.py",
+    deps = [":python"],
+    args = ["--base-baseline", "workdir/lint/base-baseline.json"],
+    # Why: it lists the checkout's tracked files with git, which no sandbox or cache sees.
+    tags = ["L0", "external", "no-sandbox", "lint"],
 )
