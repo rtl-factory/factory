@@ -133,7 +133,9 @@ def hdl_project(name):
     )
     native.filegroup(
         name = "all_files",
-        srcs = native.glob(["**"], exclude = ["BUILD.bazel"]),
+        # Why: bytecode that running a script leaves behind is no input; it would rerun
+        # every action that reads the project.
+        srcs = native.glob(["**"], exclude = ["BUILD.bazel", "**/__pycache__/**", "**/*.pyc"]),
         visibility = ["//visibility:public"],
     )
     py_library(
@@ -288,7 +290,7 @@ def _quartus_image_impl(ctx):
         inputs = depset(ctx.files.srcs + [ctx.file.script, ctx.file._toolchain]),
         outputs = [out],
         # Why: Quartus is a licensed, per-host install outside Bazel, and the scripts
-        # build in the checkout's workdir/; QUARTUS_SH comes from the shell (or the pin).
+        # build in the checkout's workdir/; QUARTUS_SH comes from --action_env (or the pin).
         execution_requirements = {"local": "1", "no-remote": "1", "no-sandbox": "1"},
         use_default_shell_env = True,
         mnemonic = "Quartus",
