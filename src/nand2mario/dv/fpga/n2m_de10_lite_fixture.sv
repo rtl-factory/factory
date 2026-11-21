@@ -88,8 +88,9 @@ module n2m_de10_lite_fixture #(
         assert (!(board_drive && model_drive)) else $fatal(1, "n2m_de10_lite_fixture: DRAM_DQ contention");
     end
 
-    n2m_sdram_model #(
-        .FILL_SEED (FILL_SEED)
+    n2a_sdram_model #(
+        .INIT_REFRESHES (8),
+        .FILL_SEED      (FILL_SEED)
     ) u_sdram (
         .clk_i   (device_clk),
         .cke_i   (DRAM_CKE),
@@ -102,6 +103,10 @@ module n2m_de10_lite_fixture #(
         .dqm_i   ({dram_udqm, dram_ldqm}),
         .dq_i    (board_dq),
         .dq_oe_i (board_drive),
-        .dq_o    (model_dq)
+        .dq_o    (model_dq),
+        .preload_valid_i       (1'b0),
+        .preload_address_i     ('0),
+        .preload_data_i        ('0),
+        .preload_byte_enable_i ('0)
     );
 endmodule

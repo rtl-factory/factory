@@ -1901,7 +1901,7 @@
         "src/nand2doom/dv/io/n2d_jtag_system_lint.v",
         "src/nand2doom/rtl/memory/n2d_sdram_controller.sv",
         "src/nand2doom/rtl/memory/n2d_memory_controller.sv",
-        "src/nand2doom/dv/memory/n2d_sdram_device_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model.sv",
         "src/nand2doom/dv/platform/n2d_sdram_system.sv",
         "src/nand2doom/dv/platform/n2d_perf_tb.sv"
       ],
@@ -1964,7 +1964,7 @@
         "src/nand2doom/dv/io/n2d_jtag_system_lint.v",
         "src/nand2doom/rtl/memory/n2d_sdram_controller.sv",
         "src/nand2doom/rtl/memory/n2d_memory_controller.sv",
-        "src/nand2doom/dv/memory/n2d_sdram_device_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model.sv",
         "src/nand2doom/dv/platform/n2d_sdram_system.sv",
         "src/nand2doom/dv/platform/n2d_perf_tb.sv"
       ],
@@ -2091,7 +2091,7 @@
         "src/nand2doom/dv/io/n2d_jtag_system_lint.v",
         "src/nand2doom/rtl/memory/n2d_sdram_controller.sv",
         "src/nand2doom/rtl/memory/n2d_memory_controller.sv",
-        "src/nand2doom/dv/memory/n2d_sdram_device_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model.sv",
         "src/nand2doom/dv/platform/n2d_sdram_system.sv",
         "src/nand2doom/dv/platform/n2d_perf_tb.sv"
       ],

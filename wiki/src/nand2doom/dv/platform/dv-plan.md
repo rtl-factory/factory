@@ -35,7 +35,7 @@ proves serial loading.
 | --- | --- | --- |
 | `n2d_c_runtime_system` | Fast model | Serial UART Load of the manifest |
 | `n2d_integrated_system` | Fast model | Simulation-only 256-byte byte-enabled preload of the exact manifest while product reset is asserted; excluded under `SYNTHESIS`; assertion rejects use after release |
-| `n2d_sdram_system` | Product `n2d_memory_controller` and `n2d_sdram_device_model` | Preload; system held in reset until SDRAM initialization |
+| `n2d_sdram_system` | Product `n2d_memory_controller` and the common `n2a_sdram_model` | Preload; system held in reset until SDRAM initialization |
 
 Both fast wrappers run the same generated RV32IM/ILP32 image.
 `n2d_system_product` compiles only the synthesizable closure and structurally
@@ -54,7 +54,7 @@ replace the functional gate.
 | Target | Memory backend | Framebuffer geometry |
 | --- | --- | --- |
 | `n2d_perf_fast` | `n2d_integrated_system`: the arbiter plus the fast line model, three-cycle latency | full width (DE2-115) |
-| `n2d_perf_sdram` | `n2d_sdram_system`: the product `n2d_memory_controller` (arbiter plus `n2d_sdram_controller`) driving `n2d_sdram_device_model` | full width (DE2-115) |
+| `n2d_perf_sdram` | `n2d_sdram_system`: the product `n2d_memory_controller` (arbiter plus `n2d_sdram_controller`) driving the common `n2a_sdram_model` | full width (DE2-115) |
 | `n2d_perf_fast_half`, `n2d_perf_sdram_half` | as above | half width (DE10-Lite), `N2D_PERF_HALF_WIDTH` |
 
 Full width is the IPC measurement. Pinned first-scene CRCs: framebuffer
@@ -68,12 +68,10 @@ CRC over the doubled 320x200 image).
   after the scene marker with no swap pending and a fully written front bank.
   A framebuffer write while a swap is requested or pending ends the run with
   `write-while-swap-pending`.
-- **SDRAM device model.** `n2d_sdram_device_model`: mode must be burst
+- **SDRAM device model.** The common [`n2a_sdram_model`](../../../common/dv/sdram/dv-plan.md) with burst eight and the row-XOR-bank [bank map](../../rtl/memory/mas.md#sdram-controller), no fill: mode must be burst
   eight, sequential, CAS two; READ returns eight beats (beat k sampled on the
   (1+k)th edge); WRITE takes eight beats with per-beat DQM; per-bank open row;
-  single or all-bank precharge; spacing, interruption, turnaround and row
-  violations are fatal. Storage is indexed by `[25:1]` and inverts the
-  [bank map](../../rtl/memory/mas.md#sdram-controller). A traced line read takes 10,
+  spacing, interruption, turnaround and row violations are fatal. A traced line read takes 10,
   9 or 11 clocks plus one arbiter cycle.
 
 #### Command line

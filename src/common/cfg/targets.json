@@ -1,0 +1,693 @@
+{
+  "schema_version": 2,
+  "targets": {
+    "n2a_sdram_model_bl1": {
+      "kind": "cocotb",
+      "description": "Common SDRAM device model, burst one, bank-row-column map: masked writes, reads and preload against a shadow",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "sdram_model_contract",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0"
+    },
+    "n2a_sdram_model_bl8": {
+      "kind": "cocotb",
+      "description": "Common SDRAM device model, burst eight, row-XOR-bank map: masked bursts, burst order and preload against a shadow",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 8,
+        "ROW_XOR_BANK": 1
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "sdram_model_contract",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0"
+    },
+    "n2a_sdram_model_dq_outside_write_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (DQ driven outside a write burst) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "dq_outside_write",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: DQ driven outside a write burst"
+      }
+    },
+    "n2a_sdram_model_dq_turnaround_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (DQ bus turnaround violation) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "dq_turnaround",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: DQ bus turnaround violation"
+      }
+    },
+    "n2a_sdram_model_command_in_powerup_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (command inside the power-up wait) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "command_in_powerup",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: command inside the power-up wait"
+      }
+    },
+    "n2a_sdram_model_first_command_not_precharge_all_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (first command is not PRECHARGE ALL) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "first_command_not_precharge_all",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: first command is not PRECHARGE ALL"
+      }
+    },
+    "n2a_sdram_model_activate_before_mode_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (ACTIVATE before the mode register set) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "activate_before_mode",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: ACTIVATE before the mode register set"
+      }
+    },
+    "n2a_sdram_model_activate_open_bank_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (ACTIVATE to an open bank) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "activate_open_bank",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: ACTIVATE to an open bank"
+      }
+    },
+    "n2a_sdram_model_activate_after_refresh_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (tRFC violation) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "activate_after_refresh",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: tRFC violation"
+      }
+    },
+    "n2a_sdram_model_activate_after_mode_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (tMRD violation) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "activate_after_mode",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: tMRD violation"
+      }
+    },
+    "n2a_sdram_model_column_before_mode_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (column command before the mode register set) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "column_before_mode",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: column command before the mode register set"
+      }
+    },
+    "n2a_sdram_model_column_without_row_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (column command without an open row) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "column_without_row",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: column command without an open row"
+      }
+    },
+    "n2a_sdram_model_column_auto_precharge_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (auto-precharge is not modeled) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "column_auto_precharge",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: auto-precharge is not modeled"
+      }
+    },
+    "n2a_sdram_model_read_masked_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (masked READ is not modeled) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "read_masked",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: masked READ is not modeled"
+      }
+    },
+    "n2a_sdram_model_write_undriven_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (WRITE without DQ drive) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "write_undriven",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: WRITE without DQ drive"
+      }
+    },
+    "n2a_sdram_model_precharge_before_tras_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (tRAS violation) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "precharge_before_tras",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: tRAS violation"
+      }
+    },
+    "n2a_sdram_model_precharge_before_twr_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (tWR violation) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "precharge_before_twr",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: tWR violation"
+      }
+    },
+    "n2a_sdram_model_refresh_open_row_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (REFRESH with an open row) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "refresh_open_row",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: REFRESH with an open row"
+      }
+    },
+    "n2a_sdram_model_refresh_back_to_back_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (tRFC violation) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "refresh_back_to_back",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: tRFC violation"
+      }
+    },
+    "n2a_sdram_model_refresh_interval_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (refresh interval exceeded) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "refresh_interval",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: refresh interval exceeded"
+      }
+    },
+    "n2a_sdram_model_mode_open_row_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (mode register set with an open row) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "mode_open_row",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: mode register set with an open row"
+      }
+    },
+    "n2a_sdram_model_mode_before_refreshes_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (mode register set before the initial refreshes) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "mode_before_refreshes",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: mode register set before the initial refreshes"
+      }
+    },
+    "n2a_sdram_model_mode_after_refresh_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (MRS tRFC violation) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "mode_after_refresh",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: MRS tRFC violation"
+      }
+    },
+    "n2a_sdram_model_mode_value_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation (mode register is not sequential CAS-two with the configured burst) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 1,
+        "ROW_XOR_BANK": 0
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "mode_value",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: mode register is not sequential CAS-two with the configured burst"
+      }
+    },
+    "n2a_sdram_model_bl8_read_burst_interrupted_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation in burst-eight mode (command interrupts a read burst) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 8,
+        "ROW_XOR_BANK": 1
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "read_burst_interrupted",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: command interrupts a read burst"
+      }
+    },
+    "n2a_sdram_model_bl8_write_burst_interrupted_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation in burst-eight mode (command interrupts a write burst) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 8,
+        "ROW_XOR_BANK": 1
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "write_burst_interrupted",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: command interrupts a write burst"
+      }
+    },
+    "n2a_sdram_model_bl8_write_beat_undriven_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation in burst-eight mode (write beat without DQ drive) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 8,
+        "ROW_XOR_BANK": 1
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "write_beat_undriven",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: write beat without DQ drive"
+      }
+    },
+    "n2a_sdram_model_bl8_burst_unaligned_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation in burst-eight mode (burst does not start an aligned group) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 8,
+        "ROW_XOR_BANK": 1
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "burst_unaligned",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: burst does not start an aligned group"
+      }
+    },
+    "n2a_sdram_model_bl8_mode_value_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate common SDRAM model violation in burst-eight mode (mode register is not sequential CAS-two with the configured burst) is fatal",
+      "top": "n2a_sdram_model_fixture",
+      "sources": [
+        "src/common/dv/sdram/n2a_sdram_model.sv",
+        "src/common/dv/sdram/n2a_sdram_model_fixture.sv"
+      ],
+      "parameters": {
+        "BURST_BEATS": 8,
+        "ROW_XOR_BANK": 1
+      },
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.sdram.test_sdram_model",
+      "testcase": "mode_value",
+      "default_seed": 7,
+      "max_cycles": 5000,
+      "level": "L0",
+      "expected_fatal": {
+        "file": "n2a_sdram_model.sv",
+        "message": "n2a_sdram_model: mode register is not sequential CAS-two with the configured burst"
+      }
+    }
+  }
+}

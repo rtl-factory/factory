@@ -82,7 +82,7 @@ class ManifestTests(unittest.TestCase):
         self.assertIn("src/common/dv/jtag/sld_virtual_jtag_stub.sv", board.sources)
         self.assertEqual(("n2m_de10_lite_fixture", "board_smoke", 97), (board.top, board.testcase, board.default_seed))
         self.assertEqual((("HEARTBEAT_BIT", 20), ("UART_CLKS_PER_BIT", 8)), tuple(sorted(board.parameters)))
-        self.assertIn("src/nand2mario/dv/storage/n2m_sdram_model.sv", board.sources)
+        self.assertIn("src/common/dv/sdram/n2a_sdram_model.sv", board.sources)
         swapped = {intel: portable for portable, intel in PAIRS}
         quartus = [swapped.get(s, s) for s in self.config["sources"]]
         self.assertEqual(quartus, [s for s in board.sources if "/dv/" not in s])
