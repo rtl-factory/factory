@@ -18,6 +18,7 @@ BKMs define how work is done here. Find the rows that match what you are doing, 
 | writing a pull request or a GitHub comment, getting it landable, taking over a stalled one, or landing it | `wiki/bkm/workflow/landing.md` |
 | reporting to a captain, catching one up, resuming after a restart, or keeping a decision trail | `wiki/bkm/workflow/reporting.md` |
 | debugging a failing simulation, formal check, lint, synthesis run, test or tool | `wiki/bkm/debug/debugging.md` |
+| writing or changing SystemVerilog RTL, or reviewing an RTL diff (names, flops, reset, structs, enums, parameters, packages, assertions) | `wiki/bkm/rtl/coding.md` |
 | designing a block or where its interface goes, finding where structure should change, refactoring a block, or explaining how and why a block works | `wiki/bkm/rtl/architecture.md` |
 | deciding where a check runs, or reading CI results | `wiki/bkm/workflow/ci-levels.md` |
 | verifying a block in simulation: test-first, DV plans, testbenches, seeds, coverage | `wiki/bkm/dv/verification.md` |
@@ -64,7 +65,3 @@ Engineering principles, one per file. Follow each one whose trigger matches what
 - `wiki/bkm/principles/subtract-before-you-add.md`: Apply when sequencing an addition, refactor, or rewrite.
 - `wiki/bkm/principles/test-behavior-not-implementation.md`: Apply when you write, change, or keep a test.
 - `wiki/bkm/principles/type-system-discipline.md`: Apply when designing types, reviewing a function signature, or writing code in any statically-typed language.
-
-## Not yet written
-
-No BKM yet for writing RTL code itself (coding style, lint, synthesis rules). It will live in `wiki/bkm/rtl/`, beside the architecture BKM.
