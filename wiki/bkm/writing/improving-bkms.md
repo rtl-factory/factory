@@ -33,7 +33,7 @@ Run a retro: find what went wrong or was slow in past work, trace each to its ca
    4. **A BKM change**: a rule for the reviewer crewmate to check when it is a judgement call, a sharper `bkm-router` row, a new or corrected BKM.
    Why: nothing fails when an agent skips prose; a check fails every time.
 6. **Prove the check.** Run the proposed check against the real past mistake (the reverted commit, the failing branch, the failing seed) and show it fails; run it against current `main` and show it passes. For a BKM change, name the point in the transcript where the new wording would have changed the agent's action. Done when the proof is written down for every fix.
-7. **Open one issue per fix**, labelled per [labels.md](../workflow/labels.md), holding: the evidence, the cause, the rung chosen and why a higher one did not work, and the proof. If an issue already exists for the cause, comment the new evidence on it instead. How BKM, skill and `AGENTS.md` changes are made is in [writing-bkms.md](writing-bkms.md); who lands them is in [flow.md](../workflow/flow.md) Merging.
+7. **Open one issue per fix**, written with the issue body per [issues.md](../workflow/issues.md) and labelled per [labels.md](../workflow/labels.md), holding as extra sections: the evidence, the cause, the rung chosen and why a higher one did not work, and the proof. If an issue already exists for the cause, comment the new evidence on it instead. How BKM, skill and `AGENTS.md` changes are made is in [writing-bkms.md](writing-bkms.md); who lands them is in [flow.md](../workflow/flow.md) Merging.
 8. **Report** to the captain in outcome terms: each class with its evidence, the rung picked, and the issue link; and the candidates you dropped, with the reason.
 
 ## Rules

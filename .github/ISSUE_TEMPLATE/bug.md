@@ -5,7 +5,7 @@ title: ""
 labels: ["type:bug", "status:triage"]
 ---
 
-<!-- Body and labels follow wiki/bkm/workflow/issues.md and labels.md. Add at least one area:, any block: and one priority: label. -->
+<!-- Body and labels follow wiki/bkm/workflow/issues.md and wiki/bkm/workflow/labels.md. Add at least one area:, any block: and one priority: label. -->
 
 ## What to build
 <the behaviour that should hold, and what happens instead>

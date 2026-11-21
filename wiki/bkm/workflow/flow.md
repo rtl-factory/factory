@@ -9,7 +9,7 @@ The path every change takes from intent to `main`.
 ## Steps
 
 1. **Align.** A captain and the first mate agree on the outcome. Either may start: a captain by opening an alignment or grilling session, the first mate by proposing work within a goal the captain already set. Grill (`wiki/bkm/design/grilling.md`) if the goal, scope or acceptance is unclear.
-2. **Issue.** Open or update the GitHub issue: what to build, acceptance criteria, labels per [labels.md](labels.md). The first mate may open issues and update epics on its own as work goes, within the aligned goal. Mark it `status:ready` once it is clear enough to dispatch.
+2. **Issue.** Open or update the GitHub issue with the issue body per [issues.md](issues.md) and labels per [labels.md](labels.md). The first mate may open issues and update epics on its own as work goes, within the aligned goal. Mark it `status:ready` once it is clear enough to dispatch.
 3. **Branch.** Create `issue/<number>-<slug>` from `main`, or from the epic branch if the issue belongs to an epic.
 4. **Worktree.** Check the branch out in `worktrees/issue-<number>/`.
 5. **Change.** Make the change. When it touches a block, a script or a tool, change its code and its documents at the mirrored wiki path ([repo-layout.md](repo-layout.md)) together, and loop until they agree. Run L0 until it passes.
