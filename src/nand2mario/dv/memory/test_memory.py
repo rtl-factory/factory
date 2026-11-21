@@ -221,7 +221,6 @@ class Bench:
             if (io_request >> 27) & 1:
                 assert io_request & ((1 << 27) - 1) == word & ((1 << 27) - 1), 'peripheral port must forward the held request'
                 io_seen = True
-                # Play the peripheral: respond io_delay cycles after the forward.
                 if io_wait == 0:
                     d.io_response_i.value = (1 << 9) | (int(self.io_fault) << 8) | self.io_data
                 else:
@@ -237,8 +236,6 @@ class Bench:
             self.cart_latencies.append(edges - 1)
             assert edges - 1 == expected_cart_latency, (
                 f'cartridge latency {edges - 1} expected {expected_cart_latency} at {address:04x}')
-        # The requester withdraws after the sampling edge; no second response
-        # and no peripheral or cartridge forward may follow while the bus is idle.
         await FallingEdge(d.clk_i)
         d.request_i.value = 0
         d.io_response_i.value = 0
@@ -263,8 +260,8 @@ class Bench:
             assert read_data == expected, (
                 f'read {address:04x} ({name}) observed {read_data:02x} expected {expected:02x}')
         else:
-            # Undefined store byte: protocol and latency are checked, the value
-            # is not; the HAS gives it no power-up contract.
+            # Why: an undefined store byte has no power-up contract in the HAS, so only
+            # protocol and latency are checked, not the value.
             self.undefined_reads += 1
         return read_data, edges - 1
 
@@ -287,10 +284,6 @@ async def memory_map_contract(dut):
     cocotb.start_soon(Clock(dut.clk_i, CLOCK_PERIOD_NS, unit='ns').start())
     await b.reset()
 
-    # Cartridge port: ROM-window reads and writes are forwarded on the
-    # acceptance cycle as the live request (kind included) and answered by
-    # the cartridge's response; with an immediately ready one-edge cartridge
-    # the latency is the internal one edge.
     for address in (0x0000, 0x0001, 0x00FF, 0x0100, 0x3FFF, 0x4000, 0x7FFE, 0x7FFF):
         data, latency = await b.transact(address, kind=FETCH)
         assert latency == 1, f'cartridge latency {latency} at {address:04x}'
@@ -298,8 +291,6 @@ async def memory_map_contract(dut):
     await b.write(0x7FFF, 0x5A)
     assert b.cart_requests[-2:] == [(0x2000, 1, 0x05), (0x7FFF, 1, 0x5A)]
     assert await b.read(0x7FFF) == 0x5A
-    # A stalling cartridge: the request stays presented until ready, the
-    # response is awaited, and nothing else moves meanwhile.
     data, latency = await b.transact(0x4123, cart_ready_delay=3, cart_response_delay=2)
     assert latency == 5, ('stalled cartridge read', latency)
     _, latency = await b.transact(0xA000, write=True, data=0x77, cart_ready_delay=0, cart_response_delay=4)
@@ -308,8 +299,8 @@ async def memory_map_contract(dut):
     assert (data, latency) == (0x77, 3), ('stalled cartridge RAM read', data, latency)
     assert b.cart_requests[-3:] == [(0x4123, 0, 0), (0xA000, 1, 0x77), (0xA000, 0, 0)]
 
-    # Every region boundary: write a distinct byte, read it back through the
-    # model's expectation (stores keep it, open-bus/ROM destinations do not).
+    # Why: every region boundary reads back through the model's expectation,
+    # because stores keep the byte and open-bus/ROM destinations do not.
     for address in boundaries():
         value = (address * 7 + 3) & 0xFF
         await b.write(address, value)
@@ -325,17 +316,17 @@ async def memory_map_contract(dut):
     for address in (0xA000, 0xB123, 0xBFFF):
         await b.read(address)
 
-    # Echo aliasing in both directions and at both ends of the window.
+    # Ref: Pan Docs "Memory Map": echo RAM $E000-$FDFF mirrors $C000-$DDFF.
     await b.write(0xC000, 0x11)
     assert await b.read(0xE000) == 0x11
     await b.write(0xFDFF, 0x22)
     assert await b.read(0xDDFF) == 0x22
     await b.write(0xE5A5, 0x33)
     assert await b.read(0xC5A5) == 0x33
-    await b.write(0xDE00, 0x44)   # beyond the echo window: no alias exists
+    await b.write(0xDE00, 0x44)
     assert await b.read(0xC000) == 0x11 and await b.read(0xDE00) == 0x44
 
-    # IE keeps all eight bits for readback; the CPU sees the low five.
+    # Ref: Pan Docs "Interrupts": only IE bits 0-4 select sources; all eight bits read back.
     for value in (0xFF, 0x00, 0xE5, 0x1F, 0xA0):
         await b.write(0xFFFF, value)
         assert await b.read(0xFFFF) == value
@@ -345,7 +336,7 @@ async def memory_map_contract(dut):
     assert await b.read(0xFF80) == 0x5A and await b.read(0xFFFE) == 0xA5
     assert await b.read(0xFFFF) == 0xA0
 
-    # OAM and VRAM ends; the unusable window never aliases OAM.
+    # Ref: Pan Docs "Memory Map": the unusable $FEA0-$FEFF window never aliases OAM.
     await b.write(0xFE00, 0x01)
     await b.write(0xFE9F, 0x9F)
     await b.write(0xFEA0, 0xAA)
@@ -354,19 +345,14 @@ async def memory_map_contract(dut):
     await b.write(0x9FFF, 0x9F)
     assert await b.read(0x8000) == 0x80 and await b.read(0x9FFF) == 0x9F
 
-    # PPU VRAM read port: the same bytes through port B, including one read
-    # that coincides with a CPU write of another address.
     assert await b.ppu_read(0x0000) == 0x80 and await b.ppu_read(0x1FFF) == 0x9F
     await b.write(0x8123, 0x5C)
     assert await b.ppu_read(0x0123) == 0x5C
 
-    # PPU OAM read port: both OAM ends and a CPU-written byte through port B.
     assert await b.ppu_read(0x00, 'oam') == 0x01 and await b.ppu_read(0x9F, 'oam') == 0x9F
     await b.write(0xFE42, 0xC3)
     assert await b.ppu_read(0x42, 'oam') == 0xC3
 
-    # DMA OAM write port: bytes land in OAM for the CPU and the PPU port, at
-    # both ends and while the PPU blocks CPU OAM access.
     await b.dma_write(0x00, 0xD0)
     await b.dma_write(0x9F, 0xD9)
     assert await b.read(0xFE00) == 0xD0 and await b.read(0xFE9F) == 0xD9
@@ -377,10 +363,6 @@ async def memory_map_contract(dut):
     await b.write(0xFE00, 0x01)
     await b.write(0xFE9F, 0x9F)
 
-    # PPU blocking: a blocked VRAM/OAM read returns open bus and a blocked
-    # write is dropped, each still answered once with one edge of latency;
-    # the other store and the rest of the map are unaffected, and lifting the
-    # level restores access to unchanged contents.
     await FallingEdge(dut.clk_i)
     dut.vram_blocked_i.value = 1
     data, latency = await b.transact(0x8000, expect_blocked=True)
@@ -401,8 +383,6 @@ async def memory_map_contract(dut):
     assert await b.read(0xFE9F) == 0x9F, 'a blocked OAM write must be dropped'
     assert await b.ppu_read(0x0000) == 0x80
 
-    # Peripheral port: forwarded request fields, pass-through data, a slow
-    # responder, writes reaching the peripheral, and a fault passed through.
     b.io_data = 0x42
     b.io_writes.clear()
     b.io_requests.clear()
@@ -421,7 +401,6 @@ async def memory_map_contract(dut):
     assert await b.read(0xFF7F, kind=DATA) == OPEN_BUS
     assert b.io_requests[0] == (0xFF00, 0, 0) and b.io_requests[2] == (0xFF44, 1, 0x99)
 
-    # Reset clears IE and any pending request, but keeps store contents.
     await b.write(0xFFFF, 0x1F)
     await FallingEdge(dut.clk_i)
     dut.request_i.value = request_word(1, 0, DATA, 0xC000, 0)
@@ -433,8 +412,6 @@ async def memory_map_contract(dut):
     assert int(dut.interrupt_enable_o.value) == 0
     assert await b.read(0xFFFF) == 0 and await b.read(0xC000) == 0x11
     await b.read(0x0000)
-    # Reset while a cartridge request waits for a stalled cartridge: no
-    # response and no forward survive the reset.
     await FallingEdge(dut.clk_i)
     dut.request_i.value = request_word(1, 0, FETCH, 0x4000, 0)
     dut.cart_ready_i.value = 0
@@ -447,7 +424,7 @@ async def memory_map_contract(dut):
     await b.edge()
     await b.read(0x7FFF)
 
-    # Seeded random traffic over the whole space against the model. Reads of
+    # Why: seeded random traffic over the whole space against the model. Reads of
     # store bytes nothing has defined check protocol only; most reads land on
     # defined bytes (ROM, hot addresses written first) and compare values.
     hot = [b.rng.randrange(0x10000) for _ in range(32)]

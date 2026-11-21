@@ -46,7 +46,7 @@ module n2a_sdp_ram_enabled #(
   `N2A_ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
       "n2a_sdp_ram ADDR_WIDTH must equal $clog2(DEPTH)")
 
-  // Pins that do not exist in DUAL_PORT mode stay unconnected, exactly as
+  // Why: pins that do not exist in DUAL_PORT mode stay unconnected, exactly as
   // Intel-generated wrappers leave them: the port-B write data input data_b
   // (port B is read-only) and the outputs q_a and eccstatus. Every input
   // that the mode uses is connected; the remaining vendor inputs are tied
@@ -82,7 +82,7 @@ module n2a_sdp_ram_enabled #(
     .data_a(write_data_i),
     .address_b(read_address_i),
     .q_b(read_data_o),
-    // Unused vendor inputs are tied to their documented inactive levels.
+    // Ref: Intel altsyncram documentation: inactive levels of unused inputs.
     .wren_b(1'b0),
     .rden_a(1'b1),
     .rden_b(read_enable_i),

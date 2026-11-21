@@ -55,12 +55,13 @@ package n2m_cartridge_pkg;
   localparam logic [7:0] TYPE_MBC1_RAM         = 8'h02;
   localparam logic [7:0] TYPE_MBC1_RAM_BATTERY = 8'h03;
 
-  // MBC1 registers are selected by CPU address bits [14:13] inside the ROM
-  // window; RAM is enabled by a low write nibble of $A.
-  localparam logic [1:0] MBC1_RAMG_SELECT  = 2'b00;  // $0000-$1FFF
-  localparam logic [1:0] MBC1_BANK1_SELECT = 2'b01;  // $2000-$3FFF
-  localparam logic [1:0] MBC1_BANK2_SELECT = 2'b10;  // $4000-$5FFF
-  localparam logic [1:0] MBC1_MODE_SELECT  = 2'b11;  // $6000-$7FFF
+  // Ref: Pan Docs "MBC1": CPU address bits [14:13] inside the ROM window select
+  // RAMG ($0000-$1FFF), BANK1 ($2000-$3FFF), BANK2 ($4000-$5FFF) and MODE
+  // ($6000-$7FFF); RAM is enabled by a low write nibble of $A.
+  localparam logic [1:0] MBC1_RAMG_SELECT  = 2'b00;
+  localparam logic [1:0] MBC1_BANK1_SELECT = 2'b01;
+  localparam logic [1:0] MBC1_BANK2_SELECT = 2'b10;
+  localparam logic [1:0] MBC1_MODE_SELECT  = 2'b11;
   localparam logic [3:0] MBC1_RAM_ENABLE_NIBBLE = 4'hA;
   localparam logic [4:0] MBC1_BANK1_RESET = 5'd1;
 

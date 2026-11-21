@@ -12,7 +12,7 @@ bit count but not the free-running clock.
 
 SB, SC = 0xFF01, 0xFF02
 REGISTERS = (SB, SC)
-BIT_PERIOD = 128          # machine cycles per bit at 8192 Hz
+BIT_PERIOD = 128          # Ref: Pan Docs, serial transfer: 8192 Hz is one bit per 128 machine cycles.
 BYTE_PERIOD = 8 * BIT_PERIOD
 SC_UNUSED = 0x7E
 

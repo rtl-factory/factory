@@ -25,7 +25,7 @@ module n2m_frame_ram (
   shade_t bank_shade [0:BANK_COUNT-1];
   bank_t  read_bank_q;
 
-  // Explicit generate block and genvar: Quartus rejects the inline form.
+  // Why: explicit generate block and genvar; Quartus rejects the inline form.
   genvar bank;
   generate
   for (bank = 0; bank < BANK_COUNT; bank = bank + 1) begin : g_banks
@@ -45,7 +45,7 @@ module n2m_frame_ram (
   end
   endgenerate
 
-  // The selected bank is registered with the read so the output names the
+  // Why: the selected bank is registered with the read so the output names the
   // word of the bank that was addressed on the read edge.
   `N2A_DFF_RST(read_bank_q, read_bank_i, clk_i, reset_i)
   assign read_shade_o = bank_shade[read_bank_q];

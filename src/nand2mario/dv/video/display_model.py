@@ -14,18 +14,17 @@ FRAME_WIDTH, FRAME_HEIGHT = 160, 144
 FRAME_PIXELS = FRAME_WIDTH * FRAME_HEIGHT
 SCALE = 3
 VGA_WIDTH, VGA_HEIGHT = 640, 480
-IMAGE_WIDTH, IMAGE_HEIGHT = FRAME_WIDTH * SCALE, FRAME_HEIGHT * SCALE          # 480 x 432
-IMAGE_LEFT, IMAGE_TOP = (VGA_WIDTH - IMAGE_WIDTH) // 2, (VGA_HEIGHT - IMAGE_HEIGHT) // 2   # 80, 24
+IMAGE_WIDTH, IMAGE_HEIGHT = FRAME_WIDTH * SCALE, FRAME_HEIGHT * SCALE
+IMAGE_LEFT, IMAGE_TOP = (VGA_WIDTH - IMAGE_WIDTH) // 2, (VGA_HEIGHT - IMAGE_HEIGHT) // 2
 
-# Common n2a_vga_timing defaults: 800 x 525 total, active-low syncs.
+# Ref: VESA DMT 640x480 at 60 Hz: 800 x 525 total, active-low syncs (the n2a_vga_timing defaults).
 H_VISIBLE, H_FRONT_PORCH, H_SYNC, H_BACK_PORCH = 640, 16, 96, 48
 V_VISIBLE, V_FRONT_PORCH, V_SYNC, V_BACK_PORCH = 480, 10, 2, 33
-H_TOTAL = H_VISIBLE + H_FRONT_PORCH + H_SYNC + H_BACK_PORCH    # 800
-V_TOTAL = V_VISIBLE + V_FRONT_PORCH + V_SYNC + V_BACK_PORCH    # 525
-FRAME_CLOCKS = H_TOTAL * V_TOTAL                               # 420000
-OUTPUT_LATENCY = 2    # output clocks after the timing coordinate
+H_TOTAL = H_VISIBLE + H_FRONT_PORCH + H_SYNC + H_BACK_PORCH
+V_TOTAL = V_VISIBLE + V_FRONT_PORCH + V_SYNC + V_BACK_PORCH
+FRAME_CLOCKS = H_TOTAL * V_TOTAL
+OUTPUT_LATENCY = 2
 
-# DMG shade (0 lightest) to 4:4:4 grey; border and blanking are black.
 PALETTE = {0: (15, 15, 15), 1: (10, 10, 10), 2: (5, 5, 5), 3: (0, 0, 0)}
 WHITE = PALETTE[0]
 BORDER = (0, 0, 0)
@@ -88,8 +87,8 @@ class FrameBridgeModel:
     is sampled with every event."""
 
     def __init__(self):
-        self.ready = None        # fresh complete frame waiting for the origin
-        self.displayed = None    # frame on screen, None while blank
+        self.ready = None
+        self.displayed = None
         self.swaps = self.drops = self.repeats = 0
 
     def lcd_off(self):
@@ -119,11 +118,11 @@ class FrameBridgeModel:
         return None
 
 
-# Frame snapshot record (display HAS, frame snapshot).
+# Ref: board spec "Frame snapshot": magic NM, version 1, an eight-byte header.
 SNAPSHOT_MAGIC = b'NM'
 SNAPSHOT_VERSION = 1
 SNAPSHOT_HEADER_BYTES = 8
-SNAPSHOT_RECORD_BYTES = SNAPSHOT_HEADER_BYTES + FRAME_PIXELS // 4     # 5768
+SNAPSHOT_RECORD_BYTES = SNAPSHOT_HEADER_BYTES + FRAME_PIXELS // 4
 
 
 def snapshot_header(frame_id, bank, on_screen=True):
@@ -149,7 +148,7 @@ class SnapshotBridgeModel(FrameBridgeModel):
         super().__init__()
         self.count = 0
         self.ready_id = None
-        self.displayed_id = None   # ID of the frame in the displayed bank (kept when blanked)
+        self.displayed_id = None
         self.valid = False
         self.pinned = False
 

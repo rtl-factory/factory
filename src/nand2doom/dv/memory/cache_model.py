@@ -120,5 +120,5 @@ class CacheModel:
                     write_line(self.memory, address, entry.data)
                 entry.valid = False
                 entry.dirty = False
-        # Replacement state is kept: invalid-first refills of a set rewrite
-        # every node before the tree is consulted again.
+        # Why: replacement state can be kept because invalid-first refills of a
+        # set rewrite every node before the tree is consulted again.

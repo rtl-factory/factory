@@ -23,14 +23,14 @@ from .test_display import (CLOCK_PERIOD_NS, HALF_PERIOD_NS, PULSE_LATENCY, PULSE
                            check_pulses, random_frame)
 
 OFFSET_BITS = 13
-RESPONSE_LIMIT = 2000     # edges a byte may take (at most one image segment of 480 clocks plus four reads)
+RESPONSE_LIMIT = 2000     # Why: a byte should take at most one image segment of 480 clocks plus four reads.
 
 
 class SnapshotBench(Bench):
     def __init__(self, dut, seed):
         super().__init__(dut, seed)
         self.model = m.SnapshotBridgeModel()
-        self.byte_edges = []      # edges between acceptance and response, per pixel byte
+        self.byte_edges = []
 
     def idle_snapshot(self):
         d = self.dut
@@ -127,15 +127,12 @@ async def display_snapshot(dut):
         cocotb.start_soon(b.watch(name))
     await b.next_start()
 
-    # First frame: nothing is displayed, so a pin has no effect and a read
-    # carries no frame.
     await b.pin()
     model.pin()
     assert not b.pinned() and not model.pinned, 'no pin before the first complete frame'
     assert await b.read(0, 8) == bytes(8), 'a read while not pinned answers zero'
     assert await b.read(1000, 2) == bytes(2)
 
-    # Frame A completes and is swapped in; it is frame 1.
     await b.set_lcd(True)
     frame_a = random_frame(b.rng)
     phase_edge = b.now_edge()
@@ -145,7 +142,6 @@ async def display_snapshot(dut):
     model.origin()
     assert model.displayed == 'A' and model.displayed_id == 1
 
-    # Pin A: the header names frame 1 and its bank, which holds A word for word.
     await b.pin()
     model.pin()
     assert b.pinned() and model.pinned
@@ -154,7 +150,7 @@ async def display_snapshot(dut):
     assert b.bank_contents(bank) == frame_a, 'the pinned bank holds frame A'
     cocotb.log.info('frame A pinned: bank %d, frame ID %d', bank, frame_id)
 
-    # While pinned frame B completes and is held back: the origin repeats A
+    # Why: while pinned frame B completes and is held back: the origin repeats A
     # (no swap) though B is fresh. Then a whole output frame is captured
     # while the record is read concurrently, so the reader shares the read
     # port during image lines: the output is exactly A. Frame C completes
@@ -182,7 +178,7 @@ async def display_snapshot(dut):
     cocotb.log.info('record of frame A read during a full VGA frame; pixel byte took %d..%d edges',
                     min(b.byte_edges), max(b.byte_edges))
     assert max(b.byte_edges) <= 500, 'a pixel byte took longer than the HAS bound'
-    # Negative control: one changed source pixel fails the record check.
+    # Why: proves the check can fail: one changed source pixel must fail the record check.
     corrupted = [row[:] for row in frame_a]
     corrupted[143][159] ^= 3
     try:
@@ -192,12 +188,10 @@ async def display_snapshot(dut):
     else:
         raise AssertionError('the record check accepted a corrupted frame')
 
-    # Pin again: idempotent, the original frame and ID are kept.
     await b.pin()
     model.pin()
     assert header_fields(await b.read(0, 8)) == (bank, True, 1)
 
-    # Release: the next origin swaps C in (frame 3, B was 2 and dropped).
     phase_edge = b.now_edge()
     await b.release()
     model.release()
@@ -212,9 +206,6 @@ async def display_snapshot(dut):
     model.release()
     cocotb.log.info('release swapped frame C (ID 3) in at edge %d', swap_edge)
 
-    # Pin in the origin cycle: frame D completes, a pin presented in the very
-    # origin cycle holds C (the origin repeats, D stays fresh). A release in
-    # the next origin cycle lets that origin swap D in (frame 4).
     phase_edge = await b.begin_phase()
     frame_d = random_frame(b.rng)
     await b.drive_frame(frame_d, gap_max=1)
@@ -235,9 +226,6 @@ async def display_snapshot(dut):
     check_lines(captured, frame_d, 'frame D after the origin release')
     cocotb.log.info('pin and release in the origin cycle verified')
 
-    # LCD off while pinned: D pinned; the next origin with the LCD off blanks
-    # the window and clears the on-screen flag, but the pin and the bank stay
-    # readable. After the release nothing is displayed, so a pin fails.
     await b.pin()
     model.pin()
     bank_d, on_screen, frame_id = header_fields(await b.read(0, 8))
@@ -254,7 +242,6 @@ async def display_snapshot(dut):
     await b.pin()
     model.pin()
     assert not b.pinned() and not model.pinned, 'no pin while the display is blank'
-    # LCD on again and frame E completes: it swaps in and can be pinned.
     await b.set_lcd(True)
     frame_e = random_frame(b.rng)
     phase_edge = await b.begin_phase()
@@ -269,7 +256,6 @@ async def display_snapshot(dut):
     check_record(await b.read(0, m.SNAPSHOT_RECORD_BYTES), frame_e, 5, bank_e, True, 'frame E')
     cocotb.log.info('LCD-off blank under a pin and recovery verified')
 
-    # Reset clears the pin and restarts the frame IDs.
     await FallingEdge(dut.clk_i)
     dut.reset_i.value = 1
     await FallingEdge(dut.clk_i)

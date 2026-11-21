@@ -18,22 +18,20 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[4]
-# Board selection: the configuration's top level is the DE10-Lite board; each
-# entry of its "boards" object overrides only the board facts (project, top,
-# device, settings, constraints, pins, I/O standards, clock wiring, reviewed
-# warnings, and the fitted RAM requirements where the board's framebuffer
-# geometry differs) and swaps board-specific sources by "source_replacements".
-# The shared source closure is written once.
+# Why: each "boards" entry overrides only board facts and swaps board-specific
+# sources by "source_replacements", so the DE10-Lite top level stays the base
+# and the shared source closure is written once.
 BASE_BOARD = "de10_lite"
 BOARDS = (BASE_BOARD, "de2_115")
 DEFAULT_IO_STANDARD = "3.3-V LVTTL"
-# DE10-Lite defaults of the board-specific report-gate facts.
 BOARD_DEFAULTS = {
     "reference_port": "MAX10_CLK1_50",
     "clock_module": "n2d_de10_lite_clock",
-    # Generated clocks forwarded to output pins as the inverted system clock.
+    # Why: DRAM_CLK carries the inverted system clock, so the gate treats it as a
+    # generated clock target, not a data output.
     "forwarded_clocks": {"sdram_clock": "DRAM_CLK"},
-    # The settings fragment owns KEY0's Schmitt-trigger standard.
+    # Why: the settings fragment owns KEY0's Schmitt-trigger standard, so no default
+    # standard is written for RESET_N.
     "io_standards": {"RESET_N": None},
 }
 BOARD_KEYS = {"project", "top", "family", "device", "settings", "constraints", "pins",
@@ -171,8 +169,8 @@ def stage(root: Path, output: Path, config: dict) -> None:
            f'set_global_assignment -name DEVICE {config["device"]}',
            f'set_global_assignment -name TOP_LEVEL_ENTITY {config["top"]}',
            'set_global_assignment -name VERILOG_MACRO "SYNTHESIS=1"',
-           # Quartus removes the assertions; omit their otherwise-unused history.
-           # Keep this existing opt-out local to hardware, never simulation.
+           # Why: Quartus drops the assertions anyway, so disabling them omits their unused
+           # history logic; simulation must keep them, so the opt-out lives only here.
            'set_global_assignment -name VERILOG_MACRO "N2A_DISABLE_ASSERTIONS=1"',
            f'source "{config["settings"]}"',
            f'set_global_assignment -name SDC_FILE "{config["constraints"]}"']
@@ -231,8 +229,9 @@ def fitted_resources(report: str, config: dict) -> dict:
             header = cells
         elif header and len(cells) == len(header):
             row = dict(zip(header, cells))
-            # Type is the requested implementation (normally AUTO). The fitted
-            # M9Ks column, not that request, proves physical block allocation.
+            # Ref: in the Quartus fitter RAM summary, Type is the requested implementation
+            # (normally AUTO). The fitted M9Ks column, not that request, proves physical
+            # block allocation.
             if row["M9Ks"].isdigit() and int(row["M9Ks"]) > 0:
                 memories.append(row)
     for requirement in config["ram_requirements"]:
@@ -247,10 +246,10 @@ def fitted_resources(report: str, config: dict) -> dict:
                                 ("M9Ks", "m9ks_each")):
                 if int(ram[column]) != requirement[key]:
                     raise RuntimeError(f"fitted RAM geometry mismatch: {name} {column}")
-            # Quartus reports unused RDW fields as Don't care/New data. Only
-            # the port relationship actually used by this array is contractual.
-            # Every requirement states its port relationship explicitly; the
-            # shared n2a_sync_ram/n2a_sdp_ram contracts fix the expected mode.
+            # Ref: Quartus reports unused RDW fields as Don't care/New data, so only the
+            # port relationship actually used by this array is contractual. Every
+            # requirement states its port relationship explicitly; the shared
+            # n2a_sync_ram/n2a_sdp_ram contracts fix the expected mode.
             single = requirement["single_port"]
             mode = "Single Port" if single else "Simple Dual Port"
             rdw = "Port A RDW Mode" if single else "Mixed Width RDW Mode"
@@ -299,8 +298,6 @@ def sdram_timing(reports: Path, config: dict, system_clock: str) -> dict:
                 if slack < 0 or slack != float(summary[1]) or slack != float(detail[0]):
                     raise RuntimeError(f"failing or inconsistent SDRAM timing margin: {name}")
                 if direction == "read":
-                    # The capture register is the read_data field of the SDRAM
-                    # controller's state struct; exactly one of its 128 bits.
                     target = re.fullmatch(r"n2d_memory_controller:u_memory\|n2d_sdram_controller:u_sdram\|"
                                           r"regs_q\.read_data\[(\d+)\]", values["To Node"])
                     valid = (values["From Node"] in {f"DRAM_DQ[{i}]" for i in range(16)} and
@@ -338,7 +335,8 @@ def fitted_clocks(report: str, system_clock: str, config: dict) -> dict:
     expected = {
         "reference": {"Type": "Base", "Period": 20, "Rise": 0, "Fall": 10,
                       "Targets": config["reference_port"], "Master": "", "Source": ""},
-        # Virtual JTAG hub TCK of the keyboard endpoint in n2d_system (SDC-owned).
+        # Why: the keyboard endpoint in n2d_system sits behind the Virtual JTAG hub,
+        # whose TCK the SDC constrains, so the gate expects this clock too.
         "jtag_tck": {"Type": "Base", "Period": 100, "Rise": 0, "Fall": 50,
                      "Targets": "altera_reserved_tck", "Master": "", "Source": ""},
         system_clock: {"Type": "Generated", "Period": 40, "Rise": 0, "Fall": 20,
@@ -375,7 +373,7 @@ def connectivity_warnings(report: str, config: dict) -> list[dict]:
     border = re.compile(r"\+-+\+-+\+-+\+-+\+")
     for line in report.splitlines():
         if hierarchy is None:
-            # TOC references are prose; table titles are semicolon-framed.
+            # Ref: TOC references are prose; table titles are semicolon-framed.
             if not line.startswith(";") or "Port Connectivity Checks:" not in line:
                 continue
             title = re.fullmatch(r';\s*Port Connectivity Checks: "([^"]+)"\s*;\s*', line)
@@ -389,8 +387,8 @@ def connectivity_warnings(report: str, config: dict) -> list[dict]:
             state = "header" if state == "header_border" else "rows"
             continue
         if state == "rows" and border.fullmatch(line):
-            # Only the actual closing border ends a table. A malformed scalar
-            # row must never hide subsequent warnings by clearing its owner.
+            # Why: only the actual closing border ends a table, so a malformed scalar row
+            # cannot hide later warnings by clearing its owner.
             hierarchy, state = None, None
             continue
         if not re.fullmatch(r';[^\r\n]*;\s*', line):
@@ -499,7 +497,8 @@ def standard_key(standard: str) -> str:
 def electrical_warnings(report: str, config: dict) -> list[dict]:
     """Require the complete AN447 child set with exact ports, pads and standards."""
     source = f'src/nand2doom/fpga/{config["top"].removeprefix("n2d_")}/{config["top"]}.sv'
-    # Standards match by standard_key(); evidence keeps the configured spelling.
+    # Why: Quartus may print a standard in other case or spacing, so standards match
+    # by standard_key(); evidence keeps the configured spelling.
     canonical = {(pin, config["pins"][pin], standard_key(standard)): standard for pin, standard
                  in config["reviewed_warnings"]["electrical_pins"].items()}
     expected = set(canonical)
@@ -593,8 +592,8 @@ def verify_reports(output: Path, config: dict) -> dict:
     for name in ("unconstrained.rpt", "check_timing.rpt", "ignored.rpt", "setup.rpt", "hold.rpt", "clocks.tsv"):
         if not (reports / name).is_file():
             raise RuntimeError(f"missing timing audit: {name}")
-    # Report fields parsed here are ASCII; latin-1 preserves any other byte
-    # (for example a degree sign) losslessly.
+    # Why: the parsed fields are ASCII but a report may hold other bytes (a degree
+    # sign); latin-1 decodes any byte losslessly.
     timing = (reports / f"{project}.sta.summary").read_text(encoding="latin-1")
     entries = re.findall(r"^Type\s*:\s*(.+?) Model (.+?) '([^']+)'\s*"
                          r"Slack\s*:\s*(-?\d+(?:\.\d+)?)\s*"
@@ -626,9 +625,9 @@ def verify_reports(output: Path, config: dict) -> dict:
                           "generated_io_delay latency_override partial_multicycle multicycle_consistency "
                           "loops latches pll_cross_check uncertainty partial_min_max_delay "
                           "clock_assignments_on_output_ports input_delay_assigned_to_clock".split())
-    # All I/O is related to real clocks. Each forwarded clock pin is its
-    # generated clock's target, not a data output requiring set_output_delay
-    # (wiki/src/nand2doom/fpga/de10_lite/board-spec.md).
+    # Ref: wiki/src/nand2doom/fpga/de10_lite/board-spec.md "Report gate": all I/O is
+    # related to real clocks. Each forwarded clock pin is its generated clock's
+    # target, not a data output requiring set_output_delay.
     forwarded_ports = config["forwarded_clocks"].values()
     allowed = {"no_clock": 1, "virtual_clock": 1, "no_output_delay": len(forwarded_ports)}
     if (set(counts) != expected_checks or any(int(count) != allowed.get(name, 0)
@@ -723,18 +722,18 @@ def record_launcher_child(sidecar: Path, process, timeout: int) -> None:
 def run(command: list[str], output: Path, log: str, timeout: int) -> None:
     print("$ " + shlex.join(command), flush=True)
     environment = os.environ.copy()
-    # Quartus 25.1 TBB allocator interposition can fail before compilation;
+    # Ref: Quartus 25.1 TBB allocator interposition can fail before compilation;
     # this process-local setting does not change synthesis.
     environment["TBB_MALLOC_DISABLE_REPLACEMENT"] = "1"
     with (output / log).open("w") as stream:
-        # A new session lets a timeout kill the whole tool process group,
+        # Why: a new session lets a timeout kill the whole tool process group,
         # including fitter children of quartus_sh.
         process = subprocess.Popen(command, cwd=output, env=environment,
                                    stdout=stream, stderr=subprocess.STDOUT,
                                    start_new_session=True)
-        # The child may already be writing to the log, so the launcher's own
-        # identity record goes to a separate sidecar it alone owns. Recording
-        # failures never skip the wait/cleanup of the launched child.
+        # Why: the child may already be writing to the log, so the launcher's identity
+        # record goes to a sidecar it alone owns; a recording failure must not skip
+        # the wait and cleanup of the launched child.
         try:
             record_launcher_child(output / f"{log}.owner.json", process, timeout)
         except OSError as error:  # pragma: no cover - environment specific
@@ -778,7 +777,7 @@ def main(argv=None) -> int:
             return 0
         executable = shutil.which(args.quartus or os.environ.get("QUARTUS_SH", "quartus_sh"))
         if not executable and args.elaborate_only:
-            # An explicit skip, never a pass: no Quartus means no evidence.
+            # Why: exit 77 is an explicit skip, never a pass: no Quartus means no evidence.
             print("SKIPPED: Quartus not found; pass --quartus or set QUARTUS_SH", file=sys.stderr)
             return 77
         if not executable:
@@ -792,7 +791,7 @@ def main(argv=None) -> int:
                     run([str(Path(executable).with_name("quartus_map")), config["project"],
                          "--analysis_and_elaboration"], output, "elaborate.log", config["timeout_seconds"])
                 except RuntimeError as error:
-                    # Name the rejected constructs, not only the exit status.
+                    # Why: the exit status alone does not say which construct Quartus rejected.
                     log = (output / "elaborate.log").read_text(encoding="latin-1").splitlines()
                     raise RuntimeError("\n".join([str(error)] + [line.strip() for line in log if re.match(
                         r"\s*(?:Critical )?Error \(", line)])) from error
@@ -802,7 +801,7 @@ def main(argv=None) -> int:
                   f'evidence {output.relative_to(ROOT)}')
             return 0
         with build_lock(ROOT, output):
-            # No artifact from an earlier invocation can satisfy this run.
+            # Why: an artifact from an earlier invocation must not satisfy this run.
             confined(ROOT, output)
             if output.exists():
                 shutil.rmtree(output)

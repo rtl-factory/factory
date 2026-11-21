@@ -53,7 +53,7 @@ module n2m_ppu_registers (
     endcase
   end
 
-  // One write per presented request: the memory presents the held request
+  // Why: no write-once guard is needed: the memory presents the held request
   // for exactly one cycle when the responder answers combinationally.
   assign write = io_request_i.valid && io_request_i.write && io_selected_o;
   assign lcdc_write = write && (address == LCDC_ADDRESS);
@@ -67,8 +67,9 @@ module n2m_ppu_registers (
   assign wy_write = write && (address == WY_ADDRESS);
   assign wx_write = write && (address == WX_ADDRESS);
 
-  // DMG post-boot values (Pan Docs; there is no boot ROM): LCD on with the
-  // background enabled from $8000 tiles ($91) and BGP $FC; the rest zero.
+  // Ref: Pan Docs "Power Up Sequence": DMG post-boot values (there is no boot
+  // ROM): LCD on with the background enabled from $8000 tiles ($91) and BGP
+  // $FC; the rest zero.
   `N2A_DFF_RST_EN(lcdc_q, write_data, clk_i, lcdc_write, reset_i, 8'h91)
   `N2A_DFF_RST_EN(stat_enables_q, stat_write_data, clk_i, stat_write, reset_i, 4'h0)
   `N2A_DFF_RST_EN(scy_q, write_data, clk_i, scy_write, reset_i, 8'h00)
@@ -80,10 +81,10 @@ module n2m_ppu_registers (
   `N2A_DFF_RST_EN(wy_q, write_data, clk_i, wy_write, reset_i, 8'h00)
   `N2A_DFF_RST_EN(wx_q, write_data, clk_i, wx_write, reset_i, 8'h00)
 
-  // Reads: STAT bit 7 reads 1, bits 6:3 the stored enables, bit 2 the
-  // coincidence flag and bits 1:0 the mode. LY is the timing counter. The
-  // unselected value is never forwarded (the response is valid only when
-  // selected), so the default is simply zero.
+  // Ref: Pan Docs "STAT": bit 7 reads 1, bits 6:3 the stored enables, bit 2 the
+  // coincidence flag and bits 1:0 the mode. Why: the unselected value is never
+  // forwarded (the response is valid only when selected), so the default is
+  // simply zero.
   always_comb begin
     read_data = 8'h00;
     case (address)

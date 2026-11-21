@@ -83,10 +83,12 @@ async def bulk_smoke(dut):
         expected_commits += 2*((length+31)//32)
         ping = await _exchange(dut, request(CMD_PING, 4))
         assert ping.status == 0 and ping.words[0] == 0x3144324e
-    # Existing atomic engine completes a transaction for reads as well as writes.
+    # Why: 520 because the atomic engine completes a transaction for reads as
+    # well as writes.
     assert stats["commit"] == expected_commits == 520
-    # Bulk whole-word portion plus a masked legacy three-byte tail. The high
-    # byte of the final word and next word must survive unchanged.
+    # Why: the bulk whole-word portion plus a masked legacy three-byte tail;
+    # the high byte of the final word and the next word must survive, or the
+    # tail mask is wrong.
     memory[0xe01c], memory[0xe020] = 0xcccccccc, 0xdeadbeef
     result = await exchange(dut, 0x31, 5, 0xe000, 28, bytes(range(28)))
     assert result[4] == 0
@@ -96,12 +98,12 @@ async def bulk_smoke(dut):
     assert memory[0xe020] == 0xdeadbeef
     result = await exchange(dut, 0x32, 7, 0xe000, 32)
     assert result[13:-4] == bytes(range(31))+b"\xcc"
-    # A long bulk submission can pause beyond the legacy20.48us gap without
-    # fragmenting into commands. This does not change legacy framing deadlines.
+    # Why: a long bulk submission may pause beyond the legacy 20.48 us gap without
+    # fragmenting into commands; legacy framing deadlines are unchanged.
     raw = packet(0x31, 8, 0xf000, 32, bytes(range(32)))
     receiver = cocotb.start_soon(receive(dut))
     await _uart_send(dut, raw[:20])
-    await ClockCycles(dut.clk_i, 25000)  # 1ms bounded submission pause
+    await ClockCycles(dut.clk_i, 25000)  # Why: 25,000 clocks is a 1 ms pause, well beyond the legacy gap
     await _uart_send(dut, raw[20:])
     result = await with_timeout(receiver, 100, "ms")
     assert result[4] == 0 and int.from_bytes(result[11:13], "little") == 32
@@ -119,8 +121,9 @@ async def reset(dut):
 @cocotb.test()
 async def bulk_fail_closed(dut):
     memory, controls, stats = await setup(dut)
-    # Embedded valid Resume/Halt frames must remain data, including bad CRC,
-    # timeout residue and the oversized-discard path.
+    # Why: embedded valid Resume/Halt frames must remain data, including bad
+    # CRC, timeout residue and the oversized-discard path, or a payload could
+    # halt or resume the CPU.
     embedded = (request(CMD_RESUME, 91) + request(CMD_HALT, 92))*200
     cases = []
     bad_crc = packet(0x31, 7, 0x100, 32, embedded[:32])
@@ -166,7 +169,8 @@ async def bulk_fail_closed(dut):
     await _uart_send(dut, embedded[:44])
     assert stats == before and int(dut.halt_req_o.value) == 1
 
-    # A read can have a completed diagnostic prefix but no accepted partial data.
+    # Why: a read may have a completed diagnostic prefix but must never return
+    # accepted partial data.
     for control, value, expected in (("error_address", 0x120, 9),
                                       ("ready", False, 8)):
         await reset(dut)
@@ -181,8 +185,9 @@ async def bulk_fail_closed(dut):
     assert result[4] == 11 and int.from_bytes(result[9:13], "little") == 0
     dut.arb_grant_i.value = 1
 
-    # Bulk arriving during an active legacy request never routes its body into
-    # the legacy BUSY parser. Drain old response, then report bulk BUSY.
+    # Why: bulk arriving during an active legacy request must never route its
+    # body into the legacy BUSY parser, so the old response drains and then
+    # bulk BUSY is reported.
     await reset(dut)
     controls["respond"] = False
     async def both():
@@ -198,8 +203,8 @@ async def bulk_fail_closed(dut):
     assert int(dut.halt_req_o.value) == 1
     controls["respond"] = True
 
-    # Reverse overlap: a complete legacy Resume during a bulk response cannot
-    # alter Halt or enter the old BUSY parser; it quarantines after completion.
+    # Why: a complete legacy Resume during a bulk response must not alter Halt
+    # or enter the old BUSY parser; it quarantines after completion.
     await reset(dut)
     before = stats["staged"]
     receiver = cocotb.start_soon(receive(dut))

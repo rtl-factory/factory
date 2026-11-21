@@ -73,7 +73,6 @@ async def single_clock_contract(dut) -> None:
     cocotb.start_soon(Clock(dut.clk_b_i, CLOCK_PERIOD_NS, unit="ns").start())
     cycle = 0
 
-    # Reset masks requests and valids but intentionally does not clear storage.
     dut.reset_a_i.value = 1
     dut.reset_b_i.value = 1
     dut.read_a_i.value = 1
@@ -94,7 +93,6 @@ async def single_clock_contract(dut) -> None:
         f"cycle={cycle} full write/read expected=0x11223344 observed=0x{observed:08x}"
     )
 
-    # Partial writes merge enabled lanes and leave disabled lanes unchanged.
     await _a_edge(
         dut,
         address=3,
@@ -109,7 +107,6 @@ async def single_clock_contract(dut) -> None:
         f"cycle={cycle} byte merge expected=0x11bb33dd observed=0x{observed:08x}"
     )
 
-    # A supported same-port read/write enables every lane and is write-first.
     valid, observed = await _a_edge(
         dut,
         address=3,
@@ -121,7 +118,6 @@ async def single_clock_contract(dut) -> None:
     cycle += 1
     assert (valid, observed) == (1, 0x1020_3040)
 
-    # In single-clock mode, port B is read-first on a cross-port collision.
     await FallingEdge(dut.clk_a_i)
     dut.address_a_i.value = 3
     dut.write_a_i.value = 1
@@ -148,7 +144,6 @@ async def single_clock_contract(dut) -> None:
     assert int(dut.read_data_a_o.value) == 0x5566_7788
     assert int(dut.read_valid_b_o.value) == 0
 
-    # Reset clears the valid pipeline only; the initialized word survives.
     await FallingEdge(dut.clk_a_i)
     dut.reset_a_i.value = 1
     dut.reset_b_i.value = 1
@@ -166,8 +161,6 @@ async def single_clock_contract(dut) -> None:
     cycle += 1
     assert int(dut.read_data_a_o.value) == 0x5566_7788
 
-    # Data holds whenever no read is sampled: a write-only request to the
-    # word just read and idle edges leave port A's output unchanged.
     await FallingEdge(dut.clk_a_i)
     _idle(dut)
     held = await _a_edge(dut, address=3, write=True, data=0x0BAD_F00D, lanes=0xF)
@@ -177,7 +170,6 @@ async def single_clock_contract(dut) -> None:
     cycle += 1
     assert held == (0, 0x5566_7788), f"cycle={cycle} A hold over idle observed={held}"
 
-    # Port B holds its last read through idle edges and A writes to that word.
     valid, observed = await _b_edge(dut, address=3)
     cycle += 1
     assert (valid, observed) == (1, 0x0BAD_F00D), f"cycle={cycle} B read observed=0x{observed:08x}"
@@ -189,8 +181,6 @@ async def single_clock_contract(dut) -> None:
         assert int(dut.read_valid_b_o.value) == 0
         assert int(dut.read_data_b_o.value) == 0x0BAD_F00D, f"cycle={cycle} B hold"
 
-    # A bypassed same-port read/write holds the written word, not the
-    # array's pre-write word, after the read.
     valid, observed = await _a_edge(dut, address=3, read=True, write=True, data=0x1357_9BDF, lanes=0xF)
     cycle += 1
     assert (valid, observed) == (1, 0x1357_9BDF)
@@ -198,7 +188,6 @@ async def single_clock_contract(dut) -> None:
     cycle += 1
     assert held == (0, 0x1357_9BDF), f"cycle={cycle} bypass hold observed={held}"
 
-    # Back-to-back reads of different words update on every edge.
     await _a_edge(dut, address=4, write=True, data=0x4444_4444, lanes=0xF)
     cycle += 1
     for address, expected in ((4, 0x4444_4444), (3, 0x1357_9BDF), (4, 0x4444_4444)):
@@ -240,7 +229,6 @@ async def dual_clock_contract(dut) -> None:
         f"cycle={cycle} independent B read expected=0x01234567 observed=0x{observed:08x}"
     )
 
-    # Both ports may be active concurrently when their addresses differ.
     await FallingEdge(dut.clk_a_i)
     dut.address_a_i.value = 2
     dut.write_a_i.value = 1
@@ -264,7 +252,6 @@ async def dual_clock_contract(dut) -> None:
         f"cycle={cycle} dual-clock byte merge expected=0xca23ba67 observed=0x{observed:08x}"
     )
 
-    # The B-domain reset suppresses only B validity and does not touch memory.
     await FallingEdge(dut.clk_b_i)
     dut.reset_b_i.value = 1
     dut.read_b_i.value = 1
@@ -299,7 +286,7 @@ async def dual_clock_collision_is_rejected(dut) -> None:
     dut.byte_enable_a_i.value = 0xF
     dut.address_b_i.value = 4
     dut.read_b_i.value = 1
-    # The RTL assertion must terminate this deliberately invalid transaction.
+    # Why: the RTL assertion must terminate this deliberately invalid transaction.
     await RisingEdge(dut.clk_a_i)
     await RisingEdge(dut.clk_a_i)
     assert False, "forbidden dual-clock collision did not fire"
@@ -342,7 +329,7 @@ async def reset_suppresses_requests_and_holds_data(dut) -> None:
     valid, observed = await _a_edge(dut, address=6, read=True)
     cycle += 2
     assert (valid, observed) == (1, 0x0102_0304), (valid, hex(observed))
-    # Single-clock fixture: port B is clocked by clk_a_i (clk_b_i is ignored),
+    # Why: single-clock fixture: port B is clocked by clk_a_i (clk_b_i is ignored),
     # so drive and sample the B request on clk_a_i edges.
     await FallingEdge(dut.clk_a_i)
     dut.address_b_i.value = 6
@@ -353,7 +340,6 @@ async def reset_suppresses_requests_and_holds_data(dut) -> None:
     cycle += 1
     assert (valid, observed) == (1, 0x0102_0304), (valid, hex(observed))
 
-    # Reset asserted with a full-lane write and reads on both ports.
     await FallingEdge(dut.clk_a_i)
     dut.reset_a_i.value = 1
     dut.reset_b_i.value = 1
@@ -369,7 +355,7 @@ async def reset_suppresses_requests_and_holds_data(dut) -> None:
     assert int(dut.read_valid_b_o.value) == 0
     assert int(dut.read_data_b_o.value) == 0x0102_0304
 
-    # Release reset with every request withdrawn at the same falling edge, so
+    # Why: release reset with every request withdrawn at the same falling edge, so
     # the intervening rising edge is idle (a write still asserted after reset
     # release would legitimately execute). Then read: the word is untouched.
     await FallingEdge(dut.clk_a_i)
@@ -385,7 +371,6 @@ async def reset_suppresses_requests_and_holds_data(dut) -> None:
         f"write during reset must be suppressed: {(valid, hex(observed))}"
     )
 
-    # Disabled read: valid falls and data holds although the address moved.
     valid, observed = await _a_edge(dut, address=7, read=False)
     cycle += 1
     assert (valid, observed) == (0, 0x0102_0304), (valid, hex(observed))

@@ -26,21 +26,20 @@ module n2d_ps2_keyboard_fv (
   logic [31:0] mmio_response_read_data_o;
   logic        mmio_response_error_o;
 
-  // The frame timeout is shortened from 5,000 cycles: it bounds how long a
+  // Why: the frame timeout is shortened from 5,000 cycles. It bounds how long a
   // frame may take, not how the FIFO behaves, and the shorter count keeps the
   // receiver's state small.
   n2d_ps2_keyboard #(.FRAME_TIMEOUT_CYCLES(4)) dut (.*);
 
-  // Every proof starts from the spec's reset state.
+  // Why: every proof starts from the spec's reset state (wiki/bkm/fv/formal.md).
   logic init_q = 1'b1;
   always_ff @(posedge clk_i) init_q <= 1'b0;
-  always_comb if (init_q) assume (reset_i);
+  always_comb if (init_q) a_start_in_reset: assume (reset_i);
 
-  // ---- Interface events, decoded from the spec ----------------------------
   logic request_accept, base_ready, control_write, clear_fifo, clear_diagnostics;
   logic data_read, status_read, mmio_inject, uart_accept, scan_offer_prefix, scan_accept;
   assign request_accept = mmio_request_valid_i && mmio_request_ready_o;
-  // CONTROL acts on any lane-0 write the response channel can take.
+  // Ref: I/O MAS, CONTROL row: "A lane-0 write" acts once the response channel can take it.
   assign base_ready = !mmio_response_valid_o || mmio_response_ready_i;
   assign control_write = base_ready && mmio_request_valid_i && mmio_request_write_i &&
                          mmio_request_address_i == 12'h008 &&
@@ -56,14 +55,12 @@ module n2d_ps2_keyboard_fv (
                              (scan_inject_byte_i == 8'he0 || scan_inject_byte_i == 8'hf0);
   assign scan_accept = scan_inject_valid_i && scan_inject_ready_o && !scan_offer_prefix;
 
-  // A completed physical event (white-box: the receiver's framing is outside
-  // this FIFO's scope) and its spec encoding {extended, break, code}.
+  // Why: white-box, because the receiver's framing is outside this FIFO's scope.
   logic physical_event;
   logic [9:0] physical_data;
   assign physical_event = dut.physical_event_push;
   assign physical_data = dut.physical_event_data;
 
-  // ---- Reference queue -----------------------------------------------------
   logic [9:0] ref_mem [8];
   logic [2:0] ref_head_q;
   logic [3:0] ref_count_q;
@@ -94,7 +91,7 @@ module n2d_ps2_keyboard_fv (
         if (pop) ref_head_q <= ref_head_q + 3'd1;
         ref_count_q <= ref_count_q + 4'(push) - 4'(pop);
       end
-      // Scan-inject qualifiers: E0/F0 set them, only the completing byte clears them.
+      // Ref: I/O MAS, JTAG keyboard: E0/F0 set the qualifiers; "Only reset and the completing byte clear" them.
       if (scan_offer_prefix && scan_inject_byte_i == 8'he0) scan_extended_q <= 1'b1;
       if (scan_offer_prefix && scan_inject_byte_i == 8'hf0) scan_break_q <= 1'b1;
       if (scan_accept) begin
@@ -104,7 +101,6 @@ module n2d_ps2_keyboard_fv (
     end
   end
 
-  // Expected response of the request accepted on the last edge.
   logic        expect_q;
   logic        expect_check_q;
   logic [31:0] expect_data_q;
@@ -123,7 +119,7 @@ module n2d_ps2_keyboard_fv (
     end else begin
       expect_q <= request_accept;
       expect_check_q <= data_read || status_read;
-      // STATUS: only the FIFO fields (bits 6:0) are checked here.
+      // Why: STATUS is checked only in its FIFO fields, bits 6:0 (fv-plan.md, out of scope).
       expect_data_q <= data_read ? (ref_count_q != 0 ? {1'b1, 21'b0, ref_mem[ref_head_q]} : 32'b0)
                                  : {25'b0, expected_status[6:0]};
     end
@@ -131,7 +127,6 @@ module n2d_ps2_keyboard_fv (
   logic was_status_q;
   always_ff @(posedge clk_i) was_status_q <= status_read;
 
-  // Overflow bookkeeping.
   logic physical_dropped_q, overflow_previous_q, clear_diagnostics_q;
   always_ff @(posedge clk_i) begin
     physical_dropped_q <= !reset_i && physical_event && !space;
@@ -139,62 +134,53 @@ module n2d_ps2_keyboard_fv (
     clear_diagnostics_q <= !reset_i && clear_diagnostics;
   end
 
-  // ---- Properties -------------------------------------------------------
+  // Ref: I/O MAS, IO-R9, PS/2 MMIO registers, JTAG keyboard and receiver push rules
+  // (wiki/src/nand2doom/fv/io/fv-plan.md maps each label to its spec line).
   always_ff @(posedge clk_i) if (!reset_i) begin
-    // P_one_push_per_edge, P_physical_has_priority: a physical event
-    // suppresses every other source on its edge, even when it is dropped.
-    assert ($onehot0({physical_accept, uart_accept, mmio_inject, scan_accept}));
-    if (physical_event) assert (!uart_accept && !mmio_inject && !scan_accept);
-    // P_fixed_priority: a source is accepted only when no higher one is offered
-    // (UART over CPU INJECT over scan-inject), and a UART event is taken
-    // whenever a slot is free and neither CONTROL nor a physical event owns the edge.
-    if (mmio_inject) assert (!inject_valid_i);
-    if (scan_accept) assert (!inject_valid_i && !mmio_inject);
-    if (inject_valid_i && space && !physical_event && !control_write) assert (inject_ready_o);
-    // P_no_accept_without_slot: a held source is accepted only into a free slot.
-    if (!space) assert (!uart_accept && !mmio_inject && !scan_accept);
-    // P_control_suppresses_pushes
-    if (control_write) assert (!push);
-    // P_scan_prefix_always_ready
-    if (scan_offer_prefix) assert (scan_inject_ready_o);
-    // P_events_read_in_order: DATA returns the oldest event; STATUS reports occupancy.
-    if (expect_q) assert (mmio_response_valid_o);
+    p_one_push_per_edge: assert ($onehot0({physical_accept, uart_accept, mmio_inject, scan_accept}));
+    if (physical_event) p_physical_has_priority: assert (!uart_accept && !mmio_inject && !scan_accept);
+    if (mmio_inject) p_fixed_priority_uart_over_inject: assert (!inject_valid_i);
+    if (scan_accept) p_fixed_priority_over_scan: assert (!inject_valid_i && !mmio_inject);
+    if (inject_valid_i && space && !physical_event && !control_write)
+      p_fixed_priority_uart_taken: assert (inject_ready_o);
+    if (!space) p_no_accept_without_slot: assert (!uart_accept && !mmio_inject && !scan_accept);
+    if (control_write) p_control_suppresses_pushes: assert (!push);
+    if (scan_offer_prefix) p_scan_prefix_always_ready: assert (scan_inject_ready_o);
+    if (expect_q) p_every_request_answered: assert (mmio_response_valid_o);
     if (expect_check_q && !was_status_q) begin
-      assert (mmio_response_read_data_o == expect_data_q);
-      assert (!mmio_response_error_o);
+      p_events_read_in_order: assert (mmio_response_read_data_o == expect_data_q);
+      p_data_read_no_error: assert (!mmio_response_error_o);
     end
     if (expect_check_q && was_status_q) begin
-      assert (mmio_response_read_data_o[6:0] == expect_data_q[6:0]);
-      assert (!mmio_response_error_o);
+      p_status_reports_occupancy: assert (mmio_response_read_data_o[6:0] == expect_data_q[6:0]);
+      p_status_read_no_error: assert (!mmio_response_error_o);
     end
-    // P_drop_sets_overflow / P_only_drop_sets_overflow
-    if (physical_dropped_q && !clear_diagnostics_q) assert (dut.fifo_q.overflow_error);
-    if (!overflow_previous_q && dut.fifo_q.overflow_error) assert (physical_dropped_q);
+    if (physical_dropped_q && !clear_diagnostics_q) p_drop_sets_overflow: assert (dut.fifo_q.overflow_error);
+    if (!overflow_previous_q && dut.fifo_q.overflow_error) p_only_drop_sets_overflow: assert (physical_dropped_q);
 
-    // Helper invariants (proven, they only constrain the reachable state).
-    assert (dut.fifo_q.fifo_count == ref_count_q);
-    assert (dut.fifo_q.fifo_read_pointer == ref_head_q);
-    assert (dut.scan_inject_q.extended_prefix == scan_extended_q);
-    assert (dut.scan_inject_q.break_prefix == scan_break_q);
-    assert (ref_count_q <= 4'd8);
+    // Why: helper invariants, proven like any property, only narrow the reachable state for the proof.
+    h_count_matches: assert (dut.fifo_q.fifo_count == ref_count_q);
+    h_read_pointer_matches: assert (dut.fifo_q.fifo_read_pointer == ref_head_q);
+    h_extended_matches: assert (dut.scan_inject_q.extended_prefix == scan_extended_q);
+    h_break_matches: assert (dut.scan_inject_q.break_prefix == scan_break_q);
+    h_count_in_range: assert (ref_count_q <= 4'd8);
   end
   for (genvar j = 0; j < 8; j++) begin : g_slot
     always_ff @(posedge clk_i)
-      if (!reset_i && 3'(j - ref_head_q) < ref_count_q) assert (dut.fifo_memory[j] == ref_mem[j]);
+      if (!reset_i && 3'(j - ref_head_q) < ref_count_q) h_slot_matches: assert (dut.fifo_memory[j] == ref_mem[j]);
   end
 
-  // ---- Covers -----------------------------------------------------------
   always_ff @(posedge clk_i) if (!reset_i) begin
-    cover (ref_count_q == 4'd8);
-    cover (ref_count_q == 4'd8 && pop && push);
-    cover (physical_event && !space);
-    cover (physical_accept);
-    cover (uart_accept);
-    cover (mmio_inject);
-    cover (scan_accept && scan_extended_q && scan_break_q);
-    cover (scan_inject_valid_i && !scan_offer_prefix && !scan_inject_ready_o);
-    cover (expect_check_q && !was_status_q && mmio_response_read_data_o[31] && mmio_response_read_data_o[9]);
-    cover (clear_fifo && ref_count_q != 0);
-    cover (mmio_response_valid_o && !mmio_response_ready_i && ref_count_q == 4'd8);
+    c_full: cover (ref_count_q == 4'd8);
+    c_full_push_and_pop: cover (ref_count_q == 4'd8 && pop && push);
+    c_physical_dropped: cover (physical_event && !space);
+    c_physical_accepted: cover (physical_accept);
+    c_uart_accepted: cover (uart_accept);
+    c_inject_accepted: cover (mmio_inject);
+    c_scan_with_both_qualifiers: cover (scan_accept && scan_extended_q && scan_break_q);
+    c_scan_refused: cover (scan_inject_valid_i && !scan_offer_prefix && !scan_inject_ready_o);
+    c_extended_event_read: cover (expect_check_q && !was_status_q && mmio_response_read_data_o[31] && mmio_response_read_data_o[9]);
+    c_clear_nonempty: cover (clear_fifo && ref_count_q != 0);
+    c_stalled_response_when_full: cover (mmio_response_valid_o && !mmio_response_ready_i && ref_count_q == 4'd8);
   end
 endmodule

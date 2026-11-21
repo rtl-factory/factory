@@ -141,9 +141,9 @@ class SnapshotDevice(FakeDevice):
         self.repin_with = None
         self.snap_reads = 0
         self.releases = 0
-        self.fail_release_from = None   # the n-th SNAP_RELEASE onward goes unanswered
-        self.release_error = None       # ...or raises this from the transport instead
-        self.read_error = None          # (n, exception): the n-th SNAP_READ write raises it
+        self.fail_release_from = None
+        self.release_error = None
+        self.read_error = None
 
     def write(self, frame):
         command = frame[1]
@@ -256,7 +256,7 @@ class RecordTests(unittest.TestCase):
         width, height, decoded, delays, loops, comment, levels = gif_decode(fs.gif_bytes(frames, [500, 250, 1000], 'sampled'))
         self.assertEqual((width, height, decoded, delays, loops, comment), (160, 144, frames, [500, 250, 1000], True, 'sampled'))
         self.assertEqual(levels, list(fs.GREY))
-        # A large random frame exercises the 4096-entry table reset.
+        # Why: a large random frame fills the 4096-entry LZW table and exercises its reset.
         big = [[self.rng.randrange(4) for _ in range(640)] for _ in range(480)]
         self.assertEqual(gif_decode(fs.gif_bytes([big], [10], 'x'))[2], [big])
 
@@ -319,8 +319,6 @@ class SessionTests(unittest.TestCase):
         self.assertTrue(device.pinned)
 
     def test_release_on_transport_error_and_interrupt(self):
-        # A transport OSError mid-read becomes a loader error after the pin
-        # was released; an interrupt is re-raised after the release.
         for error, raised in ((OSError('port vanished'), loader.LoaderError), (KeyboardInterrupt(), KeyboardInterrupt)):
             with self.subTest(error=type(error).__name__):
                 device = SnapshotDevice(self.record)
@@ -332,7 +330,6 @@ class SessionTests(unittest.TestCase):
                 self.assertEqual(self.commands(device)[-1], loader.CMD_SNAP_RELEASE)
                 self.assertFalse(device.pinned, 'the display is not left frozen')
                 self.assertEqual(self.commands(device).count(loader.CMD_SNAP_RELEASE), 2)
-        # A read-side transport error (the port's read raises mid-response).
         class ReadFault(SnapshotDevice):
             def read(self, count):
                 if self.snap_reads == 3 and self.pinned and self.pending:
@@ -345,7 +342,6 @@ class SessionTests(unittest.TestCase):
             self.snapshot(device)
         self.assertFalse(device.pinned)
         self.assertEqual(self.commands(device)[-1], loader.CMD_SNAP_RELEASE)
-        # The closing release itself fails: a clear error, the pin reported.
         for release_error in (None, OSError('port vanished')):
             with self.subTest(release_error=release_error):
                 device = SnapshotDevice(self.record)
@@ -392,7 +388,6 @@ class SessionTests(unittest.TestCase):
         self.assertRegex(message, r"transport error: OSError\('original read transport failure'\); the pin was released"
                                   r"; cleanup: setting timeout failed .*adapter settings unavailable")
         self.assertIsInstance(raised.exception.__cause__, OSError)
-        # The failing SNAP_READ never reached the device; the release did.
         self.assertEqual(self.commands(device), [loader.CMD_SNAP_RELEASE, loader.CMD_SNAP_PIN, loader.CMD_SNAP_RELEASE])
         self.assertEqual(device.releases, 2)
         self.assertFalse(device.pinned)
@@ -406,13 +401,13 @@ class SessionTests(unittest.TestCase):
         """A pyserial-like port whose write cannot drain: with a finite
         write_timeout it raises a write timeout (an OSError) after that bound;
         an unbounded write would hang, which this mock refuses."""
-        class WriteTimeout(OSError):        # pyserial's SerialTimeoutException is an OSError
+        class WriteTimeout(OSError):        # Ref: pyserial's SerialTimeoutException is an OSError
             pass
 
         class BlockingPort(SnapshotDevice):
             def __init__(self, record, block_from, block_release=False):
                 super().__init__(record)
-                self.timeout = self.write_timeout = None    # as opened without bounds
+                self.timeout = self.write_timeout = None    # Why: start unbounded so the asserts see the session set the bounds
                 self.block_from, self.block_release = block_from, block_release
                 self.write_bounds = []
 
@@ -434,8 +429,6 @@ class SessionTests(unittest.TestCase):
         self.assertFalse(device.pinned)
         self.assertEqual(self.commands(device)[-1], loader.CMD_SNAP_RELEASE)
         self.assertEqual((device.timeout, device.write_timeout), (loader.IO_TIMEOUT, loader.IO_TIMEOUT))
-        # The closing release is blocked too: bounded by its own short write
-        # timeout and reported as not confirmed.
         device = BlockingPort(self.record, block_from=4, block_release=True)
         with self.assertRaisesRegex(loader.LoaderError, 'WriteTimeout.*not confirmed.*the pin may remain'):
             loader.Session(device, retry_pause=0).snapshot(deadline=30.0, clock=Clock())
@@ -454,7 +447,7 @@ class SessionTests(unittest.TestCase):
             def write(self, frame):
                 self.seen.append((frame[1], self.timeout, self.write_timeout))
                 if frame[1] == loader.CMD_SNAP_READ:
-                    self.drop_next = True       # every read reply is lost: retries
+                    self.drop_next = True
                 return super().write(frame)
 
         clock = Clock(step=0.1)
@@ -462,9 +455,9 @@ class SessionTests(unittest.TestCase):
         with self.assertRaisesRegex(loader.LoaderError, '^snapshot deadline expired$'):
             loader.Session(device, retries=50, retry_pause=0).snapshot(deadline=0.75, clock=clock)
         reads = [bounds for command, *bounds in device.seen if command == loader.CMD_SNAP_READ]
-        # One clock tick per check: the snapshot's own at 0.1 s, the pin at
-        # 0.2 s, read attempts at 0.3 .. 0.7 s, each bounded by the time
-        # left; the check at 0.8 s ends the retries.
+        # Why: these times follow from one clock tick per check: the snapshot's own at
+        # 0.1 s, the pin at 0.2 s, read attempts at 0.3 .. 0.7 s, each bounded by the
+        # time left; the check at 0.8 s ends the retries.
         self.assertEqual(len(reads), 5, reads)
         for (timeout, write_timeout), now in zip(reads, (0.3, 0.4, 0.5, 0.6, 0.7)):
             self.assertAlmostEqual(timeout, 0.75 - now)
@@ -493,7 +486,7 @@ class SessionTests(unittest.TestCase):
         session = loader.Session(device, retry_pause=0)
         session.snap_release()
         device.drop_next = True
-        session.snap_pin()          # resent; the pin is idempotent
+        session.snap_pin()          # Why: the lost reply makes the session resend the pin, which is safe as a pin is idempotent
         self.assertTrue(device.pinned)
         self.assertEqual(session.snap_read(0, 8), self.record[:8])
         with self.assertRaises(ValueError):
@@ -599,13 +592,10 @@ class CommandLineTests(unittest.TestCase):
         result = json.loads(out)
         self.assertEqual((result['on_screen'], result['on_screen_at_end']), ([True, False, True], [None, None, None]))
         comment = gif_decode(gif.read_bytes())[5]
-        # Without closing status an on-screen pin is not claimed frozen on screen.
         self.assertNotIn('frozen there while read', comment)
         self.assertIn('frame 3: on screen when pinned; whether it stayed on screen for the read is unknown', comment)
         self.assertIn('frame 6: the last frame displayed before an LCD-off blank, not on screen at readout', comment)
         self.assertIn('frame 9: on screen when pinned; whether it stayed on screen for the read is unknown', comment)
-        # Manifests: a closing header off screen relabels the frame; a
-        # manifest that does not match its record is rejected.
         manifests = []
         for frame_id, path in frames.items():
             snapshot = fs.parse_record(path.read_bytes())
@@ -622,7 +612,6 @@ class CommandLineTests(unittest.TestCase):
         comment = gif_decode(gif.read_bytes())[5]
         self.assertIn('frame 3: on screen and frozen there while read', comment)
         self.assertIn('frame 9: the last frame displayed before an LCD-off blank', comment)
-        # A manifest without the closing status: unknown, not on screen.
         snapshot = fs.parse_record(frames[3].read_bytes())
         partial = self.dir / 'partial.json'
         partial.write_text(json.dumps({'schema': fs.SCHEMA, 'record_bytes': 5768, 'sha256': snapshot.sha256,
@@ -632,19 +621,15 @@ class CommandLineTests(unittest.TestCase):
         self.assertEqual((code, json.loads(out)['on_screen_at_end']), (0, [None]))
         self.assertIn('frame 3: on screen when pinned; whether it stayed on screen for the read is unknown',
                       gif_decode(gif.read_bytes())[5])
-        # The same three-state label on a decoded PNG.
         code, _, _ = self.run_main('decode', str(frames[3]), '--manifest', str(partial), '--png', str(self.dir / 'p.png'))
         self.assertEqual(code, 0)
         self.assertIn('is unknown', png_decode((self.dir / 'p.png').read_bytes())[3]['Description'])
-        # A manifest claiming on screen at the end for a record off screen at
-        # the pin is impossible and rejected.
         snapshot6 = fs.parse_record(frames[6].read_bytes())
         bad = self.dir / 'bad6.json'
         bad.write_text(json.dumps({'schema': fs.SCHEMA, 'record_bytes': 5768, 'sha256': snapshot6.sha256,
                                    'frame_id': 6, 'bank': 0, 'format_version': 1, 'on_screen_at_end': True}))
         self.assertEqual(self.run_main('gif', str(frames[6]), '--durations-ms', '100', '--out', str(gif),
                                        '--manifests', str(bad))[0], 1)
-        # A manifest file that does not exist is refused before any output.
         self.assertEqual(self.run_main('gif', str(frames[3]), '--durations-ms', '100', '--out', str(gif),
                                        '--manifests', str(self.dir / 'absent.json'))[0], 2)
         Path(manifests[0]).write_text(json.dumps({'schema': fs.SCHEMA, 'sha256': '0' * 64}))

@@ -124,7 +124,8 @@ class BulkTests(unittest.TestCase):
             client.bulk_read(0, 4)
         self.assertFalse(transport.requests)
         transport.change = lambda _: b""
-        # Finite synthetic time; absent/old endpoint never causes legacy fallback.
+        # Why: synthetic time keeps the test finite; an absent or old endpoint must
+        # never cause legacy fallback.
         client = host.Client(transport, .01, clock=lambda: transport.now,
                              sleep=lambda t: setattr(transport, "now", transport.now+t))
         with self.assertRaises(host.HostError):

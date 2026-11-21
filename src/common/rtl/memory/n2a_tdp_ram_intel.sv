@@ -49,10 +49,9 @@ module n2a_tdp_ram #(
   `N2A_ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
       "n2a_tdp_ram ADDR_WIDTH must equal $clog2(DEPTH)")
 
-  // Every functional pin of BIDIR_DUAL_PORT mode is connected on both ports;
-  // the remaining vendor inputs are tied to their inactive levels. The only
-  // pin left unconnected, exactly as Intel-generated wrappers leave it, is
-  // the output eccstatus. Only the DV port-stub lint sees the missing pin.
+  // Why: the only pin left unconnected is the output eccstatus, exactly as
+  // Intel-generated wrappers leave it; every functional BIDIR_DUAL_PORT pin is
+  // connected on both ports. Only the DV port-stub lint sees the missing pin.
   /* verilator lint_off PINMISSING */
   altsyncram #(
     .operation_mode("BIDIR_DUAL_PORT"),
@@ -93,7 +92,7 @@ module n2a_tdp_ram #(
     .address_b(b_address_i),
     .data_b(b_write_data_i),
     .q_b(b_read_data_o),
-    // Unused vendor inputs are tied to their documented inactive levels.
+    // Ref: Intel altsyncram documentation: inactive levels of unused inputs.
     .rden_a(1'b1),
     .rden_b(1'b1),
     .clock1(1'b1),

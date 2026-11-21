@@ -57,7 +57,8 @@ async def retirement_observer_contract(dut):
         dut.trap_i.value = trap
         await FallingEdge(dut.clk_i)
 
-    # No low gap: all twelve byte stores must be seen, not just the first edge.
+    # Why: with no low gap between them, all twelve byte stores must still be
+    # seen, or an observer that waits for edges would miss all but the first.
     for address in (0x100, 0x104, 0x108):
         for lane in range(4):
             await drive(address + lane, 0xFFFFFFFF ^ (0xFF << (8 * lane)), 1 << lane)
@@ -66,7 +67,6 @@ async def retirement_observer_contract(dut):
     for invalid in ({"valid": 0}, {"memory_valid": 0}, {"trap": 1}, {"write": 0}):
         await drive(0x104, 9, **invalid)
     assert trace.counters["maketic"] == 0
-    # Another edge followed by consecutive and repeated equal counter stores.
     await drive(0x104, 1)
     await drive(0x104, 1)
     await drive(0x104, 2)
@@ -76,7 +76,7 @@ async def retirement_observer_contract(dut):
     assert [item["value"] for item in trace.counter_events
             if item["name"] == "maketic"] == [0, 1, 1, 2]
     observer.cancel()
-    # Await the failing observer directly so the assertion is an expected
+    # Why: await the failing observer directly so the assertion is an expected
     # negative check, and verify evidence survived before it propagated.
     await drive(write=0)
     evidence = Path.cwd() / "expected-observer-failure.json"
@@ -105,7 +105,7 @@ async def _writable_cycle_contract(dut, cycles):
     for role in ('make', 'break'):
         for schedule in ('latched', 'pending', 'ack-later'):
             if role == 'make' and schedule == 'ack-later':
-                continue  # ACK serialization applies to release, after MAKE.
+                continue  # Why: skipped because ACK serialization applies to release, after MAKE.
             await FallingEdge(dut.clk_i)
             dut.valid_i.value = 0
             dut.write_i.value = 0
@@ -137,13 +137,14 @@ async def _writable_cycle_contract(dut, cycles):
                     raise AssertionError('old same-cycle falling edge was accepted')
                 getattr(witness, 'start_' + role)(
                     await next_writable_input_cycle(clock_dut, bound))
-                dut.uart_rx_i.value = 0  # A real writable-phase pin operation.
+                dut.uart_rx_i.value = 0  # Why: drive the pin itself, so this is a real writable-phase pin operation.
                 await ReadOnly()
                 assert int(dut.uart_rx_o.value) == 0
 
             old, corrected = cocotb.start_soon(driver(True)), cocotb.start_soon(driver())
             if schedule != 'latched':
-                # Give both drivers time to register before the ReadOnly event.
+                # Why: give both drivers time to register before the ReadOnly
+                # event, or the race under test would not happen.
                 await Timer(1, unit='ns')
                 await ReadOnly()
                 event.set()
@@ -162,7 +163,8 @@ async def _writable_cycle_contract(dut, cycles):
             assert getattr(witness, role + '_start_tick') == bound + 1
             cycles += 4 if schedule == 'ack-later' else 3
             assert cycles <= int(os.environ['DV_MAX_CYCLES'])
-    # Return to a writable edge before the architectural vector driver starts.
+    # Why: return to a writable edge before the architectural vector driver
+    # starts, or its first write would land in a read-only phase.
     await FallingEdge(dut.clk_i)
     dut.uart_rx_i.value = 1
     cocotb.log.info('PASS posedge-counter MAKE/BREAK latched/pending/ACK-later old-edge rejection/pin drive')
@@ -202,8 +204,9 @@ async def _input_dispatch_contract(dut, cycles):
             getattr(dut, port).value = record[name]
         await FallingEdge(dut.clk_i)
         if boundary.is_set() and witness.make_start_tick is None:
-            # Event already latched before waiter registration; driver writes
-            # only at FallingEdge, never in the observer's ReadOnly callback.
+            # Why: the event may already be latched before the waiter
+            # registers, and the driver writes only at FallingEdge, never in
+            # the observer's ReadOnly callback.
             await boundary.wait()
             witness.start_make(record['tick'] + 1)
             witness.ack_make(record['tick'] + 2)
@@ -233,7 +236,8 @@ async def _monitor_shutdown_contract(dut, cycles):
     first_wakes = {"count": 0}
 
     async def first_monitor():
-        # Same wait shape as the gameplay frame observer: two triggers.
+        # Why: the same two-trigger wait shape as the gameplay frame observer,
+        # so its cancellation behaviour is what is tested.
         while True:
             await First(RisingEdge(dut.write_i), dut.clock_tick_o.value_change)
             await ReadOnly()
@@ -262,12 +266,13 @@ async def _monitor_shutdown_contract(dut, cycles):
     assert first_wakes["count"] == 3, first_wakes
     assert monitors[2].done() and not any(task.done() for task in monitors[:2])
     assert not unarmed_observer.done()
-    # Cancelled at a falling edge: the First monitors are suspended in First.
+    # Why: cancelled at a falling edge, while the First monitors are suspended
+    # in First, the state the gameplay gate cancels from.
     await stop_monitors(*monitors)
     assert [task.cancelled() for task in monitors] == [True, True, False, True]
     assert monitors[2].exception() is None and first_wakes["count"] == 3
-    # The gate stops its framebuffer monitor from a ReadOnly phase at scene
-    # completion; a First monitor suspended there must stop the same way.
+    # Why: the gate stops its framebuffer monitor from a ReadOnly phase at
+    # scene completion; a First monitor suspended there must stop the same way.
     late = cocotb.start_soon(first_monitor())
     cycles += 1
     assert cycles <= int(os.environ['DV_MAX_CYCLES'])

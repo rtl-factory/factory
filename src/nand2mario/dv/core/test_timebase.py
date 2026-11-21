@@ -9,7 +9,7 @@ from cocotb.utils import get_sim_time
 CLOCK_HZ = 25_000_000
 CLOCK_PERIOD_NS = 40
 PHASE_INCREMENT = 16_384
-DOT_INCREMENT = 65_536            # 4,194,304 / 25,000,000 reduced by 64
+DOT_INCREMENT = 65_536            # Why: 4,194,304 / 25,000,000 reduced by 64.
 PHASE_MODULUS = 390_625
 PULSES_PER_PERIOD = PHASE_INCREMENT
 DOTS_PER_PERIOD = DOT_INCREMENT
@@ -78,10 +78,6 @@ async def machine_cycle_enable_contract(dut) -> None:
     cocotb.start_soon(Clock(dut.clk_i, CLOCK_PERIOD_NS, unit="ns").start())
     await reset_to_phase_zero(dut)
 
-    # Check every edge around the first pulses against independent models of
-    # both enables: the dot enable from its own 65,536/390,625 accumulator and
-    # the machine enable from the 16,384/390,625 ratio. Every machine pulse
-    # must coincide with a dot pulse and be the fourth dot since the last.
     phase = dot_phase = 0
     pulse_edges: list[int] = []
     dot_edges: list[int] = []
@@ -121,10 +117,6 @@ async def machine_cycle_enable_contract(dut) -> None:
         f"unexpected initial dot edges: observed={dot_edges[:8]}"
     )
 
-    # Reset from a nonzero phase and verify a complete reduced-ratio period,
-    # counting dot pulses alongside: exactly 65,536 per 390,625 edges, with
-    # every machine pulse on a dot pulse (checked by the RTL assertion) and
-    # four dots per machine cycle (checked here through the counts).
     await reset_to_phase_zero(dut)
     await RisingEdge(dut.clk_i)
     first_active_edge_ns = int(get_sim_time(unit="ns"))

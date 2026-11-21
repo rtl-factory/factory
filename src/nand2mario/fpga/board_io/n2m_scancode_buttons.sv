@@ -33,7 +33,6 @@ module n2m_scancode_buttons (
   logic [7:0] buttons_q, buttons_d;
   logic [7:0] hit;
 
-  // One-hot (or zero) button named by the completed event.
   always_comb begin
     hit = 8'h00;
     if (extended_q) begin
@@ -75,7 +74,6 @@ module n2m_scancode_buttons (
   assign buttons_o = buttons_q;
 
   `N2A_ASSERT(byte_known, clk_i, reset_i, !byte_valid_i || !$isunknown(byte_i))
-  // A completing (non-prefix) byte clears both prefixes.
   `N2A_ASSERT(event_clears_prefixes, clk_i, reset_i,
       !(byte_valid_i && (byte_i != PREFIX_EXTENDED) && (byte_i != PREFIX_RELEASE)) ||
       (!extended_d && !release_d))

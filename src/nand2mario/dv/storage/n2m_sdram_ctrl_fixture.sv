@@ -69,8 +69,8 @@ module n2m_sdram_ctrl_fixture #(
     .dram_dq_i             (dram_dq_i)
   );
 
-  // The model follows the controller-edge abstraction of the inverted pin
-  // clock (storage HAS), so it is clocked by the controller clock; dram_clk
+  // Why: the model follows the controller-edge abstraction of the inverted pin
+  // clock, so it is clocked by the controller clock; dram_clk
   // is the board pin and carries no simulation meaning here.
   /* verilator lint_off UNUSEDSIGNAL */
   logic dram_clk_unused;

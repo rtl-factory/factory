@@ -24,7 +24,8 @@ module sld_virtual_jtag #(
     output logic                    virtual_state_udr,
     output logic                    virtual_state_uir
 );
-    // Bench-driven hub state; no RTL driver by design.
+    // Why: the bench deposits this hub state, so nothing in RTL drives it and
+    // UNDRIVEN must be waived.
     /* verilator lint_off UNDRIVEN */
     logic                    tck_q, tdi_q, capture_q, shift_q, update_q, update_ir_q;
     logic [sld_ir_width-1:0] ir_q;

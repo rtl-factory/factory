@@ -30,7 +30,7 @@ class SdramPinMonitor:
     def __init__(self):
         self.open_row = {}
         self.mode_set = False
-        self.commands = []          # (clock, name, bank, address)
+        self.commands = []
         self.refresh_clocks = []
         self.activates = self.reads = self.writes = self.precharges = 0
         self.first_command = None

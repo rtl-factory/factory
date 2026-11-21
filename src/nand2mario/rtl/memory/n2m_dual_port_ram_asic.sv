@@ -68,12 +68,13 @@ module n2m_dual_port_ram #(
   logic                  write_a;
   logic [DATA_WIDTH-1:0] array_a, array_b;
 
-  // Reset suppresses the port's request: no write, no data update, valid low.
+  // Why: a request under reset must not change the store or the outputs, so
+  // reset suppresses it: no write, no data update, valid low.
   assign write_a = write_a_i && !reset_a_i;
 
   generate
     if (SHARED_SRAM) begin : g_shared_sram
-      // One single-port store. Port B (the PPU) keeps its timing: on an
+      // Why: one single-port store. Port B (the PPU) keeps its timing: on an
       // edge where it reads outside its reset, it owns the store (b_owns).
       // A port-A write on such an edge is posted: held in pend_*_q and
       // written on the next edge port B does not own. Port B still sees the
@@ -128,20 +129,18 @@ module n2m_dual_port_ram #(
       assign array_b = forward_q ? forward_data_q : store_data;
       `N2A_UNUSED_BITS(unused_shared_inputs, {clk_b_i, byte_enable_a_i})
 
-      // Port A reads only while no read of port B and no posted write
-      // needs the store, and writes again only after a posted write left.
       `N2A_ASSERT_NEVER(shared_port_a_read_exclusive, clk_a_i, reset_any,
           read_a_i && (read_b_i || pend_q))
       `N2A_ASSERT_NEVER(shared_one_posted_write, clk_a_i, reset_any,
           write_a && pend_q)
-      // No output takes the store's word of a write edge: a port-A read on
+      // Why: no output takes the store's word of a write edge: a port-A read on
       // a port-A write edge is bypassed, and a store write never shares an
       // edge with a port-B read, so the store's collision rule is unused.
       `N2A_ASSERT_NEVER(shared_write_word_unused, clk_a_i, reset_any,
           store_write && ((read_a_i && !write_a_i) || read_b_i))
     end else begin : g_two_port
-      // The portable backend's array: port A writes enabled lanes, both
-      // ports read their address on every edge, read-first.
+      // Why: both ports read every edge, read-first, like the FPGA template, so
+      // the two backends return the same word on a write edge.
       logic [IMPLEMENTATION_DATA_WIDTH-1:0] memory [0:IMPLEMENTATION_DEPTH-1];
       `N2A_MEM_WRITE_LANES(memory, clk_a_i, write_a, address_a_i, write_data_a_i,
           byte_enable_a_i, 8)
@@ -154,8 +153,9 @@ module n2m_dual_port_ram #(
     end
   endgenerate
 
-  // Port A: the valid register, the same-port write-first bypass (the full
-  // input word; all lanes are enabled by contract) and the data hold.
+  // Why: the array read is read-first, so port A gets its contract's
+  // write-first result from this bypass; it can return the full input word
+  // because the contract enables all lanes on a port-A write.
   logic                  bypass_a_q, bypass_a_d;
   logic [DATA_WIDTH-1:0] write_data_a_q, held_a_q;
   assign bypass_a_d = write_a_i;
@@ -166,7 +166,6 @@ module n2m_dual_port_ram #(
                          (bypass_a_q ? write_data_a_q : array_a);
   `N2A_DFF(held_a_q, read_data_a_o, clk_a_i)
 
-  // Port B: read-only valid register and data hold on its clock.
   logic [DATA_WIDTH-1:0] held_b_q;
   generate
     if (DUAL_CLOCK) begin : g_dual_clock_b

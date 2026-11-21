@@ -19,13 +19,14 @@ PRECHARGE, REFRESH, MRS = (0, 1, 0), (0, 0, 1), (0, 0, 0)
 MODE_VALUE = 0x023
 BURST = 8
 CLOCK_NS = 40
-# IS42S16320D datasheet (ISSI Rev. B 05/12/2015, AC electrical
+# Ref: IS42S16320D datasheet (ISSI Rev. B 05/12/2015, AC electrical
 # characteristics), -7 grade minimums in ns. tRFC (REF to REF or ACT) is tRC;
 # tWR is tDPL (input data to precharge).
 TIMING_NS = {"tRCD": 15, "tRP": 15, "tRC": 60, "tRAS": 37, "tRRD": 14,
              "tWR": 14, "tRFC": 60, "tMRD": 14}
 MIN_EDGES = {name: -(-ns // CLOCK_NS) for name, ns in TIMING_NS.items()}
-# A write may drive DQ only after one idle edge following the last read beat.
+# Why: 2 edges, so a write drives DQ only after one idle edge following the
+# last read beat and never fights the device's read drive.
 TURNAROUND_EDGES = 2
 FAR = -100
 
@@ -43,9 +44,9 @@ def join(bank: int, row: int, column: int) -> int:
 
 class SdramPinModel:
     def __init__(self) -> None:
-        self.words: dict[int, int] = {}  # halfword byte address -> value
-        self.rows: dict[int, int] = {}   # open bank -> row
-        self.due: dict[int, int] = {}    # controller sample edge -> read beat
+        self.words: dict[int, int] = {}
+        self.rows: dict[int, int] = {}
+        self.due: dict[int, int] = {}
         self.writes: list[tuple[int, int, int]] = []
         self.refresh: list[int] = []
         self.commands: list[tuple[int, tuple[int, int, int]]] = []
@@ -58,8 +59,8 @@ class SdramPinModel:
         self.last_precharge = {bank: FAR for bank in range(4)}
         self.last_refresh = self.last_mode = self.last_write = FAR
         self.last_read_beat = FAR
-        self.fresh = set()  # banks activated since their last column command
-        self.write_burst: tuple[int, int, int, int] | None = None  # bank,row,column,beat
+        self.fresh = set()  # Why: a column command to a fresh bank is not a row hit
+        self.write_burst: tuple[int, int, int, int] | None = None
         self.read_burst_end = FAR
 
     def _beat_address(self, bank: int, row: int, column: int, beat: int) -> int:

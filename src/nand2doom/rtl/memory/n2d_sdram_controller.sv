@@ -84,7 +84,8 @@ module n2d_sdram_controller #(
                 sdram_ras_n_o = 1'b0; sdram_we_n_o = 1'b0;
             end
             SDRAM_PRECHARGE: begin
-                // A10 low: precharge only the addressed bank.
+                // Ref: IS42S16320D datasheet PRECHARGE: A10 low precharges only the
+                // addressed bank.
                 sdram_ras_n_o = 1'b0; sdram_we_n_o = 1'b0;
             end
             SDRAM_INIT_REF1, SDRAM_INIT_REF2, SDRAM_REFRESH: begin
@@ -100,13 +101,15 @@ module n2d_sdram_controller #(
                 sdram_ras_n_o = 1'b0;
             end
             SDRAM_READ: begin
-                // Line-aligned start column, auto-precharge (A10) off.
+                // Ref: IS42S16320D datasheet READ: A10 low leaves auto-precharge off. The
+                // start column is line aligned.
                 sdram_address_o[9:0] = regs_q.address[10:1];
                 sdram_cas_n_o = 1'b0;
             end
             SDRAM_WRITE: begin
-                // WRITE with beat zero, then beats one to seven on NOP
-                // cycles; every beat drives DQ and its own byte mask.
+                // Why: WRITE goes out with beat zero, then beats one to seven on NOP cycles,
+                // so the eight beats form one burst; every beat drives DQ and its own byte
+                // mask so masked lanes stay unwritten.
                 sdram_address_o[9:0] = regs_q.address[10:1];
                 if (regs_q.beat == 3'd0) begin
                     sdram_cas_n_o = 1'b0; sdram_we_n_o = 1'b0;
@@ -172,20 +175,23 @@ module n2d_sdram_controller #(
                     end
                 end
             end
-            // Row miss: close this bank; ACTIVE on the next clock meets tRP.
+            // Ref: wiki/src/nand2doom/rtl/memory/mas.md "SDRAM controller" (IS42S16320D-7
+            // timing): a row miss closes this bank; ACTIVE on the next clock meets tRP.
             SDRAM_PRECHARGE: begin
                 regs_d.open[bank] = 1'b0;
                 regs_d.state = SDRAM_ACTIVE;
             end
-            // The column command on the next clock meets tRCD.
+            // Ref: wiki/src/nand2doom/rtl/memory/mas.md "SDRAM controller": the column
+            // command on the next clock meets tRCD.
             SDRAM_ACTIVE: begin
                 regs_d.open[bank] = 1'b1;
                 regs_d.open_row[bank] = row;
                 regs_d.state = regs_q.write ? SDRAM_WRITE : SDRAM_READ;
             end
-            // READ launches after controller edge C0; the inverted device
-            // clock registers it at C0+20 ns. CL2 beat zero is driven
-            // after C0+60 ns+tAC and captured at C0+80 ns.
+            // Ref: wiki/src/nand2doom/rtl/memory/mas.md "SDRAM controller": READ launches
+            // after controller edge C0; the inverted device clock registers it at
+            // C0+20 ns. CL2 beat zero is driven after C0+60 ns+tAC and captured at
+            // C0+80 ns.
             SDRAM_READ: regs_d.state = SDRAM_READ_CAPTURE;
             SDRAM_READ_CAPTURE: begin
                 regs_d.read_data[regs_q.beat*16 +: 16] = sdram_dq_i;
@@ -195,9 +201,9 @@ module n2d_sdram_controller #(
                     regs_d.state = SDRAM_IDLE;
                 end
             end
-            // The final beat is written at the edge that leaves this state;
-            // IDLE then leaves at least two clocks before any precharge (tWR
-            // needs one).
+            // Ref: wiki/src/nand2doom/rtl/memory/mas.md "SDRAM controller": the final beat
+            // is written at the edge that leaves this state; IDLE then leaves at least
+            // two clocks before any precharge (tWR needs one).
             SDRAM_WRITE: begin
                 regs_d.beat = regs_q.beat + 1'b1;
                 if (regs_q.beat == 3'd7) begin
@@ -205,13 +211,14 @@ module n2d_sdram_controller #(
                     regs_d.state = SDRAM_IDLE;
                 end
             end
-            // REFRESH on the next clock meets tRP.
+            // Ref: wiki/src/nand2doom/rtl/memory/mas.md "SDRAM controller": REFRESH on the
+            // next clock meets tRP.
             SDRAM_PRECHARGE_ALL: begin
                 regs_d.open = '0;
                 regs_d.state = SDRAM_REFRESH;
             end
-            // IDLE follows, so the next ACTIVE is at least two clocks later
-            // (tRFC).
+            // Ref: wiki/src/nand2doom/rtl/memory/mas.md "SDRAM controller": IDLE follows,
+            // so the next ACTIVE is at least two clocks later (tRFC).
             SDRAM_REFRESH: begin regs_d.refresh = '0; regs_d.state = SDRAM_IDLE; end
             default: begin regs_d.state = SDRAM_POWERUP; regs_d.init_done = 1'b0; end
         endcase
@@ -224,14 +231,15 @@ module n2d_sdram_controller #(
     `N2A_ASSERT_CLOCKED(clk_i, reset_i, !(regs_q.state == SDRAM_REFRESH && regs_q.open != 4'b0))
     `N2A_ASSERT_CLOCKED_FATAL_WHEN(clk_i, reset_i, regs_q.refresh_tracking,
         regs_q.refresh <= REFRESH_LIMIT, "SDRAM refresh deadline exceeded")
-    // A newly presented request may differ from the preceding idle payload.
-    // Stability is required only after a request was stalled at an edge.
+    // Why: a newly presented request may differ from the preceding idle payload,
+    // so stability is required only after a request was stalled at an edge.
     `N2A_ASSERT_PROPERTY(sdram_stalled_request_stable, clk_i, reset_i,
         (request_valid_i && !request_ready_o) |=>
         (request_valid_i && $stable({request_write_i, request_address_i,
                                     request_write_data_i, request_byte_enable_i})))
-    // The worst in-flight line (row-miss read), IDLE and precharge-all put
-    // the REFRESH command in the fourteenth clock after acceptance.
+    // Why: REFRESH_RESERVE_CYCLES must be at least 14 because the worst in-flight
+    // line (row-miss read), IDLE and precharge-all put the REFRESH command in the
+    // fourteenth clock after acceptance.
     `N2A_ASSERT_INITIAL(REFRESH_RESERVE_CYCLES >= 14)
     `N2A_ASSERT_INITIAL(REFRESH_CYCLES > REFRESH_RESERVE_CYCLES)
 endmodule

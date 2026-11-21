@@ -10,6 +10,8 @@ The PS/2 pins are free inputs, so every frame the receiver can decode is include
 
 Spec lines are in [I/O MAS](../../rtl/io/mas.md): IO-R9 (line 29), PS/2 MMIO registers (lines 316 to 330), JTAG keyboard (lines 338 to 346), PS/2 keyboard receiver (lines 389 to 396). The sync commit of the rows below is the merge of the pull request for #104, which also rewrote the RTL's response-stability check without `$stable` (same check, see [the formal runner spec](../../../../tools/fv/spec.md#front-end-limits)).
 
+In the harness each property is a labelled assertion `p_<property>` (`events_read_in_order` is split into `p_events_read_in_order`, `p_status_reports_occupancy`, `p_every_request_answered` and the no-error checks; `fixed_priority` into three), helper invariants are `h_` and covers `c_`, so a failing run names the property.
+
 | Property | Harm if broken | Spec line | Assumptions | Result | Command | Sync commit |
 |---|---|---|---|---|---|---|
 | `one_push_per_edge`, `physical_has_priority`: at most one source is accepted per edge, and a physical event, even a dropped one, blocks the others | Two events written to one slot; one is lost | Receiver "Push priority", "At most one push per edge" | reset | proven (all depths) | `python3 tools/fv/fv.py run n2d_ps2_keyboard` | merge of #104 |

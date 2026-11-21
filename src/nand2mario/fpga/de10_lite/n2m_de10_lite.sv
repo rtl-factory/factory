@@ -56,7 +56,7 @@ module n2m_de10_lite #(
   output logic       DRAM_WE_N,
   inout  tri  [15:0] DRAM_DQ
 );
-  localparam int unsigned SERIAL_STRETCH_BIT = 22;  // 168 ms one-shot
+  localparam int unsigned SERIAL_STRETCH_BIT = 22;  // Why: a one-clock serial strobe is invisible on an LED; 2^22 clocks stretch it to 168 ms.
   `N2A_ASSERT_PARAM(g_invalid_heartbeat, (HEARTBEAT_BIT >= 1) && (HEARTBEAT_BIT <= 30),
       "n2m_de10_lite HEARTBEAT_BIT must be between 1 and 30")
 
@@ -66,7 +66,8 @@ module n2m_de10_lite #(
   logic halted, stopped, cpu_locked, fault, display_valid;
   logic serial_tx_valid;
   logic [7:0] serial_tx_data;
-  // Only the retired PC of the observation record reaches a pin.
+  // Why: only the retired PC reaches a pin, so the other observation fields
+  // are unused by design.
   /* verilator lint_off UNUSEDSIGNAL */
   n2m_interfaces_pkg::retirement_t retirement;
   /* verilator lint_on UNUSEDSIGNAL */
@@ -77,7 +78,6 @@ module n2m_de10_lite #(
   logic [7:0] inject_byte;
   logic [7:0] jtag_buttons, board_levels, fallback_buttons, buttons;
   logic [8:0] board_raw, board_level;
-  // Status state.
   logic [15:0] pc_q, pc_d;
   logic [7:0] serial_q;
   logic [HEARTBEAT_BIT:0] heartbeat_q, heartbeat_d;
@@ -95,8 +95,8 @@ module n2m_de10_lite #(
     .reset_o       (reset)
   );
 
-  // Host joypad: the endpoint offers one Set-2 byte at a time and the
-  // decoder always takes it (inject_ready high).
+  // Why: the keyboard decoder takes every Set-2 byte the endpoint offers,
+  // so inject_ready is tied high.
   n2a_jtag_virtual u_jtag_virtual (
     .tck_o       (jtag_tck),
     .tdi_o       (jtag_tdi),
@@ -130,8 +130,9 @@ module n2m_de10_lite #(
     .buttons_o    (jtag_buttons)
   );
 
-  // Board fallback: SW[7:0] are held button levels in joypad order
-  // (Right, Left, Up, Down, A, B, Select, Start); KEY1 pressed is Start.
+  // Why: the switches and KEY1 give a joypad without the host keyboard:
+  // SW[7:0] hold button levels in joypad order (Right, Left, Up, Down, A, B,
+  // Select, Start) and KEY1 pressed is Start.
   assign board_raw = {!KEY[1], SW};
   n2m_board_inputs #(
     .WIDTH (9)
@@ -145,7 +146,8 @@ module n2m_de10_lite #(
   assign fallback_buttons = board_levels | {board_level[8], 7'b0};
   assign buttons = jtag_buttons | fallback_buttons;
 
-  // Observation ports without a board pin are left open on purpose.
+  // Why: these observation ports have no board pin, so PINCONNECTEMPTY is
+  // waived for this instance only.
   /* verilator lint_off PINCONNECTEMPTY */
   // The console core leaves reset only once the SDRAM is initialized and
   // the loader does not hold it (system HAS reset domains).
@@ -199,20 +201,19 @@ module n2m_de10_lite #(
     .dram_dq_o          (dram_dq_out),
     .dram_dq_oe_o       (dram_dq_oe),
     .dram_dq_i          (dram_dq_in),
-    // The ASIC chip's off-chip cartridge bus is idle in this configuration.
+    // Why: with CART_SDRAM the cartridge lives in SDRAM, so the ASIC chip's
+    // off-chip cartridge bus is never ready and never answers.
     .cart_bus_request_o  (),
     .cart_bus_ready_i    (1'b0),
     .cart_bus_response_i ('0)
   );
   /* verilator lint_on PINCONNECTEMPTY */
 
-  // DRAM_DQ is the single resolved bidirectional bus: driven from the
-  // controller's data only while its output enable is high.
+  // Why: the system keeps DQ split into out, enable and in; the board top is
+  // the one place the inout pin is resolved and tri-stated.
   assign DRAM_DQ = dram_dq_oe ? dram_dq_out : 16'hzzzz;
   assign dram_dq_in = DRAM_DQ;
 
-  // Status: the last retired PC (pc_after) and the last serial byte, a
-  // heartbeat that proves the clock and a stretched serial-activity pulse.
   assign pc_d = retirement.pc_after;
   `N2A_DFF_RST_EN(pc_q, pc_d, clk_25, retirement.valid, core_reset, 16'h0000)
   `N2A_DFF_RST_EN(serial_q, serial_tx_data, clk_25, serial_tx_valid, core_reset, 8'h00)

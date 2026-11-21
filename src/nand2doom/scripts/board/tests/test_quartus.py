@@ -18,7 +18,7 @@ quartus = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(quartus)
 SYSTEM_CLOCK = "u_clock|u_pll|auto_generated|pll1|clk[0]"
 
-# Sanitized Quartus 25.1 Clocks table, retaining its actual field ordering.
+# Ref: Sanitized Quartus 25.1 Clocks table, retaining its actual field ordering.
 CLOCKS = """; Clock Name ; Type ; Period ; Frequency ; Rise ; Fall ; Duty Cycle ; Divide by ; Multiply by ; Phase ; Offset ; Edge List ; Edge Shift ; Inverted ; Master ; Source ; Targets ;
 ; reference ; Base ; 20.000 ; 50.0 MHz ; 0.000 ; 10.000 ; ; ; ; ; ; ; ; ; ; ; { MAX10_CLK1_50 } ;
 ; jtag_tck ; Base ; 100.000 ; 10.0 MHz ; 0.000 ; 50.000 ; ; ; ; ; ; ; ; ; ; ; { altera_reserved_tck } ;
@@ -27,7 +27,7 @@ CLOCKS = """; Clock Name ; Type ; Period ; Frequency ; Rise ; Fall ; Duty Cycle 
 """.replace("SYSTEM", SYSTEM_CLOCK)
 
 
-# Sanitized observed Quartus connectivity schema and complete unused-port set.
+# Ref: Sanitized observed Quartus connectivity schema and complete unused-port set.
 JTAG_HIERARCHY = "n2a_jtag_virtual:u_jtag_virtual|sld_virtual_jtag:u_vjtag"
 UNUSED_JTAG_PORTS = """virtual_state_e1dr virtual_state_pdr virtual_state_e2dr virtual_state_cir tms
 jtag_state_tlr jtag_state_rti jtag_state_sdrs jtag_state_cdr jtag_state_sdr
@@ -144,7 +144,7 @@ class QuartusTests(unittest.TestCase):
                     path.write_text(json.dumps(config))
                     with self.assertRaisesRegex(ValueError, "timeout_seconds"):
                         quartus.load_config(ROOT, str(path), board)
-        # Removing the override intentionally inherits the base bound.
+        # Why: removing the override must inherit the base bound, not drop it.
         raw["boards"]["de2_115"].pop("timeout_seconds")
         path.write_text(json.dumps(raw))
         self.assertEqual(quartus.load_config(ROOT, str(path), "de2_115")["timeout_seconds"], 1800)
@@ -271,7 +271,8 @@ class QuartusTests(unittest.TestCase):
             self.assertEqual(len(result["electrical_advisory"]), electrical)
             self.assertEqual(len(result["connectivity_warnings"]), 21)
             self.assertIn(f"{summary['occurrences']} reviewed warning occurrences", quartus.warning_summary_text(result))
-            # Neither absolute staging root nor harmless line movement is an identity.
+            # Why: the staging root and line numbers move between runs, so neither may
+            # change a warning's identity.
             moved = [line.replace("/staged/", "/new/root/").replace("(65)", "(876)")
                      .replace("Line: 65", "Line: 876").replace("Line: 99", "Line: 1234") for line in warnings]
             self.assertEqual(result, quartus.reviewed_warnings(moved, map_path, config, fit_report=fit_path))
@@ -339,7 +340,7 @@ class QuartusTests(unittest.TestCase):
         _, original = warning_fixture(config)
         reported = "standard 3.3 V SCHMITT TRIGGER at"
         self.assertIn(reported, original)
-        # Quartus 25.1std.0 prints the configured standard in mixed case.
+        # Ref: Quartus 25.1std.0 prints the configured standard in mixed case.
         for spelling in ("3.3 V Schmitt Trigger", "3.3  V  schmitt\ttrigger"):
             with self.subTest(spelling=spelling):
                 text = original.replace(reported, f"standard {spelling} at")
@@ -451,17 +452,17 @@ class QuartusTests(unittest.TestCase):
         self.assertEqual(self.config["device"], "10M50DAF484C7G")
         self.assertFalse(any("fast" in s or "preload" in s or "/dv/" in s for s in self.config["sources"]))
         simulation = json.loads((ROOT / "src/nand2doom/cfg/targets.json").read_text())["targets"]["n2d_de10_lite"]["sources"]
-        # The hardware list equals the board simulation list minus its fixture,
-        # with each common memory contract's Intel backend in place of the
-        # portable backend (never both files of a pair). The common Virtual
-        # JTAG wrapper is in both lists; only its dv/ primitive stub is not.
+        # Why: Quartus must build what the board simulation checked, except that each
+        # common memory contract uses its Intel backend in place of the portable one
+        # (never both files of a pair) and the dv/ primitive stub is left out; the
+        # common Virtual JTAG wrapper is in both lists.
         intel_for = {"src/common/rtl/memory/n2a_sync_ram.sv": "src/common/rtl/memory/n2a_sync_ram_intel.sv",
                      "src/common/rtl/memory/n2a_sdp_ram_portable.sv": "src/common/rtl/memory/n2a_sdp_ram_intel.sv",
                      "src/common/rtl/memory/n2a_tdp_ram_portable.sv": "src/common/rtl/memory/n2a_tdp_ram_intel.sv",
                      "src/nand2doom/fpga/de10_lite/n2d_de10_lite_clock_portable.sv":
                          "src/nand2doom/fpga/de10_lite/n2d_de10_lite_clock_intel.sv"}
-        # Verilator lint-waiver companions and the primitive stub under dv/
-        # are simulation-only.
+        # Why: lint-waiver companions and the dv/ primitive stub exist only for
+        # Verilator, so Quartus never sees them.
         expected_sources = {intel_for.get(source, source) for source in simulation[:-1]
                             if "/dv/" not in source}
         self.assertIn("src/common/rtl/jtag/n2a_jtag_virtual.sv", self.config["sources"])
@@ -484,7 +485,8 @@ class QuartusTests(unittest.TestCase):
         output = self.root / "workdir" / "de10"
         quartus.stage(ROOT, output, self.config)
         qsf = (output / "n2d_de10_lite.qsf").read_text()
-        # Every pin except KEY0 (owned by the settings fragment) is 3.3-V LVTTL.
+        # Why: KEY0 (RESET_N) takes its standard from the settings fragment, so the QSF
+        # sets 3.3-V LVTTL on every other pin only.
         standards = re.findall(r'IO_STANDARD "([^"]+)" -to (\S+)', qsf)
         self.assertEqual({port for _, port in standards}, set(self.config["pins"]) - {"RESET_N"})
         self.assertEqual({standard for standard, _ in standards}, {"3.3-V LVTTL"})
@@ -495,7 +497,7 @@ class QuartusTests(unittest.TestCase):
         config = quartus.load_config(ROOT, "src/nand2doom/cfg/n2d_quartus.json", "de2_115")
         self.assertEqual(set(config["pins"]), top_ports(ROOT / "src/nand2doom/fpga/de2_115/n2d_de2_115.sv"))
         self.assertEqual((config["family"], config["device"]), ("Cyclone IV E", "EP4CE115F29C7"))
-        # The nand2linux DE2-115 QSF is the cross-checked board pin authority
+        # Ref: The nand2linux DE2-115 QSF is the cross-checked board pin authority
         # (DE2-115 manual tables); every shared name must agree on pin and standard.
         n2l = (ROOT / "src/nand2linux/fpga/n2l_de2_115.qsf").read_text()
         locations = {port: pin for pin, port in re.findall(r"set_location_assignment PIN_(\w+) -to (\S+)", n2l)}
@@ -506,7 +508,7 @@ class QuartusTests(unittest.TestCase):
                 self.assertEqual(locations[port], pin)
                 expected = standards.get(port, standards.get(port.split("[")[0] + "[*]"))
                 self.assertEqual(quartus.io_standard(config, port), expected)
-        # JP5 UART (GPIO[0] RX, GPIO[1] TX) and the on-board PS/2 connector.
+        # Ref: DE2-115 manual: JP5 UART (GPIO[0] RX, GPIO[1] TX) and the on-board PS/2 connector.
         self.assertEqual([config["pins"][p] for p in ("UART_RX", "UART_TX", "PS2_CLK", "PS2_DAT")],
                          ["AB22", "AC15", "G6", "H5"])
 
@@ -516,9 +518,9 @@ class QuartusTests(unittest.TestCase):
         swapped = {f"{de10}/n2d_de10_lite_clock_intel.sv": f"{de2}/n2d_de2_115_clock_intel.sv",
                    f"{de10}/n2d_de10_lite.sv": f"{de2}/n2d_de2_115.sv"}
         self.assertEqual(config["sources"], [swapped.get(name, name) for name in self.config["sources"]])
-        # Two full-width framebuffer banks (eight CPU and eight scan lane
-        # copies) and a four-way D-cache (four data arrays and a 63-bit
-        # per-set metadata word in four M9Ks).
+        # Why: the DE2-115 framebuffer is full width, so its RAM requirements count two
+        # full-width banks (eight CPU and eight scan lane copies) besides the four-way
+        # D-cache (four data arrays and a 63-bit per-set metadata word in four M9Ks).
         def de2_115_ram(r):
             prefix = r.get("prefix", "")
             if "u_set_ram" in r.get("name", ""):
@@ -653,7 +655,7 @@ class QuartusTests(unittest.TestCase):
                 patch.object(quartus.shutil, "which", return_value=None), \
                 contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(stderr):
             self.assertEqual(quartus.main(["--elaborate-only"]), 77)
-            # The full gate never skips: a missing tool is a failure there.
+            # Why: the full gate must never pass without evidence, so a missing tool fails it.
             self.assertEqual(quartus.main([]), 1)
         stage.assert_not_called()
         self.assertIn("SKIPPED: Quartus not found", stderr.getvalue())
@@ -677,7 +679,8 @@ class QuartusTests(unittest.TestCase):
 
     def test_elaboration_gate_rejects_errors_failure_and_unreviewed_warnings(self):
         config = self.config
-        # The two Quartus Std rejections that reached main at eecd1a6 (#271).
+        # Why: these are the two Quartus Std rejections that reached main (#271); the
+        # gate must catch both.
         cases = (("Error (10170): Verilog HDL syntax error at n2d_if.sv(260) near text: \"if\";  "
                   "expecting \"endmodule\".\n", "Successful", "elaboration errors"),
                  ("Error (10170): Verilog HDL syntax error at n2d_dcache.sv(84) near text: \"$error\";  "
@@ -727,7 +730,6 @@ class QuartusTests(unittest.TestCase):
         registry = json.loads((ROOT / "src/nand2doom/cfg/targets.json").read_text())
         for target in registry["targets"].values():
             self.assertNotIn("N2A_DISABLE_ASSERTIONS", target.get("defines", []))
-        # The PLL backend is selected by the source list, not a conditional.
         hardware = (output / "src/nand2doom/fpga/de10_lite/n2d_de10_lite_clock_intel.sv").read_text()
         self.assertIn("altpll #(", hardware)
         self.assertIn(") u_pll (", hardware)
@@ -758,7 +760,8 @@ class QuartusTests(unittest.TestCase):
             else:
                 config["pins"] = {"a": "P11", "b": "P11"}
             path = self.root / "config.json"
-            # Use absolute config only as an input; sources stay ROOT-relative.
+            # Why: the config may live outside the repo, but its sources must still resolve
+            # against ROOT.
             path.write_text(json.dumps(config))
             with self.assertRaises(ValueError):
                 quartus.load_config(ROOT, str(path))
@@ -783,9 +786,9 @@ class QuartusTests(unittest.TestCase):
 
     def test_run_records_launcher_child_identity_in_sidecar(self):
         self.output.mkdir(parents=True)
-        # The child writes immediately and heavily, so any launcher write to
-        # the same stream could interleave; identity must live in its own file
-        # and the log must hold tool output only.
+        # Why: the child writes immediately and heavily, so any launcher write to the
+        # same stream could interleave; identity must live in its own file and the log
+        # hold tool output only.
         quartus.run([sys.executable, "-c",
                      "import sys; sys.stdout.write('tool output\\n' * 2000); sys.stdout.flush()"],
                     self.output, "normal.log", 10)
@@ -793,7 +796,7 @@ class QuartusTests(unittest.TestCase):
         self.assertEqual(log, "tool output\n" * 2000)
         record = json.loads((self.output / "normal.log.owner.json").read_text())["launcher_child"]
         self.assertGreater(record["pid"], 0)
-        self.assertEqual(record["pgid"], record["pid"])  # own session group
+        self.assertEqual(record["pgid"], record["pid"])
         self.assertEqual(record["timeout_seconds"], 10)
         self.assertRegex(record["started_utc"], r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+00:00$")
 
@@ -844,7 +847,7 @@ class QuartusTests(unittest.TestCase):
                         if direction == "read" else
                         (controller + "beat_q[2]", "DRAM_LDQM" if "DRAM_LDQM" in config["pins"]
                          else "DRAM_DQM[0]", SYSTEM_CLOCK, "sdram_clock"))
-                    # Actual report sections/rows with irrelevant path-delay rows omitted.
+                    # Ref: Actual report sections/rows with irrelevant path-delay rows omitted.
                     (reports / f"sdram_{direction}_{label}_{kind}.rpt").write_text(
                         f"Report Timing: Found 1 {kind} paths (0 violated). Worst case slack is 3.870\n"
                         f"Delay Model:\n {corner} Model\n"
@@ -913,7 +916,7 @@ class QuartusTests(unittest.TestCase):
                 quartus.fitted_resources(bad, self.config)
 
     def test_fitter_auto_type_real_row_shape(self):
-        # Sanitized Quartus 25.1 fitted row schema/data, not a generated artifact.
+        # Ref: Sanitized Quartus 25.1 fitted row schema/data, not a generated artifact.
         # Type=AUTO is the inference request; the positive M9Ks is the result.
         report = """; Total logic elements ; 34960 / 49760 ;
 ; M9Ks ; 8 / 182 ;
@@ -921,8 +924,8 @@ class QuartusTests(unittest.TestCase):
 ; Name ; Type ; Mode ; Clock Mode ; Port A Depth ; Port A Width ; Port B Depth ; Port B Width ; Port A Input Registers ; Port A Output Registers ; Port B Input Registers ; Port B Output Registers ; Size ; Implementation Port A Depth ; Implementation Port A Width ; Implementation Port B Depth ; Implementation Port B Width ; Implementation Bits ; M9Ks ; MIF ; Location ; Mixed Width RDW Mode ; Port A RDW Mode ; Port B RDW Mode ; ECC Mode ; ECC Pipeline Registers ; Fits in MLABs ;
 ; n2d_system:u_system|n2d_dcache:u_dcache|altsyncram:g_way[0].data_ram[0][127]__3|altsyncram_example:auto_generated|ALTSYNCRAM ; AUTO ; Simple Dual Port ; Single Clock ; 512 ; 128 ; 512 ; 128 ; yes ; no ; yes ; no ; 65536 ; 512 ; 128 ; 512 ; 128 ; 65536 ; 8 ; None ; M9K_X53_Y17_N0 ; Old data ; New data with NBE Read ; New data with NBE Read ; Off ; No ; No - Unknown ;
 """
-        # The sanitized row uses an inferred RAM name rather than an explicit
-        # shared RAM instance; match it by that name so the schema check stays honest.
+        # Why: the sanitized row uses an inferred RAM name, not an explicit shared RAM
+        # instance, so match it by that name to keep the schema check honest.
         config = {"ram_requirements": [{"name": "u_dcache|altsyncram:g_way[0].data_ram",
                                         "single_port": False, "count": 1, "depth": 512,
                                         "width": 128, "m9ks_each": 8}]}
@@ -949,7 +952,7 @@ class QuartusTests(unittest.TestCase):
                 with self.subTest(name=name, row=bad_row), self.assertRaisesRegex(RuntimeError, "RAM timing/mode"):
                     quartus.fitted_resources(original.replace(row, bad_row), self.config)
             cells = row.split(";")
-            cells[7] = " 257 "  # A depth no requirement uses; also reject unused single-port B.
+            cells[7] = " 257 "  # Why: no requirement uses depth 257; the unused single-port B side is rejected too.
             with self.subTest(name=name), self.assertRaisesRegex(RuntimeError, "RAM geometry"):
                 quartus.fitted_resources(original.replace(row, ";".join(cells)), self.config)
 
@@ -984,7 +987,8 @@ class QuartusTests(unittest.TestCase):
         reports = self.reports()
         file = reports / f'{self.config["project"]}.sta.rpt'
         row = next(line for line in CLOCKS.splitlines() if line.startswith("; sdram_clock ;"))
-        # Field positions follow the sanitized real table above, not a clock-name regex.
+        # Why: positions follow the sanitized real table above, so a wrong value in any
+        # field fails, not only a clock-name mismatch.
         for index, value in ((2, "Base"), (3, "20.000"), (5, "0.000"), (6, "20.000"),
                              (8, "2"), (9, "2"), (14, "false"), (15, "reference"),
                              (16, "reference"), (17, "{ UART_TXD }")):
@@ -1009,11 +1013,11 @@ class QuartusTests(unittest.TestCase):
         original = (reports / name).read_text()
         good = "n2d_memory_controller:u_memory|n2d_sdram_controller:u_sdram|regs_q.read_data[78]"
         self.assertIn(good, original)
-        for bad in ("n2d_memory_controller:u_memory|n2d_sdram_controller:u_sdram|read_data_q[78]",  # pre-struct name
-                    "n2d_memory_controller:u_memory|n2d_sdram_controller:u_sdram|regs_q.write_data[78]",  # wrong field
-                    "n2d_memory_controller:u_memory|n2d_sdram_controller:u_sdramx|regs_q.read_data[78]",  # wrong hierarchy
-                    "n2d_memory_controller:u_memory|regs_q.read_data[78]",  # missing level
-                    "n2d_memory_controller:u_memory|n2d_sdram_controller:u_sdram|regs_q.read_data[128]",  # out of range
+        for bad in ("n2d_memory_controller:u_memory|n2d_sdram_controller:u_sdram|read_data_q[78]",
+                    "n2d_memory_controller:u_memory|n2d_sdram_controller:u_sdram|regs_q.write_data[78]",
+                    "n2d_memory_controller:u_memory|n2d_sdram_controller:u_sdramx|regs_q.read_data[78]",
+                    "n2d_memory_controller:u_memory|regs_q.read_data[78]",
+                    "n2d_memory_controller:u_memory|n2d_sdram_controller:u_sdram|regs_q.read_data[128]",
                     "n2d_memory_controller:u_memory|n2d_sdram_controller:u_sdram|regs_q.read_data[7a]"):
             with self.subTest(bad=bad):
                 (reports / name).write_text(original.replace(good, bad))
@@ -1082,8 +1086,6 @@ class QuartusTests(unittest.TestCase):
         self.assertFalse(old.exists())
 
     def test_backend_pairs_select_exactly_one_file(self):
-        # Finite backend selection: every portable/Intel pair contributes exactly
-        # one file to the hardware list, and a list with both or neither fails.
         pairs = (("src/common/rtl/memory/n2a_sync_ram.sv", "src/common/rtl/memory/n2a_sync_ram_intel.sv"),
                  ("src/common/rtl/memory/n2a_sdp_ram_portable.sv", "src/common/rtl/memory/n2a_sdp_ram_intel.sv"),
                  ("src/nand2doom/fpga/de10_lite/n2d_de10_lite_clock_portable.sv",
@@ -1102,12 +1104,13 @@ class QuartusTests(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which("verilator"), "verilator not installed")
     def test_virtual_jtag_wrapper_lints_against_vendor_port_stub(self):
-        # The board tops bind the common wrapper; lint it with the common
-        # sld_virtual_jtag stub so its vendor wiring is checked here.
+        # Why: the board tops bind the common wrapper; linting it against the common
+        # sld_virtual_jtag stub checks its vendor wiring without Quartus.
         sources = ["src/common/dv/jtag/sld_virtual_jtag_stub.sv",
                    "src/common/rtl/jtag/n2a_jtag_virtual.sv"]
         with tempfile.TemporaryDirectory() as directory:
-            # Only the stub's file name differs from its vendor module name.
+            # Why: only the stub's file name differs from its vendor module name, so
+            # DECLFILENAME is the one rule waived.
             waiver = Path(directory) / "stub.vlt"
             waiver.write_text('`verilator_config\n'
                               'lint_off -rule DECLFILENAME -file "*/sld_virtual_jtag_stub.sv"\n')

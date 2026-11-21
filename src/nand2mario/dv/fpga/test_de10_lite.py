@@ -32,18 +32,17 @@ from ..video import ppu_model as m
 
 REFERENCE_PERIOD_NS = 20
 CLOCK_PERIOD_NS = 40
-SAMPLE_NS = 25000 * CLOCK_PERIOD_NS          # one debounce sample period (1 ms)
-HEARTBEAT_BIT = 20                           # the target's HEARTBEAT_BIT parameter
+SAMPLE_NS = 25000 * CLOCK_PERIOD_NS
+HEARTBEAT_BIT = 20                           # Why: must match the target's HEARTBEAT_BIT parameter.
 HEADER_TYPE = 0x147
-UART_CLKS_PER_BIT = 8                        # the target's UART_CLKS_PER_BIT parameter
+UART_CLKS_PER_BIT = 8                        # Why: must match the target's UART_CLKS_PER_BIT parameter.
 BIT_NS = UART_CLKS_PER_BIT * CLOCK_PERIOD_NS
-# Storage HAS: the SDRAM is initialized 5036 clocks after reset release.
 SDRAM_INITIALIZED_CLOCK = 5036
-# Joypad bits (joypad HAS order).
+# Why: the bit order follows the joypad block's button order.
 RIGHT, LEFT, UP, DOWN, A, B, SELECT, START = (1 << i for i in range(8))
 LED_LOCKED, LED_RESET, LED_HALTED, LED_STOPPED, LED_LOCKUP, LED_FAULT = (1 << i for i in range(6))
 LED_DISPLAY, LED_HEARTBEAT, LED_BUTTONS, LED_SERIAL = (1 << i for i in range(6, 10))
-# Active-high a..g segment patterns of the board's 7-segment digits.
+# Why: active-high a..g patterns; the board's digits are active low, so `digit` inverts them.
 SEGMENTS = [0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07,
             0x7F, 0x6F, 0x77, 0x7C, 0x39, 0x5E, 0x79, 0x71]
 EXTENDED, RELEASE = 0xE0, 0xF0
@@ -121,7 +120,7 @@ def check_heartbeat(dut, release_ns):
     heartbeat_bit = HEARTBEAT_BIT
     elapsed = int(get_sim_time(unit='ns') - release_ns) // CLOCK_PERIOD_NS
     assert elapsed >= 2 << heartbeat_bit, f'heartbeat window not reached: {elapsed} edges'
-    # A few edges of release-time uncertainty: never sample at a toggle.
+    # Why: a few edges of release-time uncertainty: never sample at a toggle.
     assert 8 < elapsed % (1 << heartbeat_bit) < (1 << heartbeat_bit) - 8, elapsed
     expected = (elapsed >> heartbeat_bit) & 1
     assert bool(int(dut.LEDR.value) & LED_HEARTBEAT) == bool(expected), (elapsed, expected)
@@ -148,12 +147,11 @@ async def board_smoke(dut):
     system = board.u_system
     image = load_image()
 
-    # Board inputs at power-up: KEY0 pressed (reset), KEY1 released, no
-    # switches, the UART line idle, the JTAG hub idle.
+    # Ref: DE10-Lite user manual: KEYs are active low.
+    # Why: KEY0 pressed holds reset through power-up; KEY1, the switches, the UART line and the JTAG hub start idle.
     dut.KEY.value = 0b10
     dut.SW.value = 0
     uart = UartHost(dut)
-    # TCK at one quarter of the system clock.
     host = StubHost(dut.u_board.u_jtag_virtual.u_vjtag, half_tck_ns=2 * CLOCK_PERIOD_NS)
     power_up(system, rng, onchip=False)
     for bank in range(3):
@@ -168,8 +166,8 @@ async def board_smoke(dut):
     assert leds & LED_RESET and not leds & LED_LOCKED, f'reset held with the PLL stopped: LEDR={leds:#05x}'
     await Timer(REFERENCE_PERIOD_NS // 2, unit='ns')
     dut.KEY.value = 0b11
-    # Lock three reference edges after release, then the synchronous reset
-    # release two system edges later.
+    # Why: the PLL locks three reference edges after release and the synchronous reset
+    # releases two system edges later, so wait past both.
     await Timer(4 * REFERENCE_PERIOD_NS + 5, unit='ns')
     await ReadOnly()
     assert int(dut.LEDR.value) & LED_LOCKED, 'PLL lock must be reported'
@@ -182,8 +180,6 @@ async def board_smoke(dut):
     assert int(dut.LEDR.value) & (LED_HALTED | LED_STOPPED | LED_LOCKUP | LED_FAULT | LED_BUTTONS | LED_SERIAL) == 0
     assert hex_word(dut.HEX3, dut.HEX2, dut.HEX1, dut.HEX0) == 0 and hex_word(dut.HEX5, dut.HEX4) == 0
 
-    # Loader over the UART pins: before initialization a PING reports an
-    # uninitialized backing; once initialized the core leaves reset.
     cocotb.start_soon(uart.receiver())
     response = await uart.exchange(encode_request(CMD_PING))
     assert response.ok and not response.initialized and not response.held, response.describe()
@@ -212,7 +208,7 @@ async def board_smoke(dut):
     await ReadOnly()
     assert not int(dut.LEDR.value) & LED_RESET, 'RELEASE starts the core'
 
-    # Run the background program to its final HALT (IE cleared), keeping
+    # Why: run the background program to its final HALT (IE cleared), keeping
     # the last retired PC for the digit check.
     cycles, last_pc, retirements = 0, None, 0
     while True:
@@ -237,7 +233,6 @@ async def board_smoke(dut):
     assert hex_word(dut.HEX5, dut.HEX4) == 0, 'no serial byte was transmitted'
     assert not leds & LED_SERIAL
 
-    # One PPU frame observed inside, then the output frame on the board pins.
     observed = [[None] * m.VISIBLE_PIXELS for _ in range(m.VISIBLE_LINES)]
     await RisingEdge(system.frame_start_o)
     for index in range(m.VISIBLE_PIXELS * m.VISIBLE_LINES):
@@ -266,7 +261,7 @@ async def board_smoke(dut):
         clocks.append(read_vga(dut))
     dm.compare_clocks(clocks, dm.expected_frame(observed), label='board VGA frame')
     if hasattr(dut, 'VGA_CLK'):
-        # BLANK_N stays high: the display itself must drive black in every
+        # Why: BLANK_N stays high: the display itself must drive black in every
         # horizontal/vertical blanking pixel, not merely during sync pulses.
         for index, (_, _, rgb) in enumerate(clocks):
             x, y = index % dm.H_TOTAL, index // dm.H_TOTAL
@@ -297,13 +292,8 @@ async def board_smoke(dut):
         assert list(record.shades) == [shade for row in observed for shade in row]
         cocotb.log.info('complete frame snapshot matched UART readback')
 
-    # The heartbeat LED shows one bit of the clock counter since reset
-    # release (HEARTBEAT_BIT, 20 in this target): it has toggled at least
-    # twice by now and equals that bit of the elapsed edge count.
     check_heartbeat(dut, release_ns)
 
-    # Host joypad over JTAG: Start (plain code) and Up (extended code), each
-    # pressed and released, with the status words of the endpoint checked.
     await host.idle(5)
     status = await host.status()
     assert status == (0, 0, 0, 0, 0, 0), status
@@ -320,15 +310,11 @@ async def board_smoke(dut):
     await settle(system.clk_i, 4)
     await ReadOnly()
     assert int(system.buttons_i.value) == 0 and not int(dut.LEDR.value) & LED_BUTTONS
-    # An unmapped key is consumed without effect.
     await host.send(bytes([0x1C, RELEASE, 0x1C]))
     await settle(system.clk_i, 4)
     await ReadOnly()
     assert int(system.buttons_i.value) == 0
 
-    # Board fallback: a switch level and the KEY1 Start button reach the
-    # joypad after two agreeing 1 ms samples; a bounce shorter than one
-    # sample never registers.
     await writable()
     dut.SW.value = RIGHT | B
     await Timer(3 * SAMPLE_NS, unit='ns')

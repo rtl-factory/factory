@@ -32,6 +32,7 @@ BKMs define how work is done here. Find the rows that match what you are doing, 
 | writing an ADR | `wiki/bkm/design/adr-format.md` |
 | writing or changing a BKM | `wiki/bkm/writing/writing-bkms.md` |
 | writing anything an agent reads (BKM, skill, `AGENTS.md`) | `wiki/bkm/writing/writing-for-agents.md` |
+| writing, reviewing or cleaning up a comment in Python or SystemVerilog code, or fixing a comment lint failure | `wiki/bkm/writing/code-comments.md` |
 | writing or changing a skill | `wiki/bkm/writing/skill-mechanics.md` |
 | running a retro after a session or landed epic, or after a captain corrects an agent | `wiki/bkm/writing/improving-bkms.md` |
 

@@ -73,7 +73,7 @@ module n2m_de10_lite_fixture #(
     .DRAM_DQ       (DRAM_DQ)
   );
 
-  // The device drives the bus only in its CL2 read-output window (the
+  // Why: the device drives the bus only in its CL2 read-output window (the
   // model's read_out_q); the board drives it only with its output enable.
   // Both at once is bus contention.
   logic device_clk;

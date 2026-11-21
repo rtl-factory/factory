@@ -61,8 +61,6 @@ module n2a_uart_tx #(
         endcase
     end
 
-    // Accept a byte while idle, then hold each of start, eight data, and stop
-    // for CLKS_PER_BIT cycles.
     always_comb begin
         protocol_d = protocol_q;
         bit_clock_d = bit_clock_q;
@@ -72,7 +70,7 @@ module n2a_uart_tx #(
             UART_IDLE: begin
                 bit_clock_d = '0;
                 protocol_d.bit_index = '0;
-                // The start bit is never stretched; its share seeds the remainder.
+                // Why: the start bit is never stretched; its share seeds the remainder.
                 frac_acc_d = ACC_WIDTH'(FRAC_NUM);
                 protocol_d.extra = 1'b0;
                 if (byte_valid_i) begin
@@ -124,7 +122,7 @@ module n2a_uart_tx #(
         endcase
     end
 
-    // Asynchronous reset per the UART HAS.
+    // Why: an asynchronous reset holds the line idle even before clk_i runs.
     `N2A_DFF_ARST_VAL(protocol_q, protocol_d, clk_i, reset_i, PROTOCOL_RESET)
     `N2A_DFF_ARST_VAL(bit_clock_q, bit_clock_d, clk_i, reset_i, '0)
     `N2A_DFF_ARST_VAL(frac_acc_q, frac_acc_d, clk_i, reset_i, '0)

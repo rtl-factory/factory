@@ -83,7 +83,9 @@ module n2d_halt_sdram #(
     logic controller_ready, controller_response, controller_error, reject_q;
     logic reject;
     assign reject = reject_write_i && line_write_o;
-    // Public system observation ports and explicit memory interfaces only.
+    // Why: only public system observation ports and explicit memory
+    // interfaces, so the fixture checks the product boundary and cannot lean
+    // on internal state.
     n2d_system #(.DCACHE_WAYS(DCACHE_WAYS)) u_system (
         .scan_tck_i(1'b0), .scan_tdi_i(1'b0), .scan_capture_i(1'b0),
         .scan_shift_i(1'b0), .scan_update_i(1'b0), .scan_update_ir_i(1'b0),
@@ -113,7 +115,8 @@ module n2d_halt_sdram #(
         .memory_response_data_i(line_read_data),
         .memory_response_error_i(line_error_o));
     assign line_ready_o = controller_ready && !stall_i;
-    // DV-only error before controller acceptance: no failed-write side effect.
+    // Why: the DV-only error is raised before controller acceptance, so a
+    // rejected write has no failed-write side effect in SDRAM.
     always_ff @(posedge clk_i) begin
         if (reset_i) reject_q <= 1'b0;
         else reject_q <= line_valid_o && line_ready_o && reject;

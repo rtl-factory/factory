@@ -81,9 +81,9 @@ module n2m_library (
   `N2A_DFF_RST(local_valid_q, local_accept, clk_i, core_reset_i)
   `N2A_DFF_RST_EN(local_data_q, local_data, clk_i, local_accept, core_reset_i, 8'hff)
 
-  // Register-controlled requests use the existing mapper for ordinary games.
-  // Its header observation is the catalogue's profile, not a heuristic based
-  // on the loader image's deliberately ordinary ROM-only header bytes.
+  // Why: ordinary games keep the existing mapper. Its header observation comes
+  // from the catalogue's profile because the loader image's header bytes are
+  // deliberately ROM-only and would select the wrong mapper.
   always_comb begin
     mapper_header_data = active_load.write_data;
     case (active_load.address)
@@ -109,8 +109,9 @@ module n2m_library (
   );
   /* verilator lint_on PINCONNECTEMPTY */
 
-  // The library source port has at most one outstanding byte. No CPU read
-  // shares it: the active cartridge's independent RAM port serves the CPU.
+  // Why: no CPU read shares the library source port (the active cartridge's
+  // independent RAM port serves the CPU), so one outstanding byte suffices and
+  // no arbiter is needed.
   assign source_response = ((state_q.phase == LIB_ENTRY_RESPONSE) ||
                             (state_q.phase == LIB_COPY_RESPONSE) ||
                             (state_q.phase == LIB_DRAIN)) && backing_response_i.valid;
@@ -242,11 +243,11 @@ module n2m_library (
       LIB_DRAIN: begin
         if (backing_response_i.valid) state_d.phase = LIB_BOOT;
       end
-      LIB_FAILED: begin end // A host HOLD/reload/RELEASE recovers deterministically.
+      LIB_FAILED: begin end  // Why: no self-recovery; it stays failed until a host HOLD, reload and RELEASE.
       default: state_d = RESET_STATE;
     endcase
-    // HOLD invalidates the active image. Drain an accepted read before
-    // abandoning it; a new host load cannot make a late response part of a
+    // Why: HOLD invalidates the active image. An accepted read is drained before
+    // it is abandoned, so a new host load cannot make a late response part of a
     // later image. Requests not yet accepted can be withdrawn immediately.
     if (host_hold_i) begin
       state_d.image_valid = 1'b0;

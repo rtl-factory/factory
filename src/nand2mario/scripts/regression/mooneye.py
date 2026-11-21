@@ -110,7 +110,7 @@ def run_one(item, roms, output, lane, resume=False):
     log = output / 'logs' / (rom.replace('/', '__') + '.log')
     log.parent.mkdir(parents=True, exist_ok=True)
     with log.open('w') as handle:
-        # N2M_SIM_LAUNCHER optionally prefixes a host slot/queue wrapper.
+        # Why: a shared host sets N2M_SIM_LAUNCHER to run the simulator under its slot/queue wrapper.
         launcher = os.environ.get('N2M_SIM_LAUNCHER', '').split()
         status = subprocess.run(launcher + [sys.executable, '-B', 'tools/sim/sim.py', '--workdir', str(lane),
                                  'test', '--direct', item.get('target', 'n2m_system_mooneye')], cwd=ROOT, env=env,
@@ -137,7 +137,7 @@ def run(roms, output, pins, jobs, only, resume=False):
     lanes = [output / f'lane{n}' for n in range(jobs)]
     results = {}
     with concurrent.futures.ThreadPoolExecutor(jobs) as pool:
-        # Lane n runs ROMs n, n+jobs, ... sequentially to reuse its model.
+        # Why: lane n runs ROMs n, n+jobs, ... sequentially to reuse its model.
         def lane_work(n):
             return [run_one(item, roms, output, lanes[n], resume) for item in selected[n::jobs]]
         for done in pool.map(lane_work, range(jobs)):
@@ -149,7 +149,6 @@ def run(roms, output, pins, jobs, only, resume=False):
     (output / 'summary.json').write_text(json.dumps(summary, indent=2, sort_keys=True) + '\n')
     (output / 'table.md').write_text(table(results))
     print(table(results))
-    # A harness ERROR, or any non-PASS outside the pinned known_failures, fails the run.
     known = {item['rom'] for item in pins.get('known_failures', [])}
     fixed = sorted(rom for rom in known if results.get(rom, {}).get('verdict') == 'PASS')
     if fixed:
@@ -164,11 +163,11 @@ def protocol_rom(registers):
     """A 32 KiB image (no Mooneye code) that loads B,C,D,E,H,L and stops at
     the LD B,B breakpoint: the harness smoke stimulus."""
     image = bytearray(32768)
-    image[0x100:0x104] = bytes([0x00, 0xC3, 0x50, 0x01])       # nop; jp $0150
+    image[0x100:0x104] = bytes([0x00, 0xC3, 0x50, 0x01])       # Ref: SM83 encoding: nop; jp $0150
     code = []
     for opcode, value in zip((0x06, 0x0E, 0x16, 0x1E, 0x26, 0x2E), registers):
-        code += [opcode, value]                                 # ld r,n
-    image[0x150:0x150 + len(code) + 3] = bytes(code + [0x40, 0x18, 0xFE])  # ld b,b; jr -2
+        code += [opcode, value]                                 # Ref: SM83 encoding: ld r,n
+    image[0x150:0x150 + len(code) + 3] = bytes(code + [0x40, 0x18, 0xFE])  # Ref: SM83 encoding: ld b,b; jr -2
     return bytes(image)
 
 
@@ -189,7 +188,7 @@ def smoke(output, lane=None):
     return 0 if (results['pass']['verdict'], results['fail']['verdict']) == ('PASS', 'FAIL') else 1
 
 
-TRACE_SMOKE_MODES = [(2, 0), (3, 80), (0, 252)]  # (STAT mode, dot) on line 0 with SCX 0
+TRACE_SMOKE_MODES = [(2, 0), (3, 80), (0, 252)]  # Ref: Pan Docs STAT modes: (mode, dot) on line 0 with SCX 0
 
 
 def trace_smoke(output, lane=None):

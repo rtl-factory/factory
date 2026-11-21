@@ -36,7 +36,7 @@ def project_vga(data: bytes) -> tuple[bytes, bytes]:
     if any(c % 17 for c in pixels):
         raise ValueError("baseline VGA channels must be expanded RGB444")
     projected = bytearray(len(pixels))
-    raster = bytearray(800 * 525 * 2)  # RGB444 scan clocks, black blanking
+    raster = bytearray(800 * 525 * 2)  # Ref: a VGA 640x480 frame is 800x525 scan clocks; blanking stays black
     for y in range(480):
         for x in range(640):
             source = 3 * (y * 640 + (x // 4) * 4 + x % 2)

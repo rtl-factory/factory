@@ -31,7 +31,7 @@ E0 = 0x200
 
 def doomkeys():
     """doomkeys.h from the pinned archive, and its integer KEY_* definitions."""
-    if not ARCHIVE.exists():  # fetched once from its pinned origin into the local cache
+    if not ARCHIVE.exists():
         doom._download(doom.ENGINE_URL, ARCHIVE, doom.ENGINE_SHA256)
     if hashlib.sha256(ARCHIVE.read_bytes()).hexdigest() != doom.ENGINE_SHA256:
         raise AssertionError("vendored engine archive does not match the pinned SHA-256")
@@ -42,7 +42,7 @@ def doomkeys():
     for name, expression in re.findall(r"#define\s+(KEY_\w+)\s+(.+?)\s*$", text, re.M):
         expression = re.sub(r"KEY_\w+", lambda m: str(values[m[0]]), expression)
         if re.fullmatch(r"[0-9a-fx()+ ]+", expression):
-            values[name] = eval(expression, {"__builtins__": {}})  # digits, hex and '+' only
+            values[name] = eval(expression, {"__builtins__": {}})  # Why: the fullmatch allows only digits, hex and '+', so eval cannot run code
     return text, values
 
 
@@ -99,9 +99,9 @@ class KeymapTests(unittest.TestCase):
 
     def test_doom_bindings_reach_their_controls(self):
         """The engine's default bindings for the keys the issue names."""
-        self.assertEqual(self.probe(jtag.SET2["y"]), ord("y"))       # key_menu_confirm
-        self.assertEqual(self.probe(jtag.SET2["n"]), ord("n"))       # key_menu_abort
-        self.assertEqual(self.probe(0x0D), self.keys["KEY_TAB"])      # key_map_toggle
+        self.assertEqual(self.probe(jtag.SET2["y"]), ord("y"))       # Ref: key_menu_confirm
+        self.assertEqual(self.probe(jtag.SET2["n"]), ord("n"))       # Ref: key_menu_abort
+        self.assertEqual(self.probe(0x0D), self.keys["KEY_TAB"])      # Ref: key_map_toggle
         for weapon in "1234567":
             self.assertEqual(self.probe(jtag.SET2[weapon]), ord(weapon))
 
@@ -112,7 +112,7 @@ class KeymapTests(unittest.TestCase):
                 self.assertEqual(self.probe(event), self.probe(event | 0x100))
 
     def test_multimedia_keys_are_not_letters(self):
-        for code in (0x15, 0x23, 0x21, 0x32, 0x34, 0x3B, 0x2B, 0x4D):  # E0-prefixed media keys
+        for code in (0x15, 0x23, 0x21, 0x32, 0x34, 0x3B, 0x2B, 0x4D):  # Ref: PS/2 set 2 E0-prefixed media keys
             self.assertEqual(self.probe(E0 | code), 0)
             self.assertNotEqual(self.probe(code), 0)
 

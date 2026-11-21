@@ -38,7 +38,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 DEFAULT_SOF = "workdir/quartus/n2m_de10_lite/output_files/n2m_de10_lite.sof"
-# Button -> host key bytes of the shared translation (fpga HAS joypad mapping).
+# Ref: board spec "Joypad": button to the Set-2 host key bytes the board decodes.
 BUTTON_KEYS = {"right": b"\x1b[C", "left": b"\x1b[D", "up": b"\x1b[A", "down": b"\x1b[B",
                "a": b"x", "b": b"z", "select": b" ", "start": b"\r"}
 BATCH = 4
@@ -172,7 +172,7 @@ def run_load(args, *, loader=None):
         if not dump.is_relative_to(ROOT / "workdir"):
             raise ValueError("the dry-run dump must live below workdir")
         dump.parent.mkdir(parents=True, exist_ok=True)
-        # The dump transport fabricates zero READ payloads, so a dry run
+        # Why: the dump transport fabricates zero READ payloads, so a dry run
         # cannot verify; it records the HOLD, WRITE and RELEASE frames.
         argv = ["--image", str(image), "--dump", str(dump), "--no-verify"]
     if args.no_verify and args.yes:

@@ -69,7 +69,6 @@ module n2a_vga_timing #(
       V_COORD_WIDTH == REQUIRED_V_COORD_WIDTH,
       "n2a_vga_timing V_COORD_WIDTH must equal $clog2(V_TOTAL)")
 
-  // Horizontal wrap advances the line; vertical wrap closes the frame.
   always_comb begin
     horizontal_count_d = horizontal_count + 1'b1;
     vertical_count_d = vertical_count;

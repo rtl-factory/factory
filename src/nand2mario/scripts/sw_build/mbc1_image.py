@@ -22,7 +22,7 @@ PATTERN_START, PATTERN_END, BANK_ID_OFFSET = 0x3F00, 0x3FFE, 0x3FFE
 HEADER_TYPE, HEADER_ROM_SIZE, HEADER_RAM_SIZE = 0x147, 0x148, 0x149
 TYPE_MBC1_RAM_BATTERY = 0x03
 RAM_SIZE_32K = 0x03
-ROM_SIZE_CODES = {2 << code: code for code in range(7)}   # banks -> header $0148
+ROM_SIZE_CODES = {2 << code: code for code in range(7)}   # Ref: Pan Docs $0148 ROM size: code n means 2 << n banks
 
 
 def bank_pattern(bank, offset):

@@ -39,19 +39,19 @@ module n2d_sdram_device_model (
     localparam longint T_RC = 2, T_RFC = 2;
     localparam longint TURNAROUND = 2;
     logic [15:0] memory [0:(1 << 25) - 1];
-    // Two-state device state starts at zero; DQ is gated by read_out_q.
+    // Why: two-state device state starts at zero without a reset, which is
+    // safe because DQ is gated by read_out_q.
     bit [12:0] open_row_q [0:3];
     bit [3:0]  open_q;
     bit        mode_set_q;
-    // Burst engines: the next beat's word and the beats left after it.
     bit [24:0] read_word_q, write_word_q;
     bit [2:0]  read_left_q, write_left_q;
     bit        read_busy_q, write_busy_q;
     bit        read_out_q;
     bit [15:0] dq_q;
-    // Edge counter and last-command edges for the spacing checks. All start
-    // at zero; the controller's power-up NOP period keeps the first command
-    // far from edge zero.
+    // Why: the edge counter and last-command edges for the spacing checks can
+    // all start at zero, because the controller's power-up NOP period keeps
+    // the first command far from edge zero.
     longint    now_q;
     longint    last_active_q [0:3];
     longint    last_precharge_q [0:3];
@@ -77,9 +77,10 @@ module n2d_sdram_device_model (
 
     always_ff @(posedge clk_i) begin
         now_q <= now_q + 1;
-        // Equivalent controller-edge abstraction of the inverted board clock:
-        // a READ observed at N drives beat zero after N, ready for N+1.
-        // The physical device launches after its n+CL-1 edge plus tAC.
+        // Why: this controller-edge abstraction is equivalent to the inverted
+        // board clock: a READ observed at N drives beat zero after N, ready
+        // for N+1, as the physical device launches after its n+CL-1 edge plus
+        // tAC.
         read_out_q <= read || read_busy_q;
         dq_q <= read ? memory[word] : read_busy_q ? memory[read_word_q] : POISON;
         if (read_out_q) last_read_out_q <= now_q;

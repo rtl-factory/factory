@@ -42,7 +42,6 @@ def test_fail_when_missing(monkeypatch, tmp_path):
     assert r["status"] == "FAIL" and r["fix"]
 
 
-# ---- OSS CAD Suite -----------------------------------------------------------
 SUITE = json.loads((check.DEFAULT_CONFIG).read_text())["oss_cad_suite"]
 
 

@@ -73,7 +73,6 @@ module n2m_ppu_objects (
   assign visible_line = ly_i < line_t'(VISIBLE_LINES);
   assign line_end = dot_enable_i && lcd_enable_i && (dot_i == dot_t'(DOTS_PER_LINE - 1));
 
-  // ------------------------------------------------------------------ scan
   assign scan_launch = dot_enable_i && lcd_enable_i && visible_line &&
                        (dot_i < dot_t'(MODE2_DOTS)) && !dot_i[0];
   always_comb begin
@@ -91,7 +90,6 @@ module n2m_ppu_objects (
   `N2A_DFF_RST_VAL(scan_q, scan_d, clk_i, reset_i, SCAN_IDLE)
   assign scan_busy = scan_q != SCAN_IDLE;
 
-  // Entry n = dot / 2, sampled at launch.
   assign entry_d = dot_i[6:1];
   `N2A_DFF_RST_EN(entry_q, entry_d, clk_i, scan_launch, reset_i, 6'd0)
 
@@ -116,7 +114,7 @@ module n2m_ppu_objects (
   `N2A_DFF_RST_EN(x_q, oam_data_i, clk_i, x_capture, reset_i, 8'h00)
   `N2A_DFF_RST_EN(tile_q, oam_data_i, clk_i, tile_capture, reset_i, 8'h00)
 
-  // Keep decision: the object covers the line when LY + 16 - Y, in eight
+  // Ref: Pan Docs "OAM": the object covers the line when LY + 16 - Y, in eight
   // bits, is below its height; the line's size select is read here.
   assign tall = lcdc_i[LCDC_OBJ_SIZE_BIT];
   assign height = tall ? 8'd16 : 8'd8;
@@ -141,10 +139,10 @@ module n2m_ppu_objects (
   end
   `N2A_DFF_RST(count_q, count_d, clk_i, reset_i)
 
-  // ------------------------------------------------------------- row fetch
-  // Step s < 2 * count presents the read of plane s[0] of object s[4:1];
-  // the data of step s - 1 is captured at step s. Done after 2 * count + 1
-  // steps (none when no object was kept).
+  // Why: two reads per kept object, one per plane, pipelined so step s captures
+  // the data of step s - 1 (step s < 2 * count reads plane s[0] of object
+  // s[4:1]); done after 2 * count + 1 steps, none when no object was kept, so
+  // the fetch ends before the first background fetch at dot 91.
   assign fetch_start = dot_enable_i && lcd_enable_i && visible_line &&
                        (dot_i == dot_t'(MODE2_DOTS)) && (count_q != 4'd0);
   assign read_steps = {count_q, 1'b0};
@@ -178,9 +176,8 @@ module n2m_ppu_objects (
 
   assign capture_now = fetch_busy_q && (step_q != 5'd0);
   assign capture_entry = 4'((step_q - 5'd1) >> 1);
-  assign capture_plane = step_q[0] == 1'b0;  // step s - 1 odd: high plane
+  assign capture_plane = step_q[0] == 1'b0;  // Why: step s captures step s - 1's data, and odd s - 1 read the high plane.
 
-  // ---------------------------------------------------- line buffer update
   always_comb begin
     objects_d = objects_q;
     if (keep) objects_d[count_q] = scanned;
@@ -192,11 +189,10 @@ module n2m_ppu_objects (
   assign objects_update = keep || capture_now;
   `N2A_DFF_ARRAY_RST_EN(objects_q, objects_d, clk_i, objects_update, reset_i)
 
-  // --------------------------------------------------- candidate per pixel
-  // Object i covers pixel x when 0 <= x + 8 - X < 8 (eight-bit wrap puts
-  // every other distance at 8 or above); its color is the tile column
-  // x + 8 - X, mirrored when attribute bit 5 is set. The smallest X wins,
-  // the lowest index on a tie.
+  // Ref: Pan Docs "Drawing priority": object i covers pixel x when
+  // 0 <= x + 8 - X < 8 (eight-bit wrap puts every other distance at 8 or above);
+  // its color is the tile column x + 8 - X, mirrored when attribute bit 5 is
+  // set. The smallest X wins, the lowest index on a tie.
   assign covered_x = pixel_x_i + 8'(OBJECT_X_OFFSET);
   always_comb begin
     best_valid = 1'b0;
@@ -218,8 +214,6 @@ module n2m_ppu_objects (
   assign candidate_color_o = colors[best_index];
   assign candidate_attributes_o = objects_q[best_index].attributes;
 
-  // The scan of one entry and the row fetch each finish before the dot
-  // enable that would start the next; OAM and VRAM answer every read.
   `N2A_ASSERT(scan_fits_in_two_dots, clk_i, reset_i, !(scan_launch && scan_busy))
   `N2A_ASSERT(fetch_before_tiles, clk_i, reset_i,
       !(dot_enable_i && fetch_busy_q && (dot_i >= dot_t'(FETCH_DOT))))

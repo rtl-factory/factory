@@ -12,8 +12,8 @@ module n2m_memory_decode (
 );
   import n2m_memory_pkg::*;
 
-  // The map covers the whole 16-bit space without gaps or overlaps, and each
-  // backed region matches its store geometry; the decode below relies on it.
+  // Why: the decode below relies on the map covering the whole 16-bit space
+  // without gaps or overlaps, each backed region matching its store geometry.
   `N2A_ASSERT_PARAM(g_map_not_contiguous,
       (ROM_START == 16'h0000) && (VRAM_START == ROM_END + 16'd1) &&
       (CART_RAM_START == VRAM_END + 16'd1) && (WRAM_START == CART_RAM_END + 16'd1) &&
@@ -46,7 +46,8 @@ module n2m_memory_decode (
     end else if (address_i <= CART_RAM_END) begin
       destination_o = DEST_CART_RAM;
     end else if (address_i <= ECHO_END) begin
-      // $C000-$DFFF and $E000-$FDFF share address bits [12:0].
+      // Ref: Pan Docs memory map: echo RAM $E000-$FDFF mirrors $C000-$DDFF,
+      // so both share address bits [12:0].
       destination_o = DEST_WRAM;
       offset_o = {2'b00, address_i[12:0]};
     end else if (address_i <= OAM_END) begin

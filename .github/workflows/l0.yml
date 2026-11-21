@@ -1,7 +1,7 @@
-# L0 regression (wiki/bkm/workflow/ci-levels.md): the scripts' and tools' unit
-# tests, every L0 simulation target and every L0 formal target, on Verilator,
-# cocotb and the OSS CAD Suite at the versions pinned in cfg/toolchain.json and
-# tools/sim/requirements.txt.
+# L0 regression (wiki/bkm/workflow/ci-levels.md): the comment lint, the scripts'
+# and tools' unit tests, every L0 simulation target and every L0 formal target,
+# on Verilator, cocotb and the OSS CAD Suite at the versions pinned in
+# cfg/toolchain.json and tools/sim/requirements.txt.
 name: l0
 
 on:
@@ -24,6 +24,17 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+
+      - name: Comment lint
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          base=()
+          if [ -n "$BASE_REF" ] && git fetch -q --depth=1 origin "$BASE_REF" \
+             && git show FETCH_HEAD:tools/lint/comment_baseline.json > "$RUNNER_TEMP/base-baseline.json" 2>/dev/null; then
+            base=(--base-baseline "$RUNNER_TEMP/base-baseline.json")
+          fi
+          python3 tools/lint/comment_lint.py "${base[@]}"
 
       - name: Read the Verilator pin
         id: pin

@@ -20,7 +20,7 @@ from typing import Callable, Protocol, Sequence
 REQUEST_SOF = 0xA8
 RESPONSE_SOF = 0x8A
 VERSION = 0x01
-MAGIC = 0x4D41324E  # "N2AM"
+MAGIC = 0x4D41324E
 FIXED_IDENT_WORDS = 5
 
 IDENTIFY, HOLD, RELEASE, ENTRY, WRITE, READ = 0x01, 0x02, 0x03, 0x04, 0x10, 0x11
@@ -232,7 +232,7 @@ class Client:
                     del self._buffer[:1]
                     continue
             if self.clock() >= deadline:
-                # The leading candidate never completed: it was project data
+                # Why: the leading candidate never completed: it was project data
                 # if a later candidate is a complete valid response.
                 later = self._buffer.find(bytes([RESPONSE_SOF]), 1)
                 while later > 0:
@@ -339,7 +339,8 @@ def load(client: Client, segments: Sequence[Segment], entry: int,
         try:
             tail = len(data) % 4
             if tail:
-                # A partial final word keeps the bytes already beyond it.
+                # Why: writes are whole words, so the bytes past a partial final
+                # word are read first and written back unchanged.
                 last = segment.address + len(data) - tail
                 data = data + client.read(last, 4)[tail:]
             client.write(segment.address, data)

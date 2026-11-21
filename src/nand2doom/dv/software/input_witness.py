@@ -7,8 +7,9 @@ from pathlib import Path
 
 from src.nand2doom.dv.software.doom_gameplay import BREAK, COMPLETION, MAKE, TURN
 
-# The supported production Os RV32IM ABI. Relocated global immediates are read
-# from the actual image; both instruction identity and runtime address are checked.
+# Why: only the supported production Os RV32IM ABI is matched; relocated global
+# immediates are read from the actual image, and both instruction identity and
+# runtime address are checked, so a rebuilt image cannot silently move a seam.
 SEAMS = {
     "entry": ("BuildNewTic", 0, 0xfd010113, 0xffffffff),
     "input_call": ("BuildNewTic", 48, 0x000080e7, 0xfffff),
@@ -84,8 +85,9 @@ class InputABI:
             instruction = word(pc)
             assert instruction & mask == expected & mask, f'unsupported input ABI {label}'
             self.pc[label], self.instructions[pc] = pc, instruction
-        # AUIPC/JALR pairs bind the caller and tailjump, not a nonexistent
-        # I_StartTic return. The DG_GetKey call returns to I_GetEvent+0x34.
+        # Why: AUIPC/JALR pairs bind the caller and tailjump, because
+        # I_StartTic has no return of its own to bind. The DG_GetKey call
+        # returns to I_GetEvent+0x34.
         def pair(pc, destination, first, second):
             hi, lo = word(pc), word(pc + 4)
             assert hi & 0xfff == first and lo & 0xfffff == second
@@ -168,7 +170,8 @@ class InputWitness:
         a = self.abi
         pc = r['pc']
         label = self.labels.get(pc)
-        # No unqualified construction/publication may hide behind a wrong PC.
+        # Why: memory writes are checked before the PC label, so no unqualified
+        # construction or publication can hide behind a wrong PC.
         if r['memory_valid'] and r['memory_write']:
             if r['address'] == COMPLETION:
                 marker = r['write_data']
@@ -201,10 +204,11 @@ class InputWitness:
             return
         i = self.invocation
         if self.boundary_tick is None:
-            # Monitoring can begin mid-construction, but MAKE is not injected
-            # until a newly retired entry has synchronized this ledger. Retain
-            # every partial seam, including slot/publication, without claiming
-            # a complete invocation. All counter stores still pass GameplayTrace.
+            # Why: monitoring can begin mid-construction, but MAKE is not
+            # injected until a newly retired entry has synchronized this ledger,
+            # so every partial seam (including slot/publication) is retained
+            # without claiming a complete invocation. All counter stores still
+            # pass GameplayTrace.
             assert self.make_start_tick is None
             if label in ('key_marker', 'turn'):
                 raise AssertionError('input marker before clean boundary')
@@ -303,8 +307,8 @@ class InputWitness:
             i['state'] = 'empty-return'
         elif label == 'event_return':
             control(a.pc['post_input'])
-            # I_GetEvent exits directly after a keyup D_PostEvent. Only the
-            # MAKE path must drain DG_GetKey to EMPTY before its return.
+            # Why: I_GetEvent exits directly after a keyup D_PostEvent, so only
+            # the MAKE path must drain DG_GetKey to EMPTY before its return.
             assert state == ('break-return' if i['role'] == 'break' else 'empty-return')
             i['state'] = 'event-return'
         elif label == 'post_input':
@@ -316,7 +320,7 @@ class InputWitness:
             if i['role'] == 'make':
                 assert self.ready_tick is None
                 self.empty_tick, self.ready_tick = i['empty_tick'], r['tick']
-                self.ready()  # Cocotb Event is latched even before await registration.
+                self.ready()  # Why: safe to set before anyone awaits, because a cocotb Event is latched even before await registration.
         elif label == 'process_call':
             control(a.symbols['D_ProcessEvents'], 1, pc + 4)
             assert state == 'post-input'

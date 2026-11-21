@@ -32,7 +32,7 @@ class GamesTests(unittest.TestCase):
     def test_scenarios_press_start_and_right(self):
         for name, game in sw_games.load().items():
             if name == 'menu':
-                continue  # The library scenario owns navigation and selection.
+                continue  # Why: the library scenario owns navigation and selection.
             labels = {label: mask for label, mask, _ in game['scenario']}
             self.assertEqual((labels['start'], labels['right']), (0x80, 0x01), name)
 

@@ -65,7 +65,7 @@ def build(sources, layout, entry, output, dry_run=False, assets=None, title='CPU
     for source in sources:
         if not source.is_file() or not source.is_relative_to(ROOT):
             raise ValueError('source must be a local repository file')
-    # Validate every destination before any mkdir/write, including dry-run.
+    # Why: validate every destination before any mkdir/write, dry run included, so a refused path leaves nothing written.
     names = ['program.gb', 'map.json', 'symbols.json', 'listing.json']
     names.extend(source.stem + '.object.json' for source in sources)
     for name in names:
@@ -74,8 +74,9 @@ def build(sources, layout, entry, output, dry_run=False, assets=None, title='CPU
     unit, separator, symbol = entry.partition('::')
     if not separator or not unit or not symbol:
         raise ValueError('entry must be unit::symbol')
-    # Dry-run performs assembly/link validation too. The prelude is the
-    # generated DMG interface constants (src/nand2mario/cfg/sw-interfaces.json).
+    # Why: a dry run assembles and links too, so it catches every error a real build would.
+    # Ref: the prelude is generated from src/nand2mario/cfg/sw-interfaces.json.
+    # Ref: the prelude is generated from src/nand2mario/cfg/sw-interfaces.json.
     prelude = ROOT / 'src/nand2mario/sw/cpu/interfaces.inc'
     encoded = parse_assets(assets)
     objects = [(source.stem, assemble(source, ROOT, prelude, encoded)) for source in sources]

@@ -109,14 +109,11 @@ def c_like_signature_program() -> tuple[int, ...]:
     )
 
 
-# ---------------------------------------------------------------------------
-# Machine-mode RV32IM instruction-set model
-# ---------------------------------------------------------------------------
-
-DEFAULT_INSTRUCTION = 0x0010_0073  # EBREAK beyond the program image
+DEFAULT_INSTRUCTION = 0x0010_0073  # Why: fetches beyond the program image stop as EBREAK instead of running zero words
 COUNTER_CYCLE = (0xB00, 0xB80)
 COUNTER_INSTRET = (0xB02, 0xB82)
-# Event counters whose values depend on timing: reads adopt the observed value.
+# Why: these counters depend on timing the model does not have, so reads adopt
+# the observed value.
 COUNTER_HPM = tuple(range(0xB03, 0xB07)) + tuple(range(0xB83, 0xB87))
 COUNTER_OBSERVED = COUNTER_CYCLE + COUNTER_HPM
 MCOUNTINHIBIT_MASK = 0x7D
@@ -174,7 +171,6 @@ class Rv32imModel:
         self.mcountinhibit = 0
         self.mhpmevent = [0, 0, 0, 0]
 
-    # -- helpers -----------------------------------------------------------
     def fetch(self, pc: int) -> int:
         index = pc >> 2
         return self.words[index] if index < len(self.words) else DEFAULT_INSTRUCTION
@@ -230,7 +226,6 @@ class Rv32imModel:
             return self.mhpmevent[address - 0x323]
         return None
 
-    # -- execution ---------------------------------------------------------
     def step(self, observed_cycle_value: int | None = None) -> Observation:
         pc = self.pc
         if pc in self.instruction_errors:
@@ -431,7 +426,8 @@ class Rv32imModel:
         observation = Observation(self.order, pc, insn, next_pc, **register, **memory)
         self.pc = next_pc
         self.order += 1
-        # The writer's own count uses the controls before its write.
+        # Ref: core MAS "Performance monitor": the writer's own count uses the
+        # controls before its write.
         if not suppress_instret and not self.mcountinhibit & 4:
             self.minstret += 1
         if new_inhibit is not None:

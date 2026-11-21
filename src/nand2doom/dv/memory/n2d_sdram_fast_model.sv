@@ -73,9 +73,9 @@ module n2d_sdram_fast_model #(
                 busy_q <= 1'b0;
             end
         end
-        // Simulation-only image loading is intentionally legal while reset
-        // is asserted; reset quiets all product masters but does not clear the
-        // modeled SDRAM contents.
+        // Why: image loading stays legal while reset is asserted so preload
+        // can run before the CPU starts; reset quiets all product masters but
+        // does not clear the modeled SDRAM contents.
         if (preload_valid_i) begin
             for (preload_lane = 0; preload_lane < 256;
                  preload_lane = preload_lane + 1) begin

@@ -47,8 +47,9 @@ module n2m_ppu_window (
   assign line_start = dot_enable_i && lcd_enable_i && visible_line && (dot_i == dot_t'(0));
   assign decide = dot_enable_i && lcd_enable_i && visible_line && (dot_i == dot_t'(MODE2_DOTS));
 
-  // WY latch: set at the start of a visible line while the window is enabled
-  // and LY equals WY; cleared at the frame wrap and while the LCD is off.
+  // Ref: Pan Docs "Window": the WY latch sets at the start of a visible line
+  // while the window is enabled and LY equals WY; it clears at the frame wrap
+  // and while the LCD is off.
   assign wy_match = window_enable && (ly_i == wy_i);
   always_comb begin
     wy_hit_d = wy_hit_q;
@@ -57,16 +58,18 @@ module n2m_ppu_window (
   end
   `N2A_DFF_RST(wy_hit_q, wy_hit_d, clk_i, reset_i)
 
-  // Line decision at the end of dot 80.
+  // Why: the window decision is taken once, at the end of dot 80, so a
+  // mid-line WX write cannot start the window part-way through the line.
   assign active_d = window_enable && wy_hit_q && (wx_i <= 8'(WINDOW_LAST_WX));
   assign first_pixel_d = (wx_i > 8'd7) ? (wx_i - 8'd7) : 8'd0;
   `N2A_DFF_RST_EN(active_q, active_d, clk_i, decide, reset_i, 1'b0)
   `N2A_DFF_RST_EN(first_pixel_q, first_pixel_d, clk_i, decide, reset_i, 8'd0)
   `N2A_DFF_RST_EN(wx_q, wx_i, clk_i, decide, reset_i, 8'd0)
 
-  // Window line counter: one more after each line on which a window pixel
-  // was drawn. The drawn flag collects the renderer's reports over the line
-  // and clears at the line end, after the count has used it.
+  // Ref: Pan Docs "Window": the window line counter advances after each line on
+  // which a window pixel was drawn. Why: the drawn flag clears at the line end
+  // only after the count has used it, so a window pixel late in the line still
+  // advances the counter.
   always_comb begin
     drawn_d = drawn_q || pixel_drawn_i;
     if (line_edge || !lcd_enable_i) drawn_d = 1'b0;
@@ -86,7 +89,6 @@ module n2m_ppu_window (
 
   `N2A_ASSERT(window_first_pixel_in_line, clk_i, reset_i,
       !active_q || (first_pixel_q < 8'(VISIBLE_PIXELS)))
-  // A window pixel is only ever drawn on a line that decided to draw it.
   `N2A_ASSERT(drawn_only_when_active, clk_i, reset_i, !pixel_drawn_i || active_q)
   `N2A_ASSERT_KNOWN(window_controls_known, clk_i, reset_i,
       {dot_enable_i, lcd_enable_i, lcdc_i, wy_i, wx_i, pixel_drawn_i})

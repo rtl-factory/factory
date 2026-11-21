@@ -46,7 +46,7 @@ class Bench:
         await FallingEdge(d.clk_i)
         d.reset_i.value = 1
         for _ in range(2):
-            # Accesses and ticks during reset have no effect.
+            # Why: drive writes and ticks during reset to prove reset ignores them.
             d.machine_cycle_enable_i.value = 1
             d.io_request_i.value = request_word(1, 1, self.rng.choice(REGISTERS), self.rng.randrange(256))
             await RisingEdge(d.clk_i)
@@ -122,15 +122,14 @@ async def timer_contract(dut):
     await RisingEdge(dut.clk_i)
     await b.reset()
 
-    # Reset values (DIV $AB: the DMG boot-ROM handoff divider), address
-    # claim and the open interrupt line.
+    # Ref: Pan Docs "Power Up Sequence": DIV reads $AB at DMG boot-ROM handoff.
     assert await b.registers() == [0xAB, 0x00, 0x00, 0xF8], 'reset values'
     for address in UNCLAIMED:
-        assert await b.read(address) is not None   # unclaimed: selection and valid checked inside
+        assert await b.read(address) is not None
     assert await b.read(TAC) == 0xF8
 
-    # Rates from the closed form: after a DIV reset the first falling edge of
-    # the selected bit comes after one full period, so k periods give TIMA=k.
+    # Why: after a DIV reset the first falling edge of the selected bit comes
+    # after one full period, so k periods give TIMA=k.
     for select, period in PERIOD.items():
         await b.write(DIV, 0x5A)
         await b.write(TIMA, 0x00)
@@ -139,7 +138,7 @@ async def timer_contract(dut):
             await b.ticks(period)
             assert await b.read(TIMA) == k, ('rate', select, k)
         await b.write(TAC, 0x00)
-    # The same rate with the real 23/24-edge tick cadence.
+    # Why: the system ticks once every 23 or 24 edges; check the rate at that cadence too.
     await b.write(DIV, 0)
     await b.write(TIMA, 0)
     await b.write(TAC, 0x05)
@@ -147,7 +146,7 @@ async def timer_contract(dut):
     assert await b.read(TIMA) == 5
     await b.write(TAC, 0)
 
-    # DIV counts every 64 ticks and wraps after 256 increments.
+    # Ref: Pan Docs "Timer and Divider Registers": DIV counts every 64 machine cycles and wraps after 256.
     await b.write(DIV, 0)
     await b.ticks(63)
     assert await b.read(DIV) == 0
@@ -158,37 +157,38 @@ async def timer_contract(dut):
     await b.ticks(64)
     assert await b.read(DIV) == 0
 
-    # Write-induced falling edges: a DIV write while the selected bit is high
-    # increments TIMA; while it is low it does not. Disabling TAC or changing
-    # the selected bit from a high to a low bit also increments.
+    # Ref: Pan Docs, timer obscure behaviour: a DIV write while the selected bit
+    # is high increments TIMA; while it is low it does not. Disabling TAC or
+    # moving the selection from a high to a low bit also increments. TAC $05
+    # selects divider bit 1, $06 bit 3 and $04 bit 7.
     await b.write(DIV, 0)
     await b.write(TIMA, 0x10)
-    await b.write(TAC, 0x05)             # bit 1 of the divider
-    await b.ticks(2)                     # divider 2: bit 1 high
+    await b.write(TAC, 0x05)
+    await b.ticks(2)
     await b.write(DIV, 0)
     assert await b.read(TIMA) == 0x11
-    await b.ticks(1)                     # divider 1: bit 1 low
+    await b.ticks(1)
     await b.write(DIV, 0)
     assert await b.read(TIMA) == 0x11
     await b.ticks(2)
-    await b.write(TAC, 0x01)             # disable with the bit high
+    await b.write(TAC, 0x01)
     assert await b.read(TIMA) == 0x12
-    await b.write(TAC, 0x05)             # re-enable with bit 1 high: a rising edge
+    await b.write(TAC, 0x05)
     assert await b.read(TIMA) == 0x12
-    await b.ticks(1)                     # divider 3: bit 1 still high
-    await b.write(TAC, 0x06)             # select bit 3 (low): falling edge
+    await b.ticks(1)
+    await b.write(TAC, 0x06)
     assert await b.read(TIMA) == 0x13
-    await b.write(TAC, 0x04)             # bit 3 low -> bit 7 low: no edge
+    await b.write(TAC, 0x04)
     assert await b.read(TIMA) == 0x13
     await b.write(TAC, 0x00)
 
-    # Overflow: $FF -> $00 for exactly one machine cycle, then TMA is loaded
-    # and the interrupt pulses once, visible for one system cycle.
+    # Ref: Pan Docs, timer obscure behaviour: on overflow TIMA reads $00 for one
+    # machine cycle, then TMA is loaded and the interrupt pulses once.
     await b.write(DIV, 0)
     await b.write(TMA, 0xA5)
     await b.write(TIMA, 0xFE)
     await b.write(TAC, 0x05)
-    # Each read samples the state after k ticks, then ticks once more; the
+    # Why: each read samples the state after k ticks, then ticks once more; the
     # selected bit falls at ticks 4, 8 and 12.
     expected = [0xFE] * 4 + [0xFF] * 4 + [0x00] + [0xA5] * 3 + [0xA6] * 2
     observed = []
@@ -203,7 +203,7 @@ async def timer_contract(dut):
         """TIMA=$FE at period 4 with the divider reset: the overflow tick is
         the eighth tick; after it the reload is pending."""
         await b.write(TAC, 0x00)
-        await b.ticks(2)                 # leave any reload hold from the previous case
+        await b.ticks(2)                 # Why: lets any reload hold from the previous case expire.
         await b.write(DIV, 0)
         await b.write(TMA, tma)
         await b.write(TIMA, 0xFE)
@@ -211,26 +211,26 @@ async def timer_contract(dut):
         await b.ticks(8)
         assert await b.read(TIMA) == 0x00
 
-    # A TIMA write while the reload is pending cancels it: no reload, no pulse.
+    # Ref: Pan Docs, timer obscure behaviour: a TIMA write while the reload is pending cancels it.
     await arm()
     await b.write(TIMA, 0x12)
     before = b.interrupts
     await b.ticks(2)
     assert await b.read(TIMA) == 0x12 and b.interrupts == before
-    # A TIMA write on the reload tick itself is ignored; the reload wins.
+    # Ref: Pan Docs, timer obscure behaviour: a TIMA write on the reload tick is ignored.
     await arm()
     await b.write(TIMA, 0x12, tick=True)
     assert await b.read(TIMA) == 0xA5 and b.interrupts == before + 1
-    # A TIMA write in the machine cycle after the reload is ignored.
+    # Ref: Pan Docs, timer obscure behaviour: a TIMA write in the cycle after the reload is ignored.
     await arm()
     await b.ticks(1)
     await b.write(TIMA, 0x12)
     assert await b.read(TIMA) == 0xA5
     await b.ticks(1)
-    await b.write(TIMA, 0x34)            # the hold is over: the write lands
+    await b.write(TIMA, 0x34)
     assert await b.read(TIMA) == 0x34
-    # A TMA write in that same cycle lands in TIMA too; a TMA write while
-    # the reload is pending supplies the reloaded value.
+    # Ref: Pan Docs, timer obscure behaviour: a TMA write in that same cycle
+    # lands in TIMA too; a TMA write while the reload is pending supplies the reloaded value.
     await arm()
     await b.ticks(1)
     await b.write(TMA, 0x77)
@@ -239,16 +239,17 @@ async def timer_contract(dut):
     await b.write(TMA, 0x66)
     await b.ticks(1)
     assert await b.read(TIMA) == 0x66
-    # TMA=$FF: every falling edge overflows and reloads again.
+    # Why: TMA=$FF makes every falling edge overflow again: one reload, then
+    # three more overflow/reload pairs in 4 * 3 + 3 ticks.
     await arm(tma=0xFF)
     before = b.interrupts
-    await b.ticks(1)                     # reload -> $FF
-    await b.ticks(4 * 3 + 3)             # three more overflow/reload pairs
+    await b.ticks(1)
+    await b.ticks(4 * 3 + 3)
     assert b.interrupts - before == 4
     await b.write(TAC, 0x00)
 
-    # The CPU's STOP divider reset zeroes the divider on its tick and counts
-    # a falling edge like a DIV write.
+    # Ref: Pan Docs "Timer and Divider Registers": STOP resets the divider, and
+    # that reset counts a falling edge like a DIV write.
     await b.write(DIV, 0)
     await b.write(TIMA, 0x20)
     await b.write(TAC, 0x05)
@@ -256,19 +257,17 @@ async def timer_contract(dut):
     await b.edge(tick=True, divider_reset=True)
     assert (await b.registers())[0:2] == [0x00, 0x21]
     await b.ticks(63)
-    assert await b.read(DIV) == 0        # the divider restarted from zero
+    assert await b.read(DIV) == 0
     await b.ticks(1)
     assert await b.read(DIV) == 1
 
-    # Reset while a reload is pending cancels it and returns every register
-    # to its reset value (three ticks leave DIV at $AB).
     await arm()
     await b.reset()
     before = b.interrupts
     await b.ticks(3)
     assert await b.registers() == [0xAB, 0, 0, 0xF8] and b.interrupts == before
 
-    # Seeded random traffic: dense and sparse ticks, writes to every claimed
+    # Why: seeded random traffic covers dense and sparse ticks, writes to every claimed
     # and some unclaimed address (coinciding with ticks half the time), STOP
     # resets on ticks, and reads of all registers between them. Unbiased
     # writes keep TIMA from reaching $FF, so overflow coverage comes from the
@@ -286,12 +285,6 @@ async def timer_contract(dut):
         else:
             await b.edge(tick=tick)
 
-    # Seeded overflow episodes: each arms a random rate, TMA and near-$FF
-    # TIMA, runs random-density ticks with reads, DIV writes, STOP resets and
-    # selection changes until the model reports the pending reload, then
-    # applies one of six write placements around the reload (round robin, so
-    # every placement is covered for any seed) and compares the aftermath.
-    # Coverage is measured inside this phase only.
     before_random = b.interrupts
     coverage = {name: 0 for name in ('overflow', 'none', 'tima_cancel', 'tima_on_reload', 'tima_in_hold',
                                      'tma_in_hold', 'tma_pending', 'div_write_increment', 'stop_reset_increment',
@@ -303,13 +296,13 @@ async def timer_contract(dut):
         density = 1.0 if select == 0 else b.rng.choice((1.0, 0.5))
         tma = b.rng.choice((0xFF, b.rng.randrange(256)))
         await b.write(TAC, 0x00)
-        await b.ticks(2)                 # leave any reload hold from the previous episode
+        await b.ticks(2)                 # Why: lets any reload hold from the previous episode expire.
         if b.rng.random() < 0.5:
             await b.write(DIV, b.rng.randrange(256), tick=b.rng.random() < 0.5)
         await b.write(TMA, tma)
         await b.write(TIMA, b.rng.randrange(0xFC, 0x100))
         await b.write(TAC, 0x04 | select, tick=b.rng.random() < 0.5)
-        # One to three perturbations per episode of one kind (DIV write, STOP
+        # Why: one to three perturbations per episode of one kind (DIV write, STOP
         # divider reset or selection change, round robin), injected mostly
         # while the selected bit is high so they produce write-induced
         # increments; each delays the overflow by at most one period of the
@@ -348,17 +341,17 @@ async def timer_contract(dut):
         if action == 'none':
             await b.ticks(1)
         elif action == 'tima_cancel':
-            await b.write(TIMA, value)           # cycle A: cancels the reload
+            await b.write(TIMA, value)
         elif action == 'tima_on_reload':
-            await b.write(TIMA, value, tick=True)  # reload tick: ignored
+            await b.write(TIMA, value, tick=True)
         elif action == 'tima_in_hold':
             await b.ticks(1)
-            await b.write(TIMA, value)           # cycle B: ignored
+            await b.write(TIMA, value)
         elif action == 'tma_in_hold':
             await b.ticks(1)
-            await b.write(TMA, value)            # cycle B: lands in TIMA too
+            await b.write(TMA, value)
         else:
-            await b.write(TMA, value)            # cycle A: supplies the reloaded value
+            await b.write(TMA, value)
             await b.ticks(1)
         coverage[action] += 1
         for _ in range(b.rng.randrange(2, 6)):

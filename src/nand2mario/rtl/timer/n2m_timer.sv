@@ -64,8 +64,9 @@ module n2m_timer (
   assign write_tma = access && io_request_i.write && io_request_i.address == TMA_ADDRESS;
   assign write_tac = access && io_request_i.write && io_request_i.address == TAC_ADDRESS;
 
-  // Divider: natural advance on a tick, then zeroed by a DIV write or the
-  // STOP divider reset. TAC and TMA take a written value on the write edge.
+  // Why: the advance is applied first so a DIV write or the STOP divider reset
+  // on the same edge wins and leaves zero; TAC and TMA take a written value on
+  // the write edge.
   always_comb begin
     divider_advanced = divider_q + 14'(tick);
     divider_d = divider_advanced;
@@ -74,8 +75,8 @@ module n2m_timer (
     tma_d = write_tma ? write_data : tma_q;
   end
 
-  // TAC selects divider bit 7, 1, 3 or 5 (DMG system-counter bits 9, 3, 5, 7
-  // in machine-cycle units): periods 256, 4, 16 and 64 machine cycles.
+  // Ref: Pan Docs "TAC": divider bit 7, 1, 3 or 5 (DMG system-counter bits 9,
+  // 3, 5, 7 in machine-cycle units), periods 256, 4, 16 and 64 machine cycles.
   always_comb begin
     case (tac_q[1:0])
       2'd0:    select_mask_q = 14'h0080;
@@ -91,9 +92,9 @@ module n2m_timer (
     endcase
   end
 
-  // A falling edge of the enabled selected signal across either step of the
-  // divider update (advance, then reset/TAC replacement) increments TIMA;
-  // at most one increment occurs per edge.
+  // Ref: Pan Docs "Timer obscure behaviour": a falling edge of the enabled
+  // selected signal across either step of the divider update (advance, then
+  // reset/TAC replacement) increments TIMA; at most one increment per edge.
   always_comb begin
     signal_old = tac_q[2] && |(divider_q & select_mask_q);
     signal_advanced = tac_q[2] && |(divider_advanced & select_mask_q);
@@ -101,9 +102,9 @@ module n2m_timer (
     falling = (signal_old && !signal_advanced) || (signal_advanced && !signal_new);
   end
 
-  // TIMA, the reload sequence and the interrupt pulse. Priority on one edge:
-  // the reload itself, then an accepted TIMA write, then a falling-edge
-  // increment. Falling edges are ignored while the reload is pending.
+  // Ref: Pan Docs "Timer overflow behaviour". Priority on one edge: the
+  // reload itself, then an accepted TIMA write, then a falling-edge increment.
+  // Falling edges are ignored while the reload is pending.
   always_comb begin
     reload_now = reload_q == RELOAD_PENDING && tick;
     tima_write_accepted = write_tima && reload_q != RELOAD_HOLD && !reload_now;
@@ -146,9 +147,9 @@ module n2m_timer (
   `N2A_DFF_RST(interrupt_q, interrupt_d, clk_i, reset_i)
   assign interrupt_o = interrupt_q;
 
-  // Same-cycle response: DIV is the divider's top byte, TAC reads its unused
-  // five bits high. Reads have no side effect. read_data is meaningful only
-  // while io_selected_o; the system fan-out answers other addresses.
+  // Ref: Pan Docs "Timer and Divider Registers": DIV is the divider's top
+  // byte and TAC's five unused bits read high. Why: read_data is not gated by
+  // io_selected_o because the system fan-out answers every other address.
   always_comb begin
     io_response_o.valid = access;
     io_response_o.fault = 1'b0;
@@ -167,10 +168,8 @@ module n2m_timer (
       !io_request_i.valid || !$isunknown({io_request_i.write, io_request_i.address}))
   `N2A_ASSERT(timer_write_known, clk_i, reset_i,
       !(access && io_request_i.write) || !$isunknown(write_data))
-  // The CPU raises the STOP divider reset only at a machine boundary.
   `N2A_ASSERT(timer_divider_reset_on_tick, clk_i, reset_i,
       !divider_reset_i || machine_cycle_enable_i)
-  // The reload states each last exactly until the next tick.
   `N2A_ASSERT(timer_reload_state_legal, clk_i, reset_i,
       reload_q inside {RELOAD_IDLE, RELOAD_PENDING, RELOAD_HOLD})
   `N2A_ASSERT(timer_interrupt_follows_reload, clk_i, reset_i,

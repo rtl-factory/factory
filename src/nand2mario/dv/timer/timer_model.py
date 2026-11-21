@@ -13,10 +13,10 @@ system oracle advances it tick by tick (``tick``).
 
 DIV, TIMA, TMA, TAC = 0xFF04, 0xFF05, 0xFF06, 0xFF07
 REGISTERS = (DIV, TIMA, TMA, TAC)
-# DMG ABC boot-ROM handoff: internal counter $ABCC T-cycles, DIV $AB.
+# Ref: Pan Docs "Power Up Sequence": the DMG ABC boot ROM hands off with the internal counter at $ABCC T-cycles (DIV $AB).
 DIVIDER_RESET = 0x2AF3
 DIVIDER_BITS = 14
-# TAC[1:0] -> divider bit whose falling edge increments TIMA, and its period
+# Ref: Pan Docs, timer obscure behaviour: TAC[1:0] -> divider bit whose falling edge increments TIMA, and its period
 # in machine cycles (4096, 262144, 65536 and 16384 Hz at 1,048,576 Hz).
 SELECT_BIT = {0: 7, 1: 1, 2: 3, 3: 5}
 PERIOD = {select: 2 << bit for select, bit in SELECT_BIT.items()}
@@ -58,7 +58,6 @@ class TimerModel:
         on this edge; ``tick`` marks a machine-cycle enable. Returns True when
         TIMA was reloaded from TMA on this edge (the interrupt request)."""
         address, value = write if write else (None, None)
-        # Divider: advance, then DIV write or STOP reset; TAC and TMA update.
         advanced = (self.divider + (1 if tick else 0)) % (1 << DIVIDER_BITS)
         divider = 0 if (address == DIV or divider_reset) else advanced
         tac = (value & 7) if address == TAC else self.tac

@@ -38,8 +38,10 @@ module n2m_vga_scanout (
 );
   import n2m_display_pkg::*;
 
-  localparam int unsigned H_COORD_WIDTH = 10;   // $clog2(800)
-  localparam int unsigned V_COORD_WIDTH = 10;   // $clog2(525)
+  // Raster coordinate widths: $clog2(800) and $clog2(525), the full VGA
+  // line and frame of the common n2a_vga_timing defaults.
+  localparam int unsigned H_COORD_WIDTH = 10;
+  localparam int unsigned V_COORD_WIDTH = 10;
   localparam logic [H_COORD_WIDTH-1:0] IMAGE_LEFT_X   = H_COORD_WIDTH'(IMAGE_LEFT);
   localparam logic [H_COORD_WIDTH-1:0] IMAGE_RIGHT_X  = H_COORD_WIDTH'(IMAGE_RIGHT);
   localparam logic [V_COORD_WIDTH-1:0] IMAGE_TOP_Y    = V_COORD_WIDTH'(IMAGE_TOP);
@@ -82,7 +84,7 @@ module n2m_vga_scanout (
   assign in_image = h_image && v_image;
   assign vga_frame_start_o = timing_frame_start;
 
-  // Column and repeat counters are held at zero outside the image columns,
+  // Why: column and repeat counters are held at zero outside the image columns,
   // so they name source x 0 on the first image clock of every line; the
   // line base and its repeat counter are held at zero above the image and
   // advance at the end of every image line.
@@ -116,7 +118,7 @@ module n2m_vga_scanout (
   assign read_index_o = address_q.line_base + frame_index_t'(address_q.column);
   assign read_busy_o = in_image;
 
-  // The display bank and validity change only at the raster origin, hundreds
+  // Why: the display bank and validity change only at the raster origin, hundreds
   // of clocks away from any image read, so the stage-2 choice may sample
   // display_valid_i directly.
   always_comb begin
@@ -145,9 +147,6 @@ module n2m_vga_scanout (
   assign vga_vsync_o = pipe_q.vsync_qq;
   assign pixel_start_o = pipe_q.frame_start_qq;
 
-  // Consume the common events as local contract checks: the frame ends on a
-  // line end, the origin is a line start, and the image reads stay inside
-  // one frame.
   `N2A_ASSERT(frame_end_on_line_end, clk_i, reset_i, !timing_frame_end || timing_line_end)
   `N2A_ASSERT(origin_on_line_start, clk_i, reset_i, !timing_frame_start || timing_line_start)
   `N2A_ASSERT(image_read_in_frame, clk_i, reset_i,

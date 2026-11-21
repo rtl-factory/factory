@@ -10,8 +10,9 @@ from src.nand2doom.scripts.host.n2d_uart_debug_host import CMD_HALT, CMD_PING, r
 
 @cocotb.test()
 async def serial_bulk_frame_and_shadow(dut):
-    # Reuse the full independent C runtime + four-input + VGA CRC acceptance.
-    # It ends with an intentional CPU trap; explicitly Halt before debug reads.
+    # Why: reuse the full independent C runtime + four-input + VGA CRC
+    # acceptance rather than duplicate it. It ends with an intentional CPU
+    # trap, so the test halts explicitly before debug reads.
     await _run_system(dut, preload=True, capture_vga=True)
     await FallingEdge(dut.clk_i)
     halt = await _exchange(dut, request(CMD_HALT, 100))
@@ -20,8 +21,9 @@ async def serial_bulk_frame_and_shadow(dut):
     assert caps.words == (0x3242324e, 4096, 3)
     expected = bytearray(_expected_frame())
     expected[1], expected[5] = 0xaa, 0xbb
-    # Independent C test palette formula. This fixture stages its shadow into
-    # SDRAM; only the firmware integration can claim matched active-bank READY.
+    # Why: the palette is computed from the C test's formula, independently of
+    # the firmware. This fixture stages its shadow into SDRAM, so only the
+    # firmware integration can claim matched active-bank READY.
     palette = b"".join((((i >> 4) << 8) | ((i & 15) << 4) | ((i >> 4) ^ (i & 15))).to_bytes(4, "little")
                        for i in range(256))
     shadow_address = 0x8000

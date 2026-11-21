@@ -65,7 +65,7 @@ class N2dPerfTests(unittest.TestCase):
         self.assertEqual(len(result["frames"]), 3)
         summary = n2d_perf.summarize(result)
         self.assertEqual(summary["gameplay_frames"], 2)
-        self.assertEqual(summary["cycles_per_frame"], 900)  # (1000-200 + 2000-1000) / 2
+        self.assertEqual(summary["cycles_per_frame"], 900)
         self.assertAlmostEqual(summary["gameplay_ipc"], 410 / 1800, places=4)
         self.assertEqual(summary["icache_hit_ratio"], 0.75)
         self.assertEqual(summary["dcache_hit_ratio"], 0.75)
@@ -103,7 +103,7 @@ class N2dPerfTests(unittest.TestCase):
             n2d_perf.main(["--variant", "production", "--check-pins", "--dry-run"])
 
     def test_pin_check_rejects_injected_input(self) -> None:
-        # The pinned CRCs describe a run with no injected input, so the
+        # Why: the pinned CRCs describe a run with no injected input, so the
         # combination is a usage error before any build, in either flag order.
         for flags in (["--check-pins", "--input", "0x16"],
                       ["--input", "0x16", "--input", "0x1c", "--check-pins"]):
@@ -113,7 +113,6 @@ class N2dPerfTests(unittest.TestCase):
                 n2d_perf.main([*flags, "--dry-run"])
             self.assertEqual(raised.exception.code, 2)
             self.assertIn("pins require no input", stderr.getvalue())
-        # Each flag alone remains a valid plan.
         for flags, pins, events in ((["--check-pins"], True, []),
                                     (["--input", "0x16"], False, [0x16])):
             with self.subTest(flags=flags), contextlib.redirect_stdout(io.StringIO()) as stdout:
@@ -145,20 +144,20 @@ class N2dPerfTests(unittest.TestCase):
                          ["overall_ipc", "scene_ipc", "gameplay_ipc", "gameplay_frame_ipc"])
         stack = summary["pmon_total"]
         self.assertEqual(list(stack)[0], "ipc")
-        self.assertEqual(stack["ipc"], 0.25)                      # 100 / 400
+        self.assertEqual(stack["ipc"], 0.25)
         self.assertEqual(summary["overall_ipc"], 0.25)
         self.assertEqual(stack["cycles"], 400)
         self.assertEqual(stack["coverage_percent"], 98.75)
         self.assertEqual(stack["cycle_percent"]["dmiss_wait"], 13.5)
         self.assertEqual(sum(stack["cycle_percent"].values()), 100.0)
         self.assertEqual(stack["icache_hit_ratio"], 0.99)
-        self.assertEqual(stack["dcache_hit_ratio"], 0.9)          # (40+10-5)/50
-        self.assertEqual(stack["dmiss_penalty_cycles"], 10.8)     # 54 / 5
-        self.assertEqual(stack["imiss_penalty_cycles"], 10.0)     # 20 / 2
-        self.assertEqual(stack["line_read_latency_cycles"], 10.0)  # 70 / 7
+        self.assertEqual(stack["dcache_hit_ratio"], 0.9)
+        self.assertEqual(stack["dmiss_penalty_cycles"], 10.8)
+        self.assertEqual(stack["imiss_penalty_cycles"], 10.0)
+        self.assertEqual(stack["line_read_latency_cycles"], 10.0)
         self.assertEqual(stack["uncached_wait_per_access"], 1.5)
         self.assertEqual(total["events"]["DCACHE_PREFETCH_DROP"], 1)
-        self.assertEqual(stack["dcache_prefetch_accuracy"], 0.75)  # 3 / 4
+        self.assertEqual(stack["dcache_prefetch_accuracy"], 0.75)
         gameplay = summary["pmon_gameplay"]
         self.assertEqual(gameplay["frames"], 1)
         self.assertEqual(gameplay["cycles"], 350)
@@ -188,19 +187,18 @@ class N2dPerfTests(unittest.TestCase):
         dmiss = split_report["dmiss_wait"]["classes"]
         self.assertEqual(sum(c["cycles"] for c in dmiss.values()), 40)
         self.assertEqual(dmiss["dmiss_service"]["parent_percent"], 50.0)
-        # A split that does not sum to its parent class is a check failure.
         broken = n2d_perf.parse_report(report.replace("dmiss_cache=10", "dmiss_cache=9"))
         errors = n2d_perf.check(broken, None, None)
-        self.assertEqual(len(errors), 2)  # the gameplay interval and the total
+        self.assertEqual(len(errors), 2)  # Why: the broken split shows in both the gameplay interval and the total
         self.assertTrue(all("dmiss_wait split sums to 39, class is 40" in e for e in errors))
 
     def test_fetch_supply_wait_prefers_the_exact_event(self) -> None:
-        # With the fetch BTB a taken transfer may cost no refill clock, so
-        # the exact IFETCH_SUPPLY_WAIT replaces the two-per-redirect estimate.
+        # Why: with the fetch BTB a taken transfer may cost no refill clock, so the
+        # exact IFETCH_SUPPLY_WAIT replaces the two-per-redirect estimate.
         events = {"IFETCH_WAIT": 100, "BRANCH_REDIRECT": 60, "IFETCH_SUPPLY_WAIT": 30}
         self.assertEqual(n2d_perf.fetch_supply_wait(events), 30)
         del events["IFETCH_SUPPLY_WAIT"]
-        self.assertEqual(n2d_perf.fetch_supply_wait(events), 0)       # clamped 100 - 120
+        self.assertEqual(n2d_perf.fetch_supply_wait(events), 0)
         events["BRANCH_REDIRECT"] = 20
         self.assertEqual(n2d_perf.fetch_supply_wait(events), 60)
 

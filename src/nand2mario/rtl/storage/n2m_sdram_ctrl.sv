@@ -79,8 +79,10 @@ module n2m_sdram_ctrl #(
   assign dram_cke_o = !reset_i;
   assign dram_cs_n_o = reset_i;
   assign {dram_ras_n_o, dram_cas_n_o, dram_we_n_o} = command;
-  // Masks are high until initialization completes; a write masks the lanes
-  // its byte enables leave out (write mask latency zero).
+  // Ref: ISSI IS42S16320D datasheet (the part n2m_sdram_pkg targets): write
+  // mask latency is zero, so a write masks the lanes its byte enables leave
+  // out in the WRITE clock. Why: masks stay high until initialization completes
+  // so no stray write lands during power-up.
   assign write_mask = drive_data ? ~state.byte_enable : 2'b00;
   assign dram_dqml_o = !state.initialized || write_mask[0];
   assign dram_dqmh_o = !state.initialized || write_mask[1];
@@ -93,14 +95,15 @@ module n2m_sdram_ctrl #(
     dram_addr_o = '0;
     dram_ba_o = sdram_bank(state.address);
     drive_data = 1'b0;
-    // Age counts clocks since the last AUTO REFRESH once initialized and
-    // saturates rather than wrapping.
+    // Why: the age counts clocks since the last AUTO REFRESH once initialized and
+    // saturates rather than wrapping, so an overdue refresh never looks fresh.
     if (state.initialized && state.refresh_age != 8'hff)
       state_next.refresh_age = state.refresh_age + 8'd1;
 
     case (state.phase)
       SDRAM_POWERUP: begin
-        // 5000 NOP clocks after reset release, then the first command.
+        // Ref: ISSI IS42S16320D datasheet power-up: NOP clocks (5000 here) after
+        // reset release before the first command.
         if (int'(state.count) == SDRAM_POWERUP_CLOCKS) begin
           state_next.count = '0;
           state_next.phase = SDRAM_INIT_PRECHARGE;
@@ -140,7 +143,8 @@ module n2m_sdram_ctrl #(
       end
       SDRAM_IDLE: begin
         state_next.count = '0;
-        // A due refresh wins over a request presented on the same edge.
+        // Why: a due refresh wins over a request on the same edge so the refresh
+        // deadline is never missed.
         if (!request_ready_o) state_next.phase = SDRAM_REFRESH;
         else if (request_valid_i) begin
           state_next.address = request_address_i;
@@ -160,8 +164,8 @@ module n2m_sdram_ctrl #(
       SDRAM_READ: begin
         dram_addr_o[9:0] = sdram_column(state.address);
         if (state.count == '0) command = SDRAM_READ_CMD;
-        // The device drives the word after device edge READ+CL-1 and holds
-        // it through edge READ+CL (datasheet CAS latency), so it is captured
+        // Ref: SDRAM datasheet CAS latency: the device drives the word after device
+        // edge READ+CL-1 and holds it through edge READ+CL, so it is captured
         // at the clk_i edge ending the clock after the READ command clock.
         if (int'(state.count) == SDRAM_CAS_LATENCY - 1) begin
           state_next.read_data = dram_dq_i;
@@ -170,7 +174,8 @@ module n2m_sdram_ctrl #(
         end else state_next.count = state.count + 13'd1;
       end
       SDRAM_WRITE: begin
-        // One beat: the WRITE command, data and byte mask in the same clock.
+        // Ref: SDRAM datasheet: one write beat carries the WRITE command, data and
+        // byte mask in the same clock.
         dram_addr_o[9:0] = sdram_column(state.address);
         command = SDRAM_WRITE_CMD;
         drive_data = 1'b1;
@@ -186,10 +191,10 @@ module n2m_sdram_ctrl #(
     endcase
   end
 
-  // Acceptance history sampled with the assertions: at the edge ending
-  // contract clock k after acceptance, bit k-1 is high. The contract fixes
-  // the read response at clock 9 (bit 8) and idle at clock 10 (bit 9), the
-  // write response at clock 10 (bit 9) and idle at clock 11 (bit 10).
+  // Why: the history lets the assertions check the contract's fixed latency:
+  // at the edge ending contract clock k after acceptance, bit k-1 is high. The
+  // contract fixes the read response at clock 9 (bit 8) and idle at clock 10
+  // (bit 9), the write response at clock 10 (bit 9) and idle at clock 11 (bit 10).
   logic [10:0] read_history;
   logic [10:0] write_history;
   `N2A_DFF_RST(read_history, {read_history[9:0], accept && !request_write_i}, clk_i, reset_i)

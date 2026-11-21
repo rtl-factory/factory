@@ -43,7 +43,8 @@ module n2m_board_inputs #(
   assign counter_d = tick ? '0 : (counter_q + 1'b1);
   `N2A_DFF_RST(counter_q, counter_d, clk_i, reset_i)
   `N2A_DFF_RST_EN(sample_q, synced, clk_i, tick, reset_i, '0)
-  // Accept a level only when it has held across two samples.
+  // Why: contact bounce must not reach the joypad as extra presses, so a level
+  // counts only once it holds across two sample ticks.
   assign level_d = (synced == sample_q) ? synced : level_q;
   `N2A_DFF_RST_EN(level_q, level_d, clk_i, tick, reset_i, '0)
   assign level_o = level_q;

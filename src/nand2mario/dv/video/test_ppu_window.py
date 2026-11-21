@@ -20,7 +20,7 @@ from cocotb.utils import get_sim_time
 from . import ppu_model as m
 from .test_ppu import CLOCK_PERIOD_NS, Bench
 
-LINES = 3        # lines walked per static phase
+LINES = 3
 
 
 def window_line_pixels(vram, regs, wline, y):
@@ -60,7 +60,7 @@ async def static_phase(b, model, regs, label, expected_window_pixels):
     model.enable()
     pixels = await b.run_dots(model, LINES * m.DOTS_PER_LINE, frame)
     assert len(pixels) == LINES * m.VISIBLE_PIXELS, (label, len(pixels))
-    # Every window pixel of these lines differs from the background it covers
+    # Why: every window pixel of these lines differs from the background it covers
     # for at least one position, so the comparison observed the window.
     if expected_window_pixels:
         differs = any(frame[y][x] != background_line_pixels(bytes(b.vram), regs, y)[x]
@@ -118,7 +118,7 @@ async def ppu_window_contract(dut):
     model = m.PpuTiming()
     rng = b.rng
 
-    # Seeded VRAM for the geometry phases; OAM entries off every line
+    # Why: seeded VRAM for the geometry phases; OAM entries off every line
     # (Y 0) so objects, even when enabled, never draw.
     await b.load_vram(bytes(rng.randrange(256) for _ in range(8192)))
     await b.load_oam(bytes(160))
@@ -138,25 +138,23 @@ async def ppu_window_contract(dut):
     wx = rng.randrange(8, 160)
     await static_phase(b, model, regs(wx, wy=1), 'wy1', (LINES - 1) * (160 - (wx - 7)))
 
-    # Hide/resume: a directed tile whose rows carry distinct colors fills the
-    # window map, a different tile fills the background map; WX 7, WY 0.
     vram = bytearray(8192)
-    for row in range(8):                       # tile 1: row r is color (r % 3) + 1
+    for row in range(8):
         color = row % 3 + 1
         vram[16 + 2 * row] = 0xFF if color & 1 else 0x00
         vram[16 + 2 * row + 1] = 0xFF if color & 2 else 0x00
-    for row in range(8):                       # tile 2: alternating columns of colors 3 and 0
+    for row in range(8):
         vram[32 + 2 * row] = 0xAA
         vram[32 + 2 * row + 1] = 0xAA
-    vram[0x1C00:0x2000] = bytes([1] * 1024)    # window map $9C00: tile 1
-    vram[0x1800:0x1C00] = bytes([2] * 1024)    # background map $9800: tile 2
+    vram[0x1C00:0x2000] = bytes([1] * 1024)
+    vram[0x1800:0x1C00] = bytes([2] * 1024)
     await b.load_vram(bytes(vram))
-    hide = {**base, m.SCY: 0, m.SCX: 0, m.LCDC: 0xF1, m.WY: 0, m.WX: 7}   # LCD, window map $9C00, window, $8000 tiles, BG
+    hide = {**base, m.SCY: 0, m.SCX: 0, m.LCDC: 0xF1, m.WY: 0, m.WX: 7}   # Ref: Pan Docs, LCDC bits: $F1 is LCD, window map $9C00, window, $8000 tiles, BG.
     for address, value in hide.items():
         if address != m.LCDC:
             await b.write(address, value)
     await b.write(m.LCDC, hide[m.LCDC])
-    # Line 0: window row 0. HBlank of line 0: LCDC.0 off -> line 1 white, no
+    # Why: line 0 is window row 0. HBlank of line 0: LCDC.0 off -> line 1 white, no
     # row consumed. HBlank of line 1: LCDC.0 on -> line 2 window row 1.
     # HBlank of line 2: LCDC.5 off -> line 3 background, no row consumed.
     # HBlank of line 3: LCDC.5 on -> line 4 window row 2; line 5 row 3.
@@ -172,7 +170,7 @@ async def ppu_window_contract(dut):
     assert expected[0][0] == 1 and expected[2][0] == 2 and expected[4][0] == 3 and expected[5][0] == 1
     assert expected[3][:2] == [3, 0]
     compare_rows(rows, expected, 'hide/resume')
-    # Negative control: the stale accounting (line 2 drawing row 2) must be rejected.
+    # Why: proves the check can fail: the stale accounting (line 2 drawing row 2) must be rejected.
     stale = [row[:] for row in expected]
     stale[2] = window_line_pixels(bytes(vram), hide, 2, 2)
     try:

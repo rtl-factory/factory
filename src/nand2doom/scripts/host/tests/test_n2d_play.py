@@ -22,7 +22,7 @@ from src.nand2doom.scripts.host import n2d_uart_debug_host as wire  # noqa: E402
 from src.nand2doom.scripts.host.tests.test_n2d_uart_stream import StreamDevice, make_client  # noqa: E402
 
 JTAGCONFIG = "1) USB-Blaster [1-1]\n  020F70DD   10CL120(Y|Z)/EP3C120/EP4CE115\n"
-DEVICE = "@1: 10CL120(Y|Z)/EP3C120/.. (0x020F70DD)"   # the board host's quartus_stp name
+DEVICE = "@1: 10CL120(Y|Z)/EP3C120/.. (0x020F70DD)"   # Why: this is the name quartus_stp prints on the board host
 STP_LISTING = "Info: Running Quartus Prime Signal Tap\nN2D_DEVICE " + DEVICE + "\n"
 PROGRAMMED = "Info: Quartus Prime Programmer was successful. 0 errors, 0 warnings\n"
 MANIFEST = host.Manifest(0x100, (
@@ -107,7 +107,7 @@ class LoadTests(unittest.TestCase):
         self.assertEqual(len(device.write_addresses), 3)
         self.assertIn("program segment, always loaded", results[0].reason)
         self.assertTrue(any("data.wad: skipped" in line for line in lines))
-        self.assertEqual(device.legacy, [wire.CMD_HALT])  # no reset-PC or Resume before start()
+        self.assertEqual(device.legacy, [wire.CMD_HALT])  # Why: loading must not reset the PC or Resume before start()
         self.assert_image(device)
 
     def test_mismatch_loads_the_segment(self):
@@ -123,7 +123,7 @@ class LoadTests(unittest.TestCase):
         store(device, MANIFEST.segments[1])
         stale = MANIFEST.segments[2]
         device.memory[stale.address:stale.address + len(stale.data)] = stale.data
-        device.memory[stale.address + 100] ^= 0xFF  # one stale byte
+        device.memory[stale.address + 100] ^= 0xFF
         _, results, _ = self.load(device)
         self.assertEqual(self.actions(results), [("program.bin", "loaded"), ("data.wad", "skipped"),
                                                  ("extra.bin", "loaded")])
@@ -140,7 +140,7 @@ class LoadTests(unittest.TestCase):
                                                          ("extra.bin", "skipped")])
                 self.assertIn("digest request failed", results[1].reason)
                 self.assert_image(device)
-        device = DigestFaultDevice(fail=(1,))  # the program's verification is never skipped
+        device = DigestFaultDevice(fail=(1,))  # Why: the program's verification is never skipped, even on a digest fault
         with self.assertRaisesRegex(host.StreamError, "remains halted"):
             self.load(device)
 
@@ -149,7 +149,7 @@ class LoadTests(unittest.TestCase):
         store(device, *MANIFEST.segments)
         _, results, _ = self.load(device, force_full=True)
         self.assertEqual([r.action for r in results], ["loaded"] * 3)
-        self.assertEqual(device.digests, 3)  # only the post-load verifications
+        self.assertEqual(device.digests, 3)  # Why: a forced full load skips the pre-load digests; only post-load verifications run
 
     def test_post_load_digest_mismatch_stops_halted(self):
         device = StreamDevice(corrupt_memory=0x150)

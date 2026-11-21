@@ -121,9 +121,10 @@ async def memory_arbiter_fast_model_contract(dut):
         dut.master_request_prefetch_i.value = 0
         return order
 
-    # A prefetch-marked request loses to every demand request, whatever the
-    # round-robin pointer, and is granted once no demand is valid.
-    # The D-cache (master 1) is the only prefetching master in the product.
+    # Why: a prefetch must never delay demand, so a prefetch-marked request
+    # loses to every demand request whatever the round-robin pointer, and is
+    # granted once no demand is valid. The D-cache (master 1) is the only
+    # prefetching master in the product.
     for rounds in range(3):
         assert (await grant_order([1, 1, 0], [0, 1, 0]))[0] == 0
         assert (await grant_order([0, 1, 1], [0, 1, 0]))[0] == 2
@@ -186,8 +187,9 @@ async def debug_transaction_atomic_contract(dut):
     assert await word(False, 0x200) == 0x11223344
     assert await word(False, 0x204) == 0x55667788
 
-    # A later rejected word followed by the UART bridge's abort must not
-    # publish the earlier successfully staged word.
+    # Why: a later rejected word followed by the UART bridge's abort must not
+    # publish the earlier successfully staged word, or a failed transaction
+    # would be half applied.
     await pulse("transaction_begin_i")
     await word(True, 0x200, 0x01020304, 0xF)
     await word(True, 0x203, 0xDEADBEEF, 0xF, expect_error=True)

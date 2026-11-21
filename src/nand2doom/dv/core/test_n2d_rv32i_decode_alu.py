@@ -262,13 +262,15 @@ async def decode_alu_contract(dut) -> None:
             instruction = _encode_i(name, rs1, rd, rng.randrange(-2048, 2048))
         await check(instruction, operand_a, operand_b, f"random-{random_index}-{name}")
 
-    # Every other seven-bit opcode is unsupported by this bounded slice.
+    # Why: this bounded slice decodes only OP and OP-IMM, so every other
+    # seven-bit opcode must be rejected.
     for opcode in range(128):
         if opcode not in (OPCODE_OP, OPCODE_OP_IMM):
             instruction = (0xA55A_5A00 | opcode) & MASK32
             await check(instruction, 0x8000_0000, 0xFFFF_FFFF, f"opcode-{opcode}")
 
-    # Exhaust all OP funct3/funct7 combinations, including RV32M funct7=1.
+    # Why: a single bad funct3/funct7 decode would escape sampling, so all
+    # combinations are exhausted, including RV32M funct7=1.
     for funct3 in range(8):
         for funct7 in range(128):
             instruction = (
@@ -281,7 +283,8 @@ async def decode_alu_contract(dut) -> None:
             )
             await check(instruction, 0x8000_0001, 0xFFFF_FFFF, "op-encoding-space")
 
-    # Exhaust shift-immediate high bits; only base and arithmetic-right forms pass.
+    # Why: only the base and arithmetic-right forms are legal, so every other
+    # shift-immediate high-bit pattern must be rejected.
     for funct3 in (0b001, 0b101):
         for funct7 in range(128):
             instruction = (

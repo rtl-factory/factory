@@ -214,8 +214,9 @@ module n2d_system
     logic [31:0] debug_palette_request_write_data;
     logic [3:0] debug_palette_request_write_strobe;
     logic cpu_framebuffer_request_valid, cpu_palette_request_valid;
-    // Screen reads of the UART memory endpoint (wiki/src/nand2doom/rtl/io/mas.md "UART memory
-    // endpoint"): the front bank and the scanned palette, while the CPU runs.
+    // Ref: wiki/src/nand2doom/rtl/io/mas.md "UART memory endpoint": screen reads
+    // of the endpoint cover the front bank and the scanned palette, while the
+    // CPU runs.
     n2d_screen_req_t screen_request;
     n2d_screen_rsp_t screen_response;
     logic screen_framebuffer_valid, screen_palette_valid;
@@ -240,7 +241,8 @@ module n2d_system
     assign framebuffer_back_address_selected =
         (data_request_address >= 32'h1000_0000) &&
         (data_request_address < 32'h1001_0000);
-    // The front-bank view is read-only; a write there is unmapped.
+    // Why: the front-bank view is read-only, so software cannot write the bank
+    // being scanned out; a write there is unmapped.
     assign framebuffer_front_address_selected =
         (data_request_address >= 32'h1002_0000) &&
         (data_request_address < 32'h1003_0000) && !data_request_write;
@@ -263,8 +265,8 @@ module n2d_system
     assign cpu_framebuffer_request_valid =
         data_request_valid && framebuffer_address_selected;
     assign cpu_palette_request_valid = data_request_valid && palette_address_selected;
-    // Priority: halted debug bridge, then endpoint screen read, then CPU. A
-    // screen read takes one port cycle; the endpoint paces them while the
+    // Why: priority is halted debug bridge, then endpoint screen read, then CPU.
+    // A screen read takes one port cycle; the endpoint paces them while the
     // CPU runs, so the CPU loses at most that cycle per pacing gap.
     assign screen_framebuffer_valid = screen_request.valid && !screen_request.palette &&
         !debug_framebuffer_request_valid;
@@ -294,7 +296,8 @@ module n2d_system
         debug_palette_request_write_strobe : data_request_byte_enable;
     assign debug_framebuffer_request_ready = framebuffer_request_ready;
     assign debug_palette_request_ready = palette_request_ready;
-    // Both ports answer on the next clock.
+    // Why: both ports answer on the next clock, so one pending flag per port
+    // tracks each read.
     assign screen_framebuffer_pending_d = screen_framebuffer_valid && framebuffer_request_ready;
     assign screen_palette_pending_d = screen_palette_valid && palette_request_ready;
     `N2A_DFF_RST(screen_framebuffer_pending_q, screen_framebuffer_pending_d, clk_i, reset_i)
@@ -362,7 +365,7 @@ module n2d_system
         endcase
     end
 
-    // One outstanding data transaction owner; an unmapped address returns a
+    // Why: one outstanding data transaction owner; an unmapped address returns a
     // one-cycle error response. A request accepted on the edge that samples
     // the current owner's response takes ownership, so the response clear
     // comes first and a same-cycle acceptance overrides it.
@@ -394,9 +397,10 @@ module n2d_system
     `N2A_DFF_RST_VAL(data_owner_q, data_owner_d, clk_i, reset_i, DATA_NONE)
     `N2A_DFF_RST(invalid_response_q, invalid_response_d, clk_i, reset_i)
 
-    // Platform PMON event sources (wiki/src/nand2doom/rtl/core/mas.md "Performance monitor"),
-    // derived from existing handshakes. pmon_events is the core's registered
-    // vector of all events, observed hierarchically by simulation harnesses.
+    // Ref: wiki/src/nand2doom/rtl/core/mas.md "Performance monitor": platform PMON
+    // event sources, derived from existing handshakes. pmon_events is the
+    // core's registered vector of all events, observed hierarchically by
+    // simulation harnesses.
     logic [127:0] pmon_platform_events;
     /* verilator lint_off UNUSEDSIGNAL */
     logic [127:0] pmon_events;
@@ -580,10 +584,11 @@ module n2d_system
         .mmio_response_error_o(ps2_response_error)
     );
 
-    // Host keyboard over Virtual JTAG (wiki/src/nand2doom/rtl/io/mas.md): the common mailbox endpoint
-    // offers raw Set-2 bytes as the input FIFO's lowest-priority producer.
-    // The enclosing top supplies the neutral scan ports: board tops bind the
-    // common n2a_jtag_virtual, the ASIC its own pins, DV fixtures tie them idle.
+    // Ref: wiki/src/nand2doom/rtl/io/mas.md "JTAG keyboard": the common mailbox
+    // endpoint offers raw Set-2 bytes as the input FIFO's lowest-priority
+    // producer. The enclosing top supplies the neutral scan ports: board tops
+    // bind the common n2a_jtag_virtual, the ASIC its own pins, DV fixtures tie
+    // them idle.
     assign jtag_tck = scan_tck_i;
     assign jtag_tdi = scan_tdi_i;
     assign jtag_capture = scan_capture_i;
@@ -600,13 +605,14 @@ module n2d_system
         .inject_ready_i(scan_inject_ready)
     );
 
-    // Small system and video-control registers stay uncached. The completion
-    // marker is an observable software handshake; the durable result signature
-    // remains in SDRAM and is checked after a precise UART halt.
-    // Offset 0x000 bit 0 commits the palette alone. Offset 0x008 bit 0
-    // requests a framebuffer swap and bit 1 commits the palette with it: one
-    // write arms both on the same clock, so they flip at the same vertical
-    // blank (wiki/src/nand2doom/rtl/video/mas.md).
+    // Why: the small system and video-control registers stay uncached so every
+    // access reaches the device in order. The completion marker is only an
+    // observable software handshake; the durable result signature remains in
+    // SDRAM and is checked after a precise UART halt.
+    // Ref: wiki/src/nand2doom/rtl/video/mas.md "Requirements" VID-R4: offset
+    // 0x000 bit 0 commits the palette alone; offset 0x008 bit 0 requests a
+    // framebuffer swap and bit 1 commits the palette with it, so one write arms
+    // both on the same clock and they flip at the same vertical blank.
     logic video_control_write_lane0;
     assign video_control_write_lane0 = system_request_valid && data_request_ready &&
         data_request_write && video_control_address_selected &&
@@ -682,8 +688,9 @@ module n2d_system
 
     `N2A_DFF_RST_VAL(sys_q, sys_d, clk_i, reset_i, SYS_RESET)
 
-    // Halt-entry cache maintenance tracking: a rising halt request arms one
-    // I-cache invalidate and one D-cache writeback; both must complete.
+    // Ref: wiki/src/nand2doom/rtl/memory/mas.md "Maintenance": a rising halt
+    // request arms one I-cache invalidate and one D-cache writeback, and both
+    // must complete before Halt succeeds.
     always_comb begin
         maint_d = maint_q;
         maint_d.halt_request_prev = halt_request;
@@ -719,8 +726,9 @@ module n2d_system
     assign cache_maintenance_done = halt_request && !maint_q.required;
     assign debug_memory_request_valid_o = debug_line_valid;
 
-    // Full-cache writeback uses a separately derived bound; short memory
-    // transactions retain their original watchdog (wiki/src/nand2doom/rtl/memory/mas.md).
+    // Ref: wiki/src/nand2doom/rtl/memory/mas.md "Maintained Halt bound": full-cache
+    // writeback uses a separately derived bound; short memory transactions keep
+    // this OP_TIMEOUT_CYCLES watchdog.
     n2d_uart_debug #(.BAUD(UART_BAUD), .OP_TIMEOUT_CYCLES(4096),
                      .HALT_TIMEOUT_CYCLES(65536)) u_debug (
         .clk_i, .reset_i, .uart_rx_i, .uart_tx_o,
@@ -735,7 +743,6 @@ module n2d_system
         .screen_req_o(screen_request),
         .screen_rsp_i(screen_response)
     );
-    // Debug port groups unpacked onto the platform's existing nets.
     assign halt_request = debug_control.halt_req;
     assign reset_pc_valid = debug_control.reset_pc_valid;
     assign debug_status = '{halt_ack: halt_ack_o, cache_maint_done: cache_maintenance_done};

@@ -18,10 +18,11 @@ LINE_NS = 800 * PIXEL_NS
 PALETTE_ENTRY = 0x1001_0000
 FRAMEBUFFER = 0x1000_0000
 RESULT = 0x100
-COLOR = 0x96c  # RGB444 palette entry 0: red 9, green 6, blue 12
+COLOR = 0x96c  # Ref: video MAS "Framebuffer and palette": RGB444, red 9, green 6, blue 12
 SCAN_CODE = 0x1c
-# The board top runs the whole debug link at the 3 Mbaud load rate. The host
-# side uses exact absolute-time bit edges, not 25 MHz clock multiples.
+# Why: the board top runs the whole debug link at the 3 Mbaud load rate, and 25
+# MHz clock multiples cannot hit that rate, so the host side uses exact
+# absolute-time bit edges.
 BAUD = 3_000_000
 BIT_PS = 10**12 / BAUD
 STREAM_ADDRESS = 0x0004_0000
@@ -42,9 +43,10 @@ def _beq(rs1, rs2, offset):
         (rs1 << 15) | (((imm >> 1) & 0xf) << 8) | (((imm >> 11) & 1) << 7) | 0x63
 
 
-# Commit the palette and swap the framebuffer banks (the host poked the back
-# bank), poll the input FIFO DATA register until a PS/2 event arrives, store
-# it at RESULT and park. x5/x6 are scratch registers.
+# Why: the program checks display and input on the board top without the host:
+# it commits the palette and swaps the framebuffer banks (the host poked the
+# back bank), polls the input FIFO DATA register (an empty FIFO reads zero)
+# until a PS/2 event arrives, stores it at RESULT and parks. x5/x6 are scratch.
 PROGRAM = (
     (0x20001 << 12) | (5 << 7) | 0x37,  # lui  x5, 0x20001 (video control)
     _i(0x13, 6, 0, 0, 1),               # addi x6, x0, 1
@@ -83,8 +85,8 @@ async def board_serial_sdram_video_contract(dut):
         assert int(dut.VGA_BLANK_N.value) == 1 and int(dut.VGA_SYNC_N.value) == 0
 
     async def read_return(beats):
-        # CL2 data is valid by device n+2, launched after n+1+tAC;
-        # each later beat follows one device clock after the previous one.
+        # Ref: IS42S16320D datasheet: CL2 data is valid by device clock n+2, launched
+        # after n+1+tAC; each later beat follows one device clock after the previous.
         await Timer(46, unit="ns")
         for index, value in enumerate(beats):
             dut.dram_data_i.value = value
@@ -102,7 +104,8 @@ async def board_serial_sdram_video_contract(dut):
             bank, address = int(dut.DRAM_BA.value), int(dut.DRAM_ADDR.value)
             dqm = int(dut.DRAM_DQM.value)
             assert int(dut.DRAM_CKE.value) and not int(dut.DRAM_CS_N.value)
-            # The high chip shares every command but must never drive DQ[31:16].
+            # Why: the high chip shares every command, so if it ever drove
+            # DQ[31:16] it would corrupt the low chip's bus.
             assert dqm >> 2 == 3, "high SDRAM chip unmasked"
             if cmd != NOP and len(initial) < 4:
                 initial.append(cmd)
@@ -165,12 +168,14 @@ async def board_serial_sdram_video_contract(dut):
         assert result.status == 0, result
         return result
 
-    # Low-chip SDRAM through the JP5 UART: burst-eight lines in all four
-    # banks, a row crossing and byte masks on DQM[1:0].
+    # Why: burst-eight lines in all four banks, a row crossing and byte masks
+    # on DQM[1:0] cover every low-chip address and mask path the JP5 UART can
+    # reach.
     assert await exchange(CMD_PING, 1) == (0x3144324e, 1)
     for bank in range(4):
-        # The last word of each bank's row 0; the two-word poke crosses into
-        # the next bank (or into row 1 after bank 3).
+        # Why: the last word of each bank's row 0, so the two-word poke crosses
+        # into the next bank (or into row 1 after bank 3) and a wrong bank/row
+        # split shows.
         address = join(bank, 0, 1022)
         value = 0x12345678 ^ (bank * 0x11111111)
         await exchange(CMD_POKE, 2 + bank * 3, address=address,
@@ -181,9 +186,10 @@ async def board_serial_sdram_video_contract(dut):
         assert model.words[address] == ((value & 0xff00) | 0xef)
         assert model.words[address + 2] == (((value >> 16) & 0xff00) | 0xad)
 
-    # Streaming load through the board top at 3 Mbaud: Hello, two back-to-back
-    # Write frames (one with a three-byte tail), a stored-SDRAM digest, End,
-    # then legacy Peek of the stored words.
+    # Why: this is the board top's real load path at 3 Mbaud: Hello, two
+    # back-to-back Write frames (one with a three-byte tail), a stored-SDRAM
+    # digest, End, then legacy Peek of the stored words, so the streaming and
+    # legacy engines must hand the link over cleanly.
     image = bytes((i * 29 + 7) & 0xff for i in range(67))
     hello = await stream(wire.stream_frame(wire.STREAM_HELLO, 1))
     assert hello.value == wire.STREAM_IDENTITY
@@ -204,15 +210,17 @@ async def board_serial_sdram_video_contract(dut):
     words = await exchange(CMD_PEEK, 19, address=STREAM_ADDRESS + 64, count=1)
     assert words[0] & 0xffffff == int.from_bytes(image[64:], "little")
 
-    # Video and input setup while halted: palette entry 0 of the inactive
-    # bank, the first 16 source pixels of row 0 at index 0, then the program.
+    # Why: setup happens while halted so the program's swap is the only thing
+    # that can make it visible: palette entry 0 of the inactive bank, the first
+    # 16 source pixels of row 0 at index 0, then the program.
     await exchange(CMD_POKE, 20, address=PALETTE_ENTRY, words=(COLOR,), byte_enable=15)
     await exchange(CMD_POKE, 21, address=FRAMEBUFFER, words=(0, 0, 0, 0), byte_enable=15)
     await exchange(CMD_POKE, 22, address=0, words=PROGRAM[:8], byte_enable=15)
     await exchange(CMD_POKE, 23, address=32, words=PROGRAM[8:], byte_enable=15)
     await exchange(CMD_RESUME, 24)
 
-    # One Set-2 make code on the on-board PS/2 pins (device-clocked frame).
+    # Ref: PS/2 scan code set 2: one make code, sent as a device-clocked frame
+    # on the on-board PS/2 pins.
     await Timer(20, unit="us")
     for bit in (0, *((SCAN_CODE >> i) & 1 for i in range(8)), odd_parity(SCAN_CODE), 1):
         dut.PS2_DAT.value = bit
@@ -225,24 +233,25 @@ async def board_serial_sdram_video_contract(dut):
     await exchange(CMD_HALT, 25, timeout_us=3000)
     assert await exchange(CMD_PEEK, 26, address=RESULT, count=1) == ((1 << 31) | SCAN_CODE,), \
         "PS/2 event did not reach the program"
-    # Host keys over the board's Virtual JTAG wrapper into the same FIFO.
     await check_jtag_keys(dut.u_board)
     assert model.writes and model.bursts and len(model.refresh) > 5
     assert max(b - a for a, b in zip(model.refresh, model.refresh[1:])) <= 195
     task.cancel()
 
-    # The committed palette and the swapped framebuffer bank become active at
-    # the same vertical-blank boundary
-    # (line 480) that precedes the next vertical sync pulse. Scaled source
-    # row 0 then appears on output lines 40 and 41 of the following frame.
+    # Ref: video MAS "VGA timing and scaling": the committed palette and the
+    # swapped framebuffer bank become active at the same vertical-blank
+    # boundary (line 480) that precedes the next vertical sync pulse. Scaled
+    # source row 0 then appears on output lines 40 and 41 of the following
+    # frame.
     await FallingEdge(dut.VGA_VS)
-    # Sync starts on line 490; begin sampling half-way through line 38.
+    # Why: sync starts on line 490, and sampling half-way through line 38
+    # avoids an edge race on the first border line.
     await Timer(73 * LINE_NS + 400 * PIXEL_NS, unit="ns")
     expected = ((COLOR >> 8) * 0x11, ((COLOR >> 4) & 0xf) * 0x11, (COLOR & 0xf) * 0x11)
     samples, phase_violations = [], []
 
     async def watch_rgb_changes():
-        # RGB launches on the rising 25 MHz edge, which is the falling DAC
+        # Why: RGB launches on the rising 25 MHz edge, which is the falling DAC
         # clock edge; it must never change at the rising VGA_CLK sample edge.
         while True:
             await dut.VGA_R.value_change
@@ -261,7 +270,6 @@ async def board_serial_sdram_video_contract(dut):
     lit = [index for index, rgb in enumerate(samples) if rgb == expected]
     assert lit, "committed palette color never reached the DAC"
     first = lit[0]
-    # Border line 39 and the horizontal blank before line 40 stay black.
     assert first >= 400 + 160, "color appeared on the black border"
     assert all(rgb == (0, 0, 0) for rgb in samples[:first]), "border must be black"
     assert samples[first:first + 16] == [expected] * 16, "first 16 scaled pixels"

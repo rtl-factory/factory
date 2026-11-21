@@ -39,8 +39,8 @@ class SoftwareProfileTests(unittest.TestCase):
         self.assertEqual(result["functions"]["acquire"]["cycles"], 3)
 
     def test_sleep_descendant_and_return_preserve_wait_context(self):
-        # jal ra, then ret: the child of Sleep is waiting, a later independent
-        # call to the same clock helper is useful work.
+        # Why: after jal ra then ret the child of Sleep is still waiting, while a later
+        # independent call to the same clock helper is useful work.
         result = profile([retirement(0, 0x100, 0xEF), retirement(1, 0x200, 0x8067),
                           retirement(2, 0x104, 0x8067), retirement(3, 0x300, 0xEF),
                           retirement(4, 0x200, 0x8067), retirement(5, 0x304)],

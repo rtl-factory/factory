@@ -62,7 +62,6 @@ class PreparationTests(unittest.TestCase):
                 self.assertEqual(adapter.execute(output, build, 'system_background'), 0)
                 self.assertEqual(command.call_args.args[0][-2:], ['--direct', 'n2m_system_background'])
                 self.assertEqual(command.call_args.kwargs['env']['N2M_SYSTEM_IMAGE'], str(output/'software/program.gb'))
-        # The system entry point selects the recipe through --program.
         from src.nand2mario.scripts.regression import system_regression
         with patch.object(adapter, 'execute', return_value=0) as execute:
             self.assertEqual(system_regression.main(['--output', 'workdir/a', '--workdir', 'workdir/b',
@@ -89,7 +88,6 @@ class PreparationTests(unittest.TestCase):
                 self.assertEqual(command.call_count, 3)
                 self.assertEqual(command.call_args.args[0][-2:], ['--direct', 'n2m_system_mbc1'])
                 self.assertEqual(command.call_args.kwargs['env']['N2M_SYSTEM_IMAGE'], str(output/'software/cartridge.gb'))
-        # A short expansion stops before the simulator.
         with tempfile.TemporaryDirectory() as name, patch.object(adapter, 'ROOT', Path(name)):
             output, build = Path(name)/'workdir/artifacts', Path(name)/'workdir/build'
             def run_short(argv, **kwargs):

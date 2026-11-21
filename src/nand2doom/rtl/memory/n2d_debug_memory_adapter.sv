@@ -31,14 +31,15 @@ module n2d_debug_memory_adapter #(
         word_response_valid: 1'b0, word_response_data: '0,
         word_response_error: 1'b0, transaction_done: 1'b0, transaction_error: 1'b0};
     debug_mem_regs_t regs_q, regs_d;
-    // Staged-word counts and indices: their widths follow MAX_WORDS, so they
-    // are registers of their own beside the packaged adapter state.
+    // Why: staged-word count and index widths follow MAX_WORDS, so they are
+    // registers of their own beside the packaged adapter state.
     logic [COUNT_WIDTH-1:0] count_q, count_d;
     logic [COUNT_WIDTH-1:0] committed_count_q, committed_count_d;
     logic [INDEX_WIDTH-1:0] index_q, index_d;
     logic [INDEX_WIDTH-1:0] rollback_index_q, rollback_index_d;
-    // Staged words and the original lines they overwrite: reset-cleared flop
-    // arrays with one indexed write per clock.
+    // Why: staged words and the original lines they overwrite are reset-cleared
+    // flop arrays with one indexed write per clock, so a rollback can restore
+    // every overwritten line.
     logic [31:0] stage_address [0:MAX_WORDS-1];
     logic [31:0] stage_data [0:MAX_WORDS-1];
     logic [3:0] stage_enable [0:MAX_WORDS-1];

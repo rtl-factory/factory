@@ -55,7 +55,6 @@ module n2m_dma (
   logic        cpu_restricted, cpu_accept, cpu_block_now, cpu_forward;
   logic        cpu_busy_q, cpu_busy_d, blocked_q, blocked_d;
 
-  // ---------------------------------------------------------------- register
   assign io_selected_o = io_request_i.address == DMA_ADDRESS;
   assign io_write = io_request_i.valid && io_request_i.write && io_selected_o;
   `N2A_DFF_RST_EN(page_q, io_request_i.write_data, clk_i, io_write, reset_i, 8'h00)
@@ -65,9 +64,6 @@ module n2m_dma (
     io_response_o.read_data = page_q;
   end
 
-  // ------------------------------------------------------- tick-stepped state
-  // pending: a write happened since the last tick. armed: one tick passed
-  // since the write; the next tick starts the transfer at offset 0.
   assign tick = machine_cycle_enable_i;
   assign last_byte = offset_q == 8'(TRANSFER_BYTES - 1);
   always_comb begin
@@ -78,14 +74,15 @@ module n2m_dma (
     need_d = need_q;
     if (tick) begin
       pending_d = 1'b0;
-      // A (re)start waits for a byte still owed by the running transfer.
+      // Why: a (re)start waits for a byte still owed by the running transfer, so
+      // that byte's OAM write is never lost.
       armed_d = pending_q || (armed_q && (need_q || busy_q));
       if (armed_q && !need_q && !busy_q) begin
         active_d = 1'b1;
         offset_d = 8'd0;
         need_d = 1'b1;
       end else if (active_q && !need_q && !busy_q) begin
-        // A byte still owed at a tick (a slow backing such as SDRAM busy with
+        // Why: a byte still owed at a tick (a slow backing such as SDRAM busy with
         // a load) holds the offset; the transfer stretches by that cycle.
         if (last_byte) begin
           active_d = 1'b0;
@@ -105,10 +102,9 @@ module n2m_dma (
   `N2A_DFF_RST(need_q, need_d, clk_i, reset_i)
   assign active_o = active_q;
 
-  // ----------------------------------------------------------- byte transfer
-  // The engine takes the memory when a byte is due and no CPU request is
-  // outstanding; it holds its read until the response, which is written
-  // into OAM on the same edge.
+  // Why: the memory serves one master at a time, so the engine takes it only
+  // when a byte is due and no CPU request is outstanding; it holds its read
+  // until the response, which is written into OAM on the same edge.
   assign engine_start = need_q && !cpu_busy_q;
   assign busy_d = engine_start || (busy_q && !mem_response_i.valid);
   `N2A_DFF_RST(busy_q, busy_d, clk_i, reset_i)
@@ -118,11 +114,10 @@ module n2m_dma (
   assign oam_address_o = offset_q;
   assign oam_data_o = mem_response_i.read_data;
 
-  // ------------------------------------------------------------ CPU bus gate
-  // A CPU request is accepted on the first edge it is seen with no CPU
-  // response owed and the engine not holding the memory. A restricted
-  // request during a transfer is answered here one edge later; any other
-  // request is forwarded and keeps being forwarded until its response.
+  // Why: one master holds the memory at a time, so a CPU request is accepted
+  // only with no CPU response owed and the engine not holding the memory. A
+  // restricted request during a transfer is answered here one edge later, like
+  // a blocked memory access; any other is forwarded until its response.
   assign cpu_restricted = restricted(cpu_request_i.address, page_q);
   assign cpu_accept = cpu_request_i.valid && !cpu_busy_q && !engine_present;
   assign cpu_block_now = cpu_accept && active_q && cpu_restricted;
@@ -155,10 +150,6 @@ module n2m_dma (
     end
   end
 
-  // A new byte is only requested once the previous one is written: a tick
-  // that finds a byte owed never re-arms it. The CPU and the engine never
-  // await the memory together, and the memory never answers without an
-  // outstanding request.
   `N2A_ASSERT(byte_not_rearmed_while_owed, clk_i, reset_i, !(need_q && busy_q))
   `N2A_ASSERT(one_master_outstanding, clk_i, reset_i, !(busy_q && cpu_busy_q))
   `N2A_ASSERT(response_has_owner, clk_i, reset_i,

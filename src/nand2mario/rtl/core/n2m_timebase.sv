@@ -28,15 +28,16 @@ module n2m_timebase (
     end else begin
       phase_d = phase_sum;
     end
-    // Dots within the machine cycle: the count wraps on the fourth pulse.
+    // Ref: Pan Docs: one machine cycle is four dots.
     dot_count_d = dot_count_q;
     if (dot_pulse) begin
       dot_count_d = dot_count_q + 2'd1;
     end
   end
 
-  // Consumers sample the carry on a rising clk_i edge. The accumulator then
-  // advances for the following edge; no clock is generated or gated here.
+  // Why: a clock enable instead of a derived clock keeps every block on clk_i
+  // with no crossing: consumers sample the carry on a rising clk_i edge and the
+  // accumulator advances for the following edge.
   assign dot_pulse = !reset_i && (phase_sum >= PHASE_MODULUS);
   assign dot_enable_o = dot_pulse;
   assign machine_cycle_enable_o = dot_pulse && (dot_count_q == 2'd3);

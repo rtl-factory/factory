@@ -49,8 +49,9 @@ module n2m_cpu_control (
 
     assign fault = bus_fault;
     assign active = !fault && (control.mode == n2m_cpu_pkg::MODE_FETCH || control.mode == n2m_cpu_pkg::MODE_EXECUTE || control.mode == n2m_cpu_pkg::MODE_INTERRUPT || control.mode == n2m_cpu_pkg::MODE_HALT);
-    // Admit a new HALT wake only at the sampling boundary. Once admitted,
-    // the bus owns retention through acknowledgement even if the IRQ clears.
+    // Why: a HALT wake is admitted only at the sampling boundary so wake timing
+    // never depends on the responder. Once admitted, the bus owns retention
+    // through acknowledgement, so an IRQ that clears cannot strand the fetch.
     assign complete_enable = control.mode != n2m_cpu_pkg::MODE_HALT ||
                              (machine_cycle_enable && pending_irq);
     assign halted = control.mode == n2m_cpu_pkg::MODE_HALT;
@@ -65,7 +66,7 @@ module n2m_cpu_control (
         bus_plan.write_data = 0;
         bus_plan.write_enable = 0;
         bus_plan.access_kind = n2m_cpu_pkg::ACCESS_IDLE;
-        // An IME-enabled HALT wake dispatches at the sampling boundary;
+        // Why: an IME-enabled HALT wake dispatches at the sampling boundary;
         // a discarded opcode read must not add a responder-dependent cycle.
         if (control.mode == n2m_cpu_pkg::MODE_FETCH ||
             (control.mode == n2m_cpu_pkg::MODE_HALT && !control.ime))
@@ -107,7 +108,7 @@ module n2m_cpu_control (
         retire_capture.halted_after = halted;
         retire_capture.stopped_after = stopped;
         irq_ack = 0;
-        // Select on the first system edge after the upper-byte push completes.
+        // Why: select on the first system edge after the upper-byte push completes.
         // Its synchronous IE write is now visible, while the lower-byte push
         // cannot have changed IE yet. Retain this selection through bus waits.
         if (control.mode == n2m_cpu_pkg::MODE_INTERRUPT && control.irq_select_pending) begin
@@ -119,8 +120,9 @@ module n2m_cpu_control (
         end
         if (cycle_end) begin
             case (control.mode)
-                // HALT prepares an address but issues no bus request until wake.
-                // Once issued, the bus owner completes it even if IRQ clears.
+                // Why: HALT issues no bus request until wake, so a halted CPU puts no
+                // traffic on the bus. Once issued, the bus owner completes it even if the
+                // IRQ clears, so no request is abandoned mid-flight.
                 n2m_cpu_pkg::MODE_FETCH, n2m_cpu_pkg::MODE_HALT: begin
                     control_next.opcode = read_data;
                     control_next.fetched = {16'b0, read_data};
@@ -172,10 +174,10 @@ module n2m_cpu_control (
                             control_next.pc = execute_result.pc_after;
                             if (pending_irq) begin
                                 if (control_next.ime) begin
-                                    // A request recognized while HALT executes
-                                    // with IME set returns to this HALT. This also
-                                    // covers delayed EI maturation; late arrivals
-                                    // after this machine boundary instead enter sleep.
+                                    // Why: the interrupt must return to this HALT: a request recognized while
+                                    // HALT executes with IME set pushes the HALT's own PC. This also covers
+                                    // delayed EI maturation; late arrivals after this machine boundary instead
+                                    // enter sleep.
                                     retire_capture.pc_after = control.instruction_pc;
                                     control_next.pc = control.instruction_pc + 16'd1;
                                 end
@@ -213,9 +215,9 @@ module n2m_cpu_control (
                         registers_next.sp = registers.sp - 16'd1;
                     if (control.step == 2) control_next.irq_select_pending = 1;
                     if (control.step == 3) begin
-                        // The held vector PC already owns the selection; do
-                        // not duplicate it in another five state bits. Use
-                        // next PC when selection and completion share an edge.
+                        // Why: the held vector PC already owns the selection, so it is not
+                        // duplicated in another five state bits. Next PC is used when selection and
+                        // completion share an edge.
                         case (control_next.pc)
                             16'h0040: irq_ack = 5'b00001;
                             16'h0048: irq_ack = 5'b00010;

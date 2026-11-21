@@ -73,11 +73,11 @@ module n2d_cached_rv32im #(
     logic data_response_valid;
     logic [31:0] data_response_data;
     logic data_response_error;
-    // Core-owned PMON events only; this composition supplies no platform
-    // events and exposes no PMON port.
+    // Why: pmon_events is unused here because this composition supplies no
+    // platform events and exposes no PMON port.
     /* verilator lint_off UNUSEDSIGNAL */
     logic [127:0] pmon_events;
-    // This composition keeps the plain D-cache (PREFETCH_LINES 0): its
+    // Why: this composition keeps the plain D-cache (PREFETCH_LINES 0), so its
     // prefetch marker and events stay low and are not exposed.
     logic data_line_request_prefetch, data_line_request_background;
     logic [4:0] data_prefetch_events;

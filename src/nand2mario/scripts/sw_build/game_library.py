@@ -97,8 +97,9 @@ def simulate(output, workdir=None, backing="onchip"):
     if backing not in ('onchip', 'sdram'):
         raise ValueError('backing must be onchip or sdram')
     output = cpu_sw.output_path(output, directory=True)
-    # The fixture uses the unchanged menu and the owner's deterministic,
-    # noncommercial test images. The shipped library is built separately.
+    # Why: the fixture must be reproducible and redistributable, so it uses the unchanged
+    # menu and the owner's deterministic, noncommercial test images; the shipped library
+    # is built separately.
     sw_games.build('menu', output / 'menu')
     from src.nand2mario.dv.menu import fixture
     menu = (output / 'menu/program.gb').read_bytes()

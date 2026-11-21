@@ -18,13 +18,12 @@ class LineResponder:
     pending: tuple[bool, int, int, int, int] | None = None
     held: tuple[int, int, int, int, bool] | None = None
     transactions: list[tuple[bool, int, int, int]] = field(default_factory=list)
-    # Per transaction: the cache marked it a prefetch (line_request_prefetch_o).
     prefetches: list[bool] = field(default_factory=list)
     fail_read_addresses: set[int] = field(default_factory=set)
     fail_write_addresses: set[int] = field(default_factory=set)
-    # When set, request readiness and response latency (two edges minimum,
-    # like the fixed default) are drawn from this
-    # seeded generator instead of the fixed pattern.
+    # Why: None keeps the fixed pattern so directed checks stay exact; a seeded
+    # generator for readiness and response latency (two edges minimum, like the
+    # fixed default) widens timing coverage reproducibly.
     rng: random.Random | None = None
     max_latency: int = 6
     block_writes: bool = False
@@ -143,8 +142,9 @@ async def cpu_access(
             break
         await FallingEdge(dut.clk_i)
     assert accepted, f"CPU request was not accepted: address={address:#x}"
-    # The cycle after the accept edge may already carry a hit response; the
-    # request is withdrawn at the falling edge, before the next sampling edge.
+    # Why: the cycle after the accept edge may already carry a hit response, so
+    # the request is withdrawn at the falling edge, before the next sampling
+    # edge, or it would be accepted twice.
     for cycle in range(limit):
         await ReadOnly()
         if int(dut.cpu_response_valid_o.value):
@@ -246,7 +246,8 @@ async def run_stream(
 
 
 async def maintain(dut, *, limit: int = 4096) -> bool:
-    # The bound covers a clean four-way walk (2,048 entries) with margin.
+    # Why: 4096 covers a clean four-way walk (2,048 entries) with margin, so
+    # only a hung walk times out.
     await FallingEdge(dut.clk_i)
     dut.maintenance_valid_i.value = 1
     while True:

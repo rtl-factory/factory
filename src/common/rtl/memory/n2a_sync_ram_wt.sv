@@ -36,7 +36,7 @@ module n2a_sync_ram_wt #(
   logic [IMPLEMENTATION_DATA_WIDTH-1:0] written_q;
   logic                                 wrote_q;
 
-  // This explicit size keeps invalid ADDR_WIDTH configurations lint-clean
+  // Why: this explicit size keeps invalid ADDR_WIDTH configurations lint-clean
   // until their elaboration diagnostic fires. It is a no-op when supported.
   assign implementation_address = REQUIRED_ADDR_WIDTH'(address_i);
 
@@ -47,7 +47,8 @@ module n2a_sync_ram_wt #(
   `N2A_ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
       "n2a_sync_ram_wt ADDR_WIDTH must equal $clog2(DEPTH)")
 
-  // The array keeps the conventional read-first port pair; the written word
+  // Why: the array keeps the conventional read-first port pair so it still
+  // infers as a plain RAM; the written word
   // and a one-bit "this edge wrote" flag are registered beside it and select
   // the new word on a write edge. The write always targets the read address
   // (single port), so this is exactly write-through.

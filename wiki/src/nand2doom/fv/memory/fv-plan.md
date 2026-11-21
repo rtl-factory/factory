@@ -8,18 +8,20 @@ The harness is `src/nand2doom/fv/memory/n2d_memory_arbiter_fv.sv`; the RTL's own
 
 ## Properties
 
-Spec lines are in [memory MAS](../../rtl/memory/mas.md): MEM-R6 (line 26), Line port (lines 98 to 105), Arbitration (lines 256 to 263). The sync commit of the rows below is `7ce42c1`.
+Spec lines are in [memory MAS](../../rtl/memory/mas.md): MEM-R6 (line 26), Line port (lines 98 to 105), Arbitration (lines 256 to 263). The sync commit of the rows below is `5854266`.
+
+In the harness each property is a labelled assertion `p_<property>` (split into `_write`, `_address` and so on where one row has several), assumptions are `a_`, helper invariants `h_` and covers `c_`, so a failing run names the property.
 
 | Property | Harm if broken | Spec line | Assumptions | Result | Command | Sync commit |
 |---|---|---|---|---|---|---|
-| `one_line_transaction_outstanding`: no request is presented downstream while a line transaction is in flight | Two transactions in flight return responses to the wrong owner | MEM-R6 "One outstanding line transaction" | both | proven (all depths) | `python3 tools/fv/fv.py run n2d_memory_arbiter` | `7ce42c1` |
-| `one_grant_per_edge`: at most one master sees ready | Two masters believe their request was taken; one is lost | Arbitration "the chosen request handshakes directly downstream" | both | proven | `python3 tools/fv/fv.py run n2d_memory_arbiter` | `7ce42c1` |
-| `no_lost_or_duplicated_request`: a master handshake happens exactly when the downstream handshake does | A request is dropped or issued twice | Line port "exactly one later response" | both | proven | `python3 tools/fv/fv.py run n2d_memory_arbiter` | `7ce42c1` |
-| `forwarded_payload_is_the_winners`: the accepted downstream operation, address, data and enables are the accepted master's | Memory is written or read at another master's address | Arbitration "the chosen request handshakes directly downstream" | both | proven | `python3 tools/fv/fv.py run n2d_memory_arbiter` | `7ce42c1` |
-| `response_to_owner`: each response pulse, its data and error go to the captured owner only, and no master sees a response otherwise | A cache fills a line with another master's data | Line port "exactly one later response pulse returns to the captured owner" | both | proven | `python3 tools/fv/fv.py run n2d_memory_arbiter` | `7ce42c1` |
-| `stalled_request_held`: a stalled downstream request stays presented with the same payload | The controller sees a payload change under back-pressure | Arbitration "A stalled chosen request stays chosen until accepted" | both | proven | `python3 tools/fv/fv.py run n2d_memory_arbiter` | `7ce42c1` |
-| `prefetch_only_without_demand`: a prefetch is chosen only when no master presented demand at the time it was chosen | Prefetch steals bandwidth from a stalled demand miss | Arbitration "a candidate only when no master presents demand" | both | proven | `python3 tools/fv/fv.py run n2d_memory_arbiter` | `7ce42c1` |
-| `round_robin_bound`: a waiting demand request is accepted before a third completion of another master | A master starves | MEM-R6 "each master is accepted at least once per three completions" | both | proven | `python3 tools/fv/fv.py run n2d_memory_arbiter` | `7ce42c1` |
+| `one_line_transaction_outstanding`: no request is presented downstream while a line transaction is in flight | Two transactions in flight return responses to the wrong owner | MEM-R6 "One outstanding line transaction" | both | proven (all depths) | `python3 tools/fv/fv.py run n2d_memory_arbiter` | `5854266` |
+| `one_grant_per_edge`: at most one master sees ready | Two masters believe their request was taken; one is lost | Arbitration "the chosen request handshakes directly downstream" | both | proven | `python3 tools/fv/fv.py run n2d_memory_arbiter` | `5854266` |
+| `no_lost_or_duplicated_request`: a master handshake happens exactly when the downstream handshake does | A request is dropped or issued twice | Line port "exactly one later response" | both | proven | `python3 tools/fv/fv.py run n2d_memory_arbiter` | `5854266` |
+| `forwarded_payload_is_the_winners`: the accepted downstream operation, address, data and enables are the accepted master's | Memory is written or read at another master's address | Arbitration "the chosen request handshakes directly downstream" | both | proven | `python3 tools/fv/fv.py run n2d_memory_arbiter` | `5854266` |
+| `response_to_owner`: each response pulse, its data and error go to the captured owner only, and no master sees a response otherwise | A cache fills a line with another master's data | Line port "exactly one later response pulse returns to the captured owner" | both | proven | `python3 tools/fv/fv.py run n2d_memory_arbiter` | `5854266` |
+| `stalled_request_held`: a stalled downstream request stays presented with the same payload | The controller sees a payload change under back-pressure | Arbitration "A stalled chosen request stays chosen until accepted" | both | proven | `python3 tools/fv/fv.py run n2d_memory_arbiter` | `5854266` |
+| `prefetch_only_without_demand`: a prefetch is chosen only when no master presented demand at the time it was chosen | Prefetch steals bandwidth from a stalled demand miss | Arbitration "a candidate only when no master presents demand" | both | proven | `python3 tools/fv/fv.py run n2d_memory_arbiter` | `5854266` |
+| `round_robin_bound`: a waiting demand request is accepted before a third completion of another master | A master starves | MEM-R6 "each master is accepted at least once per three completions" | both | proven | `python3 tools/fv/fv.py run n2d_memory_arbiter` | `5854266` |
 
 Helper invariants (proven, they only narrow the reachable state): the DUT's busy flag, owner and stall flag match the harness's view of the interface; the rotating pointer never holds the unused value 3.
 

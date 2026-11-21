@@ -34,13 +34,13 @@ class Bench:
         self.rng = random.Random(seed)
         self.bound = int(os.environ['DV_MAX_CYCLES'])
         self.cycles = 0
-        self.ticks = 0                  # machine ticks seen since reset release
+        self.ticks = 0
         self.last_tick_cycle = None
         self.memory = GameBoyMemory(strict=False)
         self.dma = dm.DmaModel()
-        self.writes = []                # (tick, offset, data) per observed OAM write
-        self.active_log = []            # (tick, active after the tick)
-        self.monitor_active = True      # model-checked ticks (off for stall scenarios)
+        self.writes = []
+        self.active_log = []
+        self.monitor_active = True
 
     def idle(self):
         d = self.dut
@@ -80,7 +80,7 @@ class Bench:
                 self.last_tick_cycle = self.cycles
                 continue
             if int(d.machine_cycle_enable_o.value):
-                # The enable is sampled on this edge: the tick's effects show
+                # Why: the enable is sampled on this edge: the tick's effects show
                 # from the next cycle on.
                 self.ticks += 1
                 self.last_tick_cycle = self.cycles
@@ -141,7 +141,7 @@ class Bench:
         await FallingEdge(d.clk_i)
         d.cpu_request_i.value = 0
         if blocked:
-            # Restricted: a read shows open bus, a write reaches nothing (the
+            # Why: restricted: a read shows open bus, a write reaches nothing (the
             # models are left untouched, so later reads must still agree).
             if not write:
                 assert read_data == OPEN_BUS, f'restricted read {address:04x} returned {read_data:02x}'
@@ -261,8 +261,6 @@ async def dma_contract(dut):
     b.expected_writes = []
     cocotb.start_soon(b.monitor())
 
-    # Reset state: the register reads 0, nothing is active, the CPU reaches
-    # every region with the ordinary one-edge latency.
     assert int(dut.dma_active_o.value) == 0
     assert await b.read(dm.DMA) == 0
     image = bytes(b.rng.randrange(256) for _ in range(32768))
@@ -275,7 +273,7 @@ async def dma_contract(dut):
     await b.write(0xFF80, 0x5A)
     await b.write(0xFFFF, 0x1F)
 
-    # Transfer 1 from WRAM page $C0 (external bus) with CPU traffic during
+    # Ref: Pan Docs "OAM DMA Transfer": with a WRAM source (page $C0, external bus), during
     # the window: HRAM, IE, the DMA register and VRAM (the other bus) are
     # served; WRAM, ROM, cartridge RAM and OAM read open bus and drop
     # writes; latencies stay within four edges.
@@ -306,7 +304,7 @@ async def dma_contract(dut):
     assert await b.read(0xFF80) == b.memory[0xFF80] and await b.read(0xFFFE) == b.memory[0xFFFE]
     cocotb.log.info('transfer 1 done: hram ends %02x %02x', b.memory[0xFF80], b.memory[0xFFFE])
 
-    # Negative control: the OAM comparison rejects one flipped byte.
+    # Why: proves the check can fail: the OAM comparison must reject one flipped byte.
     corrupted = bytearray(dm.transfer_image(b.memory, 0xC0))
     corrupted[77] ^= 0x80
     try:
@@ -316,15 +314,9 @@ async def dma_contract(dut):
     else:
         raise AssertionError('OAM comparison accepted a corrupted expectation')
 
-    # Window boundaries: a request accepted on the tick where the transfer
-    # starts is still served; one accepted on the tick where it ends is
-    # still restricted.
     await b.settle_after_tick(3)
     start_tick = b.ticks
     await b.write(dm.DMA, 0xC3)
-    # The level rises on the edge sampling tick start + 2 and falls on the
-    # edge sampling tick start + 162; a request accepted on each of those
-    # edges sees the level before it.
     data, _ = await b.present_at_tick(start_tick + 2, 0xC000, blocked=False)
     assert data == b.memory[0xC000], (start_tick, data)
     data, _ = await b.present_at_tick(start_tick + 162, 0xC000, blocked=True)
@@ -333,13 +325,10 @@ async def dma_contract(dut):
     await b.wait_ticks(1)
     compare_bytes(await b.oam_image(), dm.transfer_image(b.memory, 0xC3), 'OAM after page $C3')
 
-    # Every source class: ROM, VRAM (blocked for the middle of the transfer:
-    # those bytes read open bus), the echo pages $E3 -> $C3 and $FF -> $DF,
-    # absent cartridge RAM (all open bus).
     await run_transfer(b, 0x12)
     compare_bytes(await b.oam_image(), image[0x1200:0x12A0], 'OAM after ROM transfer')
 
-    # The level is raised at the falling edge inside the tick of byte 40 and
+    # Why: the level is raised at the falling edge inside the tick of byte 40 and
     # lowered inside the tick of byte 90; each byte's source read is accepted
     # within the two edges after its tick, so bytes 40-89 read open bus.
     async def block_vram():
@@ -354,17 +343,17 @@ async def dma_contract(dut):
     for offset in range(40, 90):
         expected[offset] = OPEN_BUS
     compare_bytes(await b.oam_image(), bytes(expected), 'OAM after VRAM transfer with blocking')
-    # VRAM-source transfer (VRAM bus) with CPU traffic: the external bus
+    # Ref: Pan Docs "OAM DMA Transfer": a VRAM-source transfer (VRAM bus) with CPU traffic: the external bus
     # (WRAM, ROM, cartridge RAM) and I/O are served; VRAM and OAM read
     # open bus and drop writes (the models keep the old bytes).
     async def vram_source_traffic():
         await b.write(0xC010, 0x6B)
         assert await b.read(0xC010) == 0x6B, 'WRAM served during a VRAM-source DMA'
         assert await b.read(0x0123) == image[0x0123], 'ROM served during a VRAM-source DMA'
-        await b.read(0xA000)                      # cartridge RAM: forwarded (disabled, model open bus)
+        await b.read(0xA000)
         for address in (0x8000, 0x9FFF, 0x9100, 0xFE00, 0xFE9F):
             assert await b.read(address) == OPEN_BUS, f'{address:04x} must read open bus during a VRAM-source DMA'
-            await b.write(address, 0xA5)          # dropped
+            await b.write(address, 0xA5)
         for _ in range(40):
             address = b.rng.choice((0xC000, 0xC0A0, 0xDFFF, 0x0100, 0x4000, 0xA000, 0x8000, 0x9FFF, 0xFE10, 0xFF80))
             if b.rng.random() < 0.4 and address >= 0x8000:
@@ -377,12 +366,12 @@ async def dma_contract(dut):
     assert (await b.read(0x8000), await b.read(0x9FFF)) == vram_before, 'VRAM writes during a VRAM-source DMA dropped'
     assert await b.read(0xC010) == 0x6B
 
-    # Echo-source transfer ($E3 reads page $C3, external bus) with traffic:
+    # Ref: Pan Docs "OAM DMA Transfer": an echo-source transfer ($E3 reads page $C3, external bus) with traffic:
     # WRAM through both aliases is blocked, VRAM is served.
     async def echo_source_traffic():
         for address in (0xC300, 0xE300, 0xD000):
             assert await b.read(address) == OPEN_BUS, f'{address:04x} must read open bus during an echo-source DMA'
-        await b.write(0xC320, 0x99)               # dropped
+        await b.write(0xC320, 0x99)
         await b.write(0x8010, 0x77)
         assert await b.read(0x8010) == 0x77, 'VRAM served during an echo-source DMA'
     await run_transfer(b, 0xE3, echo_source_traffic)
@@ -395,7 +384,7 @@ async def dma_contract(dut):
     await run_transfer(b, 0xA0)
     compare_bytes(await b.oam_image(), bytes([OPEN_BUS] * 160), 'OAM after cartridge RAM transfer')
 
-    # A write to the DMA register in the middle of a transfer (I/O is not
+    # Ref: Mooneye "oam_dma_restart": a write to the DMA register in the middle of a transfer (I/O is not
     # restricted) restarts it: the running transfer goes on until the
     # restart starts two ticks later at offset 0 from the new page, the
     # restriction stays continuous and the register reads the new page.
@@ -422,10 +411,6 @@ async def dma_contract(dut):
     compare_bytes(await b.oam_image(), dm.transfer_image(b.memory, 0xDF), 'OAM after a restart during a transfer')
     assert await b.read(dm.DMA) == 0xDF
 
-    # A second write while the first is still armed (before the restriction
-    # rises) restarts: the first transfer starts and copies its byte 0, the
-    # restart begins one tick later at offset 0, both from the page last
-    # written, so 161 bytes are written over a 161-cycle restriction.
     await b.settle_after_tick(5)
     b.writes.clear()
     b.active_log.clear()
@@ -447,7 +432,7 @@ async def dma_contract(dut):
     compare_bytes(await b.oam_image(), dm.transfer_image(b.memory, 0xC3), 'OAM after a restart while armed')
     assert await b.read(dm.DMA) == 0xC3
 
-    # Slow backing (#442): stalls longer than a machine cycle on ROM bytes
+    # Why: regression for #442: stalls longer than a machine cycle on ROM bytes must
     # stretch the transfer by the late cycles instead of dropping or
     # repeating a byte; OAM ends up an exact copy and the register, level
     # and CPU restriction behave as usual afterwards.
@@ -460,7 +445,7 @@ async def dma_contract(dut):
         await b.wait_ticks(b.rng.randrange(8, 20))
         await FallingEdge(dut.clk_i)
         dut.backing_stall_i.value = 1
-        stall = b.rng.randrange(30, 80)          # more than one machine cycle
+        stall = b.rng.randrange(30, 80)          # Why: more than one machine cycle.
         for _ in range(stall):
             await b.edge()
         await FallingEdge(dut.clk_i)
@@ -481,8 +466,6 @@ async def dma_contract(dut):
     compare_bytes(await b.oam_image(), image[0x2300:0x23A0], 'OAM after a stalled-backing transfer')
     assert await b.read(dm.DMA) == 0x23
 
-    # Reset in the middle of a transfer clears the register and the level;
-    # OAM keeps the bytes copied so far.
     await b.settle_after_tick(5)
     b.writes.clear()
     await b.write(dm.DMA, 0x12)

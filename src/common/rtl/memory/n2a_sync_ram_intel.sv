@@ -41,7 +41,7 @@ module n2a_sync_ram #(
   `N2A_ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
       "n2a_sync_ram ADDR_WIDTH must equal $clog2(DEPTH)")
 
-  // Pins that do not exist in SINGLE_PORT mode stay unconnected, exactly as
+  // Why: pins that do not exist in SINGLE_PORT mode stay unconnected, exactly as
   // Intel-generated wrappers leave them: the port-B inputs address_b and
   // data_b and the outputs q_b and eccstatus. Every input that the mode uses
   // is connected; the remaining vendor inputs are tied to their inactive
@@ -68,7 +68,7 @@ module n2a_sync_ram #(
     .address_a(address_i),
     .data_a(write_data_i),
     .q_a(read_data_o),
-    // Unused vendor inputs are tied to their documented inactive levels.
+    // Ref: Intel altsyncram documentation: inactive levels of unused inputs.
     .wren_b(1'b0),
     .rden_a(1'b1),
     .rden_b(1'b1),

@@ -110,12 +110,12 @@ module n2d_ctrl (
     logic resume_reset_pc;
     logic drain_abandon;
     logic drained;
-    // PMON-only fetch-refill attribution (no functional consumer)
+    // Why: PMON-only fetch-refill attribution; no functional logic consumes it.
     logic ifetch_wait;
     logic mispredict_commit_Q102H;
     t_fetch_refill refill_q, refill_d;
 
-    // Hazards and the data request never depend on data ready, so they live
+    // Why: hazards and the data request never depend on data ready, so they live
     // in their own process: a device whose ready depends on valid forms no
     // false combinational loop through the advance logic below.
     always_comb begin
@@ -125,7 +125,8 @@ module n2d_ctrl (
         serialize_Q102H = exception_Q102H_i || dec_Q102H_i.is_csr || dec_Q102H_i.is_mret;
         younger_empty = !q103_i.valid && !q104_valid_i && !q105_i.valid;
 
-        // Load-use and MUL-use: the Q103H result forms only on the next edge.
+        // Why: load-use and MUL-use stall, because the Q103H result forms only on the
+        // next edge.
         source_hazard_Q102H = slot_valid && q103_i.valid && q103_i.rd_write &&
             (q103_i.is_load || q103_i.is_mul) &&
             ((dec_Q102H_i.uses_rs1 && (dec_Q102H_i.rs1 == q103_i.rd)) ||
@@ -159,12 +160,13 @@ module n2d_ctrl (
     always_comb begin
         halt_enter = (ctrl_q.state == RUN_STATE_RUN) && halt_request_i;
         drained = !slot_valid && younger_empty && !fetch_owed_i;
-        // A drain whose request was withdrawn restarts like a resume.
+        // Why: a drain whose halt request was withdrawn restarts like a resume, so a
+        // withdrawn halt never leaves the core stuck in DRAIN.
         drain_abandon = (ctrl_q.state == RUN_STATE_DRAIN) && drained && !halt_request_i;
         resume_now = ((ctrl_q.state == RUN_STATE_HALTED) && resume_i) || drain_abandon;
         resume_reset_pc = (ctrl_q.state == RUN_STATE_HALTED) && reset_pc_request_i;
 
-        // Redirect priority: resume, Q103H data trap, Q102H redirect. Each
+        // Why: redirect priority is resume, Q103H data trap, Q102H redirect. Each
         // of these (and halt entry) also blocks the Q101H take, so the early
         // predicted redirect below is exclusive with them by construction
         // and never depends on itself through the take.
@@ -174,7 +176,6 @@ module n2d_ctrl (
         fetch_allow_o = (ctrl_q.state == RUN_STATE_RUN) && !halt_request_i;
         take_Q101H_o = fetch_allow_o && slot_Q101H_i.valid && !late_flush &&
             (!slot_valid || advance_Q102H_o);
-        // The slot entering Q102H needs fetch moved to its Q101H target now.
         predict_redirect_Q101H = take_Q101H_o && predict_redirect_Q101H_i;
 
         if_redirect_valid_o = 1'b1;
@@ -188,10 +189,11 @@ module n2d_ctrl (
             if_redirect_pc_o = 32'h0000_0000;
         end
         if_flush_o = late_flush || predict_redirect_Q101H;
-        // The Q102H slot is discarded by a Q103H trap or traps itself; either
-        // may have updated the return-address stack as it was taken.
+        // Why: the Q102H slot is discarded by a Q103H trap or traps itself, and
+        // either may have updated the return-address stack as it was taken, so the
+        // stack is cleared.
         ras_clear_o = trap_Q103H_i || trap_commit_Q102H_o;
-        // A committed, non-trapping branch, JAL or JALR trains the fetch BTB
+        // Why: a committed, non-trapping branch, JAL or JALR trains the fetch BTB
         // with its resolved direction and next PC. advance_Q102H excludes a
         // Q103H trap, and the instruction cannot be discarded after it
         // leaves Q102H (it has no memory access to fault).
@@ -220,13 +222,14 @@ module n2d_ctrl (
 
     `N2A_DFF_RST_VAL(ctrl_q, ctrl_d, clk_i, rst_i, CTRL_RESET)
 
-    // Fetch-refill attribution: the flush cause of this edge, so the next
-    // clock's IFETCH_WAIT can name it. A Q102H mispredict outranks the
+    // Why: fetch-refill attribution records the flush cause of this edge, so the
+    // next clock's IFETCH_WAIT can name it. A Q102H mispredict outranks the
     // predicted redirect of the same slot one clock earlier, which is how a
     // wrong prediction's bubble becomes the first of its two refill clocks.
     always_comb begin
-        // Execute will be empty next clock for lack of a fetched instruction:
-        // nothing arrived, or a flush discarded what had (redirect refill).
+        // Ref: wiki/src/nand2doom/rtl/core/mas.md "Performance monitor" (IFETCH_WAIT):
+        // Execute could take an instruction next clock and none is there: nothing
+        // arrived, or a flush discarded what had (redirect refill).
         ifetch_wait = fetch_allow_o && (!slot_valid || advance_Q102H_o) && !take_Q101H_o;
         mispredict_commit_Q102H = advance_Q102H_o && !exception_Q102H_i && redirect_Q102H_i &&
             !dec_Q102H_i.is_mret;
@@ -238,8 +241,9 @@ module n2d_ctrl (
 
     `N2A_DFF_RST_VAL(refill_q, refill_d, clk_i, rst_i, FETCH_REFILL_NONE)
 
-    // Passive PMON observations; no event feeds functional control. Hold
-    // events exclude clocks already explained by a Q103H memory hold.
+    // Why: these PMON observations are passive, so no event may feed functional
+    // control. Hold events exclude clocks already explained by a Q103H memory
+    // hold, so each held clock is counted once.
     always_comb begin
         pmon_events_o = 128'b0;
         pmon_events_o[1] = 1'b1;
@@ -255,24 +259,25 @@ module n2d_ctrl (
             !hold_Q103H_i && !trap_Q103H_i;
         pmon_events_o[69] = source_hazard_Q102H && q103_i.is_mul && !hold_Q103H_i;
         pmon_events_o[76] = ctrl_q.state == RUN_STATE_HALTED;
-        // A Q101H slot entering Q102H predicted taken (from fetch, or by a
-        // Q101H redirect), and a resolved branch, JAL or JALR whose direction
-        // differed from the fetched path (two refill clocks instead of one or
-        // none). 92: a fetch-BTB prediction accepted with no refill clock;
-        // 93: a fetch-BTB prediction Q101H rejected (one refill clock).
+        // Ref: wiki/src/nand2doom/rtl/core/mas.md "Performance monitor": 78 is a
+        // Q101H slot entering Q102H predicted taken (from fetch, or by a Q101H
+        // redirect), 79 a resolved branch, JAL or JALR whose direction differed
+        // from the fetched path (two refill clocks instead of one or none), 92 a
+        // fetch-BTB prediction accepted with no refill clock, 93 a fetch-BTB
+        // prediction Q101H rejected (one refill clock).
         pmon_events_o[78] = take_Q101H_o && slot_Q101H_i.predicted_taken;
         pmon_events_o[92] = take_Q101H_o && slot_Q101H_i.predicted_taken &&
             !predict_redirect_Q101H_i;
         pmon_events_o[93] = take_Q101H_o && slot_Q101H_i.fetch_taken && !slot_Q101H_i.fetch_error &&
             predict_redirect_Q101H_i;
         pmon_events_o[79] = mispredict_commit_Q102H;
-        // IFETCH_WAIT by cause, exactly one per IFETCH_WAIT clock except the
-        // unattributed remainder (nothing owed or presented). A flush on
-        // this edge or the previous one names its refill clocks: a
-        // mispredict (two clocks), any other late redirect (trap, MRET,
-        // resume) and a correct prediction (one clock). Any other clock
-        // waits on fetch supply: an owed response (I-cache miss or fill,
-        // including a stale wrong-path one) or an unaccepted request.
+        // Ref: wiki/src/nand2doom/rtl/core/mas.md "Performance monitor": IFETCH_WAIT
+        // by cause, exactly one per IFETCH_WAIT clock except the unattributed
+        // remainder (nothing owed or presented). A flush on this edge or the
+        // previous one names its refill clocks: a mispredict (two clocks), any
+        // other late redirect (trap, MRET, resume) and a correct prediction (one
+        // clock). Any other clock waits on fetch supply: an owed response (I-cache
+        // miss or fill, including a stale wrong-path one) or an unaccepted request.
         pmon_events_o[84] = ifetch_wait && (mispredict_commit_Q102H ||
             (!late_redirect && refill_q == FETCH_REFILL_MISPREDICT));
         pmon_events_o[85] = ifetch_wait && !mispredict_commit_Q102H && (late_redirect ||
@@ -282,14 +287,12 @@ module n2d_ctrl (
             (fetch_owed_i || fetch_request_stalled_i);
     end
 
-    // Halted means drained: nothing in flight and no observation owed.
     `N2A_ASSERT(ctrl_halted_is_drained, clk_i, rst_i,
         (ctrl_q.state != RUN_STATE_HALTED) || drained)
     `N2A_ASSERT_NEVER(ctrl_q102_trap_and_q103_trap, clk_i, rst_i,
         trap_commit_Q102H_o && trap_Q103H_i)
     `N2A_ASSERT_NEVER(ctrl_predict_redirect_with_late_flush, clk_i, rst_i,
         predict_redirect_Q101H && late_flush)
-    // The IFETCH_WAIT causes are exclusive and each lies inside IFETCH_WAIT.
     `N2A_ASSERT(ctrl_ifetch_causes_exclusive, clk_i, rst_i,
         $onehot0(pmon_events_o[86:83]) && (ifetch_wait || pmon_events_o[86:83] == 4'b0))
 endmodule

@@ -35,7 +35,7 @@ module n2a_sdp_ram_enabled #(
   logic [REQUIRED_ADDR_WIDTH-1:0] write_address;
   logic [REQUIRED_ADDR_WIDTH-1:0] read_address;
 
-  // Explicit sizes keep an invalid ADDR_WIDTH probe lint-clean until its
+  // Why: explicit sizes keep an invalid ADDR_WIDTH probe lint-clean until its
   // elaboration diagnostic fires. Both are no-ops for supported values.
   assign write_address = REQUIRED_ADDR_WIDTH'(write_address_i);
   assign read_address = REQUIRED_ADDR_WIDTH'(read_address_i);
@@ -47,11 +47,10 @@ module n2a_sdp_ram_enabled #(
   `N2A_ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
       "n2a_sdp_ram ADDR_WIDTH must equal $clog2(DEPTH)")
 
-  // One read port and one write port on one array. Nonblocking semantics make
-  // a same-edge same-address collision read-first: the output captures the
-  // pre-edge word and the write lands afterwards. This is the conventional
-  // inferred simple-dual-port template. Disabled reads retain the output;
-  // writes remain independent. There is no reset, initialization or bypass.
+  // Why: this is the conventional inferred simple-dual-port template, so it
+  // has no reset, initialization or bypass. Nonblocking semantics make a
+  // same-edge same-address collision read-first: the output captures the
+  // pre-edge word and the write lands afterwards.
   `N2A_MEM_READ_EN(read_data_o, memory, clk_i, read_enable_i, read_address)
   `N2A_MEM_WRITE(memory, clk_i, write_enable_i, write_address, write_data_i)
 endmodule

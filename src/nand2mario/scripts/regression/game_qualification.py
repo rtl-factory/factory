@@ -54,7 +54,7 @@ def acquire(game, output):
     pin = manifest()['games'][game]
     output = generated(output)
     output.mkdir(parents=True, exist_ok=True)
-    # Notices travel beside the binary, even when a file is already cached.
+    # Why: every copy of the binary must carry its notices, so they are written even when it is cached.
     for name, entry in [*pin['notices'].items(), ('game.gb', pin)]:
         path = output / name
         if path.is_symlink():
@@ -104,7 +104,7 @@ def run(game, image, output, workdir=None):
         test = workdir / 'cocotb/n2m_system_games/test'
         if test.exists():
             shutil.copytree(test, output / 'results' / name)
-            # The next run must not inherit any prior game's test evidence.
+            # Why: the next run must not inherit any prior game's test evidence.
             shutil.rmtree(test)
         log = workdir / 'cocotb/n2m_system_games/test.log'
         if log.exists():
@@ -128,7 +128,7 @@ def reference(game, image, output):
     emulator.set_emulation_speed(0)
     first, last = pin.get('reference_frames', (351, 440))
     if pin.get('reference_dmg_entry'):
-        # PyBoy's internal boot ROM enters $0100 with A=$11 (CGB) even when
+        # Why: PyBoy's internal boot ROM enters $0100 with A=$11 (CGB) even when
         # cgb=False; a CGB-aware cartridge then takes its CGB path. A real DMG
         # boot ROM leaves A=$01, so present that at the entry point.
         def dmg_entry(_):

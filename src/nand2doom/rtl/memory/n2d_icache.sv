@@ -90,7 +90,7 @@ module n2d_icache (
         line_response_valid_i && !line_response_error_i;
     assign invalidate = regs_q.state == ICACHE_INVALIDATE;
 
-    // A request is accepted from idle, or on the edge that samples a hit.
+    // Why: a request is accepted from idle, or on the edge that samples a hit.
     // Ready never depends on request valid, so withdrawing an unaccepted
     // instruction request has no effect.
     assign cpu_request_ready_o = !maintenance_valid_i &&
@@ -105,14 +105,15 @@ module n2d_icache (
     assign line_request_write_data_o = 128'b0;
     assign line_request_byte_enable_o = 16'b0;
 
-    // The RAM address comes straight from the request address so the accept
+    // Why: the RAM address comes straight from the request address so the accept
     // edge performs the read; only a refill write addresses the captured set.
     assign ram_set = (regs_q.state == ICACHE_LINE_RESPONSE) ? request_set :
         cpu_request_address_i[12:4];
 
     logic [SET_WIDTH-1:0] metadata_set;
     assign metadata_set = invalidate ? regs_q.invalidate_set : request_set;
-    // Pseudo-LRU bit per set: points at the way to victimize next.
+    // Why: with two ways one pseudo-LRU bit per set, pointing at the way to
+    // victimize next, is exact LRU.
     always_comb begin
         replacement_d = replacement_q;
         replacement_d[metadata_set] = !invalidate &&
@@ -123,12 +124,13 @@ module n2d_icache (
     `N2A_DFF_RST_EN(replacement_q, replacement_d, clk_i,
                     replacement_update, rst_i, '0)
 
-    // One synchronous read and one full-line write per way: infer simple
-    // dual-port M9Ks. Only validity/control state resets, never RAM contents.
+    // Why: one synchronous read and one full-line write per way, so each infers a
+    // simple dual-port M9K. Only validity/control state resets, never RAM
+    // contents, because a line is read only once its valid bit is set.
     genvar way;
     generate
     for (way = 0; way < 2; way = way + 1) begin : g_way
-        // Each way owns its actual metadata registers; outer arrays are read views.
+        // Why: each way owns its actual metadata registers, so each is driven from its own generate scope; outer arrays are read views.
         logic [SET_COUNT-1:0] valid_state_q, valid_state_d;
         assign valid_q[way] = valid_state_q;
         logic valid_update;
@@ -139,7 +141,7 @@ module n2d_icache (
         end
         `N2A_DFF_RST_EN(valid_state_q, valid_state_d, clk_i,
                         valid_update, rst_i, '0)
-        // Tag and line share one write enable and the read address equals the
+        // Why: tag and line share one write enable and the read address equals the
         // write address, so one packed {tag, line} word per set keeps the
         // single-port shape (common memory contract, https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/memory/HAS.md).
         logic refill_write;
@@ -160,8 +162,8 @@ module n2d_icache (
 
     endgenerate
 
-    // Pulse outputs default low every clock, including under reset, exactly
-    // as the defaults are applied ahead of the reset value selection.
+    // Why: the defaults are applied ahead of the reset value selection, so pulse
+    // outputs fall low every clock, including under reset.
     always_comb begin
         regs_d = regs_q;
         regs_d.cpu_response_valid = 1'b0;
@@ -226,8 +228,9 @@ module n2d_icache (
     end
 
     `N2A_DFF_RST_VAL(regs_q, regs_d, clk_i, rst_i, REGS_RESET)
-    // A hit responds combinationally in LOOKUP; a refill or local error
-    // responds from the registered fields. They never coincide.
+    // Why: a hit responds combinationally in LOOKUP; a refill or local error
+    // responds from the registered fields. They never coincide, so OR-ing the
+    // valids is safe.
     assign cpu_response_valid_o = lookup_hit || regs_q.cpu_response_valid;
     assign cpu_response_data_o = lookup_hit ? hit_word : regs_q.cpu_response_data;
     assign cpu_response_error_o = regs_q.cpu_response_error;

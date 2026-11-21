@@ -114,7 +114,7 @@ package n2m_cpu_pkg;
             4: read_byte = r.h;
             5: read_byte = r.l;
             7: read_byte = r.a;
-            default: read_byte = 0; // (HL) is a separate bus access.
+            default: read_byte = 0;  // Why: (HL) is a separate bus access, so there is no register to return here.
         endcase
     endfunction
 

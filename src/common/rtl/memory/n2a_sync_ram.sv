@@ -22,7 +22,7 @@ module n2a_sync_ram #(
   logic [IMPLEMENTATION_DATA_WIDTH-1:0] memory [0:IMPLEMENTATION_DEPTH-1];
   logic [REQUIRED_ADDR_WIDTH-1:0] implementation_address;
 
-  // This explicit size keeps invalid ADDR_WIDTH configurations lint-clean
+  // Why: this explicit size keeps invalid ADDR_WIDTH configurations lint-clean
   // until their elaboration diagnostic fires. It is a no-op when supported.
   assign implementation_address = REQUIRED_ADDR_WIDTH'(address_i);
 
@@ -33,8 +33,8 @@ module n2a_sync_ram #(
   `N2A_ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
       "n2a_sync_ram ADDR_WIDTH must equal $clog2(DEPTH)")
 
-  // Separate read and write ports on one array: nonblocking semantics make a
-  // same-edge collision read-first (old data) without bypass logic.
+  // Why: separate read and write processes on one array make a same-edge
+  // collision read-first (old data) by nonblocking semantics, with no bypass.
   `N2A_MEM_READ(read_data_o, memory, clk_i, implementation_address)
   `N2A_MEM_WRITE(memory, clk_i, write_enable_i, implementation_address,
       write_data_i)

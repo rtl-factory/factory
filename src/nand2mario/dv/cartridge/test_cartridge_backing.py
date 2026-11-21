@@ -11,7 +11,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import FallingEdge, ReadOnly, RisingEdge
 
 CLOCK_PERIOD_NS = 40
-ROM_BYTES, RAM_BYTES = 65536, 16384   # the registry's parameters for this target
+ROM_BYTES, RAM_BYTES = 65536, 16384   # Why: must match the registry's parameters for this target.
 
 
 def request_word(valid, write, ram, address, data):
@@ -158,8 +158,7 @@ async def backing_contract(dut):
     cocotb.start_soon(Clock(dut.clk_i, CLOCK_PERIOD_NS, unit='ns').start())
     await b.reset()
 
-    # Load: a seeded sparse set of ROM bytes including both ends, the first
-    # ones while reset is held (the load port ignores reset).
+    # Why: the first loads land while reset is held, to show the load port ignores reset.
     addresses = sorted({0, 1, 0x147, 0x3FFF, 0x4000, 0x7FFF, 0x8000, ROM_BYTES - 1}
                        | {b.rng.randrange(ROM_BYTES) for _ in range(400)})
     await FallingEdge(dut.clk_i)
@@ -172,14 +171,14 @@ async def backing_contract(dut):
         await b.load(address, b.rng.randrange(256))
     for address in addresses:
         await b.read_rom(address)
-    # Address bits above the store size are ignored (the mapper may present a
-    # 2 MiB address to a smaller backing).
+    # Why: the mapper may present a 2 MiB address to a smaller backing, so address
+    # bits above the store size must be ignored.
     for address in (0, 0x7FFF, ROM_BYTES - 1):
         for alias in (ROM_BYTES, 3 * ROM_BYTES, (1 << 21) - ROM_BYTES):
             assert await b.read_rom(alias + address) == b.rom[address]
 
-    # A load write and a read of the same byte on one edge: the read returns
-    # the old byte (store port B is read-first against port A).
+    # Why: store port B is read-first against port A, so a load write and a read of
+    # the same byte on one edge must return the old byte.
     target, old, new = addresses[5], b.rom[addresses[5]], b.rom[addresses[5]] ^ 0x5A
     await FallingEdge(dut.clk_i)
     dut.load_request_i.value = request_word(1, 1, 0, target, new)
@@ -195,9 +194,6 @@ async def backing_contract(dut):
     b.rom[target] = new
     assert await b.read_rom(target) == new
 
-    # Cartridge RAM: writes answered one edge later, read back at both ends
-    # and at random offsets; the ROM is untouched; address bits above the RAM
-    # size are ignored.
     ram_addresses = sorted({0, 1, RAM_BYTES - 1, 0x1FFF, 0x2000} | {b.rng.randrange(RAM_BYTES) for _ in range(64)})
     for address in ram_addresses:
         await b.write_ram(address, (address * 13 + 7) & 0xFF)
@@ -209,13 +205,10 @@ async def backing_contract(dut):
     assert await b.read_ram((1 << 15) - RAM_BYTES + 5) == 0x3C
     for address in addresses[:16]:
         await b.read_rom(address)
-    # Back-to-back write then read of one byte observes the new value.
     await b.write_ram(0x123, 0x11)
     await b.write_ram(0x123, 0x22)
     assert await b.read_ram(0x123) == 0x22
 
-    # Reset: a pending response is dropped; both stores keep their contents;
-    # a load during reset lands.
     await FallingEdge(dut.clk_i)
     dut.request_i.value = request_word(1, 0, 0, addresses[3], 0)
     await b.edge()
@@ -234,10 +227,6 @@ async def backing_contract(dut):
     for address in ram_addresses[:8]:
         await b.read_ram(address)
 
-    # Load port readback and RAM access: ROM and RAM bytes read back through
-    # the load port with the one-edge response, a RAM write through the load
-    # port is visible to the mapper, and the port is initialized from the
-    # first edge.
     assert int(dut.initialized_o.value) == 1, 'the on-chip backing needs no initialization'
     for address in addresses[:12] + [ROM_BYTES - 1]:
         data, waited = await b.load_transact(address)
@@ -249,9 +238,6 @@ async def backing_contract(dut):
     assert await b.read_ram(0x1234) == 0x77
     await b.load_transact(ROM_BYTES - 2, write=True, data=0x66)
     assert await b.read_rom(ROM_BYTES - 2) == 0x66
-    # Sharing rule: a load RAM request on an edge where the mapper accesses
-    # RAM is not ready and is accepted on the next edge; a load ROM request
-    # on such an edge is accepted at once.
     await b.write_ram(0x0200, 0x9C)
     await FallingEdge(dut.clk_i)
     dut.request_i.value = request_word(1, 1, 1, 0x0100, 0x12)
@@ -288,7 +274,6 @@ async def backing_contract(dut):
     assert response_fields(int(dut.load_response_o.value)) == (1, b.rom[addresses[2]])
     await b.edge()
     b.ram[0x0101] = 0x34
-    # Reset drops a pending load response as well.
     await FallingEdge(dut.clk_i)
     dut.load_request_i.value = request_word(1, 0, 0, addresses[3], 0)
     await b.edge()

@@ -63,8 +63,9 @@ module n2m_memory (
 );
   import n2m_memory_pkg::*;
 
-  // Acceptance-side decode of the live request (read sampling) and held-side
-  // decode of the accepted copy (response, writes, peripheral forward).
+  // Why: reads must sample their store on the acceptance edge, before the held
+  // copy exists, so the live request is decoded too; the held copy drives the
+  // response, writes and the peripheral forward.
   destination_t destination, held_destination;
   offset_t      offset, held_offset;
   n2m_interfaces_pkg::bus_request_t held_q;
@@ -95,9 +96,10 @@ module n2m_memory (
     .offset_o      (held_offset)
   );
 
-  // Acceptance edge: the first edge with a valid request and no response
-  // owed. Reads sample their store here. The request is held until the edge
-  // where the CPU samples the response; a write is applied on that edge.
+  // Why: one request is served at a time, so acceptance waits until no
+  // response is owed. Reads sample their store on the acceptance edge; a write
+  // is applied on the edge where the CPU samples the response, so it lands
+  // exactly once.
   assign accept = request_i.valid && !pending_q;
   assign pending_d = accept || (pending_q && !response_o.valid);
   `N2A_DFF_RST(pending_q, pending_d, clk_i, reset_i)
@@ -107,17 +109,17 @@ module n2m_memory (
   assign cart_dest = (destination == DEST_ROM) || (destination == DEST_CART_RAM);
   assign write_data = held_q.write_data;
 
-  // Cartridge port: the live request is forwarded from the acceptance cycle
-  // (the requester holds it, so the held copy is identical) until the
-  // cartridge samples it ready; cart_wait_q then covers the time until the
-  // cartridge's response, which is sampled by the CPU on the same edge.
+  // Why: forwarding the live request from the acceptance cycle saves a cycle
+  // and is safe because the requester holds it, so the held copy is identical.
+  // cart_wait_q covers the time until the cartridge's response, which the CPU
+  // samples on the same edge.
   assign cart_accept = cart_request_o.valid && cart_ready_i;
   assign cart_wait_d = cart_accept || (cart_wait_q && !cart_response_i.valid);
   `N2A_DFF_RST(cart_wait_q, cart_wait_d, clk_i, reset_i)
 
-  // PPU blocking is decided once, on the acceptance edge, for the whole
-  // request: the read is not issued and the response returns open bus, or
-  // the write is dropped on the pending edge.
+  // Why: blocking is decided once, on the acceptance edge, so a PPU mode change
+  // mid-request cannot split it: the read is not issued and the response
+  // returns open bus, or the write is dropped on the pending edge.
   assign blocked_d = ((destination == DEST_VRAM) && vram_blocked_i) ||
                      ((destination == DEST_OAM) && oam_blocked_i);
   `N2A_DFF_RST_EN(blocked_q, blocked_d, clk_i, accept, reset_i, 1'b0)
@@ -133,21 +135,21 @@ module n2m_memory (
   assign oam_write = store_write && held_destination == DEST_OAM;
   assign hram_write = store_write && held_destination == DEST_HRAM;
   assign ie_write = store_write && held_destination == DEST_IE;
-  // Store addresses: the live offset while reading, the held offset while
-  // writing; the requester holds the address so both name the same byte.
+  // Why: the requester holds the address, so the live offset (reading) and
+  // the held offset (writing) name the same byte.
   assign vram_offset = vram_write ? held_offset[12:0] : offset[12:0];
   assign wram_offset = wram_write ? held_offset[12:0] : offset[12:0];
   assign oam_offset = oam_write ? held_offset[7:0] : offset[7:0];
   assign hram_offset = hram_write ? held_offset[6:0] : offset[6:0];
-  // The DMA write port shares OAM port A with the CPU; the DMA block keeps
+  // Why: the DMA write port shares OAM port A with the CPU; the DMA block keeps
   // CPU OAM accesses away while it transfers, so the port is never contended.
   assign oam_store_write = oam_write || dma_oam_write_i;
   assign oam_store_address = dma_oam_write_i ? dma_oam_address_i : oam_offset;
   assign oam_store_data = dma_oam_write_i ? dma_oam_data_i : write_data;
 
-  // CPU-side stores use port A; the VRAM and OAM port Bs are the PPU read
-  // ports and the other port Bs are reserved for later readers. Unused port outputs of
-  // every store are left unconnected until a second reader attaches.
+  // Why: port A is the CPU side and the VRAM and OAM port Bs are the PPU read
+  // ports; the other port Bs have no reader yet, so their outputs are left
+  // unconnected.
   /* verilator lint_off PINCONNECTEMPTY */
   n2m_dual_port_ram #(
     .DATA_WIDTH (8),
@@ -238,14 +240,12 @@ module n2m_memory (
   );
   /* verilator lint_on PINCONNECTEMPTY */
 
-  // IE: all eight bits are stored and read back; the CPU consumes the five
-  // interrupt sources. Reset clears it (DMG post-boot value).
+  // Ref: Pan Docs "IE ($FFFF)": all eight bits read back; the CPU consumes the
+  // five interrupt sources. Reset clears it (DMG post-boot value).
   `N2A_DFF_RST_EN(ie_q, write_data, clk_i, ie_write, reset_i, 8'h00)
   assign interrupt_enable_o = ie_q[4:0];
 
-  // Response: the held destination selects the store output captured on the
-  // acceptance edge, the IE register, open bus, the peripheral's data or the
-  // cartridge's data; a PPU-blocked VRAM/OAM access reads open bus.
+  // Why: a PPU-blocked VRAM/OAM access reads open bus, as on the DMG.
   always_comb begin
     read_data = OPEN_BUS_DATA;
     case (held_destination)
@@ -271,8 +271,6 @@ module n2m_memory (
     cart_request_o.valid = request_i.valid && cart_dest && !cart_wait_q;
   end
 
-  // Requester and peripheral protocol: known fields, a request held until
-  // its response, and no peripheral response without a forwarded request.
   `N2A_ASSERT(request_known, clk_i, reset_i,
       !request_i.valid || !$isunknown(request_i))
   `N2A_ASSERT(request_held, clk_i, reset_i,
@@ -283,8 +281,6 @@ module n2m_memory (
       !io_response_i.valid || io_request_o.valid)
   `N2A_ASSERT(io_response_known, clk_i, reset_i,
       !io_request_o.valid || !$isunknown(io_response_i))
-  // The cartridge never responds without an accepted request, its response
-  // is known while one is outstanding, and it never faults.
   `N2A_ASSERT(cart_response_requested, clk_i, reset_i,
       !cart_response_i.valid || cart_wait_q)
   `N2A_ASSERT(cart_response_known, clk_i, reset_i,
@@ -292,7 +288,6 @@ module n2m_memory (
   `N2A_ASSERT_KNOWN(cart_ready_known, clk_i, reset_i, cart_ready_i)
   `N2A_ASSERT(cart_never_faults, clk_i, reset_i,
       !cart_response_i.valid || !cart_response_i.fault)
-  // Every internal read response carries data captured by its own store.
   `N2A_ASSERT(vram_read_served, clk_i, reset_i,
       !(pending_q && !held_q.write && held_destination == DEST_VRAM && !blocked_q) || vram_valid)
   `N2A_ASSERT(wram_read_served, clk_i, reset_i,
@@ -301,7 +296,6 @@ module n2m_memory (
       !(pending_q && !held_q.write && held_destination == DEST_OAM && !blocked_q) || oam_valid)
   `N2A_ASSERT_KNOWN(ppu_port_known, clk_i, reset_i,
       {ppu_vram_read_i, ppu_oam_read_i, vram_blocked_i, oam_blocked_i})
-  // The DMA port never meets a CPU access of the OAM store on one edge.
   `N2A_ASSERT(dma_oam_port_uncontended, clk_i, reset_i,
       !(dma_oam_write_i && (oam_read || oam_write)))
   `N2A_ASSERT(dma_oam_write_known, clk_i, reset_i,

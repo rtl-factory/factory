@@ -139,18 +139,18 @@ module n2d_dcache #(
         prefetch_cancel_event: 1'b0,
         prefetch_drop_backlog: 3'b0};
     dcache_regs_t regs_q, regs_d;
-    // Fields whose widths follow WAYS or PREFETCH_LINES are registers of
+    // Why: fields whose widths follow WAYS or PREFETCH_LINES are registers of
     // their own beside the packaged cache state (same zero reset).
-    // The miss victim way and the miss set's metadata word, captured by
-    // LOOKUP; a successful refill rewrites the word with the new tag and
+    // LOOKUP captures the miss victim way and the miss set's metadata word
+    // because a successful refill rewrites that word with the new tag and
     // transfers its dirty victim.
     logic [WAY_WIDTH-1:0]      victim_way_q, victim_way_d;
     logic [SET_WORD_WIDTH-1:0] miss_word_q, miss_word_d;
-    // The metadata word, if any, written on the edge that read meta_read_set.
+    // Why: the metadata word, if any, written on the edge that read
+    // meta_read_set; the synchronous RAM read cannot return it.
     logic [SET_WORD_WIDTH-1:0] meta_forward_word_q, meta_forward_word_d;
     logic [WAY_WIDTH-1:0]      forward_way_q, forward_way_d;
     logic [WAY_WIDTH-1:0]      maintenance_way_q, maintenance_way_d;
-    // Prefetch buffer slots and the next slot to load.
     logic [BUFFER_SLOTS-1:0]                  buffer_valid_q, buffer_valid_d;
     logic [BUFFER_SLOTS-1:0][LINE_WIDTH-1:0] buffer_line_q, buffer_line_d;
     logic [BUFFER_SLOTS-1:0][127:0]          buffer_data_q, buffer_data_d;
@@ -159,7 +159,6 @@ module n2d_dcache #(
     logic [127:0] data_read_q [0:WAYS-1];
     logic [127:0] lookup_line [0:WAYS-1];
     logic [SET_WORD_WIDTH-1:0] set_word_read;
-    // The word of the set read on the last edge, including a same-edge write.
     logic [SET_WORD_WIDTH-1:0] set_word;
     assign set_word = (regs_q.meta_forward_valid &&
         regs_q.meta_forward_set == regs_q.meta_read_set) ?
@@ -169,7 +168,6 @@ module n2d_dcache #(
     logic [WAYS-1:0] set_dirty;
     logic [PLRU_WIDTH-1:0] set_plru;
     assign {set_tag, set_valid, set_dirty, set_plru} = set_word;
-    // The captured miss word's fields.
     logic [WAYS-1:0][TAG_WIDTH-1:0] miss_tag;
     assign miss_tag = miss_word_q[SET_WORD_WIDTH-1 -: WAYS * TAG_WIDTH];
     logic [PLRU_WIDTH-1:0] miss_plru;
@@ -200,7 +198,6 @@ module n2d_dcache #(
     assign accept_set = cpu_request_address_i[12:4];
     logic [TAG_WIDTH-1:0] victim_tag;
     assign victim_tag = miss_tag[victim_way_q];
-    // The pseudo-LRU victim follows the node bits from the root.
     logic [WAY_WIDTH-1:0] plru_victim_way;
     always_comb begin
         int unsigned node;
@@ -213,9 +210,9 @@ module n2d_dcache #(
         end
     end
 
-    // At most one way holds a tag, so the hit way is the OR of the indices
-    // of the hitting ways. The victim is the lowest invalid way, otherwise
-    // the set's pseudo-LRU way.
+    // Why: at most one way holds a tag, so the hit way is the OR of the indices
+    // of the hitting ways. The victim is the lowest invalid way, otherwise the
+    // set's pseudo-LRU way, so invalid ways fill before a valid line is evicted.
     always_comb begin
         selected_hit_way = '0;
         selected_victim_way = plru_victim_way;
@@ -232,8 +229,9 @@ module n2d_dcache #(
     assign lookup_miss = lookup && (hit_ways == '0);
     assign store_hit = lookup_hit && regs_q.request_write;
 
-    // Store-hit write forward: the line written on the previous edge replaces
-    // the old RAM word that this lookup read for the same set and way.
+    // Why: forward the line written on the previous edge over the old RAM word
+    // this lookup read for the same set and way, because the synchronous read
+    // returned the pre-write data.
     genvar fwd_way;
     generate
     for (fwd_way = 0; fwd_way < WAYS; fwd_way = fwd_way + 1) begin : g_forward
@@ -247,8 +245,8 @@ module n2d_dcache #(
     endgenerate
     assign hit_word = lookup_line[selected_hit_way][request_word * 32 +: 32];
 
-    // Prefetch buffer lookup for the captured request line. Only the
-    // refill-request state consults it, after the arrays missed.
+    // Ref: wiki/src/nand2doom/rtl/memory/mas.md "Next-line prefetch": only the
+    // refill-request state consults the prefetch buffer, after the arrays missed.
     logic [LINE_WIDTH-1:0] request_line;
     assign request_line = regs_q.request_address[25:4];
     logic [BUFFER_SLOTS-1:0] buffer_match;
@@ -261,8 +259,9 @@ module n2d_dcache #(
             if (buffer_match[slot]) buffer_match_slot = SLOT_WIDTH'(slot);
         end
     end
-    // A buffered miss line installs in the refill-request cycle without a
-    // line request; it is the same install as a refill from memory.
+    // Ref: wiki/src/nand2doom/rtl/memory/mas.md "Next-line prefetch": a buffered
+    // miss line installs in the refill-request cycle as a refill would, with no
+    // line request.
     logic buffer_refill;
     logic write_buffer_block;
     assign write_buffer_block = regs_q.write_buffer_valid &&
@@ -289,8 +288,9 @@ module n2d_dcache #(
         (regs_q.state == DCACHE_MAINTENANCE_WRITEBACK_RESPONSE &&
          line_response_valid_i && !line_response_error_i);
 
-    // A hit or an installing refill makes its way the most recently used:
-    // every node on the way's path points at the other subtree.
+    // Why: pointing every node on the way's path at the other subtree makes the
+    // way of a hit or installing refill the most recently used, so the next
+    // victim comes from elsewhere.
     logic [WAY_WIDTH-1:0] touched_way;
     assign touched_way = lookup_hit ? selected_hit_way : victim_way_q;
     logic [PLRU_WIDTH-1:0] touched_plru;
@@ -306,9 +306,9 @@ module n2d_dcache #(
         end
     end
 
-    // Exactly one metadata writer per clock: the reset sweep, a hit, a
-    // install, or a maintenance clear. Each
-    // rewrites the whole word from the current one.
+    // Why: exactly one metadata writer per clock (the reset sweep, a hit, an
+    // install, or a maintenance clear), so each rewrites the whole word from
+    // the current one.
     logic meta_write;
     assign meta_write = !rst_i && (!regs_q.init_done || lookup_hit ||
         refill_ok || maintenance_clear);
@@ -341,8 +341,9 @@ module n2d_dcache #(
     logic [SET_WORD_WIDTH-1:0] meta_write_word;
     assign meta_write_word = {write_tag, write_valid, write_dirty, write_plru};
 
-    // Read the next set while retiring the current last-way entry. This keeps
-    // the clean maintenance walk at one entry per cycle with synchronous RAM.
+    // Why: read the next set while retiring the current last-way entry. This
+    // keeps the clean maintenance walk at one entry per cycle with synchronous
+    // RAM.
     logic maintenance_last_way;
     assign maintenance_last_way = maintenance_way_q == WAY_WIDTH'(WAYS - 1);
     logic maintenance_last_set;
@@ -368,24 +369,24 @@ module n2d_dcache #(
         end
     end
 
-    // A request is accepted from idle, or on the edge that samples a hit,
-    // once the reset sweep has finished.
     assign cpu_request_ready_o = regs_q.init_done && !maintenance_valid_i &&
         ((regs_q.state == DCACHE_IDLE) || lookup_hit);
     assign request_accept = cpu_request_valid_i && cpu_request_ready_o;
     assign request_address_error = cpu_request_address_i[31:26] != 6'b0;
     assign maintenance_ready_o = regs_q.init_done && regs_q.state == DCACHE_IDLE;
-    // One line transaction at a time: a demand request is presented only
-    // while no prefetch is presented or owed a response, and a presented
-    // prefetch holds its payload until accepted.
+    // Ref: wiki/src/nand2doom/rtl/memory/mas.md "Requirements" MEM-R6: one
+    // outstanding line transaction, so a demand request is presented only while
+    // no prefetch is presented or owed a response, and a presented prefetch
+    // holds its payload until accepted.
     logic prefetch_inflight;
     assign prefetch_inflight = regs_q.prefetch_valid && regs_q.prefetch_presented;
     logic prefetch_present;
     assign prefetch_present = prefetch_inflight && !regs_q.prefetch_accepted;
     logic select_prefetch;
-    // The candidate stays internal until demand has completed. A hit or
-    // response may finish on this edge, but any new CPU request wins.
-    // Once offered, the line request holds until accepted.
+    // Why: the candidate stays internal until demand has completed, so a
+    // prefetch never delays a demand miss: a hit or response may finish on this
+    // edge, but any new CPU request wins. Once offered, the line request holds
+    // until accepted.
     assign select_prefetch = regs_q.prefetch_valid && !regs_q.prefetch_presented &&
         (regs_q.state == DCACHE_IDLE || lookup_hit) && !cpu_request_valid_i &&
         !maintenance_valid_i &&
@@ -399,8 +400,10 @@ module n2d_dcache #(
     logic write_buffer_present;
     assign write_buffer_present = regs_q.write_buffer_active && !regs_q.write_buffer_accepted;
     logic start_write_buffer;
-    // Unpresented demand refills win over a background drain. A full slot
-    // or same-line read instead forces a drain; maintenance drains first.
+    // Why: unpresented demand refills win over a background drain so a drain
+    // adds no miss latency. A full slot or same-line read instead forces a
+    // drain, since the victim has nowhere to queue or memory holds stale bytes;
+    // maintenance drains first.
     assign start_write_buffer = regs_q.write_buffer_valid &&
         !regs_q.write_buffer_active && !prefetch_inflight &&
         !demand_request &&
@@ -427,7 +430,7 @@ module n2d_dcache #(
         data_read_q[maintenance_way_q] : regs_q.line_buffer;
     assign line_request_byte_enable_o = line_request_write_o ? 16'hffff : 16'h0000;
 
-    // The CPU-side read address comes straight from the request address so
+    // Why: the CPU-side read address comes straight from the request address so
     // the accept edge performs the read. The maintenance walk reads its own
     // set; refill and store-hit writes use the captured request set.
     logic [SET_WIDTH-1:0] maintenance_read_set;
@@ -436,9 +439,10 @@ module n2d_dcache #(
     assign read_set = (regs_q.state >= DCACHE_MAINTENANCE_READ) ?
         maintenance_read_set : accept_set;
 
-    // One synchronous read and one full-line write per way, plus the shared
-    // metadata word: simple dual-port M9Ks. Only control state resets; the
-    // sweep after reset clears the metadata RAM, never the data RAMs.
+    // Why: one synchronous read and one full-line write per way, plus the shared
+    // metadata word, so each maps to a simple dual-port M9K. Only control state
+    // resets; the sweep after reset clears the metadata RAM, and the data RAMs
+    // need no reset because no valid tag points at them.
     genvar way;
     generate
     for (way = 0; way < WAYS; way = way + 1) begin : g_way
@@ -450,7 +454,7 @@ module n2d_dcache #(
         assign data_write = refill_write || hit_write;
         logic [127:0] write_line;
         assign write_line = refill_write ? merged_refill_line : merged_hit_line;
-        // The maintenance walk and the next request read a different set
+        // Why: the maintenance walk and the next request read a different set
         // than the one being written, so data is simple dual-port.
         n2a_sdp_ram #(.DATA_WIDTH(128), .DEPTH(SET_COUNT)) u_data_ram (
             .clk_i(clk_i),
@@ -472,9 +476,10 @@ module n2d_dcache #(
         .read_data_o(set_word_read)
     );
 
-    // Next-line prefetch, started by every install (refill or buffer) unless
-    // maintenance is requested, a prefetch of another line is owed, or the
-    // next line is already buffered or being prefetched.
+    // Why: every install (refill or buffer) starts a next-line prefetch to hide
+    // sequential misses, except when maintenance is requested, a prefetch of
+    // another line is owed (one line transaction at a time), or the next line is
+    // already buffered or being prefetched (no duplicate fetch).
     logic [LINE_WIDTH-1:0] next_line;
     assign next_line = request_line + 1'b1;
     logic prefetch_response;
@@ -501,9 +506,11 @@ module n2d_dcache #(
     assign cancel_prefetch = regs_q.prefetch_valid && !regs_q.prefetch_presented &&
         (maintenance_start || (lookup_miss && request_line == regs_q.prefetch_line) ||
          (start_prefetch && next_line != regs_q.prefetch_line));
-    // A completed prefetch fills the buffer unless it failed or maintenance
-    // discards it. The slot is the lowest free one (including the one a
-    // buffer refill frees this cycle), otherwise the round-robin slot.
+    // Why: a completed prefetch fills the buffer unless it failed or maintenance
+    // discards it, so the buffer never holds bad or pre-maintenance data. The
+    // slot is the lowest free one (including the one a buffer refill frees this
+    // cycle), otherwise the round-robin slot, so free slots fill before a
+    // buffered line is replaced.
     logic buffer_load;
     assign buffer_load = prefetch_response && !line_response_error_i &&
         !regs_q.prefetch_discard && !maintenance_start &&
@@ -518,8 +525,8 @@ module n2d_dcache #(
             if (buffer_free[slot]) load_slot = SLOT_WIDTH'(slot);
         end
     end
-    // Dirty-victim enqueue drops any stale prefetched copy immediately;
-    // memory still contains the older bytes until the background drain.
+    // Why: drop any prefetched copy of a dirty victim on enqueue, because memory,
+    // and so that copy, still holds the older bytes until the background drain.
     logic [LINE_WIDTH-1:0] victim_line;
     assign victim_line = {victim_tag, request_set};
     logic [BUFFER_SLOTS-1:0] writeback_match;
@@ -529,8 +536,10 @@ module n2d_dcache #(
                 buffer_line_q[slot] == victim_line;
         end
     end
-    // Lines dropped unused this clock: a discarded or failed response, a
-    // replaced slot, a writeback match and the slots maintenance clears.
+    // Ref: wiki/src/nand2doom/rtl/core/mas.md "Performance monitor" event 82
+    // (DCACHE_PREFETCH_DROP): counts lines dropped unused this clock (a
+    // discarded or failed response, a replaced slot, a writeback match and the
+    // slots maintenance clears); the backlog reports them one per clock.
     logic [2:0] drop_count;
     always_comb begin
         drop_count = 3'(prefetch_response && !buffer_load) +
@@ -541,8 +550,8 @@ module n2d_dcache #(
         end
     end
 
-    // Pulse outputs default low every clock, including under reset, exactly
-    // as the defaults are applied ahead of the reset value selection.
+    // Why: the defaults are applied ahead of the reset value selection, so pulse
+    // outputs fall low every clock, including under reset.
     always_comb begin
         regs_d = regs_q;
         buffer_next_d = buffer_next_q;
@@ -593,13 +602,13 @@ module n2d_dcache #(
             regs_d.write_buffer_failed = 1'b0;
         end
 
-        // Only selection exposes the queued intent to the line contract.
+        // Why: prefetch_presented is set only on selection, so the line contract
+        // sees a prefetch only once it is offered.
         if (select_prefetch) regs_d.prefetch_presented = 1'b1;
         if (cancel_prefetch) begin
             regs_d.prefetch_valid = 1'b0;
             regs_d.prefetch_presented = 1'b0;
         end
-        // Prefetch transaction: acceptance, then exactly one response.
         if (prefetch_present && line_request_ready_i) regs_d.prefetch_accepted = 1'b1;
         if (prefetch_response) begin
             regs_d.prefetch_valid = 1'b0;
@@ -770,9 +779,9 @@ module n2d_dcache #(
     `N2A_DFF_RST(buffer_line_q, buffer_line_d, clk_i, rst_i)
     `N2A_DFF_RST(buffer_data_q, buffer_data_d, clk_i, rst_i)
     `N2A_DFF_RST(buffer_next_q, buffer_next_d, clk_i, rst_i)
-    // A hit responds combinationally in LOOKUP (stores return zero data); a
+    // Why: a hit responds combinationally in LOOKUP (stores return zero data); a
     // refill or local error responds from the registered fields. They never
-    // coincide.
+    // coincide, so OR-ing the valids is safe.
     assign cpu_response_valid_o = lookup_hit || regs_q.cpu_response_valid;
     assign cpu_response_data_o = lookup_hit ?
         (regs_q.request_write ? 32'b0 : hit_word) : regs_q.cpu_response_data;
@@ -790,8 +799,6 @@ module n2d_dcache #(
     assign write_buffer_pending_o = regs_q.write_buffer_valid;
     assign write_buffer_wait_o = regs_q.state == DCACHE_REFILL_REQUEST && write_buffer_block;
 
-    // Diagnostic at the request capture: request clock, unguarded by reset,
-    // $error action, always present.
     `N2A_ASSERT_CLOCKED_ERROR_WHEN_UNGUARDED(clk_i, rst_i, request_accept,
         !$isunknown(cpu_request_address_i[1:0]),
         "D-cache request byte offset is unknown")
@@ -824,8 +831,6 @@ module n2d_dcache #(
         line_request_valid_o && !line_request_ready_i,
         {line_request_valid_o, line_request_write_o, line_request_address_o,
          line_request_write_data_o, line_request_byte_enable_o, line_request_prefetch_o})
-    // Data requests are never withdrawn: an unaccepted request and its
-    // payload stay presented until ready.
     `N2A_ASSERT_ERROR_STABLE_WHEN(data_request_held, clk_i, rst_i,
         cpu_request_valid_i && !cpu_request_ready_o,
         {cpu_request_valid_i, cpu_request_write_i, cpu_request_address_i,

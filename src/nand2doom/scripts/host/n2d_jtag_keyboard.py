@@ -114,7 +114,7 @@ def run(args, *, jtag=None, resolve=n2d_jtag_device.resolve, clock=time.monotoni
         session = jtag.Session(transport)
         deadline = clock() + args.seconds
         for index, step in enumerate(steps):
-            if index:  # hold after a make step, gap after a break step
+            if index:  # Why: hold after a make step, gap after a break step
                 sleep(args.hold if index % 2 else args.gap)
             result["sent"] += jtag.send_all(session, step, deadline=deadline, sleep=sleep)
         result["status"] = "ok"
@@ -164,7 +164,7 @@ def main(argv=None, *, jtag=None, resolve=n2d_jtag_device.resolve) -> int:
     args = parser().parse_args(argv)
     try:
         code, result = run(args, jtag=jtag, resolve=resolve)
-    except (ValueError, OSError, RuntimeError) as exc:  # refused before any device effect
+    except (ValueError, OSError, RuntimeError) as exc:  # Why: these are refused before any device effect, so they are usage errors
         print(f"n2d_jtag_keyboard: {exc}", file=sys.stderr)
         return 2
     print(json.dumps(result, indent=2))

@@ -95,13 +95,11 @@ module n2a_uart_mem
     logic [31:0] mem_timer_q, mem_timer_d;
     logic [15:0] pace_q, pace_d;
 
-    // Window lookup over [address, address + span).
     logic [32:0] span_end;
     logic window_write, window_read_held, window_read_live;
     logic [7:0] check_status;
     logic header_crc_ok, header_last;
 
-    // Response serializer.
     logic [15:0] status_index, crc_offset, payload_offset, ident_index;
     logic [1:0]  crc_lane, payload_lane;
     logic [31:0] ident_word, crc_final;
@@ -135,7 +133,8 @@ module n2a_uart_mem
         end
     end
 
-    // Header checks in table order (HAS "Commands").
+    // Why: the checks run in a fixed priority, so a request that breaks several
+    // rules always gets the same status.
     always_comb begin
         check_status = UART_MEM_ST_OK;
         if (r_q.version != UART_MEM_VERSION) begin
@@ -169,7 +168,8 @@ module n2a_uart_mem
         end
     end
 
-    // Identify payload words (HAS "Identify").
+    // Why: the host decodes Identify by word position, so this order is the wire
+    // format.
     assign ident_index = (r_q.index - 16'd6) >> 2;
     always_comb begin
         ident_word = 32'h0;
@@ -190,8 +190,8 @@ module n2a_uart_mem
 
     assign responding = (r_q.phase == UART_MEM_RESPOND);
     assign status_index = 16'd6 + r_q.rsp_length;
-    // Byte lanes of the payload word and of the CRC; the upper offset bits
-    // select the word, already counted by the read buffer.
+    // Why: only the byte lanes are used; the upper offset bits select the
+    // word, which the read buffer already counts.
     assign crc_offset = r_q.index - status_index - 16'd1;
     assign payload_offset = r_q.index - 16'd6;
     assign crc_lane = crc_offset[1:0];
@@ -234,8 +234,8 @@ module n2a_uart_mem
     assign header_crc_ok = (rx_byte_i == r_q.crc8);
     assign write_done = !r_q.req_valid && (!r_q.outstanding || r_q.orphan);
     assign rx_payload_byte = rx_byte_i;
-    // Next read word: one outstanding, at most two buffered, paced while
-    // the CPU runs.
+    // Why: one request outstanding and at most two buffered words keep reads
+    // within cur/nxt; pacing keeps live reads LIVE_GAP_CYCLES apart.
     assign read_issue = responding && (r_q.command == UART_MEM_CMD_READ) &&
         !r_q.reject && !r_q.mem_failed && (r_q.issued < r_q.rsp_length) &&
         !r_q.req_valid && !r_q.outstanding && !(r_q.cur_valid && r_q.nxt_valid) &&
@@ -252,14 +252,12 @@ module n2a_uart_mem
         down_rx_valid_o = 1'b0;
         down_rx_error_o = 1'b0;
 
-        // ---------------- Read buffer ----------------
         if (!r_q.cur_valid && r_q.nxt_valid) begin
             r_d.cur_word = r_q.nxt_word;
             r_d.cur_valid = 1'b1;
             r_d.nxt_valid = 1'b0;
         end
 
-        // ---------------- Bus master ----------------
         if (!r_q.req_valid && !r_q.outstanding) mem_timer_d = 32'h0;
         if (mem_accept) begin
             r_d.req_valid = 1'b0;
@@ -268,8 +266,8 @@ module n2a_uart_mem
             mem_timer_d = 32'h0;
             pace_d = 16'h0;
         end else if (mem_timeout) begin
-            // An unaccepted request is withdrawn; an accepted one becomes an
-            // orphan whose late response is dropped.
+            // Why: an accepted request cannot be recalled, so it becomes an
+            // orphan whose late response is dropped; an unaccepted one is withdrawn.
             r_d.req_valid = 1'b0;
             r_d.orphan = r_q.outstanding;
             r_d.mem_failed = 1'b1;
@@ -300,7 +298,6 @@ module n2a_uart_mem
             r_d.issued = r_q.issued + 16'd4;
         end
 
-        // ---------------- Link phases ----------------
         case (r_q.phase)
             UART_MEM_IDLE: begin
                 if (rx_valid_i && (rx_byte_i == UART_MEM_REQUEST_SOF) && down_idle_i) begin
@@ -343,7 +340,7 @@ module n2a_uart_mem
                         r_d.index = 16'h0;
                         r_d.crc32 = 32'hffff_ffff;
                         if (!header_crc_ok) begin
-                            // An untrusted header has no trusted length: drop
+                            // Why: an untrusted header has no trusted length: drop
                             // the frame and wait for the host to fall silent.
                             r_d.phase = UART_MEM_DISCARD;
                         end else begin
@@ -397,7 +394,8 @@ module n2a_uart_mem
                     r_d.index = r_q.index + 16'd1;
                     if (r_q.index == 16'd3) begin
                         r_d.phase = UART_MEM_EXEC;
-                        // A corrupt payload outranks the errors it may cause.
+                        // Why: corruption may have caused any earlier error, so
+                        // CHECKSUM overrides it.
                         if (!r_q.reject && ({rx_byte_i, r_q.rx_crc[31:8]} != ~r_q.crc32))
                             r_d.status = UART_MEM_ST_CHECKSUM;
                     end
@@ -444,10 +442,10 @@ module n2a_uart_mem
                 end
             end
             UART_MEM_RESPOND: begin
-                // One frame outstanding: a byte that arrives before the status
-                // byte is accepted by the PHY, including while the status
-                // waits for tx_ready, is reported. A byte on the clock the
-                // status is accepted, or later, is dropped.
+                // Why: the host may have only one frame outstanding, so a byte
+                // that arrives before the PHY accepts the status byte (even
+                // while it waits for tx_ready) is an overrun. A byte on or
+                // after that clock is dropped.
                 if (rx_valid_i && (r_q.status == UART_MEM_ST_OK) &&
                     ((r_q.index < status_index) ||
                      ((r_q.index == status_index) && !tx_fire)))

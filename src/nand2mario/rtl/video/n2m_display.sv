@@ -47,8 +47,9 @@ module n2m_display (
   n2m_snapshot_pkg::frame_id_t    display_id;
   logic                          scan_read_busy, snapshot_read_enable;
 
-  // The store's read index belongs to the snapshot reader only in cycles
-  // the scanout does not consume; the bank is always the displayed one.
+  // Why: the scanout must never miss a read, so the snapshot reader takes the
+  // store's read index only in cycles the scanout does not consume; the bank
+  // is always the displayed one, which the bridge never writes.
   assign read_index = snapshot_read_enable ? snapshot_read_index : scan_read_index;
 
   n2m_frame_bridge u_bridge (
@@ -122,10 +123,7 @@ module n2m_display (
     .read_shade_i    (read_shade)
   );
 
-  // The scanned bank is never the written bank: the store's read path and
-  // write path never meet on one bank.
   `N2A_ASSERT(scan_and_write_banks_differ, clk_i, reset_i,
       !write_enable || (write_bank != read_bank))
-  // The snapshot reader never takes a read the scanout consumes.
   `N2A_ASSERT(snapshot_read_outside_scan, clk_i, reset_i, !snapshot_read_enable || !scan_read_busy)
 endmodule

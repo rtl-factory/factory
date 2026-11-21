@@ -61,7 +61,7 @@ class MemoryMapTests(unittest.TestCase):
         self.assertEqual(memory_model.destination(0xE000), ('wram', 0))
         self.assertEqual(memory_model.destination(0xFDFF), ('wram', 0x1DFF))
         self.assertEqual(memory_model.destination(0xDE00), ('wram', 0x1E00))
-        # A ROM-only header (type $00 at $0147) selects the ROM-only mapper:
+        # Ref: Pan Docs $0147: type $00 is ROM only:
         # ROM writes are ignored and cartridge RAM is absent.
         memory = memory_model.GameBoyMemory(b'\x12' + bytes(0x14F))
         memory[0x0000] = 0x34
