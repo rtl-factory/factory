@@ -38,6 +38,7 @@ SV_DECL = re.compile(r"^\s*(?:virtual\s+|static\s+|automatic\s+|pure\s+|extern\s
                      r"(module|macromodule|interface|package|class|program|function|task|checker|"
                      r"typedef|localparam|parameter|`define)\b")
 SV_PORT_HOST = re.compile(r"^\s*(module|macromodule|interface)\b")
+SV_IMPORT = re.compile(r"^\s*import\b")
 SV_TYPE_BODY = re.compile(r"^\s*typedef\s+(enum|struct|union)\b")
 
 FIX = ("delete it, encode it in a name, type, assertion or test, or tag it "
@@ -146,6 +147,8 @@ def sv_allowed_lines(lines: list[str], code_lines: set[int]) -> set[int]:
             while end <= len(lines):
                 ok.add(end)
                 code = lines[end - 1].split("//")[0]
+                if SV_IMPORT.match(code):
+                    code = ""
                 ended = False
                 for ch in code:
                     depth += (ch == "(") - (ch == ")")
@@ -236,13 +239,19 @@ def check(found: list[Violation], baseline: dict[str, int], files: list[str]) ->
 
 def raised(baseline: dict[str, int], base: dict[str, int]) -> list[str]:
     """Error lines for a baseline that grew against the base branch's: any
-    entry above its base value, or a higher total (a new entry may only carry
-    counts moved from entries that dropped, as in a rename)."""
+    entry above its base value, a higher total, or new entries holding more
+    than the entries that disappeared (a rename moves counts; a new file
+    brings none)."""
     errors = [f"{path}: baseline raised from {base[path]} to {n}; clean the new comments instead"
               for path, n in sorted(baseline.items()) if path in base and n > base[path]]
     if sum(baseline.values()) > sum(base.values()):
         errors.append(f"baseline total raised from {sum(base.values())} to {sum(baseline.values())}; "
                       "new files must have no comment violations")
+    added = sum(n for path, n in baseline.items() if path not in base)
+    moved = sum(n for path, n in base.items() if path not in baseline)
+    if added > moved:
+        errors.append(f"new baseline entries hold {added} violations but only {moved} moved from removed "
+                      "files; new files must have no comment violations")
     return errors
 
 

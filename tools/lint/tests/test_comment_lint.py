@@ -155,3 +155,19 @@ def test_baseline_may_not_rise_against_base():
     assert comment_lint.raised({"a.py": 3}, {"a.py": 2})[0].startswith("a.py: baseline raised")
     assert comment_lint.raised({"new.py": 2}, {"old.py": 2}) == []
     assert "total raised" in comment_lint.raised({"a": 1, "new.py": 1}, {"a": 1})[0]
+    assert "new baseline entries" in comment_lint.raised({"a": 1, "new.py": 1}, {"a": 2})[0]
+
+
+def test_import_in_module_header_keeps_port_docs(tmp_path):
+    source = (
+        "module m\n"
+        "  import p::*;\n"
+        "(\n"
+        "  input logic clk,  // 50 MHz\n"
+        "  output logic q    // registered\n"
+        ");\n"
+        "  // narration\n"
+        "  assign q = clk;\n"
+        "endmodule\n"
+    )
+    assert lint(tmp_path, "i.sv", source) == [7]
