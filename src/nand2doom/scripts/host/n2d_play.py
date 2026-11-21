@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Play Doom on the DE2-115 with one command.
+"""Play Doom on the DE2-115 or the DE10-Lite with one command.
 
     python3 src/nand2doom/scripts/host/n2d_play.py --port /dev/serial/by-id/usb-FTDI_...-port0
     python3 src/nand2doom/scripts/host/n2d_play.py --port PORT --plan
@@ -9,7 +9,7 @@
 Steps: refuse if another process holds the UART or a JTAG client is running;
 check the board with jtagconfig (and, for JTAG controls, resolve the
 quartus_stp device name by IDCODE); program the SOF; Ping and Halt; stream-load
-the image at 3 Mbaud, skipping every non-program segment whose stored SDRAM
+the image at the board rate (3 Mbaud DE2-115, 1 Mbaud DE10-Lite), skipping every non-program segment whose stored SDRAM
 digest already matches; verify every loaded segment's stored digest; reset the
 PC and Resume; then open the real-time controls. Spec:
 wiki/src/nand2doom/scripts/host/spec.md#play.
@@ -30,11 +30,12 @@ TOOLS = Path(__file__).resolve().parent
 ROOT = TOOLS.parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-from src.nand2doom.scripts.host import n2d_jtag_device  # noqa: E402
+from tools.board import jtag_chain  # noqa: E402
 from src.nand2doom.scripts.host import n2d_uart as uart  # noqa: E402
 from src.nand2doom.scripts.host import n2d_uart_debug_host as wire  # noqa: E402
 
 BOARDS = {
+    "de10_lite": dict(idcode="031050DD", project="n2d_de10_lite", baud="de10_lite"),
     "de2_115": dict(idcode="020F70DD", project="n2d_de2_115", baud="de2_115"),
 }
 # Why: these processes open the USB-Blaster through jtagd; jtagd itself is the
@@ -45,7 +46,6 @@ SEED = 0xFFFFFFFF
 FRAME_GAP_SECONDS = 0.05     # Why: just over the device's 40 ms partial-frame abandon (wiki/src/nand2doom/rtl/io/mas.md "Streaming load session"), so a gap ends any partial frame
 SESSION_IDLE_SECONDS = 2.0   # Ref: wiki/src/nand2doom/rtl/io/mas.md "Streaming load session": the device closes an idle session after 2 s
 PROGRAM_TIMEOUT = 180
-JTAGCONFIG_TIMEOUT = 20
 PORT_ENV = "N2D_UART_PORT"
 
 EXIT_OK, EXIT_ARGS, EXIT_DEVICE, EXIT_BUSY, EXIT_INTERRUPTED = 0, 2, 3, 4, 130
@@ -117,39 +117,7 @@ def holders(port=None, *, jtag=True, proc=Path("/proc"), own=None):
     return found
 
 
-def parse_jtagconfig(text):
-    """[(cable, [(idcode, name), ...]), ...] from plain jtagconfig output."""
-    chains = []
-    for line in text.splitlines():
-        cable = re.fullmatch(r"\s*[0-9]+\)\s+(.+?)\s*", line)
-        if cable:
-            chains.append((cable[1], []))
-            continue
-        device = re.fullmatch(r"\s+([0-9A-Fa-f]{8})\s+(.*?)\s*", line)
-        if device and chains:
-            chains[-1][1].append((device[1].upper(), device[2]))
-    return chains
-
-
-def select_cable(chains, idcode):
-    """The one cable whose chain is exactly the board FPGA, or PlayError."""
-    if len(chains) != 1:
-        names = ", ".join(c for c, _ in chains) or "none"
-        raise PlayError(f"expected exactly one JTAG cable, found {len(chains)} ({names}); "
-                        "connect only the DE2-115 USB-Blaster")
-    cable, devices = chains[0]
-    if [d for d, _ in devices] != [idcode]:
-        seen = ", ".join(d for d, _ in devices) or "no device"
-        raise PlayError(f"{cable}: expected the one device {idcode}, found {seen}; "
-                        "check the board power and the USB-Blaster")
-    return cable
-
-
-def run_tool(argv, timeout):
-    result = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            text=True, errors="replace", timeout=timeout, check=False)
-    return result.returncode, result.stdout
-
+run_tool = jtag_chain.run_tool
 
 
 @dataclass
@@ -327,7 +295,7 @@ def resolve_device(args, board, cable, runner):
     if args.jtag_device:
         return args.jtag_device
     try:
-        return n2d_jtag_device.resolve(cable, args.quartus_bin, int(board["idcode"], 16), runner=runner)
+        return jtag_chain.resolve(cable, args.quartus_bin, board["idcode"], runner=runner)
     except (ValueError, RuntimeError) as error:
         raise PlayError(f"JTAG device: {error}") from error
 
@@ -439,23 +407,23 @@ def play(args, board, manifest, sof, *, runner=run_tool, opener=uart.open_serial
     steps.done("UART and USB-Blaster free")
     if not args.skip_program or args.transport == "jtag":
         steps.begin("board check (jtagconfig)")
-        rc, text = runner([tool_path(args, "jtagconfig")], JTAGCONFIG_TIMEOUT)
-        if rc:
-            raise PlayError(f"jtagconfig exited {rc}: {text.strip()[:200]}")
-        cable = select_cable(parse_jtagconfig(text), board["idcode"])
+        try:
+            cable = jtag_chain.find_cable(board["idcode"], args.quartus_bin, runner=runner)
+        except (ValueError, RuntimeError) as error:
+            raise PlayError(str(error)) from error
         if args.transport == "jtag":
             device = resolve_device(args, board, cable, runner)
         steps.done(f"{cable}: {board['idcode']}" + (f"; JTAG device {device!r}" if device else ""))
     if not args.skip_program:
         steps.begin("program FPGA")
-        argv = [tool_path(args, "quartus_pgm"), "-c", cable, "-m", "jtag", "-o", f"p;{sof}@1"]
+        argv = jtag_chain.program_command(sof, cable, args.quartus_bin)
         out("  " + " ".join(argv), flush=True)
         try:
             rc, text = runner(argv, PROGRAM_TIMEOUT)
         except KeyboardInterrupt:
             out("interrupted while programming: the FPGA configuration is undefined; rerun n2d_play to reprogram")
             return EXIT_INTERRUPTED
-        if rc or not re.search(r"Programmer was successful", text):
+        if not jtag_chain.program_succeeded(rc, text):
             raise PlayError(f"quartus_pgm exited {rc}: {text.strip()[-300:]}")
         steps.done(Path(sof).name)
     transport = None

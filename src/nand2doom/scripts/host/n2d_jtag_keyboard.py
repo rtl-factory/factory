@@ -10,7 +10,7 @@ Every request is translated to Set-2 make/break bytes and delivered through the
 common host transport and session (src/common/scripts/jtag/n2a_jtag_keyboard.py); the n2d
 endpoint folds them into the same input FIFO as physical PS/2 and UART input.
 Without --device the quartus_stp device name is resolved from the cable's
-device listing by the DE2-115 IDCODE (n2d_jtag_device.py). Without --yes only
+device listing by the DE2-115 IDCODE (tools/board/jtag_chain.py). Without --yes only
 the translation, batches and that resolved name are printed; the read-only
 listing is the only cable access. Spec: wiki/src/nand2doom/scripts/host/spec.md#jtag-keyboard.
 """
@@ -26,7 +26,9 @@ ROOT = Path(__file__).resolve().parents[4]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from src.nand2doom.scripts.host.n2d_control import ACTIONS  # noqa: E402  (Doom action -> 10-bit Set-2 event)
-from src.nand2doom.scripts.host import n2d_jtag_device  # noqa: E402
+from tools.board import jtag_chain  # noqa: E402
+
+DE2_115_IDCODE = 0x020F70DD
 
 EXTENDED, RELEASE = 0xE0, 0xF0
 BATCH = 4
@@ -77,12 +79,16 @@ def requested_steps(args, jtag) -> list[bytes]:
     return [part for make, brk in jtag.key_strokes(args.text.encode()) for part in (make, brk)]
 
 
+def resolve_de2_115(cable, quartus_bin):
+    return jtag_chain.resolve(cable, quartus_bin, DE2_115_IDCODE)
+
+
 def device_name(args, resolve) -> tuple[str, str]:
     """(device, source): the explicit --device, else the cable's one IDCODE match."""
     if args.device:
         return args.device, "--device"
     if args.cable:
-        return resolve(args.cable, args.quartus_bin), f"IDCODE 0x{n2d_jtag_device.DE2_115_IDCODE:08X}"
+        return resolve(args.cable, args.quartus_bin), f"IDCODE 0x{DE2_115_IDCODE:08X}"
     return "", "unresolved: give --cable"
 
 
@@ -94,7 +100,7 @@ def jtag_settings(args, jtag, device) -> dict:
     return jtag.settings(data)
 
 
-def run(args, *, jtag=None, resolve=n2d_jtag_device.resolve, clock=time.monotonic, sleep=time.sleep):
+def run(args, *, jtag=None, resolve=resolve_de2_115, clock=time.monotonic, sleep=time.sleep):
     """Return (exit status, JSON-able result). Without --yes no transport is opened."""
     if jtag is None:
         from src.common.scripts.jtag import n2a_jtag_keyboard as jtag
@@ -160,7 +166,7 @@ def parser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv=None, *, jtag=None, resolve=n2d_jtag_device.resolve) -> int:
+def main(argv=None, *, jtag=None, resolve=resolve_de2_115) -> int:
     args = parser().parse_args(argv)
     try:
         code, result = run(args, jtag=jtag, resolve=resolve)

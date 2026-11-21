@@ -32,7 +32,7 @@ A snapshot record is the displayed 160x144 frame read from the frame store: an e
 
 ## Joypad
 
-`joypad` maps button names to the Set-2 keys the board decodes (arrows, X, Z, Space, Enter) and sends them through the `common` JTAG keyboard host ([its spec](../../../common/scripts/jtag/spec.md)) as press, hold and release, releasing in reverse order. It needs exact `--cable` and `--device` names; without them, or without `--yes`, it sends nothing.
+`joypad` maps button names to the Set-2 keys the board decodes (arrows, X, Z, Space, Enter) and sends them through the `common` JTAG keyboard host ([its spec](../../../common/scripts/jtag/spec.md)) as press, hold and release, releasing in reverse order. It needs the exact `--cable` name. Without `--device` it names the device on that cable whose IDCODE is the selected board's (`031050DD` DE10-Lite, `020F70DD` DE2-115), with one read-only `quartus_stp` listing through the board console's [JTAG chain helpers](../../../../tools/board/spec.md#jtag-chain); a given `--device` must carry that IDCODE. Without `--cable`, or without `--yes`, it sends nothing. `program` builds its `quartus_pgm` command with the same helpers.
 
 ## Safety
 

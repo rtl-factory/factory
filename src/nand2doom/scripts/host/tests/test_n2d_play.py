@@ -23,7 +23,7 @@ from src.nand2doom.scripts.host.tests.test_n2d_uart_stream import StreamDevice, 
 
 JTAGCONFIG = "1) USB-Blaster [1-1]\n  020F70DD   10CL120(Y|Z)/EP3C120/EP4CE115\n"
 DEVICE = "@1: 10CL120(Y|Z)/EP3C120/.. (0x020F70DD)"   # Why: this is the name quartus_stp prints on the board host
-STP_LISTING = "Info: Running Quartus Prime Signal Tap\nN2D_DEVICE " + DEVICE + "\n"
+STP_LISTING = "Info: Running Quartus Prime Signal Tap\nN2A_DEVICE " + DEVICE + "\n"
 PROGRAMMED = "Info: Quartus Prime Programmer was successful. 0 errors, 0 warnings\n"
 MANIFEST = host.Manifest(0x100, (
     host.Segment(0x0100, bytes((i * 7) & 0xFF for i in range(2500)), "program.bin"),
@@ -178,14 +178,6 @@ class LoadTests(unittest.TestCase):
 
 
 class BoardTests(unittest.TestCase):
-    def test_jtagconfig_selection(self):
-        self.assertEqual(play.select_cable(play.parse_jtagconfig(JTAGCONFIG), "020F70DD"), "USB-Blaster [1-1]")
-        two = JTAGCONFIG + "2) USB-Blaster [1-2]\n  031050DD   10M50DA(.|ES)/10M50DC\n"
-        wrong = "1) USB-Blaster [1-1]\n  031050DD   10M50DA(.|ES)/10M50DC\n"
-        for text in ("", two, wrong, "1) USB-Blaster [1-1]\n"):
-            with self.subTest(text=text), self.assertRaises(play.PlayError):
-                play.select_cable(play.parse_jtagconfig(text), "020F70DD")
-
     def test_holders_reports_uart_and_jtag_clients_but_not_self_or_jtagd(self):
         with tempfile.TemporaryDirectory() as tmp:
             proc, device = Path(tmp) / "proc", Path(tmp) / "ttyUSB0"
@@ -260,7 +252,7 @@ class FlowTests(unittest.TestCase):
         self.assertEqual(self.controls[0][-2:], ["--device", "@1: X"])
 
     def test_unresolved_jtag_device_stops_before_programming(self):
-        for listing in ("Info: banner\n", STP_LISTING + "N2D_DEVICE @2: EP4CE115 (0x020F70DD)\n"):
+        for listing in ("Info: banner\n", STP_LISTING + "N2A_DEVICE @2: EP4CE115 (0x020F70DD)\n"):
             with self.subTest(listing=listing):
                 self.calls, self.listing = [], listing
                 with self.assertRaisesRegex(play.PlayError, "exactly one JTAG device with IDCODE 0x020F70DD"):

@@ -4,6 +4,7 @@ The tools: code any project can use unchanged. Each has its code in `tools/<tool
 
 | Tool | What it does |
 |---|---|
+| [board](board/README.md) | Programs any project's SOF, loads its program and types on its JTAG keyboard, on either board |
 | [fv](fv/README.md) | Runs every project's formal proofs and covers with SymbiYosys |
 | [lint](lint/README.md) | Checks every Python and SystemVerilog comment against the keep list |
 | [pages](pages/README.md) | Builds the wiki into the GitHub Pages site |

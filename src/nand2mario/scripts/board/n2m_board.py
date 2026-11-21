@@ -7,7 +7,7 @@
     python3 src/nand2mario/scripts/board/n2m_board.py snapshot [--port /dev/ttyUSB0] [--out PATH] [--yes]
     python3 src/nand2mario/scripts/board/n2m_board.py joypad start a --hold 0.2
     python3 src/nand2mario/scripts/board/n2m_board.py joypad --mode press right
-    ... joypad --cable 'USB-Blaster [1-1]' --device '@1: 10M50DA(.|ES)/10M50DC (0x031050DD)' --yes start
+    ... joypad --cable 'USB-Blaster [1-1]' --yes start     # device resolved by the board IDCODE
 
 `compile` runs the Quartus build (n2m_quartus.py). `program` prints the exact
 quartus_pgm command for the built SOF and runs it only with --yes. `load`
@@ -36,6 +36,7 @@ import time
 ROOT = Path(__file__).resolve().parents[4]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+from tools.board import jtag_chain  # noqa: E402
 
 DEFAULT_SOF = "workdir/quartus/n2m_de10_lite/output_files/n2m_de10_lite.sof"
 # Ref: board spec "Joypad": button to the Set-2 host key bytes the board decodes.
@@ -71,30 +72,37 @@ def plan(steps) -> dict:
             "bytes": sum(len(step) for step in steps)}
 
 
-def jtag_settings(args, jtag) -> dict:
+BOARD_IDCODES = {"de10_lite": "031050DD", "de2_115": "020F70DD"}
+
+
+def jtag_settings(args, jtag, resolve=jtag_chain.resolve) -> dict:
+    """Without --device, the cable's one device with the board IDCODE is named
+    (a read-only quartus_stp listing); a given --device must carry that IDCODE."""
     board = getattr(args, "board", "de10_lite")
-    expected_id = {"de10_lite": "031050DD", "de2_115": "020F70DD"}[board]
+    expected_id = BOARD_IDCODES[board]
     if args.device and not re.search(r"\(0x" + expected_id + r"\)$", args.device, re.I):
         raise ValueError("JTAG device IDCODE does not match selected board")
-    data = {"jtag_cable": args.cable or "", "jtag_device": args.device or "",
+    device = args.device or (resolve(args.cable, args.quartus_bin, expected_id) if args.cable else "")
+    data = {"jtag_cable": args.cable or "", "jtag_device": device,
             "jtag_tck_hz": str(args.tck_hz), "jtag_instance": "0",
             "jtag_clock_mode": args.clock_mode, "jtag_cable_index": args.cable_index or "",
             "quartus_bin": args.quartus_bin or ""}
     return jtag.settings(data)
 
 
-def run_joypad(args, *, jtag=None, clock=time.monotonic, sleep=time.sleep):
-    """Return (exit status, JSON-able result). Without --yes nothing is opened."""
+def run_joypad(args, *, jtag=None, resolve=jtag_chain.resolve, clock=time.monotonic, sleep=time.sleep):
+    """Return (exit status, JSON-able result). Without --yes nothing is opened
+    but the device listing that names a missing --device."""
     if jtag is None:
         from src.common.scripts.jtag import n2a_jtag_keyboard as jtag
     steps = key_steps(args.names, args.mode, jtag)
-    data = jtag_settings(args, jtag)
+    data = jtag_settings(args, jtag, resolve)
     result = dict(plan(steps), jtag_cable=data["jtag_cable"], jtag_device=data["jtag_device"])
     if not args.yes:
-        result["dry_run"] = "nothing opened; add --yes with --cable and --device to send"
+        result["dry_run"] = "nothing opened; add --yes with --cable to send"
         return 0, result
     if not data["jtag_cable"]:
-        raise ValueError("JTAG input unavailable: give exact --cable and --device names; nothing sent")
+        raise ValueError("JTAG input unavailable: give the exact --cable name; nothing sent")
     transport = jtag.open_transport(data)
     result.update(sent=0, status="error")
     try:
@@ -116,8 +124,7 @@ def run_joypad(args, *, jtag=None, clock=time.monotonic, sleep=time.sleep):
 
 def program_command(sof: Path, cable: str, quartus_bin: str | None) -> list[str]:
     """The vendor SRAM-programming command for one SOF through one cable."""
-    executable = str(Path(quartus_bin) / "quartus_pgm") if quartus_bin else "quartus_pgm"
-    return [executable, "-c", cable, "-m", "jtag", "-o", f"p;{sof}@1"]
+    return jtag_chain.program_command(sof, cable, quartus_bin)
 
 
 def run_program(args, *, runner=subprocess.run, which=shutil.which):
@@ -245,7 +252,8 @@ def parser() -> argparse.ArgumentParser:
                    help="tap (default) makes, holds, then breaks; press or release sends one half")
     j.add_argument("--hold", type=float, default=0.1, help="tap hold in seconds (default 0.1)")
     j.add_argument("--cable", help="exact JTAG cable name, e.g. 'USB-Blaster [1-1]'")
-    j.add_argument("--device", help="exact JTAG device name as quartus_stp lists it")
+    j.add_argument("--device", help="exact JTAG device name as quartus_stp lists it "
+                   "(default: the cable's one device with the board IDCODE)")
     j.add_argument("--quartus-bin", help="directory holding quartus_stp (default: PATH)")
     j.add_argument("--tck-hz", type=int, default=6000000, help="TCK frequency (default 6000000)")
     j.add_argument("--clock-mode", default="fixed-original-6mhz",
@@ -261,7 +269,7 @@ def parser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv=None, *, jtag=None, runner=subprocess.run) -> int:
+def main(argv=None, *, jtag=None, runner=subprocess.run, resolve=jtag_chain.resolve) -> int:
     args = parser().parse_args(argv)
     try:
         if args.action == "compile":
@@ -279,7 +287,7 @@ def main(argv=None, *, jtag=None, runner=subprocess.run) -> int:
         elif args.action == "snapshot":
             code, result = run_snapshot(args)
         else:
-            code, result = run_joypad(args, jtag=jtag)
+            code, result = run_joypad(args, jtag=jtag, resolve=resolve)
     except (ValueError, OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
         print(f"n2m_board: {exc}", file=sys.stderr)
         return 2
