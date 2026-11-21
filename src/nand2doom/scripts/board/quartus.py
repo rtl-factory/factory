@@ -26,7 +26,7 @@ BOARDS = (BASE_BOARD, "de2_115")
 DEFAULT_IO_STANDARD = "3.3-V LVTTL"
 BOARD_DEFAULTS = {
     "reference_port": "MAX10_CLK1_50",
-    "clock_module": "n2d_de10_lite_clock",
+    "clock_module": "n2a_de10_lite_clock",
     # Why: DRAM_CLK carries the inverted system clock, so the gate treats it as a
     # generated clock target, not a data output.
     "forwarded_clocks": {"sdram_clock": "DRAM_CLK"},

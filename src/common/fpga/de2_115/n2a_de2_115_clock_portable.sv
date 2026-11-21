@@ -1,14 +1,15 @@
 `include "src/common/rtl/pkg/macros.vh"
 
-// Portable backend of the nand2mario DE2-115 clock contract: the same
-// 25 MHz output and lock status as the Intel PLL backend, produced without a
-// vendor model (wiki/src/nand2mario/fpga/de2_115/board-spec.md).
+// Portable backend of the DE2-115 board clock: the same 25 MHz output and
+// lock status as the Intel PLL backend, produced without a vendor model. It
+// divides the 50 MHz reference by two and reports lock three reference edges
+// after reset release (wiki/src/common/fpga/de2_115/board-spec.md).
 //
-// This file and n2m_de2_115_clock_intel.sv define the same module name.
+// This file and n2a_de2_115_clock_intel.sv define the same module name.
 // Simulation targets list this file; the Quartus source list selects the
 // Intel file. The board top never selects a backend itself.
 /* verilator lint_off DECLFILENAME */
-module n2m_de2_115_clock (
+module n2a_de2_115_clock (
     input  logic reference_clk_i,
     input  logic reset_i,
     output logic clk_25_o,

@@ -64,7 +64,7 @@ def warning_fixture(config):
     warnings.extend(["Warning (292013): Feature LogicLock is only available with a valid subscription license. "
                      "You can purchase a software subscription to gain full access to this feature."])
     pin = "VGA_CLK" if config["board"] == "de2_115" else "DRAM_CLK"
-    warnings.append(f'Warning (15064): PLL "{top}_clock:u_clock|altpll:u_pll|altpll_example:auto_generated|pll1" '
+    warnings.append(f'Warning (15064): PLL "{config["clock_module"]}:u_clock|altpll:u_pll|altpll_example:auto_generated|pll1" '
                     f'output port clk[0] feeds output pin "{pin}~output" via non-dedicated routing -- '
                     'jitter performance depends on switching rate of other design elements. Use PLL '
                     'dedicated clock outputs to ensure jitter performance File: /staged/db/altpll_example.tdf Line: 31')
@@ -459,8 +459,8 @@ class QuartusTests(unittest.TestCase):
         intel_for = {"src/common/rtl/memory/n2a_sync_ram.sv": "src/common/rtl/memory/n2a_sync_ram_intel.sv",
                      "src/common/rtl/memory/n2a_sdp_ram_portable.sv": "src/common/rtl/memory/n2a_sdp_ram_intel.sv",
                      "src/common/rtl/memory/n2a_tdp_ram_portable.sv": "src/common/rtl/memory/n2a_tdp_ram_intel.sv",
-                     "src/nand2doom/fpga/de10_lite/n2d_de10_lite_clock_portable.sv":
-                         "src/nand2doom/fpga/de10_lite/n2d_de10_lite_clock_intel.sv"}
+                     "src/common/fpga/de10_lite/n2a_de10_lite_clock_portable.sv":
+                         "src/common/fpga/de10_lite/n2a_de10_lite_clock_intel.sv"}
         # Why: lint-waiver companions and the dv/ primitive stub exist only for
         # Verilator, so Quartus never sees them.
         expected_sources = {intel_for.get(source, source) for source in simulation[:-1]
@@ -515,7 +515,8 @@ class QuartusTests(unittest.TestCase):
     def test_de2_115_closure_swaps_only_the_board_files(self):
         config = quartus.load_config(ROOT, "src/nand2doom/cfg/n2d_quartus.json", "de2_115")
         de10, de2 = "src/nand2doom/fpga/de10_lite", "src/nand2doom/fpga/de2_115"
-        swapped = {f"{de10}/n2d_de10_lite_clock_intel.sv": f"{de2}/n2d_de2_115_clock_intel.sv",
+        clocks = "src/common/fpga"
+        swapped = {f"{clocks}/de10_lite/n2a_de10_lite_clock_intel.sv": f"{clocks}/de2_115/n2a_de2_115_clock_intel.sv",
                    f"{de10}/n2d_de10_lite.sv": f"{de2}/n2d_de2_115.sv"}
         self.assertEqual(config["sources"], [swapped.get(name, name) for name in self.config["sources"]])
         # Why: the DE2-115 framebuffer is full width, so its RAM requirements count two
@@ -534,7 +535,7 @@ class QuartusTests(unittest.TestCase):
         intel_for = {"src/common/rtl/memory/n2a_sync_ram.sv": "src/common/rtl/memory/n2a_sync_ram_intel.sv",
                      "src/common/rtl/memory/n2a_sdp_ram_portable.sv": "src/common/rtl/memory/n2a_sdp_ram_intel.sv",
                      "src/common/rtl/memory/n2a_tdp_ram_portable.sv": "src/common/rtl/memory/n2a_tdp_ram_intel.sv",
-                     f"{de2}/n2d_de2_115_clock_portable.sv": f"{de2}/n2d_de2_115_clock_intel.sv"}
+                     f"{clocks}/de2_115/n2a_de2_115_clock_portable.sv": f"{clocks}/de2_115/n2a_de2_115_clock_intel.sv"}
         self.assertEqual(set(config["sources"]), {intel_for.get(name, name) for name in simulation[:-1]
                                                   if "/dv/" not in name})
 
@@ -567,10 +568,10 @@ class QuartusTests(unittest.TestCase):
             self.assertIn(line, qsf)
         self.assertEqual(len(re.findall("IO_STANDARD", qsf)), len(config["pins"]))
         self.assertEqual((output / "n2d_de2_115.qpf").read_text(), 'PROJECT_REVISION = "n2d_de2_115"\n')
-        hardware = (output / "src/nand2doom/fpga/de2_115/n2d_de2_115_clock_intel.sv").read_text()
+        hardware = (output / "src/common/fpga/de2_115/n2a_de2_115_clock_intel.sv").read_text()
         self.assertIn('.intended_device_family("Cyclone IV E")', hardware)
         self.assertNotIn("de10_lite", "\n".join(path.name for path in output.rglob("*.sv")))
-        self.assertFalse((output / "src/nand2doom/fpga/de2_115/n2d_de2_115_clock_portable.sv").exists())
+        self.assertFalse((output / "src/common/fpga/de2_115/n2a_de2_115_clock_portable.sv").exists())
         settings = (output / config["settings"]).read_text()
         for port in ("UART_RX", "PS2_CLK", "PS2_DAT"):
             self.assertIn(f"WEAK_PULL_UP_RESISTOR ON -to {port}", settings)
@@ -611,7 +612,7 @@ class QuartusTests(unittest.TestCase):
                           (table, originals[table].replace("{ VGA_CLK }", "{ VGA_HS }")),
                           (table, originals[table].replace("CLOCK_50", "MAX10_CLK1_50")),
                           (check, originals[check].replace("; VGA_CLK ;", "; VGA_HS ;")),
-                          (check, originals[check].replace("n2d_de2_115_clock:", "n2d_de10_lite_clock:")),
+                          (check, originals[check].replace("n2a_de2_115_clock:", "n2a_de10_lite_clock:")),
                           (summary, originals[summary].replace("Setup 'vga_dac_clock'", "Setup 'other'"))):
             path.write_text(bad)
             with self.subTest(path=path.name), self.assertRaises(RuntimeError):
@@ -730,12 +731,12 @@ class QuartusTests(unittest.TestCase):
         registry = json.loads((ROOT / "src/nand2doom/cfg/targets.json").read_text())
         for target in registry["targets"].values():
             self.assertNotIn("DISABLE_ASSERTIONS", target.get("defines", []))
-        hardware = (output / "src/nand2doom/fpga/de10_lite/n2d_de10_lite_clock_intel.sv").read_text()
+        hardware = (output / "src/common/fpga/de10_lite/n2a_de10_lite_clock_intel.sv").read_text()
         self.assertIn("altpll #(", hardware)
         self.assertIn(") u_pll (", hardware)
         self.assertNotIn("clock_q", hardware)
         self.assertNotIn("SYNTHESIS", hardware)
-        self.assertFalse((output / "src/nand2doom/fpga/de10_lite/n2d_de10_lite_clock_portable.sv").exists())
+        self.assertFalse((output / "src/common/fpga/de10_lite/n2a_de10_lite_clock_portable.sv").exists())
         settings = (output / self.config["settings"]).read_text()
         for pattern, strength in (("DRAM*", "8MA"), ("VGA_*", "8MA"),
                                   ("LEDR*", "4MA"), ("UART_TXD", "4MA")):
@@ -1088,8 +1089,8 @@ class QuartusTests(unittest.TestCase):
     def test_backend_pairs_select_exactly_one_file(self):
         pairs = (("src/common/rtl/memory/n2a_sync_ram.sv", "src/common/rtl/memory/n2a_sync_ram_intel.sv"),
                  ("src/common/rtl/memory/n2a_sdp_ram_portable.sv", "src/common/rtl/memory/n2a_sdp_ram_intel.sv"),
-                 ("src/nand2doom/fpga/de10_lite/n2d_de10_lite_clock_portable.sv",
-                  "src/nand2doom/fpga/de10_lite/n2d_de10_lite_clock_intel.sv"),
+                 ("src/common/fpga/de10_lite/n2a_de10_lite_clock_portable.sv",
+                  "src/common/fpga/de10_lite/n2a_de10_lite_clock_intel.sv"),
                  ("src/common/rtl/memory/n2a_tdp_ram_portable.sv", "src/common/rtl/memory/n2a_tdp_ram_intel.sv"))
         sources = self.config["sources"]
         for portable, intel in pairs:
@@ -1097,8 +1098,8 @@ class QuartusTests(unittest.TestCase):
                 self.assertEqual(1, sum(source in sources for source in (portable, intel)))
                 self.assertIn(intel, sources)
                 self.assertEqual(1, sum(1 for path in (ROOT / portable, ROOT / intel) if path.is_file()) - 1)
-        for bad in (sources + ["src/nand2doom/fpga/de10_lite/n2d_de10_lite_clock_portable.sv"],
-                    [source for source in sources if "n2d_de10_lite_clock" not in source]):
+        for bad in (sources + ["src/common/fpga/de10_lite/n2a_de10_lite_clock_portable.sv"],
+                    [source for source in sources if "n2a_de10_lite_clock" not in source]):
             with self.subTest(bad=len(bad)):
                 self.assertNotEqual(1, sum(source in bad for source in pairs[2]))
 

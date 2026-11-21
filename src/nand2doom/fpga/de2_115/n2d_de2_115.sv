@@ -52,7 +52,7 @@ module n2d_de2_115
     logic [1:0] jtag_ir;
     logic [3:0] vga_red, vga_green, vga_blue;
 
-    n2d_de2_115_clock u_clock (.reference_clk_i(CLOCK_50),
+    n2a_de2_115_clock u_clock (.reference_clk_i(CLOCK_50),
         .reset_i(!KEY[0]), .clk_25_o(clk_25), .locked_o(locked));
     n2a_reset_sync u_reset (.clk_i(clk_25),
         .async_reset_i(!KEY[0] || !locked), .reset_o(reset));

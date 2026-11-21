@@ -108,7 +108,7 @@ module n2m_de2_115 #(
     logic [HEARTBEAT_BIT:0] heartbeat_q, heartbeat_d;
     logic [SERIAL_STRETCH_BIT:0] stretch_q, stretch_d;
 
-    n2m_de2_115_clock u_clock (
+    n2a_de2_115_clock u_clock (
         .reference_clk_i (CLOCK_50),
         .reset_i         (!KEY[0]),
         .clk_25_o        (clk_25),

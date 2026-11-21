@@ -13,14 +13,15 @@ import unittest
 ROOT = Path(__file__).resolve().parents[5]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-from src.nand2mario.scripts.tests import target_view  # noqa: E402
+sys.path.insert(0, str(ROOT / "tools/sim"))
+import sim  # noqa: E402
 from src.nand2mario.scripts.board import n2m_board
 from src.nand2mario.scripts.board import n2m_quartus  # noqa: E402
 from src.common.scripts.jtag import n2a_jtag_keyboard as jtag  # noqa: E402
 
 CONFIG = "src/nand2mario/cfg/n2m_quartus.json"
 TOP = ROOT / "src/nand2mario/fpga/de10_lite/n2m_de10_lite.sv"
-PAIRS = (("src/nand2mario/fpga/de10_lite/n2m_de10_lite_clock_portable.sv", "src/nand2mario/fpga/de10_lite/n2m_de10_lite_clock_intel.sv"),
+PAIRS = (("src/common/fpga/de10_lite/n2a_de10_lite_clock_portable.sv", "src/common/fpga/de10_lite/n2a_de10_lite_clock_intel.sv"),
          ("src/common/rtl/memory/n2a_sdp_ram_portable.sv", "src/common/rtl/memory/n2a_sdp_ram_intel.sv"))
 
 
@@ -70,7 +71,7 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual("src/nand2mario/fpga/de10_lite/n2m_de10_lite.sv", sources[-1])
 
     def test_simulation_target_selects_only_portable_backends(self):
-        targets = target_view.load_targets()
+        targets = sim.target_views()
         board = targets["n2m_de10_lite"]
         for portable, intel in PAIRS:
             self.assertIn(portable, board.sources)
