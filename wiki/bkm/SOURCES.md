@@ -30,6 +30,7 @@ Which topic sources each BKM used, and why the others were rejected, is recorded
 | `dv/verification.md`, `fv/formal.md` | topic #39; sources used in their front matter |
 | `rtl/architecture.md` | topic #40; sources used in its front matter |
 | `design/planning.md` | topic #32; sources used in its front matter |
+| `writing/code-comments.md`; the comment lint in `tools/lint/` | pstack: `no-comments` and its `comment-sicko` agent, turned into a lint at its author's suggestion; Matt Pocock's comment-review prompt (2026-11-20) for the cleanup steps; issue #105 |
 
 SRE = Skills for Real Engineers.
 

@@ -1,5 +1,5 @@
-# L0 regression (wiki/bkm/workflow/ci-levels.md): the scripts' and tools' unit
-# tests and every L0 simulation target, on Verilator and cocotb at the versions
+# L0 regression (wiki/bkm/workflow/ci-levels.md): the comment lint, the scripts'
+# and tools' unit tests and every L0 simulation target, on Verilator and cocotb at the versions
 # pinned in cfg/toolchain.json and tools/sim/requirements.txt.
 name: l0
 
@@ -23,6 +23,9 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+
+      - name: Comment lint
+        run: python3 tools/lint/comment_lint.py
 
       - name: Read the Verilator pin
         id: pin
