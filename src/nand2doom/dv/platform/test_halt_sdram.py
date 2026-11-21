@@ -8,6 +8,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import FallingEdge, RisingEdge, Timer, with_timeout
 from cocotb.utils import get_sim_time
 
+from src.common.dv.uart.uart_wire import UartWire
 from src.nand2doom.dv.core.rv32i_smoke_model import encode_i, encode_s, encode_b
 from src.nand2doom.dv.memory.sdram_pin_model import SdramPinModel
 from src.nand2doom.scripts.host.n2d_uart_debug_host import (
@@ -15,6 +16,7 @@ from src.nand2doom.scripts.host.n2d_uart_debug_host import (
     request, decode_response,
 )
 
+BAUD = 1_000_000
 BASE = 0x10000
 # Ref: D-cache geometry of the fixture, set by _geometry() at test start: dirty lines that fill
 # every way of every set, their byte span, and the wiki/src/nand2doom/rtl/memory/mas.md "Maintained
@@ -134,22 +136,18 @@ class SerialHost:
         self.on_response_start = None
         self.request_start = None
         self.request_end = None
+        self.uart = UartWire(rx=dut.uart_rx_i, tx=dut.uart_tx_o, bit_ps=10**12 / BAUD)
+
+    def _response_started(self):
+        self.first_response = cycle()
+        if self.on_response_start is not None:
+            self.on_response_start()
 
     async def receive(self):
         packet, length = bytearray(), 7
         while len(packet) < length:
-            await FallingEdge(self.dut.uart_tx_o)
-            if not packet:
-                self.first_response = cycle()
-                if self.on_response_start is not None:
-                    self.on_response_start()
-            await Timer(1500, unit="ns")
-            value = 0
-            for bit in range(8):
-                value |= int(self.dut.uart_tx_o.value) << bit
-                await Timer(1000, unit="ns")
-            assert int(self.dut.uart_tx_o.value), "UART stop bit"
-            packet.append(value)
+            packet.append(await self.uart.receive_byte(
+                on_start=None if packet else self._response_started))
             if len(packet) == 6:
                 length += packet[5] * 4
         return decode_response(bytes(packet))
@@ -163,9 +161,7 @@ class SerialHost:
         for index, value in enumerate(packet):
             if index == len(packet) - 1 and before_crc is not None:
                 await before_crc()
-            for bit in (0, *((value >> i) & 1 for i in range(8)), 1):
-                self.dut.uart_rx_i.value = bit
-                await Timer(1000, unit="ns")
+            await self.uart.send(bytes([value]))
         self.request_end = cycle()
         if after_send is not None:
             await after_send()

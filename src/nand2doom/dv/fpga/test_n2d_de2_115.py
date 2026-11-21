@@ -6,6 +6,7 @@ from cocotb.utils import get_sim_time
 
 import zlib
 
+from src.common.dv.uart.uart_wire import UartWire
 from src.nand2doom.dv.fpga.board_jtag import check_jtag_keys
 from src.nand2doom.dv.memory.sdram_pin_model import NOP, WRITE, SdramPinModel, join
 import src.nand2doom.scripts.host.n2d_uart_debug_host as wire
@@ -124,16 +125,10 @@ async def board_serial_sdram_video_contract(dut):
     check_constant_pins()
     assert initial == [(0, 1, 0), (0, 0, 1), (0, 0, 1), (0, 0, 0)]
 
+    uart = UartWire(rx=dut.UART_RX, tx=dut.UART_TX, bit_ps=BIT_PS)
+
     async def uart_byte():
-        await FallingEdge(dut.UART_TX)
-        start = get_sim_time(unit="ps")
-        value = 0
-        for bit in range(9):
-            await Timer(start + round((bit + 1.5) * BIT_PS) - get_sim_time(unit="ps"), unit="ps")
-            if bit < 8:
-                value |= int(dut.UART_TX.value) << bit
-        assert int(dut.UART_TX.value), "UART stop bit"
-        return value
+        return await uart.receive_byte()
 
     async def receive():
         packet = bytearray()
@@ -145,12 +140,7 @@ async def board_serial_sdram_video_contract(dut):
         return decode_response(bytes(packet))
 
     async def send(data):
-        start, index = get_sim_time(unit="ps"), 0
-        for value in data:
-            for bit in (0, *((value >> i) & 1 for i in range(8)), 1):
-                dut.UART_RX.value = bit
-                index += 1
-                await Timer(start + round(index * BIT_PS) - get_sim_time(unit="ps"), unit="ps")
+        await uart.send(data)
 
     async def exchange(command, sequence, timeout_us=500, **kwargs):
         receiver = cocotb.start_soon(receive())
