@@ -22,8 +22,8 @@ module n2m_ppu_background (
   input  logic                   reset_i,
   input  logic                   dot_enable_i,
   input  logic                   lcd_enable_i,
-  input  n2m_ppu_pkg::dot_t      dot_i,
-  input  n2m_ppu_pkg::line_t     ly_i,
+  input  n2m_ppu_pkg::t_dot      dot_i,
+  input  n2m_ppu_pkg::t_line     ly_i,
   input  logic [2:0]             fine_scroll_i,
   input  logic [7:0]             lcdc_i,
   input  logic [7:0]             scy_i,
@@ -47,7 +47,7 @@ module n2m_ppu_background (
 );
   import n2m_ppu_pkg::*;
 
-  background_fetch_state_t state_q, state_d;
+  t_background_fetch_state state_q, state_d;
   logic         visible_line, fetch_busy;
   logic         background_dot, background_needed, background_launch;
   logic         window_dot, window_boundary, window_launch, fetch_launch;
@@ -69,17 +69,17 @@ module n2m_ppu_background (
   logic [2:0]   background_column, window_column, column;
   logic [1:0]   raw_color;
 
-  assign visible_line = ly_i < line_t'(VISIBLE_LINES);
+  assign visible_line = ly_i < t_line'(VISIBLE_LINES);
 
   // Why: tiles launch every eight dots from dot 91 (91, 99, ..., 251) so each
   // tile's bytes are captured before its first pixel; only tiles with a
   // visible pixel (tile 20 exists only with a nonzero fine scroll) left of the
   // window's first pixel launch.
-  assign fetch_offset = 8'(dot_i - dot_t'(FETCH_DOT));
+  assign fetch_offset = 8'(dot_i - t_dot'(FETCH_DOT));
   assign tile_index = fetch_offset[7:3];
   assign fetch_phase = fetch_offset[2:0];
   assign last_tile = 5'((9'd159 + 9'(fine_scroll_i)) >> 3);
-  assign background_dot = (dot_i >= dot_t'(FETCH_DOT)) && (dot_i <= dot_t'(LAST_FETCH_DOT)) &&
+  assign background_dot = (dot_i >= t_dot'(FETCH_DOT)) && (dot_i <= t_dot'(LAST_FETCH_DOT)) &&
                           (fetch_phase == 3'd0) && (tile_index <= last_tile);
   assign tile_first_pixel = {1'b0, tile_index, 3'd0};
   assign window_cover = 9'(window_first_pixel_i) + 9'(fine_scroll_i);
@@ -90,8 +90,8 @@ module n2m_ppu_background (
   // Why: a window tile starts at the first window pixel and at each window
   // column multiple of 8 (pixel p = dot - 91 - fine), so window tiles align to
   // the window, not to the background scroll.
-  assign window_pixel = dot_i - dot_t'(FETCH_DOT) - dot_t'(fine_scroll_i);
-  assign window_dot = window_active_i && (dot_i >= dot_t'(FETCH_DOT) + dot_t'(fine_scroll_i)) &&
+  assign window_pixel = dot_i - t_dot'(FETCH_DOT) - t_dot'(fine_scroll_i);
+  assign window_dot = window_active_i && (dot_i >= t_dot'(FETCH_DOT) + t_dot'(fine_scroll_i)) &&
                       (window_pixel < 9'(VISIBLE_PIXELS)) &&
                       (window_pixel >= 9'(window_first_pixel_i));
   assign launch_column = window_pixel[7:0] + 8'd7 - window_wx_i;
@@ -127,20 +127,20 @@ module n2m_ppu_background (
     endcase
     if (!lcd_enable_i) state_d = FETCH_IDLE;
   end
-  `N2A_DFF_RST_VAL(state_q, state_d, clk_i, reset_i, FETCH_IDLE)
+  `DFF_RST_VAL(state_q, state_d, clk_i, reset_i, FETCH_IDLE)
   assign fetch_busy = state_q != FETCH_IDLE;
 
-  `N2A_DFF_RST_EN(map_address_q, map_address_d, clk_i, fetch_launch, reset_i, 13'd0)
+  `DFF_RST_EN(map_address_q, map_address_d, clk_i, fetch_launch, reset_i, 13'd0)
   assign unsigned_ids_d = lcdc_i[LCDC_TILE_DATA_BIT];
-  `N2A_DFF_RST_EN(tile_row_q, tile_row_d, clk_i, fetch_launch, reset_i, 3'd0)
-  `N2A_DFF_RST_EN(unsigned_ids_q, unsigned_ids_d, clk_i, fetch_launch, reset_i, 1'b0)
+  `DFF_RST_EN(tile_row_q, tile_row_d, clk_i, fetch_launch, reset_i, 3'd0)
+  `DFF_RST_EN(unsigned_ids_q, unsigned_ids_d, clk_i, fetch_launch, reset_i, 1'b0)
 
   assign tile_capture = state_q == FETCH_LOW;
   assign low_capture = state_q == FETCH_HIGH;
   assign high_capture = state_q == FETCH_LAST;
-  `N2A_DFF_RST_EN(tile_q, vram_data_i, clk_i, tile_capture, reset_i, 8'h00)
-  `N2A_DFF_RST_EN(row_low_q, vram_data_i, clk_i, low_capture, reset_i, 8'h00)
-  `N2A_DFF_RST_EN(row_high_q, vram_data_i, clk_i, high_capture, reset_i, 8'h00)
+  `DFF_RST_EN(tile_q, vram_data_i, clk_i, tile_capture, reset_i, 8'h00)
+  `DFF_RST_EN(row_low_q, vram_data_i, clk_i, low_capture, reset_i, 8'h00)
+  `DFF_RST_EN(row_high_q, vram_data_i, clk_i, high_capture, reset_i, 8'h00)
 
   // Why: the map byte is live on the port for one cycle only, so the low-plane
   // address uses it directly and the high-plane address the captured copy one
@@ -177,9 +177,9 @@ module n2m_ppu_background (
   // Why: emission (end of dots 92 + fine .. 251 + fine) trails the first fetch
   // launch by one dot so a tile's bytes are captured before its first pixel. A
   // window pixel is one at or beyond the first window pixel of an active line.
-  assign pixel_offset = dot_i - dot_t'(PIXEL_DOT) - dot_t'(fine_scroll_i);
+  assign pixel_offset = dot_i - t_dot'(PIXEL_DOT) - t_dot'(fine_scroll_i);
   assign emit = dot_enable_i && lcd_enable_i && visible_line &&
-                (dot_i >= dot_t'(PIXEL_DOT) + dot_t'(fine_scroll_i)) &&
+                (dot_i >= t_dot'(PIXEL_DOT) + t_dot'(fine_scroll_i)) &&
                 (pixel_offset < 9'(VISIBLE_PIXELS));
   assign pixel_x = pixel_offset[7:0];
   assign window_pixel_now = window_active_i && (pixel_x >= window_first_pixel_i);
@@ -193,12 +193,12 @@ module n2m_ppu_background (
   assign color_o = lcdc_i[LCDC_BG_ENABLE_BIT] ? raw_color : 2'd0;
   assign window_drawn_o = emit && window_pixel_now && lcdc_i[LCDC_BG_ENABLE_BIT];
 
-  `N2A_ASSERT(fetch_fits_in_dot, clk_i, reset_i, !(dot_enable_i && fetch_busy))
-  `N2A_ASSERT(one_launch_per_dot, clk_i, reset_i, !(background_launch && window_launch))
-  `N2A_ASSERT(vram_answers_reads, clk_i, reset_i,
+  `ASSERT(fetch_fits_in_dot, clk_i, reset_i, !(dot_enable_i && fetch_busy))
+  `ASSERT(one_launch_per_dot, clk_i, reset_i, !(background_launch && window_launch))
+  `ASSERT(vram_answers_reads, clk_i, reset_i,
       !(tile_capture || low_capture || high_capture) || vram_valid_i)
-  `N2A_ASSERT(vram_data_known, clk_i, reset_i,
+  `ASSERT(vram_data_known, clk_i, reset_i,
       !(tile_capture || low_capture || high_capture) || !$isunknown(vram_data_i))
-  `N2A_ASSERT(no_fetch_while_lcd_off, clk_i, reset_i,
+  `ASSERT(no_fetch_while_lcd_off, clk_i, reset_i,
       lcd_enable_i || $past(lcd_enable_i) || !fetch_busy)
 endmodule

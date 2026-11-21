@@ -16,14 +16,14 @@ module n2a_cdc_bit_sync #(
   logic [IMPLEMENTATION_STAGES-1:0] stages_q;
   logic [IMPLEMENTATION_STAGES-1:0] stages_d;
 
-  `N2A_ASSERT_PARAM(g_invalid_stages, STAGES >= 2,
+  `ASSERT_PARAM(g_invalid_stages, STAGES >= 2,
       "n2a_cdc_bit_sync STAGES must be at least 2")
 
   assign stages_d = {stages_q[IMPLEMENTATION_STAGES-2:0], async_i};
 
   // Asynchronous reset loads every stage with RESET_VALUE (owning HAS).
   localparam logic [IMPLEMENTATION_STAGES-1:0] STAGES_RESET = {IMPLEMENTATION_STAGES{RESET_VALUE}};
-  `N2A_DFF_ARST_VAL(stages_q, stages_d, clk_i, reset_i, STAGES_RESET)
+  `DFF_ARST_VAL(stages_q, stages_d, clk_i, reset_i, STAGES_RESET)
 
   assign sync_o = stages_q[IMPLEMENTATION_STAGES-1];
 endmodule

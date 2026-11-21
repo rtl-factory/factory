@@ -46,7 +46,7 @@ module n2m_de2_115 #(
   inout  tri  [15:0] DRAM_DQ
 );
   localparam int unsigned SERIAL_STRETCH_BIT = 22;  // Why: a one-clock serial strobe is invisible on an LED; 2^22 clocks stretch it to 168 ms.
-  `N2A_ASSERT_PARAM(g_invalid_heartbeat, (HEARTBEAT_BIT >= 1) && (HEARTBEAT_BIT <= 30),
+  `ASSERT_PARAM(g_invalid_heartbeat, (HEARTBEAT_BIT >= 1) && (HEARTBEAT_BIT <= 30),
       "n2m_de2_115 HEARTBEAT_BIT must be between 1 and 30")
 
   logic clk_25, locked, reset, core_reset;
@@ -94,7 +94,7 @@ module n2m_de2_115 #(
   // Why: only the retired PC reaches a pin, so the other observation fields
   // are unused by design.
   /* verilator lint_off UNUSEDSIGNAL */
-  n2m_interfaces_pkg::retirement_t retirement;
+  n2m_interfaces_pkg::t_retirement retirement;
   /* verilator lint_on UNUSEDSIGNAL */
   // JTAG scan ports and the keyboard endpoint's byte offer.
   logic jtag_tck, jtag_tdi, jtag_capture, jtag_shift, jtag_update, jtag_update_ir, jtag_tdo;
@@ -244,13 +244,13 @@ module n2m_de2_115 #(
   logic retirement_valid;
   assign retirement_valid = retirement.valid;
   assign pc_d = retirement.pc_after;
-  `N2A_DFF_RST_EN(pc_q, pc_d, clk_25, retirement_valid, core_reset, 16'h0000)
-  `N2A_DFF_RST_EN(serial_q, serial_tx_data, clk_25, serial_tx_valid, core_reset, 8'h00)
+  `DFF_RST_EN(pc_q, pc_d, clk_25, retirement_valid, core_reset, 16'h0000)
+  `DFF_RST_EN(serial_q, serial_tx_data, clk_25, serial_tx_valid, core_reset, 8'h00)
   assign heartbeat_d = heartbeat_q + 1'b1;
-  `N2A_DFF_RST(heartbeat_q, heartbeat_d, clk_25, reset)
+  `DFF_RST(heartbeat_q, heartbeat_d, clk_25, reset)
   assign stretch_d = serial_tx_valid ? {1'b1, {SERIAL_STRETCH_BIT{1'b0}}} :
                      (stretch_q[SERIAL_STRETCH_BIT] ? stretch_q + 1'b1 : stretch_q);
-  `N2A_DFF_RST(stretch_q, stretch_d, clk_25, core_reset)
+  `DFF_RST(stretch_q, stretch_d, clk_25, core_reset)
 
   assign LEDR = {stretch_q[SERIAL_STRETCH_BIT], |buttons, heartbeat_q[HEARTBEAT_BIT],
                  display_valid, fault, cpu_locked, stopped, halted, core_reset, locked};

@@ -18,9 +18,9 @@ module n2m_apu (
   input  logic                               sequencer_bit_i,
   // Peripheral port from the memory map; kind is not consulted.
   /* verilator lint_off UNUSEDSIGNAL */
-  input  n2m_interfaces_pkg::bus_request_t   io_request_i,
+  input  n2m_interfaces_pkg::t_bus_request   io_request_i,
   /* verilator lint_on UNUSEDSIGNAL */
-  output n2m_interfaces_pkg::bus_response_t  io_response_o,
+  output n2m_interfaces_pkg::t_bus_response  io_response_o,
   output logic                               io_selected_o
 );
   localparam logic [15:0] REGISTER_START = 16'hFF10;
@@ -227,16 +227,16 @@ module n2m_apu (
     else read_data = 8'hFF;
   end
 
-  `N2A_DFF_ARRAY_RST_EN(wave_q, wave_d, clk_i, wave_write, reset_i)
-  `N2A_DFF_RST_VAL(regs_q, regs_d, clk_i, reset_i, BOOT_REGS)
-  `N2A_DFF_RST(length_q, length_d, clk_i, reset_i)
-  `N2A_DFF_RST_VAL(power_q, power_d, clk_i, reset_i, 1'b1)
-  `N2A_DFF_RST_VAL(active_q, active_d, clk_i, reset_i, 4'b0001)
-  `N2A_DFF_RST(step_q, step_d, clk_i, reset_i)
-  `N2A_DFF_RST(sequencer_bit_q, sequencer_bit_i, clk_i, reset_i)
-  `N2A_DFF_RST(shadow_q, shadow_d, clk_i, reset_i)
-  `N2A_DFF_RST(sweep_timer_q, sweep_timer_d, clk_i, reset_i)
-  `N2A_DFF_RST(sweep_enable_q, sweep_enable_d, clk_i, reset_i)
+  `DFF_ARRAY_RST_EN(wave_q, wave_d, clk_i, wave_write, reset_i)
+  `DFF_RST_VAL(regs_q, regs_d, clk_i, reset_i, BOOT_REGS)
+  `DFF_RST(length_q, length_d, clk_i, reset_i)
+  `DFF_RST_VAL(power_q, power_d, clk_i, reset_i, 1'b1)
+  `DFF_RST_VAL(active_q, active_d, clk_i, reset_i, 4'b0001)
+  `DFF_RST(step_q, step_d, clk_i, reset_i)
+  `DFF_RST(sequencer_bit_q, sequencer_bit_i, clk_i, reset_i)
+  `DFF_RST(shadow_q, shadow_d, clk_i, reset_i)
+  `DFF_RST(sweep_timer_q, sweep_timer_d, clk_i, reset_i)
+  `DFF_RST(sweep_enable_q, sweep_enable_d, clk_i, reset_i)
 
   always_comb begin
     io_response_o.valid = access;

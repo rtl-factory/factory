@@ -11,12 +11,12 @@
 module n2m_ppu_registers (
   input  logic                                clk_i,
   input  logic                                reset_i,
-  input  n2m_interfaces_pkg::bus_request_t    io_request_i,
-  output n2m_interfaces_pkg::bus_response_t   io_response_o,
+  input  n2m_interfaces_pkg::t_bus_request    io_request_i,
+  output n2m_interfaces_pkg::t_bus_response   io_response_o,
   output logic                                io_selected_o,
-  input  n2m_ppu_pkg::mode_t                  mode_i,
+  input  n2m_ppu_pkg::t_mode                  mode_i,
   input  logic                                coincidence_i,
-  input  n2m_ppu_pkg::line_t                  ly_i,
+  input  n2m_ppu_pkg::t_line                  ly_i,
   output logic [7:0]                          lcdc_o,
   output logic [3:0]                          stat_enables_o,
   output logic [7:0]                          scy_o,
@@ -70,16 +70,16 @@ module n2m_ppu_registers (
   // Ref: Pan Docs "Power Up Sequence": DMG post-boot values (there is no boot
   // ROM): LCD on with the background enabled from $8000 tiles ($91) and BGP
   // $FC; the rest zero.
-  `N2A_DFF_RST_EN(lcdc_q, write_data, clk_i, lcdc_write, reset_i, 8'h91)
-  `N2A_DFF_RST_EN(stat_enables_q, stat_write_data, clk_i, stat_write, reset_i, 4'h0)
-  `N2A_DFF_RST_EN(scy_q, write_data, clk_i, scy_write, reset_i, 8'h00)
-  `N2A_DFF_RST_EN(scx_q, write_data, clk_i, scx_write, reset_i, 8'h00)
-  `N2A_DFF_RST_EN(lyc_q, write_data, clk_i, lyc_write, reset_i, 8'h00)
-  `N2A_DFF_RST_EN(bgp_q, write_data, clk_i, bgp_write, reset_i, 8'hFC)
-  `N2A_DFF_RST_EN(obp0_q, write_data, clk_i, obp0_write, reset_i, 8'h00)
-  `N2A_DFF_RST_EN(obp1_q, write_data, clk_i, obp1_write, reset_i, 8'h00)
-  `N2A_DFF_RST_EN(wy_q, write_data, clk_i, wy_write, reset_i, 8'h00)
-  `N2A_DFF_RST_EN(wx_q, write_data, clk_i, wx_write, reset_i, 8'h00)
+  `DFF_RST_EN(lcdc_q, write_data, clk_i, lcdc_write, reset_i, 8'h91)
+  `DFF_RST_EN(stat_enables_q, stat_write_data, clk_i, stat_write, reset_i, 4'h0)
+  `DFF_RST_EN(scy_q, write_data, clk_i, scy_write, reset_i, 8'h00)
+  `DFF_RST_EN(scx_q, write_data, clk_i, scx_write, reset_i, 8'h00)
+  `DFF_RST_EN(lyc_q, write_data, clk_i, lyc_write, reset_i, 8'h00)
+  `DFF_RST_EN(bgp_q, write_data, clk_i, bgp_write, reset_i, 8'hFC)
+  `DFF_RST_EN(obp0_q, write_data, clk_i, obp0_write, reset_i, 8'h00)
+  `DFF_RST_EN(obp1_q, write_data, clk_i, obp1_write, reset_i, 8'h00)
+  `DFF_RST_EN(wy_q, write_data, clk_i, wy_write, reset_i, 8'h00)
+  `DFF_RST_EN(wx_q, write_data, clk_i, wx_write, reset_i, 8'h00)
 
   // Ref: Pan Docs "STAT": bit 7 reads 1, bits 6:3 the stored enables, bit 2 the
   // coincidence flag and bits 1:0 the mode. Why: the unselected value is never
@@ -117,6 +117,6 @@ module n2m_ppu_registers (
   assign wy_o = wy_q;
   assign wx_o = wx_q;
 
-  `N2A_ASSERT(io_request_known, clk_i, reset_i,
+  `ASSERT(io_request_known, clk_i, reset_i,
       !io_request_i.valid || !$isunknown(io_request_i))
 endmodule

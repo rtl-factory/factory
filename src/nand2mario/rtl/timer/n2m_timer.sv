@@ -22,9 +22,9 @@ module n2m_timer (
   input  logic                               divider_reset_i,
   // Peripheral port from the memory map; kind is not consulted.
   /* verilator lint_off UNUSEDSIGNAL */
-  input  n2m_interfaces_pkg::bus_request_t   io_request_i,
+  input  n2m_interfaces_pkg::t_bus_request   io_request_i,
   /* verilator lint_on UNUSEDSIGNAL */
-  output n2m_interfaces_pkg::bus_response_t  io_response_o,
+  output n2m_interfaces_pkg::t_bus_response  io_response_o,
   output logic                               io_selected_o,
   // One-cycle pulse after the edge that reloaded TIMA from TMA.
   output logic                               interrupt_o,
@@ -47,7 +47,7 @@ module n2m_timer (
   logic [7:0]  tima_q, tima_d, tima_base;
   logic [7:0]  tma_q, tma_d;
   logic [2:0]  tac_q, tac_d;
-  timer_reload_t reload_q, reload_d;
+  t_timer_reload reload_q, reload_d;
   logic        interrupt_q, interrupt_d;
   logic        tick, access, write_div, write_tima, write_tma, write_tac;
   logic        signal_old, signal_advanced, signal_new, falling;
@@ -139,12 +139,12 @@ module n2m_timer (
     end
   end
 
-  `N2A_DFF_RST_VAL(divider_q, divider_d, clk_i, reset_i, DIVIDER_RESET)
-  `N2A_DFF_RST(tima_q, tima_d, clk_i, reset_i)
-  `N2A_DFF_RST(tma_q, tma_d, clk_i, reset_i)
-  `N2A_DFF_RST(tac_q, tac_d, clk_i, reset_i)
-  `N2A_DFF_RST_VAL(reload_q, reload_d, clk_i, reset_i, RELOAD_IDLE)
-  `N2A_DFF_RST(interrupt_q, interrupt_d, clk_i, reset_i)
+  `DFF_RST_VAL(divider_q, divider_d, clk_i, reset_i, DIVIDER_RESET)
+  `DFF_RST(tima_q, tima_d, clk_i, reset_i)
+  `DFF_RST(tma_q, tma_d, clk_i, reset_i)
+  `DFF_RST(tac_q, tac_d, clk_i, reset_i)
+  `DFF_RST_VAL(reload_q, reload_d, clk_i, reset_i, RELOAD_IDLE)
+  `DFF_RST(interrupt_q, interrupt_d, clk_i, reset_i)
   assign interrupt_o = interrupt_q;
 
   // Ref: Pan Docs "Timer and Divider Registers": DIV is the divider's top
@@ -162,17 +162,17 @@ module n2m_timer (
     endcase
   end
 
-  `N2A_ASSERT_KNOWN(timer_controls_known, clk_i, reset_i,
+  `ASSERT_KNOWN(timer_controls_known, clk_i, reset_i,
       {machine_cycle_enable_i, divider_reset_i, io_request_i.valid})
-  `N2A_ASSERT(timer_access_known, clk_i, reset_i,
+  `ASSERT(timer_access_known, clk_i, reset_i,
       !io_request_i.valid || !$isunknown({io_request_i.write, io_request_i.address}))
-  `N2A_ASSERT(timer_write_known, clk_i, reset_i,
+  `ASSERT(timer_write_known, clk_i, reset_i,
       !(access && io_request_i.write) || !$isunknown(write_data))
-  `N2A_ASSERT(timer_divider_reset_on_tick, clk_i, reset_i,
+  `ASSERT(timer_divider_reset_on_tick, clk_i, reset_i,
       !divider_reset_i || machine_cycle_enable_i)
-  `N2A_ASSERT(timer_reload_state_legal, clk_i, reset_i,
+  `ASSERT(timer_reload_state_legal, clk_i, reset_i,
       reload_q inside {RELOAD_IDLE, RELOAD_PENDING, RELOAD_HOLD})
-  `N2A_ASSERT(timer_interrupt_follows_reload, clk_i, reset_i,
+  `ASSERT(timer_interrupt_follows_reload, clk_i, reset_i,
       interrupt_q |-> $past(reload_q) == RELOAD_PENDING && $past(tick))
   assign sequencer_bit_o = divider_q[10];
   assign serial_clock_o = divider_q[6] && !divider_d[6];

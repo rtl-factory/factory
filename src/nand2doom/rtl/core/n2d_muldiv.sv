@@ -31,7 +31,7 @@
 
 module n2d_muldiv (
     input  logic        clk_i,
-    input  logic        rst_i,
+    input  logic        reset_i,
     input  logic        issue_i,
     input  logic [2:0]  funct3_i,
     input  logic [31:0] rs1_i,
@@ -76,10 +76,10 @@ module n2d_muldiv (
     end
 
     // Why: the 33x33 product's two extension bits never reach a result word.
-    `N2A_UNUSED_BITS(unused_mul_full, mul_full[65:64])
+    `UNUSED_BITS(unused_mul_full, mul_full[65:64])
 
-    `N2A_DFF_EN(mul_issue_q, mul_issue_d, clk_i, mul_issue)
-    `N2A_DFF(mul_product_q, mul_product_d, clk_i)
+    `DFF_EN(mul_issue_q, mul_issue_d, clk_i, mul_issue)
+    `DFF(mul_product_q, mul_product_d, clk_i)
 
     t_div_regs div_q, div_d;
 
@@ -203,12 +203,12 @@ module n2d_muldiv (
             div_result_o = div_q.negative_quotient ? -div_q.quotient : div_q.quotient;
     end
 
-    `N2A_DFF_RST(div_q, div_d, clk_i, rst_i)
+    `DFF_RST(div_q, div_d, clk_i, reset_i)
 
-    `N2A_ASSERT_NEVER(muldiv_divide_issue_while_busy, clk_i, rst_i,
+    `ASSERT_NEVER(muldiv_divide_issue_while_busy, clk_i, reset_i,
         div_issue && (div_q.state != DIV_IDLE) && !kill_i)
-    `N2A_ASSERT_NEVER(muldiv_iteration_count_range, clk_i, rst_i,
+    `ASSERT_NEVER(muldiv_iteration_count_range, clk_i, reset_i,
         (div_q.state == DIV_ITER) && ((div_q.count == 6'd0) || (div_q.count > 6'd32)))
-    `N2A_ASSERT_NEVER(muldiv_consume_without_result, clk_i, rst_i,
+    `ASSERT_NEVER(muldiv_consume_without_result, clk_i, reset_i,
         consume_i && (div_q.state != DIV_DONE))
 endmodule

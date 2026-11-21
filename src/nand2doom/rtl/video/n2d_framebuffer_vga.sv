@@ -72,9 +72,9 @@ module n2d_framebuffer_vga #(
   localparam int unsigned LANE_BITS = FULL_WIDTH ? 2 : 1;
 
   logic [7:0] cpu_lane_q [0:1][0:LANES-1], scan_lane_q [0:1][0:LANES-1];
-  localparam fb_cpu_t CPU_RESET = '{response_valid: 1'b0, in_range: 1'b0, bank: 1'b0,
+  localparam t_fb_cpu CPU_RESET = '{response_valid: 1'b0, in_range: 1'b0, bank: 1'b0,
                                     front_bank: 1'b0, swap_pending: 1'b0};
-  fb_cpu_t cpu_q, cpu_d;
+  t_fb_cpu cpu_q, cpu_d;
   // Why: the scan lane of the previous scan address has a width that follows
   // FULL_WIDTH, so it is a register of its own beside the packaged
   // software-port record.
@@ -103,15 +103,15 @@ module n2d_framebuffer_vga #(
   logic        cpu_bank;
   logic        vertical_blank_start;
 
-  localparam fb_pipe_t PIPE_RESET = '{
+  localparam t_fb_pipe PIPE_RESET = '{
     x_q: '0, x_qq: '0, y_q: '0, y_qq: '0, visible_q: 1'b0, visible_qq: 1'b0,
     hsync_q: 1'b1, hsync_qq: 1'b1, vsync_q: 1'b1, vsync_qq: 1'b1,
     frame_start_q: 1'b0, frame_start_qq: 1'b0, frame_end_q: 1'b0,
     frame_end_qq: 1'b0, palette_committed: 1'b0};
-  fb_pipe_t pipe_q, pipe_d;
-  localparam fb_pal_t PAL_RESET = '{response_valid: 1'b0, active_bank: 1'b0,
+  t_fb_pipe pipe_q, pipe_d;
+  localparam t_fb_pal PAL_RESET = '{response_valid: 1'b0, active_bank: 1'b0,
                                     commit_pending: 1'b0, committed: 1'b0};
-  fb_pal_t pal_q, pal_d;
+  t_fb_pal pal_q, pal_d;
   logic [31:0] frame_sequence_q;
 
   assign framebuffer_request_ready_o = 1'b1;
@@ -206,8 +206,8 @@ module n2d_framebuffer_vga #(
     end
   end
 
-  `N2A_DFF_RST_VAL(cpu_q, cpu_d, clk_i, reset_i, CPU_RESET)
-  `N2A_DFF_RST(scan_lane_select_q, scan_lane_select_d, clk_i, reset_i)
+  `DFF_RST_VAL(cpu_q, cpu_d, clk_i, reset_i, CPU_RESET)
+  `DFF_RST(scan_lane_select_q, scan_lane_select_d, clk_i, reset_i)
   assign framebuffer_response_valid_o = cpu_q.response_valid;
 
   // Why: a half-width read returns each stored byte for both source pixels it
@@ -240,7 +240,7 @@ module n2d_framebuffer_vga #(
         palette_request_write_i && palette_request_write_strobe_i[1];
   end
 
-  `N2A_DFF_RST_VAL(pal_q, pal_d, clk_i, reset_i, PAL_RESET)
+  `DFF_RST_VAL(pal_q, pal_d, clk_i, reset_i, PAL_RESET)
 
   // Why: both banks share one block RAM per strobe lane, addressed by
   // {bank, index}: bits 7:0 under strobe 0 and bits 11:8 under strobe 1.
@@ -300,20 +300,20 @@ module n2d_framebuffer_vga #(
     pipe_d.palette_committed = pal_q.committed;
   end
 
-  `N2A_DFF_RST_VAL(pipe_q, pipe_d, clk_i, reset_i, PIPE_RESET)
+  `DFF_RST_VAL(pipe_q, pipe_d, clk_i, reset_i, PIPE_RESET)
 
   // Why: consuming the common line-end event as a local contract check keeps
   // scanout coupled to the shared timing definition rather than re-deriving it.
-  `N2A_ASSERT_CLOCKED_FATAL_WHEN_UNGUARDED(clk_i, reset_i, timing_frame_end, timing_line_end,
+  `ASSERT_CLOCKED_FATAL_WHEN_UNGUARDED(clk_i, reset_i, timing_frame_end, timing_line_end,
       "n2d framebuffer frame end must coincide with line end")
-  `N2A_ASSERT_CLOCKED_FATAL_WHEN_UNGUARDED(clk_i, reset_i, framebuffer_request_valid_i,
+  `ASSERT_CLOCKED_FATAL_WHEN_UNGUARDED(clk_i, reset_i, framebuffer_request_valid_i,
       framebuffer_request_address_i[1:0] == 2'b00, "n2d framebuffer requests are word aligned")
 
   logic [31:0] frame_sequence_next;
   logic frame_sequence_enable;
   assign frame_sequence_next = frame_sequence_q + 1'b1;
   assign frame_sequence_enable = pipe_q.frame_start_q;
-  `N2A_DFF_RST_EN(frame_sequence_q, frame_sequence_next, clk_i, frame_sequence_enable, reset_i, '0)
+  `DFF_RST_EN(frame_sequence_q, frame_sequence_next, clk_i, frame_sequence_enable, reset_i, '0)
 
   always_comb begin
     pixel_x_o = pipe_q.x_qq;

@@ -137,13 +137,13 @@ async def reset_core(dut, settle_cycles: int | None = None) -> None:
     host resume)."""
     if settle_cycles is None:
         settle_cycles = btb_entries(dut)
-    dut.rst_i.value = 1
+    dut.reset_i.value = 1
     _initial_inputs(dut)
     dut.enable_i.value = int(settle_cycles == 0)
     await RisingEdge(dut.clk_i)
     await RisingEdge(dut.clk_i)
     await FallingEdge(dut.clk_i)
-    dut.rst_i.value = 0
+    dut.reset_i.value = 0
     for _ in range(settle_cycles):
         await FallingEdge(dut.clk_i)
     dut.enable_i.value = 1

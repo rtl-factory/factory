@@ -13,24 +13,24 @@ module n2m_frame_ram (
   input  logic                           clk_i,
   input  logic                           reset_i,
   input  logic                           write_enable_i,
-  input  n2m_display_pkg::bank_t         write_bank_i,
-  input  n2m_display_pkg::frame_index_t  write_index_i,
-  input  n2m_display_pkg::shade_t        write_shade_i,
-  input  n2m_display_pkg::bank_t         read_bank_i,
-  input  n2m_display_pkg::frame_index_t  read_index_i,
-  output n2m_display_pkg::shade_t        read_shade_o
+  input  n2m_display_pkg::t_bank         write_bank_i,
+  input  n2m_display_pkg::t_frame_index  write_index_i,
+  input  n2m_display_pkg::t_shade        write_shade_i,
+  input  n2m_display_pkg::t_bank         read_bank_i,
+  input  n2m_display_pkg::t_frame_index  read_index_i,
+  output n2m_display_pkg::t_shade        read_shade_o
 );
   import n2m_display_pkg::*;
 
-  shade_t bank_shade [0:BANK_COUNT-1];
-  bank_t  read_bank_q;
+  t_shade bank_shade [0:BANK_COUNT-1];
+  t_bank  read_bank_q;
 
   // Why: explicit generate block and genvar; Quartus rejects the inline form.
   genvar bank;
   generate
   for (bank = 0; bank < BANK_COUNT; bank = bank + 1) begin : g_banks
     logic write_enable;
-    assign write_enable = write_enable_i && (write_bank_i == bank_t'(bank));
+    assign write_enable = write_enable_i && (write_bank_i == t_bank'(bank));
     n2a_sdp_ram #(
       .DATA_WIDTH (2),
       .DEPTH      (BANK_DEPTH)
@@ -47,14 +47,14 @@ module n2m_frame_ram (
 
   // Why: the selected bank is registered with the read so the output names the
   // word of the bank that was addressed on the read edge.
-  `N2A_DFF_RST(read_bank_q, read_bank_i, clk_i, reset_i)
+  `DFF_RST(read_bank_q, read_bank_i, clk_i, reset_i)
   assign read_shade_o = bank_shade[read_bank_q];
 
-  `N2A_ASSERT_PARAM(g_bank_depth_holds_a_frame, BANK_DEPTH >= FRAME_PIXELS,
+  `ASSERT_PARAM(g_bank_depth_holds_a_frame, BANK_DEPTH >= FRAME_PIXELS,
       "n2m_frame_ram BANK_DEPTH must hold one complete frame")
-  `N2A_ASSERT(write_bank_exists, clk_i, reset_i,
-      !write_enable_i || (write_bank_i < bank_t'(BANK_COUNT)))
-  `N2A_ASSERT(read_bank_exists, clk_i, reset_i, read_bank_i < bank_t'(BANK_COUNT))
-  `N2A_ASSERT(write_index_in_frame, clk_i, reset_i,
-      !write_enable_i || (write_index_i < frame_index_t'(FRAME_PIXELS)))
+  `ASSERT(write_bank_exists, clk_i, reset_i,
+      !write_enable_i || (write_bank_i < t_bank'(BANK_COUNT)))
+  `ASSERT(read_bank_exists, clk_i, reset_i, read_bank_i < t_bank'(BANK_COUNT))
+  `ASSERT(write_index_in_frame, clk_i, reset_i,
+      !write_enable_i || (write_index_i < t_frame_index'(FRAME_PIXELS)))
 endmodule

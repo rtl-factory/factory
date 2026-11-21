@@ -55,7 +55,7 @@ package n2m_memory_pkg;
     DEST_IO       = 4'd6,  // $FF00-$FF7F: peripheral port
     DEST_HRAM     = 4'd7,  // $FF80-$FFFE: 127-byte store
     DEST_IE       = 4'd8   // $FFFF: interrupt-enable register
-  } destination_t;
+  } t_destination;
 
-  typedef logic [OFFSET_WIDTH-1:0] offset_t;
+  typedef logic [OFFSET_WIDTH-1:0] t_offset;
 endpackage

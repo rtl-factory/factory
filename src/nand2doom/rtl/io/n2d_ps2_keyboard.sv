@@ -43,7 +43,7 @@ module n2d_ps2_keyboard #(
 
   logic ps2_clk_sync;
   logic ps2_data_sync;
-  localparam ps2_rx_t RX_RESET = '{
+  localparam t_ps2_rx RX_RESET = '{
     ps2_clk_previous: 1'b1,
     receiver_enable: 1'b1,
     frame_active: 1'b0,
@@ -55,19 +55,19 @@ module n2d_ps2_keyboard #(
     parity_error: 1'b0,
     frame_error: 1'b0,
     timeout_error: 1'b0};
-  ps2_rx_t rx_q, rx_d;
+  t_ps2_rx rx_q, rx_d;
   // Why: the frame timeout counter's width follows FRAME_TIMEOUT_CYCLES, so it
   // is a register of its own beside the packaged receiver record.
   logic [TIMEOUT_WIDTH-1:0] frame_timeout_q, frame_timeout_d;
   logic [9:0] fifo_memory [0:FIFO_DEPTH-1];
-  localparam ps2_fifo_t FIFO_RESET = '{
+  localparam t_ps2_fifo FIFO_RESET = '{
     fifo_read_pointer: 3'b0,
     fifo_write_pointer: 3'b0,
     fifo_count: 4'b0,
     overflow_error: 1'b0};
-  ps2_fifo_t fifo_q, fifo_d;
-  localparam ps2_scan_inject_t SCAN_INJECT_RESET = '{extended_prefix: 1'b0, break_prefix: 1'b0};
-  ps2_scan_inject_t scan_inject_q, scan_inject_d;
+  t_ps2_fifo fifo_q, fifo_d;
+  localparam t_ps2_scan_inject SCAN_INJECT_RESET = '{extended_prefix: 1'b0, break_prefix: 1'b0};
+  t_ps2_scan_inject scan_inject_q, scan_inject_d;
   logic fifo_write;
   logic mmio_response_valid_q;
   logic [31:0] mmio_response_read_data_q;
@@ -114,7 +114,7 @@ module n2d_ps2_keyboard #(
     .sync_o(ps2_data_sync)
   );
 
-  `N2A_ASSERT_PARAM(g_invalid_frame_timeout, FRAME_TIMEOUT_CYCLES >= 2,
+  `ASSERT_PARAM(g_invalid_frame_timeout, FRAME_TIMEOUT_CYCLES >= 2,
       "n2d_ps2_keyboard FRAME_TIMEOUT_CYCLES must be at least 2")
 
   assign ps2_falling_edge = rx_q.ps2_clk_previous && !ps2_clk_sync;
@@ -295,8 +295,8 @@ module n2d_ps2_keyboard #(
     end
   end
 
-  `N2A_DFF_ARST_VAL(rx_q, rx_d, clk_i, reset_i, RX_RESET)
-  `N2A_DFF_ARST_VAL(frame_timeout_q, frame_timeout_d, clk_i, reset_i, '0)
+  `DFF_ARST_VAL(rx_q, rx_d, clk_i, reset_i, RX_RESET)
+  `DFF_ARST_VAL(frame_timeout_q, frame_timeout_d, clk_i, reset_i, '0)
 
   always_comb begin
     scan_inject_d = scan_inject_q;
@@ -308,7 +308,7 @@ module n2d_ps2_keyboard #(
     end
   end
 
-  `N2A_DFF_ARST_VAL(scan_inject_q, scan_inject_d, clk_i, reset_i, SCAN_INJECT_RESET)
+  `DFF_ARST_VAL(scan_inject_q, scan_inject_d, clk_i, reset_i, SCAN_INJECT_RESET)
 
   always_comb begin
     fifo_d = fifo_q;
@@ -334,13 +334,13 @@ module n2d_ps2_keyboard #(
     if (clear_diagnostics) fifo_d.overflow_error = 1'b0;
   end
 
-  `N2A_DFF_ARST_VAL(fifo_q, fifo_d, clk_i, reset_i, FIFO_RESET)
+  `DFF_ARST_VAL(fifo_q, fifo_d, clk_i, reset_i, FIFO_RESET)
   // Why: the storage is never reset so it can infer RAM; its entry write shares
   // the FIFO bookkeeping's asynchronous-reset event control so reset still
   // inhibits the write.
   logic [2:0] fifo_write_address;
   assign fifo_write_address = fifo_q.fifo_write_pointer;
-  `N2A_MEM_WRITE_ARST_GATED(fifo_memory, clk_i, reset_i, fifo_write, fifo_write_address, fifo_push_data)
+  `MEM_WRITE_ARST_GATED(fifo_memory, clk_i, reset_i, fifo_write, fifo_write_address, fifo_push_data)
 
   always_comb begin
     mmio_response_valid_d = mmio_response_valid_q;
@@ -355,21 +355,21 @@ module n2d_ps2_keyboard #(
     end
   end
 
-  `N2A_DFF_ARST_VAL(mmio_response_valid_q, mmio_response_valid_d, clk_i, reset_i, 1'b0)
-  `N2A_DFF_ARST_VAL(mmio_response_read_data_q, mmio_response_read_data_d, clk_i, reset_i, 32'b0)
-  `N2A_DFF_ARST_VAL(mmio_response_error_q, mmio_response_error_d, clk_i, reset_i, 1'b0)
+  `DFF_ARST_VAL(mmio_response_valid_q, mmio_response_valid_d, clk_i, reset_i, 1'b0)
+  `DFF_ARST_VAL(mmio_response_read_data_q, mmio_response_read_data_d, clk_i, reset_i, 32'b0)
+  `DFF_ARST_VAL(mmio_response_error_q, mmio_response_error_d, clk_i, reset_i, 1'b0)
 
   logic response_stalled_q_next;
   assign response_stalled_q_next = mmio_response_valid_q && !mmio_response_ready_i;
-  `N2A_DFF_ARST_VAL(response_stalled_q, response_stalled_q_next, clk_i, reset_i, 1'b0)
-  `N2A_ASSERT_CLOCKED_ARST_FATAL_UNGUARDED(clk_i, reset_i,
+  `DFF_ARST_VAL(response_stalled_q, response_stalled_q_next, clk_i, reset_i, 1'b0)
+  `ASSERT_CLOCKED_ARST_FATAL_UNGUARDED(clk_i, reset_i,
       fifo_q.fifo_count <= FIFO_COUNT_LIMIT,
       "n2d_ps2_keyboard FIFO count exceeded depth")
-  `N2A_ASSERT_CLOCKED_ARST_FATAL_UNGUARDED(clk_i, reset_i,
+  `ASSERT_CLOCKED_ARST_FATAL_UNGUARDED(clk_i, reset_i,
       ($onehot0({physical_push_accept, uart_push_accept, mmio_inject_accept,
                  scan_inject_accept})),
       "n2d_ps2_keyboard accepted multiple event sources")
-  `N2A_ASSERT_CLOCKED_ARST_FATAL_WHEN_UNGUARDED(clk_i, reset_i, response_stalled_q,
+  `ASSERT_CLOCKED_ARST_FATAL_WHEN_UNGUARDED(clk_i, reset_i, response_stalled_q,
       $stable(mmio_response_read_data_q) && $stable(mmio_response_error_q),
       "n2d_ps2_keyboard response changed under backpressure")
 endmodule

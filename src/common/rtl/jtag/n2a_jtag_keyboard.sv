@@ -19,8 +19,8 @@ module n2a_jtag_keyboard (
   n2a_reset_sync u_sys_reset (.clk_i(clk_i), .async_reset_i(reset_i), .reset_o(sys_reset));
   n2a_reset_sync u_scan_reset (.clk_i(tck_i), .async_reset_i(reset_i), .reset_o(scan_reset));
 
-  jtag_keyboard_scan_t scan_q, scan_d;
-  localparam jtag_keyboard_scan_t SCAN_RESET = '{response: RESET_RESPONSE, default: '0};
+  t_jtag_keyboard_scan scan_q, scan_d;
+  localparam t_jtag_keyboard_scan SCAN_RESET = '{response: RESET_RESPONSE, default: '0};
   logic ack_sync, req_sync, ack_q;
   logic [63:0] response_q;
   n2a_cdc_bit_sync u_req (.clk_i(clk_i), .reset_i(sys_reset),
@@ -70,11 +70,11 @@ module n2a_jtag_keyboard (
       end
     end
   end
-  `N2A_DFF_ARST_VAL(scan_q, scan_d, tck_i, scan_reset, SCAN_RESET)
+  `DFF_ARST_VAL(scan_q, scan_d, tck_i, scan_reset, SCAN_RESET)
   assign tdo_o = (ir_i == 2'd1 || ir_i == 2'd2) ? scan_q.shift_data[0] : scan_q.bypass;
 
-  jtag_keyboard_system_t q, d;
-  localparam jtag_keyboard_system_t SYSTEM_RESET = '{phase: KBD_IDLE, response: RESET_RESPONSE, default: '0};
+  t_jtag_keyboard_system q, d;
+  localparam t_jtag_keyboard_system SYSTEM_RESET = '{phase: KBD_IDLE, response: RESET_RESPONSE, default: '0};
   logic [63:0] completion;
   logic [7:0] command_seq;
   assign command_seq = q.command[47:40];
@@ -153,7 +153,7 @@ module n2a_jtag_keyboard (
       default: d.phase = KBD_IDLE;
     endcase
   end
-  `N2A_DFF_ARST_VAL(q, d, clk_i, sys_reset, SYSTEM_RESET)
-  `N2A_ASSERT_CLOCKED_ARST_FATAL(clk_i, sys_reset, q.accepted <= 3'd4, "Prefix exceeded batch limit")
-  `N2A_ASSERT_CLOCKED_ARST_FATAL(clk_i, sys_reset, !q.valid || q.phase == KBD_OFFER, "Byte outside offer phase")
+  `DFF_ARST_VAL(q, d, clk_i, sys_reset, SYSTEM_RESET)
+  `ASSERT_CLOCKED_ARST_FATAL(clk_i, sys_reset, q.accepted <= 3'd4, "Prefix exceeded batch limit")
+  `ASSERT_CLOCKED_ARST_FATAL(clk_i, sys_reset, !q.valid || q.phase == KBD_OFFER, "Byte outside offer phase")
 endmodule

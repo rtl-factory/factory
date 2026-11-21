@@ -22,27 +22,27 @@ package n2m_snapshot_pkg;
   localparam int unsigned FRAME_ID_WIDTH = 32;
   /* verilator lint_on UNUSEDPARAM */
 
-  typedef logic [FRAME_ID_WIDTH-1:0] frame_id_t;
-  typedef logic [SNAPSHOT_OFFSET_WIDTH-1:0] snapshot_offset_t;
+  typedef logic [FRAME_ID_WIDTH-1:0] t_frame_id;
+  typedef logic [SNAPSHOT_OFFSET_WIDTH-1:0] t_snapshot_offset;
 
   // Snapshot byte port between the UART loader and the display: one request
   // at a time, accepted with ready; one response per accepted request.
   typedef struct packed {
     logic             valid;
-    snapshot_offset_t offset;   // byte offset inside the record
-  } snapshot_request_t;
+    t_snapshot_offset offset;   // byte offset inside the record
+  } t_snapshot_request;
 
   typedef struct packed {
     logic       valid;
     logic [7:0] data;
-  } snapshot_response_t;
+  } t_snapshot_response;
 
   // Header byte `offset` (0..7) of the record. Byte 3 is {on screen, 5'b0,
   // bank}: on screen is the display-valid level when the byte is read (low
   // once an LCD-off origin blanked the pinned frame, which then stays off
   // screen until the pin is released).
   function automatic logic [7:0] snapshot_header_byte(input logic [2:0] offset, input logic [1:0] bank,
-                                                      input logic on_screen, input frame_id_t frame_id);
+                                                      input logic on_screen, input t_frame_id frame_id);
     case (offset)
       3'd0: return SNAPSHOT_MAGIC0;
       3'd1: return SNAPSHOT_MAGIC1;

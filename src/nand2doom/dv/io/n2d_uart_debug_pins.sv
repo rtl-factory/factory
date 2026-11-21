@@ -43,13 +43,13 @@ module n2d_uart_debug_pins
     input  logic [31:0] mem_rsp_rdata_i,
     input  logic        mem_rsp_error_i
 );
-    n2d_debug_control_t    debug_control;
-    n2d_debug_status_t     debug_status;
-    n2d_input_event_t      input_event;
-    n2d_debug_txn_req_t    txn_req;
-    n2d_debug_txn_status_t txn_status;
-    n2d_debug_mem_req_t    mem_req;
-    n2d_debug_mem_rsp_t    mem_rsp;
+    t_n2d_debug_control    debug_control;
+    t_n2d_debug_status     debug_status;
+    t_n2d_input_event      input_event;
+    t_n2d_debug_txn_req    txn_req;
+    t_n2d_debug_txn_status txn_status;
+    t_n2d_debug_mem_req    mem_req;
+    t_n2d_debug_mem_rsp    mem_rsp;
 
     assign debug_status = '{halt_ack: halt_ack_i, cache_maint_done: cache_maint_done_i};
     assign txn_status = '{arb_grant: arb_grant_i, txn_done: mem_txn_done_i,
@@ -73,7 +73,7 @@ module n2d_uart_debug_pins
     assign mem_req_wdata_o = mem_req.wdata;
     assign mem_req_wstrb_o = mem_req.wstrb;
 
-    n2d_pkg::n2d_screen_req_t unused_screen_req;
+    n2d_pkg::t_n2d_screen_req unused_screen_req;
     n2d_uart_debug #(
         .CLKS_PER_BIT(CLKS_PER_BIT),
         .INTERBYTE_TIMEOUT_CYCLES(INTERBYTE_TIMEOUT_CYCLES),

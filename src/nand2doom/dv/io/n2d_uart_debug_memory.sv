@@ -44,18 +44,18 @@ module n2d_uart_debug_memory
         else adapter_reset_q <= 1'b0;
     end
 
-    n2d_debug_control_t    debug_control;
-    n2d_input_event_t      input_event_unused_group;
-    n2d_debug_txn_req_t    txn_req;
-    n2d_debug_mem_req_t    word_request;
-    n2d_debug_mem_rsp_t    word_response;
-    n2d_debug_status_t     debug_status;
-    n2d_debug_txn_status_t txn_status;
+    t_n2d_debug_control    debug_control;
+    t_n2d_input_event      input_event_unused_group;
+    t_n2d_debug_txn_req    txn_req;
+    t_n2d_debug_mem_req    word_request;
+    t_n2d_debug_mem_rsp    word_response;
+    t_n2d_debug_status     debug_status;
+    t_n2d_debug_txn_status txn_status;
     assign debug_status = '{halt_ack: 1'b1, cache_maint_done: 1'b1};
     assign txn_status = '{arb_grant: arb_grant_i, txn_done: transaction_done_o,
                           txn_error: transaction_error_o};
 
-    n2d_pkg::n2d_screen_req_t unused_screen_req;
+    n2d_pkg::t_n2d_screen_req unused_screen_req;
     n2d_uart_debug u_uart (
         .clk_i, .reset_i, .uart_rx_i, .uart_tx_o,
         .debug_control_o(debug_control),

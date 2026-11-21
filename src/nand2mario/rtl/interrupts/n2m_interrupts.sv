@@ -13,9 +13,9 @@ module n2m_interrupts (
   input  logic                               reset_i,
   // Peripheral port from the memory map; kind is not consulted.
   /* verilator lint_off UNUSEDSIGNAL */
-  input  n2m_interfaces_pkg::bus_request_t   io_request_i,
+  input  n2m_interfaces_pkg::t_bus_request   io_request_i,
   /* verilator lint_on UNUSEDSIGNAL */
-  output n2m_interfaces_pkg::bus_response_t  io_response_o,
+  output n2m_interfaces_pkg::t_bus_response  io_response_o,
   output logic                               io_selected_o,
   // Per-source set requests: a high sample sets that flag on this edge.
   input  logic [4:0]                         source_set_i,
@@ -38,7 +38,7 @@ module n2m_interrupts (
   end
   // Ref: Pan Docs "Power Up Sequence": reset leaves VBlank pending, the DMG
   // boot-ROM handoff value (IF $E1).
-  `N2A_DFF_RST_VAL(flags_q, flags_d, clk_i, reset_i, 5'h01)
+  `DFF_RST_VAL(flags_q, flags_d, clk_i, reset_i, 5'h01)
   assign interrupt_flags_o = flags_q;
 
   always_comb begin
@@ -47,11 +47,11 @@ module n2m_interrupts (
     io_response_o.read_data = {3'b111, flags_q};
   end
 
-  `N2A_ASSERT_KNOWN(interrupts_controls_known, clk_i, reset_i,
+  `ASSERT_KNOWN(interrupts_controls_known, clk_i, reset_i,
       {io_request_i.valid, source_set_i, interrupt_ack_i})
-  `N2A_ASSERT(interrupts_access_known, clk_i, reset_i,
+  `ASSERT(interrupts_access_known, clk_i, reset_i,
       !io_request_i.valid || !$isunknown({io_request_i.write, io_request_i.address}))
-  `N2A_ASSERT(interrupts_write_known, clk_i, reset_i,
+  `ASSERT(interrupts_write_known, clk_i, reset_i,
       !write_if || !$isunknown(io_request_i.write_data))
-  `N2A_ASSERT(interrupts_ack_onehot, clk_i, reset_i, $onehot0(interrupt_ack_i))
+  `ASSERT(interrupts_ack_onehot, clk_i, reset_i, $onehot0(interrupt_ack_i))
 endmodule

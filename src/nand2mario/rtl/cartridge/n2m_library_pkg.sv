@@ -22,10 +22,10 @@ package n2m_library_pkg;
   typedef enum logic [3:0] {
     LIB_BOOT, LIB_IDLE, LIB_ENTRY_REQUEST, LIB_ENTRY_RESPONSE,
     LIB_CHECK, LIB_COPY_REQUEST, LIB_COPY_RESPONSE, LIB_RESET, LIB_FAILED, LIB_DRAIN
-  } phase_t;
+  } t_phase;
 
   typedef struct packed {
-    phase_t phase;
+    t_phase phase;
     logic image_valid;
     logic window_copy;
     logic window_ready;
@@ -42,9 +42,9 @@ package n2m_library_pkg;
     logic [16:0] offset;
     logic [20:0] source;
     logic [13:0] reset_count;
-  } state_t;
+  } t_state;
 
-  localparam state_t RESET_STATE = '{
+  localparam t_state RESET_STATE = '{
     phase: LIB_BOOT, index: 8'hff, crc: 32'hffffffff, default: '0
   };
 

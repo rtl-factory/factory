@@ -17,7 +17,7 @@
 
 module n2d_csr (
     input  logic        clk_i,
-    input  logic        rst_i,
+    input  logic        reset_i,
 
     // Serialized Q102H CSR access
     input  logic [11:0] csr_address_i,
@@ -68,7 +68,7 @@ module n2d_csr (
 
     n2d_pmon u_pmon (
         .clk_i(clk_i),
-        .rst_i(rst_i),
+        .reset_i(reset_i),
         .events_i(pmon_events_i),
         .csr_address_i(csr_address_i),
         .csr_hit_o(pmon_csr_hit),
@@ -152,8 +152,8 @@ module n2d_csr (
     assign mtvec_o = csr_q.mtvec;
     assign mepc_o = csr_q.mepc;
 
-    `N2A_DFF_RST_VAL(csr_q, csr_d, clk_i, rst_i, CSR_RESET)
+    `DFF_RST_VAL(csr_q, csr_d, clk_i, reset_i, CSR_RESET)
 
-    `N2A_ASSERT_NEVER(csr_single_source, clk_i, rst_i,
+    `ASSERT_NEVER(csr_single_source, clk_i, reset_i,
         (trap_valid_i && (csr_commit_i || mret_commit_i)) || (csr_commit_i && mret_commit_i))
 endmodule

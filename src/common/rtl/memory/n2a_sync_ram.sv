@@ -26,16 +26,16 @@ module n2a_sync_ram #(
   // until their elaboration diagnostic fires. It is a no-op when supported.
   assign implementation_address = REQUIRED_ADDR_WIDTH'(address_i);
 
-  `N2A_ASSERT_PARAM(g_invalid_data_width, DATA_WIDTH >= 1,
+  `ASSERT_PARAM(g_invalid_data_width, DATA_WIDTH >= 1,
       "n2a_sync_ram DATA_WIDTH must be at least 1")
-  `N2A_ASSERT_PARAM(g_invalid_depth, DEPTH_IS_POWER_OF_TWO,
+  `ASSERT_PARAM(g_invalid_depth, DEPTH_IS_POWER_OF_TWO,
       "n2a_sync_ram DEPTH must be a power of two and at least 2")
-  `N2A_ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
+  `ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
       "n2a_sync_ram ADDR_WIDTH must equal $clog2(DEPTH)")
 
   // Why: separate read and write processes on one array make a same-edge
   // collision read-first (old data) by nonblocking semantics, with no bypass.
-  `N2A_MEM_READ(read_data_o, memory, clk_i, implementation_address)
-  `N2A_MEM_WRITE(memory, clk_i, write_enable_i, implementation_address,
+  `MEM_READ(read_data_o, memory, clk_i, implementation_address)
+  `MEM_WRITE(memory, clk_i, write_enable_i, implementation_address,
       write_data_i)
 endmodule

@@ -27,7 +27,7 @@ def response_fields(word):
 
 
 def backing_fields(word):
-    """(valid, write, ram, address, write_data) of a backing_request_t."""
+    """(valid, write, ram, address, write_data) of a t_backing_request."""
     return ((word >> BACKING_VALID) & 1, (word >> BACKING_WRITE) & 1, (word >> BACKING_RAM) & 1,
             (word >> 8) & 0x1FFFFF, word & 0xFF)
 

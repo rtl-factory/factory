@@ -68,13 +68,13 @@ module n2m_scancode_buttons (
       end
     end
   end
-  `N2A_DFF_RST(extended_q, extended_d, clk_i, reset_i)
-  `N2A_DFF_RST(release_q, release_d, clk_i, reset_i)
-  `N2A_DFF_RST(buttons_q, buttons_d, clk_i, reset_i)
+  `DFF_RST(extended_q, extended_d, clk_i, reset_i)
+  `DFF_RST(release_q, release_d, clk_i, reset_i)
+  `DFF_RST(buttons_q, buttons_d, clk_i, reset_i)
   assign buttons_o = buttons_q;
 
-  `N2A_ASSERT(byte_known, clk_i, reset_i, !byte_valid_i || !$isunknown(byte_i))
-  `N2A_ASSERT(event_clears_prefixes, clk_i, reset_i,
+  `ASSERT(byte_known, clk_i, reset_i, !byte_valid_i || !$isunknown(byte_i))
+  `ASSERT(event_clears_prefixes, clk_i, reset_i,
       !(byte_valid_i && (byte_i != PREFIX_EXTENDED) && (byte_i != PREFIX_RELEASE)) ||
       (!extended_d && !release_d))
 endmodule

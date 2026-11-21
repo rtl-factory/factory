@@ -98,7 +98,7 @@ class LineResponder:
 
 
 async def reset_cache(dut) -> None:
-    dut.rst_i.value = 1
+    dut.reset_i.value = 1
     dut.cpu_request_valid_i.value = 0
     dut.maintenance_valid_i.value = 0
     if hasattr(dut, "cpu_request_write_i"):
@@ -108,7 +108,7 @@ async def reset_cache(dut) -> None:
     await RisingEdge(dut.clk_i)
     await RisingEdge(dut.clk_i)
     await FallingEdge(dut.clk_i)
-    dut.rst_i.value = 0
+    dut.reset_i.value = 0
 
 
 async def cpu_access(

@@ -22,7 +22,7 @@
 // next cycle. Counter values therefore equal nand2linux's, one edge later.
 module n2d_pmon (
     input  logic         clk_i,
-    input  logic         rst_i,
+    input  logic         reset_i,
     input  logic [127:0] events_i,
     input  logic [11:0]  csr_address_i,
     output logic         csr_hit_o,
@@ -55,7 +55,7 @@ module n2d_pmon (
         (128'd1 << 92) | (128'd1 << 93) | (128'd1 << 94) | (128'd1 << 95) |
         (128'd1 << 96) | (128'd1 << 97);
 
-    pmon_regs_t regs_q, regs_d;
+    t_pmon_regs regs_q, regs_d;
 
     always_comb begin
         csr_hit_o = 1'b0;
@@ -107,11 +107,11 @@ module n2d_pmon (
         end
     end
 
-    `N2A_DFF_RST(regs_q, regs_d, clk_i, rst_i)
+    `DFF_RST(regs_q, regs_d, clk_i, reset_i)
 
     assign inhibit_cycle_o = regs_q.inhibit[0];
     assign inhibit_instret_o = regs_q.inhibit[2];
     assign events_o = regs_q.events;
 
-    `N2A_ASSERT_CLOCKED(clk_i, rst_i, (regs_q.inhibit & ~MCOUNTINHIBIT_MASK) == 32'b0)
+    `ASSERT_CLOCKED(clk_i, reset_i, (regs_q.inhibit & ~MCOUNTINHIBIT_MASK) == 32'b0)
 endmodule

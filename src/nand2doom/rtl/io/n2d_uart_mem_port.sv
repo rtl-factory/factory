@@ -24,17 +24,17 @@ module n2d_uart_mem_port
 
     // Debug memory path and platform screen port.
     output logic                  busy_o,
-    output n2d_debug_txn_req_t    txn_req_o,
-    input  n2d_debug_txn_status_t txn_status_i,
-    output n2d_debug_mem_req_t    mem_req_o,
-    input  n2d_debug_mem_rsp_t    mem_rsp_i,
-    output n2d_screen_req_t       screen_req_o,
-    input  n2d_screen_rsp_t       screen_rsp_i
+    output t_n2d_debug_txn_req    txn_req_o,
+    input  t_n2d_debug_txn_status txn_status_i,
+    output t_n2d_debug_mem_req    mem_req_o,
+    input  t_n2d_debug_mem_rsp    mem_rsp_i,
+    output t_n2d_screen_req       screen_req_o,
+    input  t_n2d_screen_rsp       screen_rsp_i
 );
     import n2d_types_pkg::*;
 
-    localparam mem_port_regs_t REGS_RESET = '{state: MEM_PORT_IDLE, default: '0};
-    mem_port_regs_t regs_q, regs_d;
+    localparam t_mem_port_regs REGS_RESET = '{state: MEM_PORT_IDLE, default: '0};
+    t_mem_port_regs regs_q, regs_d;
     logic screen_address, ep_accept;
 
     assign screen_address = (ep_req_addr_i[31:16] == N2D_MEM_SCREEN_BASE[31:16]) ||
@@ -96,7 +96,7 @@ module n2d_uart_mem_port
         endcase
     end
 
-    `N2A_DFF_ARST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
+    `DFF_ARST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
 
     assign busy_o = (regs_q.state != MEM_PORT_IDLE);
     assign txn_req_o = '{
@@ -115,6 +115,6 @@ module n2d_uart_mem_port
     assign ep_rsp_rdata_o = regs_q.rdata;
     assign ep_rsp_error_o = regs_q.error;
 
-    `N2A_ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, !(regs_q.txn_commit && regs_q.txn_abort),
+    `ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, !(regs_q.txn_commit && regs_q.txn_abort),
         "endpoint port commit and abort overlap")
 endmodule

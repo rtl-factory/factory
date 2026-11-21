@@ -15,8 +15,8 @@ module n2m_ppu (
   input  logic                                reset_i,
   input  logic                                dot_enable_i,
   // LCD registers on the peripheral port.
-  input  n2m_interfaces_pkg::bus_request_t    io_request_i,
-  output n2m_interfaces_pkg::bus_response_t   io_response_o,
+  input  n2m_interfaces_pkg::t_bus_request    io_request_i,
+  output n2m_interfaces_pkg::t_bus_response   io_response_o,
   output logic                                io_selected_o,
   // VRAM read port into the memory map's VRAM store.
   output logic                                vram_read_o,
@@ -44,9 +44,9 @@ module n2m_ppu (
   // LCD enable level (LCDC.7) for the frame bridge's display policy.
   output logic                                lcd_enable_o,
   // Observation of the raster state.
-  output n2m_ppu_pkg::dot_t                   dot_o,
-  output n2m_ppu_pkg::line_t                  ly_o,
-  output n2m_ppu_pkg::mode_t                  mode_o
+  output n2m_ppu_pkg::t_dot                   dot_o,
+  output n2m_ppu_pkg::t_line                  ly_o,
+  output n2m_ppu_pkg::t_mode                  mode_o
 );
   import n2m_ppu_pkg::*;
 
@@ -55,9 +55,9 @@ module n2m_ppu (
   logic       lcd_enable, coincidence;
   logic [2:0] scx_fine, fine_scroll;
   logic [4:0] scx_coarse;
-  dot_t       dot;
-  line_t      ly, ly_read;
-  mode_t      mode;
+  t_dot       dot;
+  t_line      ly, ly_read;
+  t_mode      mode;
   logic       window_active;
   logic [7:0] window_first_pixel, window_wx, window_line;
   logic       tiles_read, objects_read, objects_fetch_busy;
@@ -211,9 +211,9 @@ module n2m_ppu (
   assign ly_o = ly;
   assign mode_o = mode;
 
-  `N2A_ASSERT(vram_reads_in_mode3, clk_i, reset_i, !vram_read_o || vram_blocked_o)
-  `N2A_ASSERT(oam_reads_while_blocked, clk_i, reset_i, !oam_read_o || oam_blocked_o)
-  `N2A_ASSERT(one_vram_reader, clk_i, reset_i, !(objects_read && tiles_read))
-  `N2A_ASSERT(pixels_in_frame, clk_i, reset_i,
+  `ASSERT(vram_reads_in_mode3, clk_i, reset_i, !vram_read_o || vram_blocked_o)
+  `ASSERT(oam_reads_while_blocked, clk_i, reset_i, !oam_read_o || oam_blocked_o)
+  `ASSERT(one_vram_reader, clk_i, reset_i, !(objects_read && tiles_read))
+  `ASSERT(pixels_in_frame, clk_i, reset_i,
       !pixel_valid_o || ((pixel_x_o < 8'd160) && (pixel_y_o < 8'd144)))
 endmodule

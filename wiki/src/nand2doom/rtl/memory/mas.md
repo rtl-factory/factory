@@ -150,7 +150,7 @@ else the replacement way, requests one line, installs it and returns the word
 in the same completion; selecting a way makes the other the next victim. A
 failed refill changes nothing. The RAM is addressed by the captured set only
 in the line-response state (ready low). Valid and replacement bits are reset
-flops (`N2A_DFF_RST_EN`). Invalidation clears both ways of one set per cycle
+flops (`DFF_RST_EN`). Invalidation clears both ways of one set per cycle
 through set 511 without touching data.
 
 ### Data cache
@@ -350,7 +350,7 @@ every product closure.
 
 Each controller keeps its state in one packed `regs_q` of the type-only
 `n2d_ls_types_pkg`, computed in a blocking `always_comb` and registered
-through one `N2A_DFF_RST_VAL`. Parameter-sized fields (D-cache victim,
+through one `DFF_RST_VAL`. Parameter-sized fields (D-cache victim,
 forward and maintenance ways, miss/forward metadata, prefetch buffer;
 adapter staged counts and indices) are separate zero-reset registers. The
 adapter's staged words and saved lines use the reset-clearing indexed write.

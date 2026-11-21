@@ -25,17 +25,17 @@ module n2m_uart_loader_fixture #(
   // Loader status and its load port, played by the bench.
   output logic                                   hold_o,
   input  logic                                   backing_initialized_i,
-  output n2m_cartridge_pkg::backing_request_t    load_request_o,
+  output n2m_cartridge_pkg::t_backing_request    load_request_o,
   input  logic                                   load_ready_i,
-  input  n2m_cartridge_pkg::backing_response_t   load_response_i,
+  input  n2m_cartridge_pkg::t_backing_response   load_response_i,
   output logic                                   load_busy_o,
   output logic                                   snapshot_pin_o,
   output logic                                   snapshot_release_o,
   input  logic                                   snapshot_pinned_i,
   input  logic                                   snapshot_available_i,
-  output n2m_snapshot_pkg::snapshot_request_t     snapshot_request_o,
+  output n2m_snapshot_pkg::t_snapshot_request     snapshot_request_o,
   input  logic                                   snapshot_ready_i,
-  input  n2m_snapshot_pkg::snapshot_response_t    snapshot_response_i
+  input  n2m_snapshot_pkg::t_snapshot_response    snapshot_response_i
 );
   logic host_line, loader_line, loader_rx;
 

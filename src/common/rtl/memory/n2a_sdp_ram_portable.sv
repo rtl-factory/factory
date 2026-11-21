@@ -40,19 +40,19 @@ module n2a_sdp_ram_enabled #(
   assign write_address = REQUIRED_ADDR_WIDTH'(write_address_i);
   assign read_address = REQUIRED_ADDR_WIDTH'(read_address_i);
 
-  `N2A_ASSERT_PARAM(g_invalid_data_width, DATA_WIDTH >= 1,
+  `ASSERT_PARAM(g_invalid_data_width, DATA_WIDTH >= 1,
       "n2a_sdp_ram DATA_WIDTH must be at least 1")
-  `N2A_ASSERT_PARAM(g_invalid_depth, DEPTH_IS_POWER_OF_TWO,
+  `ASSERT_PARAM(g_invalid_depth, DEPTH_IS_POWER_OF_TWO,
       "n2a_sdp_ram DEPTH must be a power of two and at least 2")
-  `N2A_ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
+  `ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
       "n2a_sdp_ram ADDR_WIDTH must equal $clog2(DEPTH)")
 
   // Why: this is the conventional inferred simple-dual-port template, so it
   // has no reset, initialization or bypass. Nonblocking semantics make a
   // same-edge same-address collision read-first: the output captures the
   // pre-edge word and the write lands afterwards.
-  `N2A_MEM_READ_EN(read_data_o, memory, clk_i, read_enable_i, read_address)
-  `N2A_MEM_WRITE(memory, clk_i, write_enable_i, write_address, write_data_i)
+  `MEM_READ_EN(read_data_o, memory, clk_i, read_enable_i, read_address)
+  `MEM_WRITE(memory, clk_i, write_enable_i, write_address, write_data_i)
 endmodule
 
 // Existing consumers retain the always-active one-edge read contract.

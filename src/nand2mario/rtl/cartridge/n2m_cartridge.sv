@@ -18,17 +18,17 @@ module n2m_cartridge (
   input  logic                                   reset_i,
   // Request from the memory responder (live CPU request while it decodes to
   // ROM or cartridge RAM); held until ready_o is sampled high.
-  input  n2m_interfaces_pkg::bus_request_t       request_i,
+  input  n2m_interfaces_pkg::t_bus_request       request_i,
   output logic                                   ready_o,
-  output n2m_interfaces_pkg::bus_response_t      response_o,
+  output n2m_interfaces_pkg::t_bus_response      response_o,
   // Backing store port.
-  output n2m_cartridge_pkg::backing_request_t    backing_request_o,
+  output n2m_cartridge_pkg::t_backing_request    backing_request_o,
   input  logic                                   backing_ready_i,
-  input  n2m_cartridge_pkg::backing_response_t   backing_response_i,
+  input  n2m_cartridge_pkg::t_backing_response   backing_response_i,
   // ROM load port observation: header bytes are captured as they are loaded
   // into the backing, regardless of reset.
   input  logic                                   load_write_i,
-  input  n2m_cartridge_pkg::rom_address_t        load_address_i,
+  input  n2m_cartridge_pkg::t_rom_address        load_address_i,
   input  logic [7:0]                             load_data_i
 );
   import n2m_cartridge_pkg::*;
@@ -38,8 +38,8 @@ module n2m_cartridge (
   logic [7:0] header_type_q, header_rom_size_q, header_ram_size_q;
   logic       type_load, rom_size_load, ram_size_load;
   logic       mbc1, ram_present;
-  rom_bank_t  rom_mask;
-  ram_bank_t  ram_mask;
+  t_rom_bank  rom_mask;
+  t_ram_bank  ram_mask;
 
   logic [4:0] bank1_q, bank1_d;
   logic [1:0] bank2_q, bank2_d;
@@ -51,16 +51,16 @@ module n2m_cartridge (
   logic       local_request, local_accept, local_q;
   logic       backing_accept, backing_wait_d, backing_wait_q;
   logic [4:0] bank1_effective;
-  rom_bank_t  low_bank, high_bank, rom_bank;
-  ram_bank_t  ram_bank;
-  rom_address_t rom_address, ram_address, backing_address;
+  t_rom_bank  low_bank, high_bank, rom_bank;
+  t_ram_bank  ram_bank;
+  t_rom_address rom_address, ram_address, backing_address;
 
   assign type_load = load_write_i && (load_address_i == HEADER_TYPE_OFFSET);
   assign rom_size_load = load_write_i && (load_address_i == HEADER_ROM_SIZE_OFFSET);
   assign ram_size_load = load_write_i && (load_address_i == HEADER_RAM_SIZE_OFFSET);
-  `N2A_DFF_EN(header_type_q, load_data_i, clk_i, type_load)
-  `N2A_DFF_EN(header_rom_size_q, load_data_i, clk_i, rom_size_load)
-  `N2A_DFF_EN(header_ram_size_q, load_data_i, clk_i, ram_size_load)
+  `DFF_EN(header_type_q, load_data_i, clk_i, type_load)
+  `DFF_EN(header_rom_size_q, load_data_i, clk_i, rom_size_load)
+  `DFF_EN(header_ram_size_q, load_data_i, clk_i, ram_size_load)
   assign mbc1 = is_mbc1(header_type_q);
   assign ram_present = has_ram(header_type_q) && has_ram_capacity(header_ram_size_q);
   assign rom_mask = rom_bank_mask(header_rom_size_q);
@@ -88,10 +88,10 @@ module n2m_cartridge (
   assign bank2_d = request_i.write_data[1:0];
   assign mode_d = request_i.write_data[0];
   assign ramg_d = request_i.write_data[3:0] == MBC1_RAM_ENABLE_NIBBLE;
-  `N2A_DFF_RST_EN(bank1_q, bank1_d, clk_i, bank1_write, reset_i, MBC1_BANK1_RESET)
-  `N2A_DFF_RST_EN(bank2_q, bank2_d, clk_i, bank2_write, reset_i, 2'b00)
-  `N2A_DFF_RST_EN(mode_q, mode_d, clk_i, mode_write, reset_i, 1'b0)
-  `N2A_DFF_RST_EN(ramg_q, ramg_d, clk_i, ramg_write, reset_i, 1'b0)
+  `DFF_RST_EN(bank1_q, bank1_d, clk_i, bank1_write, reset_i, MBC1_BANK1_RESET)
+  `DFF_RST_EN(bank2_q, bank2_d, clk_i, bank2_write, reset_i, 2'b00)
+  `DFF_RST_EN(mode_q, mode_d, clk_i, mode_write, reset_i, 1'b0)
+  `DFF_RST_EN(ramg_q, ramg_d, clk_i, ramg_write, reset_i, 1'b0)
 
   // Ref: Pan Docs "MBC1": BANK1 of zero selects bank one before masking (the
   // whole five-bit register is compared). The low ROM window is bank zero in mode
@@ -123,8 +123,8 @@ module n2m_cartridge (
   // no cycle.
   assign backing_accept = backing_request_o.valid && backing_ready_i;
   assign backing_wait_d = backing_accept || (backing_wait_q && !backing_response_i.valid);
-  `N2A_DFF_RST(local_q, local_accept, clk_i, reset_i)
-  `N2A_DFF_RST(backing_wait_q, backing_wait_d, clk_i, reset_i)
+  `DFF_RST(local_q, local_accept, clk_i, reset_i)
+  `DFF_RST(backing_wait_q, backing_wait_d, clk_i, reset_i)
 
   always_comb begin
     response_o.valid = local_q || backing_response_i.valid;
@@ -132,16 +132,16 @@ module n2m_cartridge (
     response_o.read_data = local_q ? OPEN_BUS_DATA : backing_response_i.read_data;
   end
 
-  `N2A_ASSERT(request_known, clk_i, reset_i,
+  `ASSERT(request_known, clk_i, reset_i,
       !request_i.valid || !$isunknown(request_i))
-  `N2A_ASSERT(request_in_cartridge_windows, clk_i, reset_i,
+  `ASSERT(request_in_cartridge_windows, clk_i, reset_i,
       !request_i.valid || rom_window || ram_window)
-  `N2A_ASSERT(request_quiet_while_outstanding, clk_i, reset_i,
+  `ASSERT(request_quiet_while_outstanding, clk_i, reset_i,
       !(local_q || backing_wait_q) || !request_i.valid)
-  `N2A_ASSERT(backing_response_requested, clk_i, reset_i,
+  `ASSERT(backing_response_requested, clk_i, reset_i,
       !backing_response_i.valid || backing_wait_q)
-  `N2A_ASSERT(backing_response_known, clk_i, reset_i,
+  `ASSERT(backing_response_known, clk_i, reset_i,
       !backing_wait_q || !$isunknown(backing_response_i))
-  `N2A_ASSERT_KNOWN(backing_ready_known, clk_i, reset_i, backing_ready_i)
-  `N2A_ASSERT_KNOWN(load_port_known, clk_i, reset_i, load_write_i)
+  `ASSERT_KNOWN(backing_ready_known, clk_i, reset_i, backing_ready_i)
+  `ASSERT_KNOWN(load_port_known, clk_i, reset_i, load_write_i)
 endmodule

@@ -39,11 +39,11 @@ module n2a_sdp_ram_enabled #(
   localparam bit DEPTH_IS_POWER_OF_TWO =
       (DEPTH >= 2) && ((DEPTH & (DEPTH - 1)) == 0);
 
-  `N2A_ASSERT_PARAM(g_invalid_data_width, DATA_WIDTH >= 1,
+  `ASSERT_PARAM(g_invalid_data_width, DATA_WIDTH >= 1,
       "n2a_sdp_ram DATA_WIDTH must be at least 1")
-  `N2A_ASSERT_PARAM(g_invalid_depth, DEPTH_IS_POWER_OF_TWO,
+  `ASSERT_PARAM(g_invalid_depth, DEPTH_IS_POWER_OF_TWO,
       "n2a_sdp_ram DEPTH must be a power of two and at least 2")
-  `N2A_ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
+  `ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
       "n2a_sdp_ram ADDR_WIDTH must equal $clog2(DEPTH)")
 
   // Why: pins that do not exist in DUAL_PORT mode stay unconnected, exactly as

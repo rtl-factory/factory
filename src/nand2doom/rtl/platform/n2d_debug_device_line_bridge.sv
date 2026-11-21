@@ -33,13 +33,13 @@ module n2d_debug_device_line_bridge (
 );
     import n2d_types_pkg::*;
 
-    localparam line_bridge_regs_t REGS_RESET = '{
+    localparam t_line_bridge_regs REGS_RESET = '{
         state: LINE_BRIDGE_IDLE, write: 1'b0, palette: 1'b0, address: '0, write_data: '0,
         byte_enable: '0, word: '0, response_data: '0, line_response_valid: 1'b0};
     /* verilator lint_off UNUSEDSIGNAL */
-    line_bridge_regs_t regs_q;
+    t_line_bridge_regs regs_q;
     /* verilator lint_on UNUSEDSIGNAL */
-    line_bridge_regs_t regs_d;
+    t_line_bridge_regs regs_d;
     logic selected_ready, selected_response_valid;
     logic [31:0] selected_response_data;
     logic word_enabled;
@@ -110,8 +110,8 @@ module n2d_debug_device_line_bridge (
         endcase
     end
 
-    `N2A_DFF_RST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
+    `DFF_RST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
 
-    `N2A_ASSERT_CLOCKED(clk_i, reset_i, !(framebuffer_request_valid_o && palette_request_valid_o))
-    `N2A_ASSERT_CLOCKED_WHEN(clk_i, reset_i, line_request_valid_i, line_request_address_i[3:0] == 0)
+    `ASSERT_CLOCKED(clk_i, reset_i, !(framebuffer_request_valid_o && palette_request_valid_o))
+    `ASSERT_CLOCKED_WHEN(clk_i, reset_i, line_request_valid_i, line_request_address_i[3:0] == 0)
 endmodule

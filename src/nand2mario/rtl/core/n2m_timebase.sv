@@ -42,13 +42,13 @@ module n2m_timebase (
   assign dot_enable_o = dot_pulse;
   assign machine_cycle_enable_o = dot_pulse && (dot_count_q == 2'd3);
 
-  `N2A_DFF_RST(phase_q, phase_d, clk_i, reset_i)
-  `N2A_DFF_RST(dot_count_q, dot_count_d, clk_i, reset_i)
+  `DFF_RST(phase_q, phase_d, clk_i, reset_i)
+  `DFF_RST(dot_count_q, dot_count_d, clk_i, reset_i)
 
-  `N2A_ASSERT(n2m_timebase_phase_in_range, clk_i, reset_i,
+  `ASSERT(n2m_timebase_phase_in_range, clk_i, reset_i,
     phase_q < PHASE_MODULUS)
-  `N2A_ASSERT_KNOWN(n2m_timebase_enable_known, clk_i, reset_i,
+  `ASSERT_KNOWN(n2m_timebase_enable_known, clk_i, reset_i,
     {dot_enable_o, machine_cycle_enable_o})
-  `N2A_ASSERT(n2m_timebase_machine_is_dot, clk_i, reset_i,
+  `ASSERT(n2m_timebase_machine_is_dot, clk_i, reset_i,
     !machine_cycle_enable_o || dot_enable_o)
 endmodule

@@ -18,14 +18,14 @@ module n2m_sdram_backing (
   input  logic                                   clk_i,
   input  logic                                   reset_i,
   // Cartridge backing port (the mapper).
-  input  n2m_cartridge_pkg::backing_request_t    request_i,
+  input  n2m_cartridge_pkg::t_backing_request    request_i,
   output logic                                   ready_o,
-  output n2m_cartridge_pkg::backing_response_t   response_o,
+  output n2m_cartridge_pkg::t_backing_response   response_o,
   // Load port (the loader and the simulation preload path): ROM and RAM
   // reads and writes with the same records and one outstanding request.
-  input  n2m_cartridge_pkg::backing_request_t    load_request_i,
+  input  n2m_cartridge_pkg::t_backing_request    load_request_i,
   output logic                                   load_ready_o,
-  output n2m_cartridge_pkg::backing_response_t   load_response_o,
+  output n2m_cartridge_pkg::t_backing_response   load_response_o,
   // High once the SDRAM finished its power-up initialization.
   output logic                                   initialized_o,
   // DE10-Lite SDRAM pins (data bus split; the board top resolves the pin).
@@ -53,7 +53,7 @@ module n2m_sdram_backing (
   logic [SDRAM_DATA_BITS-1:0]     ctrl_response_data;
   logic                           accept_mapper, accept_loader, accept;
   logic                           selected_write, selected_ram;
-  rom_address_t                   selected_address;
+  t_rom_address                   selected_address;
   logic [7:0]                     selected_write_data;
   logic [SDRAM_ADDRESS_BITS-1:0]  device_address;
   logic [SDRAM_DATA_BITS-1:0]     write_word;
@@ -122,9 +122,9 @@ module n2m_sdram_backing (
   assign busy_d = accept || (busy_q && !ctrl_response_valid);
   assign source_d = accept_loader;
   assign lane_d = selected_address[0];
-  `N2A_DFF_RST(busy_q, busy_d, clk_i, reset_i)
-  `N2A_DFF_RST_EN(source_q, source_d, clk_i, accept, reset_i, 1'b0)
-  `N2A_DFF_RST_EN(lane_q, lane_d, clk_i, accept, reset_i, 1'b0)
+  `DFF_RST(busy_q, busy_d, clk_i, reset_i)
+  `DFF_RST_EN(source_q, source_d, clk_i, accept, reset_i, 1'b0)
+  `DFF_RST_EN(lane_q, lane_d, clk_i, accept, reset_i, 1'b0)
   assign read_byte = lane_q ? ctrl_response_data[15:8] : ctrl_response_data[7:0];
 
   always_comb begin
@@ -134,18 +134,18 @@ module n2m_sdram_backing (
     load_response_o.read_data = read_byte;
   end
 
-  `N2A_ASSERT(request_known, clk_i, reset_i,
+  `ASSERT(request_known, clk_i, reset_i,
       !request_i.valid || !$isunknown(request_i))
-  `N2A_ASSERT(load_request_known, clk_i, reset_i,
+  `ASSERT(load_request_known, clk_i, reset_i,
       !load_request_i.valid || !$isunknown(load_request_i))
-  `N2A_ASSERT_NEVER(rom_write_rejected, clk_i, reset_i,
+  `ASSERT_NEVER(rom_write_rejected, clk_i, reset_i,
       request_i.valid && !request_i.ram && request_i.write)
-  `N2A_ASSERT(request_one_outstanding, clk_i, reset_i,
+  `ASSERT(request_one_outstanding, clk_i, reset_i,
       !(busy_q && !source_q) || !request_i.valid)
-  `N2A_ASSERT(load_request_one_outstanding, clk_i, reset_i,
+  `ASSERT(load_request_one_outstanding, clk_i, reset_i,
       !(busy_q && source_q) || !load_request_i.valid)
-  `N2A_ASSERT(completion_requested, clk_i, reset_i,
+  `ASSERT(completion_requested, clk_i, reset_i,
       !ctrl_response_valid || busy_q)
-  `N2A_ASSERT(ready_implies_idle, clk_i, reset_i,
+  `ASSERT(ready_implies_idle, clk_i, reset_i,
       !ready_o || ctrl_idle)
 endmodule

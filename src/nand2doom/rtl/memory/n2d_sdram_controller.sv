@@ -44,13 +44,13 @@ module n2d_sdram_controller #(
 );
     import n2d_ls_types_pkg::*;
 
-    localparam sdram_regs_t REGS_RESET = '{
+    localparam t_sdram_regs REGS_RESET = '{
         state: SDRAM_POWERUP, wait_count: '0, refresh: '0,
         refresh_tracking: 1'b0, open: '0, open_row: '0, write: 1'b0,
         address: '0, write_data: '0, byte_enable: '0, read_data: '0,
         beat: '0, init_done: 1'b0, response_valid: 1'b0,
         response_error: 1'b0};
-    sdram_regs_t regs_q, regs_d;
+    t_sdram_regs regs_q, regs_d;
     localparam logic [12:0] POWERUP_LIMIT = 13'(POWERUP_CYCLES - 1);
     localparam logic [8:0] REFRESH_LIMIT = 9'(REFRESH_CYCLES - 1);
     localparam logic [8:0] REFRESH_START =
@@ -224,22 +224,22 @@ module n2d_sdram_controller #(
         endcase
     end
 
-    `N2A_DFF_RST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
+    `DFF_RST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
 
-    `N2A_ASSERT_CLOCKED(clk_i, reset_i, !(sdram_dq_oe_o && regs_q.state != SDRAM_WRITE))
-    `N2A_ASSERT_CLOCKED(clk_i, reset_i, !(regs_q.state == SDRAM_ACTIVE && regs_q.open[bank]))
-    `N2A_ASSERT_CLOCKED(clk_i, reset_i, !(regs_q.state == SDRAM_REFRESH && regs_q.open != 4'b0))
-    `N2A_ASSERT_CLOCKED_FATAL_WHEN(clk_i, reset_i, regs_q.refresh_tracking,
+    `ASSERT_CLOCKED(clk_i, reset_i, !(sdram_dq_oe_o && regs_q.state != SDRAM_WRITE))
+    `ASSERT_CLOCKED(clk_i, reset_i, !(regs_q.state == SDRAM_ACTIVE && regs_q.open[bank]))
+    `ASSERT_CLOCKED(clk_i, reset_i, !(regs_q.state == SDRAM_REFRESH && regs_q.open != 4'b0))
+    `ASSERT_CLOCKED_FATAL_WHEN(clk_i, reset_i, regs_q.refresh_tracking,
         regs_q.refresh <= REFRESH_LIMIT, "SDRAM refresh deadline exceeded")
     // Why: a newly presented request may differ from the preceding idle payload,
     // so stability is required only after a request was stalled at an edge.
-    `N2A_ASSERT_PROPERTY(sdram_stalled_request_stable, clk_i, reset_i,
+    `ASSERT_PROPERTY(sdram_stalled_request_stable, clk_i, reset_i,
         (request_valid_i && !request_ready_o) |=>
         (request_valid_i && $stable({request_write_i, request_address_i,
                                     request_write_data_i, request_byte_enable_i})))
     // Why: REFRESH_RESERVE_CYCLES must be at least 14 because the worst in-flight
     // line (row-miss read), IDLE and precharge-all put the REFRESH command in the
     // fourteenth clock after acceptance.
-    `N2A_ASSERT_INITIAL(REFRESH_RESERVE_CYCLES >= 14)
-    `N2A_ASSERT_INITIAL(REFRESH_CYCLES > REFRESH_RESERVE_CYCLES)
+    `ASSERT_INITIAL(REFRESH_RESERVE_CYCLES >= 14)
+    `ASSERT_INITIAL(REFRESH_CYCLES > REFRESH_RESERVE_CYCLES)
 endmodule

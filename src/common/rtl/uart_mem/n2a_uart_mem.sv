@@ -78,19 +78,19 @@ module n2a_uart_mem
     localparam logic [31:0] HOLD_LAST = 32'(HOLD_TIMEOUT_CYCLES - 1);
     localparam logic [31:0] MEM_LAST = 32'(MEM_TIMEOUT_CYCLES - 1);
 
-    `N2A_ASSERT_PARAM(g_window_count, (WINDOW_COUNT >= 1) && (WINDOW_COUNT <= 8),
+    `ASSERT_PARAM(g_window_count, (WINDOW_COUNT >= 1) && (WINDOW_COUNT <= 8),
         "n2a_uart_mem WINDOW_COUNT must be 1..8")
-    `N2A_ASSERT_PARAM(g_max_length, (MAX_LENGTH >= 4) && (MAX_LENGTH <= 32768) &&
+    `ASSERT_PARAM(g_max_length, (MAX_LENGTH >= 4) && (MAX_LENGTH <= 32768) &&
         ((MAX_LENGTH % 4) == 0), "n2a_uart_mem MAX_LENGTH must be 4..32768, a multiple of four")
-    `N2A_ASSERT_PARAM(g_timeouts, (GAP_CYCLES >= 2) && (HOLD_TIMEOUT_CYCLES >= 2) &&
+    `ASSERT_PARAM(g_timeouts, (GAP_CYCLES >= 2) && (HOLD_TIMEOUT_CYCLES >= 2) &&
         (MEM_TIMEOUT_CYCLES >= 2), "n2a_uart_mem timeouts must be at least two clocks")
-    `N2A_ASSERT_PARAM(g_live_gap, (LIVE_GAP_CYCLES >= 1) && (LIVE_GAP_CYCLES <= 65535),
+    `ASSERT_PARAM(g_live_gap, (LIVE_GAP_CYCLES >= 1) && (LIVE_GAP_CYCLES <= 65535),
         "n2a_uart_mem LIVE_GAP_CYCLES must be 1..65535")
 
-    localparam uart_mem_regs_t REGS_RESET = '{
+    localparam t_uart_mem_regs REGS_RESET = '{
         phase: UART_MEM_IDLE, crc32: 32'hffff_ffff, hold: HOLD_AT_RESET, default: '0};
 
-    uart_mem_regs_t r_q, r_d;
+    t_uart_mem_regs r_q, r_d;
     logic [31:0] timer_q, timer_d;
     logic [31:0] mem_timer_q, mem_timer_d;
     logic [15:0] pace_q, pace_d;
@@ -196,7 +196,7 @@ module n2a_uart_mem
     assign payload_offset = r_q.index - 16'd6;
     assign crc_lane = crc_offset[1:0];
     assign payload_lane = payload_offset[1:0];
-    `N2A_UNUSED_BITS(unused_offset_words, {crc_offset[15:2], payload_offset[15:2]})
+    `UNUSED_BITS(unused_offset_words, {crc_offset[15:2], payload_offset[15:2]})
     assign crc_final = ~r_q.crc32;
 
     always_comb begin
@@ -465,10 +465,10 @@ module n2a_uart_mem
         if (r_q.phase != r_d.phase) timer_d = 32'h0;
     end
 
-    `N2A_DFF_ARST_VAL(r_q, r_d, clk_i, reset_i, REGS_RESET)
-    `N2A_DFF_ARST_VAL(timer_q, timer_d, clk_i, reset_i, '0)
-    `N2A_DFF_ARST_VAL(mem_timer_q, mem_timer_d, clk_i, reset_i, '0)
-    `N2A_DFF_ARST_VAL(pace_q, pace_d, clk_i, reset_i, 16'hffff)
+    `DFF_ARST_VAL(r_q, r_d, clk_i, reset_i, REGS_RESET)
+    `DFF_ARST_VAL(timer_q, timer_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(mem_timer_q, mem_timer_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(pace_q, pace_d, clk_i, reset_i, 16'hffff)
 
     assign down_rx_byte_o = rx_byte_i;
     assign owner_o = (r_q.phase != UART_MEM_IDLE);
@@ -486,12 +486,12 @@ module n2a_uart_mem
     assign mem_req_addr_o = r_q.req_addr;
     assign mem_req_wdata_o = r_q.req_wdata;
 
-    `N2A_ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, !(r_q.req_valid && r_q.outstanding),
+    `ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, !(r_q.req_valid && r_q.outstanding),
         "n2a_uart_mem has more than one request in flight")
-    `N2A_ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, mem_rsp_valid_i, r_q.outstanding,
+    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, mem_rsp_valid_i, r_q.outstanding,
         "n2a_uart_mem response without an outstanding request")
-    `N2A_ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, r_q.req_valid && r_q.req_write,
+    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, r_q.req_valid && r_q.req_write,
         hold_ack_i, "n2a_uart_mem write request while the CPU is not held")
-    `N2A_ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, mem_accept && !hold_ack_i,
+    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, mem_accept && !hold_ack_i,
         pace_q >= LIVE_GAP, "n2a_uart_mem live request inside the pacing gap")
 endmodule

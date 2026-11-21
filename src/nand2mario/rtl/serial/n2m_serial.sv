@@ -25,9 +25,9 @@ module n2m_serial (
   input  logic                               shift_clock_i,
   // Peripheral port from the memory map; kind is not consulted.
   /* verilator lint_off UNUSEDSIGNAL */
-  input  n2m_interfaces_pkg::bus_request_t   io_request_i,
+  input  n2m_interfaces_pkg::t_bus_request   io_request_i,
   /* verilator lint_on UNUSEDSIGNAL */
-  output n2m_interfaces_pkg::bus_response_t  io_response_o,
+  output n2m_interfaces_pkg::t_bus_response  io_response_o,
   output logic                               io_selected_o,
   // One-cycle pulse after the edge that completed a byte: IF bit 3 request.
   output logic                               interrupt_o,
@@ -87,14 +87,14 @@ module n2m_serial (
     tx_valid_d = complete;
   end
 
-  `N2A_DFF_RST(sb_q, sb_d, clk_i, reset_i)
-  `N2A_DFF_RST(enable_q, enable_d, clk_i, reset_i)
-  `N2A_DFF_RST(clock_q, clock_d, clk_i, reset_i)
-  `N2A_DFF_RST(bits_q, bits_d, clk_i, reset_i)
-  `N2A_DFF_RST(tx_shift_q, tx_shift_d, clk_i, reset_i)
-  `N2A_DFF_RST(tx_data_q, tx_data_d, clk_i, reset_i)
-  `N2A_DFF_RST(tx_valid_q, tx_valid_d, clk_i, reset_i)
-  `N2A_DFF_RST(interrupt_q, interrupt_d, clk_i, reset_i)
+  `DFF_RST(sb_q, sb_d, clk_i, reset_i)
+  `DFF_RST(enable_q, enable_d, clk_i, reset_i)
+  `DFF_RST(clock_q, clock_d, clk_i, reset_i)
+  `DFF_RST(bits_q, bits_d, clk_i, reset_i)
+  `DFF_RST(tx_shift_q, tx_shift_d, clk_i, reset_i)
+  `DFF_RST(tx_data_q, tx_data_d, clk_i, reset_i)
+  `DFF_RST(tx_valid_q, tx_valid_d, clk_i, reset_i)
+  `DFF_RST(interrupt_q, interrupt_d, clk_i, reset_i)
   assign interrupt_o = interrupt_q;
   assign tx_valid_o = tx_valid_q;
   assign tx_data_o = tx_data_q;
@@ -109,14 +109,14 @@ module n2m_serial (
         sb_q : {enable_q, 6'b111111, clock_q};
   end
 
-  `N2A_ASSERT_KNOWN(serial_controls_known, clk_i, reset_i,
+  `ASSERT_KNOWN(serial_controls_known, clk_i, reset_i,
       {shift_clock_i, io_request_i.valid})
-  `N2A_ASSERT(serial_access_known, clk_i, reset_i,
+  `ASSERT(serial_access_known, clk_i, reset_i,
       !io_request_i.valid || !$isunknown({io_request_i.write, io_request_i.address}))
-  `N2A_ASSERT(serial_write_known, clk_i, reset_i,
+  `ASSERT(serial_write_known, clk_i, reset_i,
       !(access && io_request_i.write) || !$isunknown(io_request_i.write_data))
-  `N2A_ASSERT(serial_counters_idle, clk_i, reset_i,
+  `ASSERT(serial_counters_idle, clk_i, reset_i,
       $past(shift) || $past(write_sc) || bits_q == $past(bits_q))
-  `N2A_ASSERT(serial_interrupt_follows_completion, clk_i, reset_i,
+  `ASSERT(serial_interrupt_follows_completion, clk_i, reset_i,
       interrupt_q == $past(complete) && tx_valid_q == $past(complete))
 endmodule

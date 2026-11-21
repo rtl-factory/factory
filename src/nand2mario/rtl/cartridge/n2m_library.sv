@@ -14,16 +14,16 @@ module n2m_library (
   input  logic core_reset_i,
   input  logic host_hold_i,
   input  logic backing_initialized_i,
-  input  n2m_interfaces_pkg::bus_request_t request_i,
+  input  n2m_interfaces_pkg::t_bus_request request_i,
   output logic ready_o,
-  output n2m_interfaces_pkg::bus_response_t response_o,
-  output n2m_cartridge_pkg::backing_request_t backing_request_o,
+  output n2m_interfaces_pkg::t_bus_response response_o,
+  output n2m_cartridge_pkg::t_backing_request backing_request_o,
   input  logic backing_ready_i,
-  input  n2m_cartridge_pkg::backing_response_t backing_response_i,
+  input  n2m_cartridge_pkg::t_backing_response backing_response_i,
   output logic hold_o
 );
   import n2m_library_pkg::*;
-  state_t state_q, state_d;
+  t_state state_q, state_d;
   logic library_mode, busy, local_access, accept, local_valid_q;
   logic [7:0] local_data, local_data_q, status;
   logic bank_write, select_write, game_exit, source_response;
@@ -33,11 +33,11 @@ module n2m_library (
   logic [20:0] copy_destination;
   logic active_load_write;
   logic [7:0] mapper_header_data;
-  n2m_interfaces_pkg::bus_request_t mapper_request;
-  n2m_interfaces_pkg::bus_response_t mapper_response;
+  n2m_interfaces_pkg::t_bus_request mapper_request;
+  n2m_interfaces_pkg::t_bus_response mapper_response;
   logic mapper_ready, active_ready;
-  n2m_cartridge_pkg::backing_request_t active_request, active_load;
-  n2m_cartridge_pkg::backing_response_t active_response;
+  n2m_cartridge_pkg::t_backing_request active_request, active_load;
+  n2m_cartridge_pkg::t_backing_response active_response;
 
   assign library_mode = state_q.profile == PROFILE_LOADER;
   assign busy = (state_q.phase != LIB_IDLE) && (state_q.phase != LIB_FAILED);
@@ -78,8 +78,8 @@ module n2m_library (
   end
   logic local_accept;
   assign local_accept = accept && local_access;
-  `N2A_DFF_RST(local_valid_q, local_accept, clk_i, core_reset_i)
-  `N2A_DFF_RST_EN(local_data_q, local_data, clk_i, local_accept, core_reset_i, 8'hff)
+  `DFF_RST(local_valid_q, local_accept, clk_i, core_reset_i)
+  `DFF_RST_EN(local_data_q, local_data, clk_i, local_accept, core_reset_i, 8'hff)
 
   // Why: ordinary games keep the existing mapper. Its header observation comes
   // from the catalogue's profile because the loader image's header bytes are
@@ -258,16 +258,16 @@ module n2m_library (
       else state_d.phase = LIB_DRAIN;
     end
   end
-  `N2A_DFF_RST_VAL(state_q, state_d, clk_i, reset_i, RESET_STATE)
+  `DFF_RST_VAL(state_q, state_d, clk_i, reset_i, RESET_STATE)
 
-  `N2A_ASSERT(request_known, clk_i, reset_i,
+  `ASSERT(request_known, clk_i, reset_i,
       !request_i.valid || !$isunknown(request_i))
-  `N2A_ASSERT(library_response_requested, clk_i, reset_i,
+  `ASSERT(library_response_requested, clk_i, reset_i,
       !backing_response_i.valid || (state_q.phase == LIB_ENTRY_RESPONSE) ||
       (state_q.phase == LIB_COPY_RESPONSE) || (state_q.phase == LIB_DRAIN))
-  `N2A_ASSERT(no_cpu_during_image_copy, clk_i, reset_i,
+  `ASSERT(no_cpu_during_image_copy, clk_i, reset_i,
       !(active_load_write && !state_q.window_copy) || core_reset_i)
-  `N2A_ASSERT(window_writes_stay_high, clk_i, reset_i,
+  `ASSERT(window_writes_stay_high, clk_i, reset_i,
       !(active_load_write && state_q.window_copy) ||
       ((active_load.address >= 21'h004000) && (active_load.address < 21'h008000)))
 endmodule

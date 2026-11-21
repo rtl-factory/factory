@@ -32,28 +32,28 @@ package n2m_display_pkg;
   localparam int unsigned IMAGE_RIGHT  = IMAGE_LEFT + IMAGE_WIDTH;
   localparam int unsigned IMAGE_BOTTOM = IMAGE_TOP + IMAGE_HEIGHT;
 
-  typedef logic [FRAME_INDEX_WIDTH-1:0] frame_index_t;
-  typedef logic [1:0] bank_t;
-  typedef logic [1:0] shade_t;
+  typedef logic [FRAME_INDEX_WIDTH-1:0] t_frame_index;
+  typedef logic [1:0] t_bank;
+  typedef logic [1:0] t_shade;
 
   typedef struct packed {
     logic [3:0] red;
     logic [3:0] green;
     logic [3:0] blue;
-  } rgb_t;
+  } t_rgb;
 
   // Frame bridge bank ownership: the banks being written, holding the newest
   // complete frame and being displayed, and the ready/display validity.
   typedef struct packed {
-    bank_t     write_bank;
-    bank_t     ready_bank;
-    bank_t     display_bank;
+    t_bank     write_bank;
+    t_bank     ready_bank;
+    t_bank     display_bank;
     logic      ready_fresh;     // the ready bank holds a complete frame not yet displayed
     logic      display_valid;   // the displayed bank holds a complete frame
     logic      pinned;          // a snapshot holds the displayed bank
-    n2m_snapshot_pkg::frame_id_t frame_count;   // ID of the newest completion (completions since reset)
-    n2m_snapshot_pkg::frame_id_t display_id;    // ID of the frame in the displayed bank
-  } frame_bridge_state_t;
+    n2m_snapshot_pkg::t_frame_id frame_count;   // ID of the newest completion (completions since reset)
+    n2m_snapshot_pkg::t_frame_id display_id;    // ID of the frame in the displayed bank
+  } t_frame_bridge_state;
 
   // Snapshot reader: one request in progress, its four frame-store reads
   // and the response register.
@@ -62,40 +62,40 @@ package n2m_display_pkg;
     logic [2:0]         issued;     // frame-store reads presented (0..4)
     logic [2:0]         captured;   // shades captured (0..4)
     logic               capture;    // the store's output this cycle is ours
-    frame_index_t       index;      // first pixel of the byte's quad
+    t_frame_index       index;      // first pixel of the byte's quad
     logic [7:0]         data;       // shades assembled so far
-    n2m_snapshot_pkg::snapshot_response_t response;
-  } frame_snapshot_state_t;
+    n2m_snapshot_pkg::t_snapshot_response response;
+  } t_frame_snapshot_state;
 
   // Scanout source address generation.
   typedef struct packed {
     logic [7:0]   column;     // source x of the current image clock
     logic [1:0]   repeat_x;   // image clocks already spent on this column
-    frame_index_t line_base;  // index of source pixel (0, source y)
+    t_frame_index line_base;  // index of source pixel (0, source y)
     logic [1:0]   repeat_y;   // image lines already spent on this source row
-  } scanout_address_t;
+  } t_scanout_address;
 
   // Scanout two-stage output pipeline: the frame-store read, then the palette.
   typedef struct packed {
     logic in_image_q, visible_q, hsync_q, vsync_q, frame_start_q;
-    rgb_t rgb_qq;
+    t_rgb rgb_qq;
     logic hsync_qq, vsync_qq, frame_start_qq;
-  } scanout_pipe_t;
+  } t_scanout_pipe;
 
   // Outside the image window and during blanking the output is black.
-  localparam rgb_t BORDER_RGB = '{red: 4'h0, green: 4'h0, blue: 4'h0};
-  localparam rgb_t BLANK_RGB  = '{red: 4'h0, green: 4'h0, blue: 4'h0};
+  localparam t_rgb BORDER_RGB = '{red: 4'h0, green: 4'h0, blue: 4'h0};
+  localparam t_rgb BLANK_RGB  = '{red: 4'h0, green: 4'h0, blue: 4'h0};
   // The image window shows shade 0 (white) until a complete frame exists.
-  localparam shade_t WHITE_SHADE = 2'd0;
+  localparam t_shade WHITE_SHADE = 2'd0;
 
   // Row-major index of pixel (x, y) inside one bank.
-  function automatic frame_index_t frame_index(input logic [7:0] x, input logic [7:0] y);
-    return (frame_index_t'(y) * frame_index_t'(FRAME_WIDTH)) + frame_index_t'(x);
+  function automatic t_frame_index frame_index(input logic [7:0] x, input logic [7:0] y);
+    return (t_frame_index'(y) * t_frame_index'(FRAME_WIDTH)) + t_frame_index'(x);
   endfunction
 
   // DMG shade to grey on 4:4:4 RGB: 0 white, 1 light grey, 2 dark grey,
   // 3 black. Every channel carries the same level.
-  function automatic rgb_t shade_rgb(input shade_t shade);
+  function automatic t_rgb shade_rgb(input t_shade shade);
     logic [3:0] level;
     case (shade)
       2'd0: level = 4'hF;

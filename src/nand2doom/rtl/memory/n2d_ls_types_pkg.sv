@@ -14,12 +14,12 @@ package n2d_ls_types_pkg;
         ICACHE_LINE_REQUEST,
         ICACHE_LINE_RESPONSE,
         ICACHE_INVALIDATE
-    } icache_state_t;
+    } t_icache_state;
 
     // n2d_icache control state, captured request and registered (miss/error)
     // CPU and maintenance outputs (pulses reset low like every other field).
     typedef struct packed {
-        icache_state_t state;
+        t_icache_state state;
         logic [31:0]   request_address;
         logic          victim_way;
         logic [8:0]    invalidate_set;
@@ -29,7 +29,7 @@ package n2d_ls_types_pkg;
         logic          maintenance_done;
         logic          hit_event;
         logic          miss_event;
-    } icache_regs_t;
+    } t_icache_regs;
 
     // n2d_dcache control phase. The maintenance states stay last: the RAM
     // read address selects the walk set for every state at or after
@@ -44,7 +44,7 @@ package n2d_ls_types_pkg;
         DCACHE_MAINTENANCE_SCAN,
         DCACHE_MAINTENANCE_WRITEBACK_REQUEST,
         DCACHE_MAINTENANCE_WRITEBACK_RESPONSE
-    } dcache_state_t;
+    } t_dcache_state;
 
     // n2d_dcache control state, captured request, the store-hit forward
     // record, the maintenance walk and registered (miss/error) CPU and
@@ -55,7 +55,7 @@ package n2d_ls_types_pkg;
     // the written line for the forward record. The two uses never overlap: a
     // miss captures its victim on the edge that ends the forwarded lookup.
     typedef struct packed {
-        dcache_state_t state;
+        t_dcache_state state;
         logic [31:2]   request_address;
         logic          request_write;
         logic [31:0]   request_write_data;
@@ -102,7 +102,7 @@ package n2d_ls_types_pkg;
         logic          prefetch_cancel_event;
         // Dropped lines not yet reported; one is reported per clock.
         logic [2:0]    prefetch_drop_backlog;
-    } dcache_regs_t;
+    } t_dcache_regs;
 
     // n2d_sdram_controller command phase.
     typedef enum logic [4:0] {
@@ -110,14 +110,14 @@ package n2d_ls_types_pkg;
         SDRAM_INIT_REF1_WAIT, SDRAM_INIT_REF2, SDRAM_INIT_REF2_WAIT, SDRAM_INIT_MRS,
         SDRAM_INIT_MRS_WAIT, SDRAM_IDLE, SDRAM_PRECHARGE, SDRAM_ACTIVE, SDRAM_READ,
         SDRAM_READ_CAPTURE, SDRAM_WRITE, SDRAM_PRECHARGE_ALL, SDRAM_REFRESH
-    } sdram_state_t;
+    } t_sdram_state;
 
     // n2d_sdram_controller state, open-row table, captured request and
     // registered read data/response/init outputs. read_data is both the DQ
     // capture register and the response payload; a write clears it at
     // acceptance.
     typedef struct packed {
-        sdram_state_t     state;
+        t_sdram_state     state;
         logic [12:0]      wait_count;
         logic [8:0]       refresh;
         logic             refresh_tracking;
@@ -132,7 +132,7 @@ package n2d_ls_types_pkg;
         logic             init_done;
         logic             response_valid;
         logic             response_error;
-    } sdram_regs_t;
+    } t_sdram_regs;
 
     // n2d_debug_memory_adapter transaction phase.
     typedef enum logic [3:0] {
@@ -146,13 +146,13 @@ package n2d_ls_types_pkg;
         DEBUG_MEM_PUBLISH_RESPONSE,
         DEBUG_MEM_ROLLBACK_REQUEST,
         DEBUG_MEM_ROLLBACK_RESPONSE
-    } debug_mem_state_t;
+    } t_debug_mem_state;
 
     // n2d_debug_memory_adapter scalar transaction state and registered
     // word/transaction responses. The staged-word counts and indices follow
     // MAX_WORDS and are registers of their own in the adapter.
     typedef struct packed {
-        debug_mem_state_t state;
+        t_debug_mem_state state;
         logic             transaction;
         logic             abort_pending;
         logic [25:0]      read_address;
@@ -161,5 +161,5 @@ package n2d_ls_types_pkg;
         logic             word_response_error;
         logic             transaction_done;
         logic             transaction_error;
-    } debug_mem_regs_t;
+    } t_debug_mem_regs;
 endpackage

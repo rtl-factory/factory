@@ -14,14 +14,14 @@ module n2a_reset_sync #(
   logic [IMPLEMENTATION_STAGES-1:0] stages_q;
   logic [IMPLEMENTATION_STAGES-1:0] stages_d;
 
-  `N2A_ASSERT_PARAM(g_invalid_stages, STAGES >= 2,
+  `ASSERT_PARAM(g_invalid_stages, STAGES >= 2,
       "n2a_reset_sync STAGES must be at least 2")
 
   assign stages_d = {stages_q[IMPLEMENTATION_STAGES-2:0], 1'b0};
 
   // Asynchronous assertion fills every stage; release shifts zeros in.
   localparam logic [IMPLEMENTATION_STAGES-1:0] STAGES_RESET = {IMPLEMENTATION_STAGES{1'b1}};
-  `N2A_DFF_ARST_VAL(stages_q, stages_d, clk_i, async_reset_i, STAGES_RESET)
+  `DFF_ARST_VAL(stages_q, stages_d, clk_i, async_reset_i, STAGES_RESET)
 
   assign reset_o = stages_q[IMPLEMENTATION_STAGES-1];
 endmodule

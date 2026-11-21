@@ -42,11 +42,11 @@ module n2a_tdp_ram #(
   assign a_address = REQUIRED_ADDR_WIDTH'(a_address_i);
   assign b_address = REQUIRED_ADDR_WIDTH'(b_address_i);
 
-  `N2A_ASSERT_PARAM(g_invalid_data_width, DATA_WIDTH >= 1,
+  `ASSERT_PARAM(g_invalid_data_width, DATA_WIDTH >= 1,
       "n2a_tdp_ram DATA_WIDTH must be at least 1")
-  `N2A_ASSERT_PARAM(g_invalid_depth, DEPTH_IS_POWER_OF_TWO,
+  `ASSERT_PARAM(g_invalid_depth, DEPTH_IS_POWER_OF_TWO,
       "n2a_tdp_ram DEPTH must be a power of two and at least 2")
-  `N2A_ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
+  `ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
       "n2a_tdp_ram ADDR_WIDTH must equal $clog2(DEPTH)")
 
   // Why: this is the conventional inferred true-dual-port template, one read
@@ -56,8 +56,8 @@ module n2a_tdp_ram #(
   // afterwards. Two enabled writes to one address in one edge are forbidden
   // by the contract; the process order below is not a promise of a winner.
   // There is no reset, enable, initialization, or bypass path.
-  `N2A_MEM_READ(a_read_data_o, memory, clk_i, a_address)
-  `N2A_MEM_WRITE(memory, clk_i, a_write_enable_i, a_address, a_write_data_i)
-  `N2A_MEM_READ(b_read_data_o, memory, clk_i, b_address)
-  `N2A_MEM_WRITE(memory, clk_i, b_write_enable_i, b_address, b_write_data_i)
+  `MEM_READ(a_read_data_o, memory, clk_i, a_address)
+  `MEM_WRITE(memory, clk_i, a_write_enable_i, a_address, a_write_data_i)
+  `MEM_READ(b_read_data_o, memory, clk_i, b_address)
+  `MEM_WRITE(memory, clk_i, b_write_enable_i, b_address, b_write_data_i)
 endmodule

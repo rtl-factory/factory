@@ -15,7 +15,7 @@ module n2m_display (
   // PPU LCD enable (LCDC.7) and pixel stream.
   input  logic                        lcd_enable_i,
   input  logic                        pixel_valid_i,
-  input  n2m_display_pkg::shade_t     pixel_shade_i,
+  input  n2m_display_pkg::t_shade     pixel_shade_i,
   input  logic [7:0]                  pixel_x_i,
   input  logic [7:0]                  pixel_y_i,
   // VGA output, aligned with pixel_start_o.
@@ -35,16 +35,16 @@ module n2m_display (
   input  logic                                 snapshot_pin_i,
   input  logic                                 snapshot_release_i,
   output logic                                 snapshot_pinned_o,
-  input  n2m_snapshot_pkg::snapshot_request_t   snapshot_request_i,
+  input  n2m_snapshot_pkg::t_snapshot_request   snapshot_request_i,
   output logic                                 snapshot_ready_o,
-  output n2m_snapshot_pkg::snapshot_response_t  snapshot_response_o
+  output n2m_snapshot_pkg::t_snapshot_response  snapshot_response_o
 );
   logic                          vga_frame_start;
   logic                          write_enable;
-  n2m_display_pkg::bank_t        write_bank, display_bank, read_bank;
-  n2m_display_pkg::frame_index_t write_index, read_index, scan_read_index, snapshot_read_index;
-  n2m_display_pkg::shade_t       write_shade, read_shade;
-  n2m_snapshot_pkg::frame_id_t    display_id;
+  n2m_display_pkg::t_bank        write_bank, display_bank, read_bank;
+  n2m_display_pkg::t_frame_index write_index, read_index, scan_read_index, snapshot_read_index;
+  n2m_display_pkg::t_shade       write_shade, read_shade;
+  n2m_snapshot_pkg::t_frame_id    display_id;
   logic                          scan_read_busy, snapshot_read_enable;
 
   // Why: the scanout must never miss a read, so the snapshot reader takes the
@@ -123,7 +123,7 @@ module n2m_display (
     .read_shade_i    (read_shade)
   );
 
-  `N2A_ASSERT(scan_and_write_banks_differ, clk_i, reset_i,
+  `ASSERT(scan_and_write_banks_differ, clk_i, reset_i,
       !write_enable || (write_bank != read_bank))
-  `N2A_ASSERT(snapshot_read_outside_scan, clk_i, reset_i, !snapshot_read_enable || !scan_read_busy)
+  `ASSERT(snapshot_read_outside_scan, clk_i, reset_i, !snapshot_read_enable || !scan_read_busy)
 endmodule

@@ -20,8 +20,8 @@ package n2m_ppu_pkg;
   localparam logic [15:0] WY_ADDRESS   = 16'hFF4A;
   localparam logic [15:0] WX_ADDRESS   = 16'hFF4B;
 
-  // Raster geometry. A dot is one 4,194,304 Hz interval; dot_t holds 0..455 and
-  // line_t 0..153. Mode 2 is dots 0..79 of a visible line and mode 3 lasts
+  // Raster geometry. A dot is one 4,194,304 Hz interval; t_dot holds 0..455 and
+  // t_line 0..153. Mode 2 is dots 0..79 of a visible line and mode 3 lasts
   // MODE3_BASE_DOTS before the SCX[2:0] penalty. The end of FETCH_DOT launches
   // tile fetch 0, the end of dot PIXEL_DOT + SCX[2:0] emits pixel 0 and
   // LAST_FETCH_DOT is tile fetch 20 (only when SCX[2:0] != 0). LY reads the next
@@ -46,8 +46,8 @@ package n2m_ppu_pkg;
   localparam int unsigned OBJECT_X_OFFSET  = 8;
   localparam int unsigned OBJECT_Y_OFFSET  = 16;
 
-  typedef logic [8:0] dot_t;
-  typedef logic [7:0] line_t;
+  typedef logic [8:0] t_dot;
+  typedef logic [7:0] t_line;
 
   // STAT[1:0] mode encoding.
   typedef enum logic [1:0] {
@@ -55,7 +55,7 @@ package n2m_ppu_pkg;
     MODE_VBLANK   = 2'd1,
     MODE_OAM_SCAN = 2'd2,
     MODE_TRANSFER = 2'd3
-  } mode_t;
+  } t_mode;
 
   // Ref: Pan Docs "LCDC": bit positions. Window map 0: $9800, 1: $9C00; tile
   // data 1: $8000 unsigned ids, 0: $8800 signed ids; BG map 0: $9800, 1: $9C00;
@@ -87,7 +87,7 @@ package n2m_ppu_pkg;
     logic [7:0] attributes;
     logic [7:0] low;
     logic [7:0] high;
-  } object_t;
+  } t_object;
 
   // Background/window tile fetch sequence of n2m_ppu_background.
   typedef enum logic [2:0] {
@@ -96,7 +96,7 @@ package n2m_ppu_pkg;
     FETCH_LOW  = 3'd2,  // map byte valid, low-plane read presented
     FETCH_HIGH = 3'd3,  // low byte valid, high-plane read presented
     FETCH_LAST = 3'd4   // high byte valid
-  } background_fetch_state_t;
+  } t_background_fetch_state;
 
   // OAM scan sequence of n2m_ppu_objects.
   typedef enum logic [2:0] {
@@ -106,7 +106,7 @@ package n2m_ppu_pkg;
     SCAN_TILE   = 3'd3,  // X valid, tile read presented
     SCAN_ATTR   = 3'd4,  // tile valid, attributes read presented
     SCAN_DECIDE = 3'd5   // attributes valid: keep or drop the entry
-  } object_scan_state_t;
+  } t_object_scan_state;
 
   // STAT interrupt enables as stored (STAT[6:3]) and indexed in the enables
   // vector: bit 3 LYC, bit 2 mode 2, bit 1 mode 1, bit 0 mode 0.

@@ -63,7 +63,7 @@ module n2d_if #(
     parameter int BTB_ENTRIES = n2d_core_pkg::BTB_ENTRIES_DEFAULT
 ) (
     input  logic                      clk_i,
-    input  logic                      rst_i,
+    input  logic                      reset_i,
     input  logic                      enable_i,
     // RUN state without a halt request: new fetches may issue
     input  logic                      fetch_allow_i,
@@ -231,7 +231,7 @@ module n2d_if #(
         // responds on this edge, and only when its response will find a free queue
         // entry without relying on a later take, so a response always has an entry
         // to land in.
-        request_valid = !rst_i && enable_i && fetch_allow_i && !flush_i &&
+        request_valid = !reset_i && enable_i && fetch_allow_i && !flush_i &&
             (!if_q.outstanding || response_now) && (queued_after <= 2'd1);
         request_accept = request_valid && instruction_request_ready_i;
 
@@ -277,7 +277,7 @@ module n2d_if #(
 
     end
 
-    `N2A_DFF_RST_VAL(if_q, if_d, clk_i, rst_i, IF_RESET)
+    `DFF_RST_VAL(if_q, if_d, clk_i, reset_i, IF_RESET)
 
     // Why: the return-address stack is circular so a push when full overwrites
     // the oldest entry, losing only the outermost return of a deep call chain;
@@ -319,11 +319,11 @@ module n2d_if #(
             end
         end
 
-        `N2A_DFF_RST(ras_top_q, ras_top_d, clk_i, rst_i)
-        `N2A_DFF_RST(ras_count_q, ras_count_d, clk_i, rst_i)
-        `N2A_DFF_ARRAY_EN(entry_q, entry_d, clk_i, ras_push)
+        `DFF_RST(ras_top_q, ras_top_d, clk_i, reset_i)
+        `DFF_RST(ras_count_q, ras_count_d, clk_i, reset_i)
+        `DFF_ARRAY_EN(entry_q, entry_d, clk_i, ras_push)
 
-        `N2A_ASSERT(if_ras_count_bounded, clk_i, rst_i,
+        `ASSERT(if_ras_count_bounded, clk_i, reset_i,
             ras_count_q <= (INDEX_BITS+1)'(RAS_DEPTH))
     end else begin : g_no_ras
         assign ras_valid = 1'b0;
@@ -396,8 +396,8 @@ module n2d_if #(
             end
         end
 
-        `N2A_DFF_RST(sweep_index_q, sweep_index_d, clk_i, rst_i)
-        `N2A_DFF_RST(sweep_done_q, sweep_done_d, clk_i, rst_i)
+        `DFF_RST(sweep_index_q, sweep_index_d, clk_i, reset_i)
+        `DFF_RST(sweep_done_q, sweep_done_d, clk_i, reset_i)
 
         n2a_sdp_ram #(.DATA_WIDTH($bits(t_btb_entry)), .DEPTH(BTB_ENTRIES)) u_table (
             .clk_i(clk_i),
@@ -410,7 +410,7 @@ module n2d_if #(
 
         // Why: PC bits outside the index, tag and word target are not stored; a
         // slot that never trains does not read its other fields.
-        `N2A_UNUSED_BITS(unused_update_bits, {btb_update_slot_i.pc[31:TAG_LOW+BTB_TAG_BITS],
+        `UNUSED_BITS(unused_update_bits, {btb_update_slot_i.pc[31:TAG_LOW+BTB_TAG_BITS],
                                       btb_update_slot_i.pc[1:0],
                                       btb_update_target_i[31:BTB_TARGET_BITS+2],
                                       btb_update_target_i[1:0],
@@ -423,7 +423,7 @@ module n2d_if #(
                                       if_d.pc[1:0]})
 
         // Why: a misaligned target traps in Q102H and never trains the buffer.
-        `N2A_ASSERT(if_btb_target_aligned, clk_i, rst_i,
+        `ASSERT(if_btb_target_aligned, clk_i, reset_i,
             !(btb_update_i && btb_update_taken_i) || (btb_update_target_i[1:0] == 2'b00))
     end else begin : g_no_btb
         assign btb_hit = 1'b0;
@@ -436,18 +436,18 @@ module n2d_if #(
     end
     endgenerate
 
-    `N2A_ASSERT(if_queue_no_overflow, clk_i, rst_i,
+    `ASSERT(if_queue_no_overflow, clk_i, reset_i,
         !(push && entry0_after_pop.valid && entry1_after_pop.valid && !flush_i))
-    `N2A_ASSERT(if_take_needs_slot, clk_i, rst_i, !take_i || slot_Q101H_o.valid)
-    `N2A_ASSERT(if_redirect_flushes, clk_i, rst_i, !redirect_valid_i || flush_i)
-    `N2A_ASSERT(if_fetch_pc_aligned, clk_i, rst_i, if_q.pc[1:0] == 2'b00)
-    `N2A_ASSERT(if_predicted_target_aligned, clk_i, rst_i,
+    `ASSERT(if_take_needs_slot, clk_i, reset_i, !take_i || slot_Q101H_o.valid)
+    `ASSERT(if_redirect_flushes, clk_i, reset_i, !redirect_valid_i || flush_i)
+    `ASSERT(if_fetch_pc_aligned, clk_i, reset_i, if_q.pc[1:0] == 2'b00)
+    `ASSERT(if_predicted_target_aligned, clk_i, reset_i,
         !slot_Q101H_o.predicted_taken || (slot_Q101H_o.predicted_target[1:0] == 2'b00))
-    `N2A_ASSERT(if_redirect_target_aligned, clk_i, rst_i,
+    `ASSERT(if_redirect_target_aligned, clk_i, reset_i,
         !(slot_Q101H_o.valid && predict_redirect_Q101H_o) || (predict_target_Q101H_o[1:0] == 2'b00))
-    `N2A_ASSERT_PARAM(g_invalid_ras_depth, (RAS_DEPTH == 0) || ((RAS_DEPTH >= 2) &&
+    `ASSERT_PARAM(g_invalid_ras_depth, (RAS_DEPTH == 0) || ((RAS_DEPTH >= 2) &&
         ((RAS_DEPTH & (RAS_DEPTH - 1)) == 0)), "RAS_DEPTH must be 0 or a power of two >= 2")
-    `N2A_ASSERT_PARAM(g_invalid_btb_entries, (BTB_ENTRIES == 0) || ((BTB_ENTRIES >= 2) &&
+    `ASSERT_PARAM(g_invalid_btb_entries, (BTB_ENTRIES == 0) || ((BTB_ENTRIES >= 2) &&
         (BTB_ENTRIES <= 2048) && ((BTB_ENTRIES & (BTB_ENTRIES - 1)) == 0)),
         "BTB_ENTRIES must be 0 or a power of two from 2 to 2048")
 endmodule

@@ -2,7 +2,7 @@ module n2d_cached_rv32im #(
     parameter int unsigned DCACHE_WAYS = 4
 ) (
     input  logic         clk_i,
-    input  logic         rst_i,
+    input  logic         reset_i,
     input  logic         enable_i,
 
     output logic         instruction_line_request_valid_o,
@@ -85,7 +85,7 @@ module n2d_cached_rv32im #(
     /* verilator lint_on UNUSEDSIGNAL */
 
     n2d_rv32im_core u_core (
-        .clk_i(clk_i), .rst_i(rst_i), .enable_i(enable_i),
+        .clk_i(clk_i), .reset_i(reset_i), .enable_i(enable_i),
         .halt_request_i(1'b0), .reset_pc_request_i(1'b0), .resume_i(1'b0),
         .instruction_request_valid_o(instruction_request_valid),
         .instruction_request_ready_i(instruction_request_ready),
@@ -126,7 +126,7 @@ module n2d_cached_rv32im #(
     );
 
     n2d_icache u_icache (
-        .clk_i(clk_i), .rst_i(rst_i),
+        .clk_i(clk_i), .reset_i(reset_i),
         .cpu_request_valid_i(instruction_request_valid),
         .cpu_request_ready_o(instruction_request_ready),
         .cpu_request_address_i(instruction_request_address),
@@ -150,7 +150,7 @@ module n2d_cached_rv32im #(
     );
 
     n2d_dcache #(.WAYS(DCACHE_WAYS)) u_dcache (
-        .clk_i(clk_i), .rst_i(rst_i),
+        .clk_i(clk_i), .reset_i(reset_i),
         .cpu_request_valid_i(data_request_valid),
         .cpu_request_ready_o(data_request_ready),
         .cpu_request_write_i(data_request_write),

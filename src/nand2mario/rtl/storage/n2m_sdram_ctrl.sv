@@ -56,17 +56,17 @@ module n2m_sdram_ctrl #(
 );
   import n2m_sdram_pkg::*;
 
-  sdram_state_t   state, state_next;
-  sdram_command_t command;
+  t_sdram_state   state, state_next;
+  t_sdram_command command;
   logic           accept;
   logic           drive_data;
   logic [1:0]     write_mask;
 
-  `N2A_ASSERT_PARAM(g_invalid_refresh, (REFRESH_INTERVAL > SDRAM_REFRESH_CLOCKS) &&
+  `ASSERT_PARAM(g_invalid_refresh, (REFRESH_INTERVAL > SDRAM_REFRESH_CLOCKS) &&
       (REFRESH_DEADLINE_CLOCKS > REFRESH_INTERVAL) && (REFRESH_DEADLINE_CLOCKS < 256),
       "n2m_sdram_ctrl refresh interval must precede a deadline below 256 clocks")
 
-  `N2A_DFF_RST_VAL(state, state_next, clk_i, reset_i, SDRAM_RESET_STATE)
+  `DFF_RST_VAL(state, state_next, clk_i, reset_i, SDRAM_RESET_STATE)
 
   assign idle_o = !reset_i && state.phase == SDRAM_IDLE;
   assign initialized_o = !reset_i && state.initialized;
@@ -197,31 +197,31 @@ module n2m_sdram_ctrl #(
   // (bit 9), the write response at clock 10 (bit 9) and idle at clock 11 (bit 10).
   logic [10:0] read_history;
   logic [10:0] write_history;
-  `N2A_DFF_RST(read_history, {read_history[9:0], accept && !request_write_i}, clk_i, reset_i)
-  `N2A_DFF_RST(write_history, {write_history[9:0], accept && request_write_i}, clk_i, reset_i)
+  `DFF_RST(read_history, {read_history[9:0], accept && !request_write_i}, clk_i, reset_i)
+  `DFF_RST(write_history, {write_history[9:0], accept && request_write_i}, clk_i, reset_i)
 
-  `N2A_ASSERT(SDRAM_WORD_ALIGNED, clk_i, reset_i, accept |-> request_address_i[0] == 1'b0)
-  `N2A_ASSERT(SDRAM_REQUEST_BEFORE_INIT, clk_i, reset_i, request_valid_i |-> state.initialized)
-  `N2A_ASSERT(SDRAM_REQUEST_STABLE, clk_i, reset_i,
+  `ASSERT(SDRAM_WORD_ALIGNED, clk_i, reset_i, accept |-> request_address_i[0] == 1'b0)
+  `ASSERT(SDRAM_REQUEST_BEFORE_INIT, clk_i, reset_i, request_valid_i |-> state.initialized)
+  `ASSERT(SDRAM_REQUEST_STABLE, clk_i, reset_i,
       $past(request_valid_i && !request_ready_o) && request_valid_i |->
           $stable({request_write_i, request_address_i, request_write_data_i, request_byte_enable_i}))
-  `N2A_ASSERT(SDRAM_REFRESH_DEADLINE, clk_i, reset_i,
+  `ASSERT(SDRAM_REFRESH_DEADLINE, clk_i, reset_i,
       state.initialized |-> int'(state.refresh_age) <= REFRESH_DEADLINE_CLOCKS)
-  `N2A_ASSERT(SDRAM_REFRESH_IDLE_ONLY, clk_i, reset_i,
+  `ASSERT(SDRAM_REFRESH_IDLE_ONLY, clk_i, reset_i,
       command == SDRAM_REFRESH_CMD |-> $past(state.phase) == SDRAM_IDLE || !state.initialized)
-  `N2A_ASSERT(SDRAM_RESPONSE_LATENCY, clk_i, reset_i,
+  `ASSERT(SDRAM_RESPONSE_LATENCY, clk_i, reset_i,
       response_valid_o == (read_history[SDRAM_READ_RESPONSE_CLOCKS-1] ||
                            write_history[SDRAM_WRITE_RESPONSE_CLOCKS-1]))
-  `N2A_ASSERT(SDRAM_READY_RETURNS, clk_i, reset_i,
+  `ASSERT(SDRAM_READY_RETURNS, clk_i, reset_i,
       (!read_history[SDRAM_READ_IDLE_CLOCKS-1] || idle_o) &&
       (!write_history[SDRAM_WRITE_IDLE_CLOCKS-1] || idle_o) &&
       (!(|read_history[SDRAM_READ_IDLE_CLOCKS-2:0]) || !idle_o) &&
       (!(|write_history[SDRAM_WRITE_IDLE_CLOCKS-2:0]) || !idle_o))
-  `N2A_ASSERT(SDRAM_DQ_EXCLUSIVE, clk_i, reset_i, drive_data |-> state.phase == SDRAM_WRITE)
-  `N2A_ASSERT(SDRAM_COLUMN_CONSISTENT, clk_i, reset_i,
+  `ASSERT(SDRAM_DQ_EXCLUSIVE, clk_i, reset_i, drive_data |-> state.phase == SDRAM_WRITE)
+  `ASSERT(SDRAM_COLUMN_CONSISTENT, clk_i, reset_i,
       (command != SDRAM_ACTIVATE_CMD || dram_addr_o == sdram_row(state.address)) &&
       (!(command == SDRAM_READ_CMD || command == SDRAM_WRITE_CMD) ||
           (dram_addr_o[9:0] == sdram_column(state.address) && !dram_addr_o[10])))
-  `N2A_ASSERT_KNOWN(SDRAM_KNOWN_PAYLOAD, clk_i, reset_i,
+  `ASSERT_KNOWN(SDRAM_KNOWN_PAYLOAD, clk_i, reset_i,
       accept ? {request_write_i, request_address_i, request_write_data_i, request_byte_enable_i} : '0)
 endmodule

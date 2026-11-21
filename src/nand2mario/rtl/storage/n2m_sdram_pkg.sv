@@ -48,7 +48,7 @@ package n2m_sdram_pkg;
     SDRAM_PRECHARGE_CMD = 3'b010,
     SDRAM_REFRESH_CMD = 3'b001,
     SDRAM_MODE_CMD = 3'b000
-  } sdram_command_t;
+  } t_sdram_command;
 
   typedef enum logic [3:0] {
     SDRAM_POWERUP,
@@ -64,12 +64,12 @@ package n2m_sdram_pkg;
     SDRAM_PRECHARGE,
     SDRAM_REFRESH,
     SDRAM_COMPLETE
-  } sdram_phase_t;
+  } t_sdram_phase;
 
   // The whole controller state is one record with one owner.
   typedef struct packed {
-    sdram_phase_t                   phase;
-    sdram_phase_t                   after_wait;
+    t_sdram_phase                   phase;
+    t_sdram_phase                   after_wait;
     logic [12:0]                    count;
     logic [7:0]                     refresh_age;
     logic [3:0]                     init_refreshes;
@@ -79,9 +79,9 @@ package n2m_sdram_pkg;
     logic [SDRAM_DATA_BITS-1:0]     write_data;
     logic [SDRAM_BYTE_LANES-1:0]    byte_enable;
     logic [SDRAM_DATA_BITS-1:0]     read_data;
-  } sdram_state_t;
+  } t_sdram_state;
 
-  localparam sdram_state_t SDRAM_RESET_STATE = '{
+  localparam t_sdram_state SDRAM_RESET_STATE = '{
     phase: SDRAM_POWERUP, after_wait: SDRAM_POWERUP, count: '0, refresh_age: '0,
     init_refreshes: '0, initialized: 1'b0, write: 1'b0, address: '0,
     write_data: '0, byte_enable: '0, read_data: '0

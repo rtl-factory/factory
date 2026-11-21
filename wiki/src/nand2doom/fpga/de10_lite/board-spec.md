@@ -348,7 +348,7 @@ separate authorization (FPGA-R7).
 
 Quartus Standard needs explicit generate blocks and separate genvars; a type
 inside a generate block may not size itself from a generate-local parameter
-(use plain sized signals); parameter checks use `N2A_ASSERT_INITIAL`, not an
+(use plain sized signals); parameter checks use `ASSERT_INITIAL`, not an
 elaboration `$error` in a generate block; enum membership uses equality/OR.
 Verilator accepts violations, so every nand2doom RTL change runs
 `quartus.py --board de10_lite|de2_115 --elaborate-only` (analysis and
@@ -359,10 +359,10 @@ Its gate allows each reviewed unread object, the exact connectivity aggregate
 bounds generated discovery as below, and rejects fitted-only diagnostics. It
 is not fit or timing evidence.
 
-- The QSF defines `SYNTHESIS=1` and `N2A_DISABLE_ASSERTIONS=1`; the latter
+- The QSF defines `SYNTHESIS=1` and `DISABLE_ASSERTIONS=1`; the latter
   removes only the two D-cache stable-request assertion history flops.
   Verilator never selects it.
-- Four discarded-field reductions use lint-only `N2A_UNUSED_BITS`.
+- Four discarded-field reductions use lint-only `UNUSED_BITS`.
 - The Quartus list selects `n2a_sync_ram_intel.sv`, `n2a_sdp_ram_intel.sv`,
   `n2a_tdp_ram_intel.sv` and the board `*_clock_intel.sv`, never both of a
   pair. Both lists carry `n2a_jtag_virtual.sv`; simulation adds the

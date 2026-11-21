@@ -63,15 +63,15 @@ plus `clk_i`, `reset_i`, `uart_rx_i`, `uart_tx_o` and the scalar
 
 | Port | Type | Fields |
 | --- | --- | --- |
-| `debug_control_o` | `n2d_debug_control_t` | `halt_req`, `cache_invalidate`, `reset_pc_valid`, `reset_pc[31:0]` |
-| `debug_status_i` | `n2d_debug_status_t` | `halt_ack`, `cache_maint_done` |
-| `input_event_o` | `n2d_input_event_t` | `valid`, `code[9:0]` |
-| `txn_req_o` | `n2d_debug_txn_req_t` | `arb_req`, `txn_begin`, `txn_commit`, `txn_abort` |
-| `txn_status_i` | `n2d_debug_txn_status_t` | `arb_grant`, `txn_done`, `txn_error` |
-| `mem_req_o` | `n2d_debug_mem_req_t` | `valid`, `write`, `addr[31:0]`, `wdata[31:0]`, `wstrb[3:0]` |
-| `mem_rsp_i` | `n2d_debug_mem_rsp_t` | `ready`, `rsp_valid`, `rdata[31:0]`, `rsp_error` |
-| `screen_req_o` | `n2d_screen_req_t` | `valid`, `palette`, `offset[15:0]` |
-| `screen_rsp_i` | `n2d_screen_rsp_t` | `ready`, `rsp_valid`, `rdata[31:0]` |
+| `debug_control_o` | `t_n2d_debug_control` | `halt_req`, `cache_invalidate`, `reset_pc_valid`, `reset_pc[31:0]` |
+| `debug_status_i` | `t_n2d_debug_status` | `halt_ack`, `cache_maint_done` |
+| `input_event_o` | `t_n2d_input_event` | `valid`, `code[9:0]` |
+| `txn_req_o` | `t_n2d_debug_txn_req` | `arb_req`, `txn_begin`, `txn_commit`, `txn_abort` |
+| `txn_status_i` | `t_n2d_debug_txn_status` | `arb_grant`, `txn_done`, `txn_error` |
+| `mem_req_o` | `t_n2d_debug_mem_req` | `valid`, `write`, `addr[31:0]`, `wdata[31:0]`, `wstrb[3:0]` |
+| `mem_rsp_i` | `t_n2d_debug_mem_rsp` | `ready`, `rsp_valid`, `rdata[31:0]`, `rsp_error` |
+| `screen_req_o` | `t_n2d_screen_req` | `valid`, `palette`, `offset[15:0]` |
+| `screen_rsp_i` | `t_n2d_screen_rsp` | `ready`, `rsp_valid`, `rdata[31:0]` |
 
 `n2d_pkg` also owns command and status codes, start bytes, the INJECT address
 and the pure CRC-8, CRC-32, range and command helpers. Engine-only constants
@@ -134,10 +134,10 @@ addresses are rejected.
    emits `txn_abort` and waits for `txn_done` (discard or reverse rollback)
    before the error response.
 
-Assertions (`N2A_ASSERT_CLOCKED_ARST_FATAL*`) reject memory traffic outside
+Assertions (`ASSERT_CLOCKED_ARST_FATAL*`) reject memory traffic outside
 halt and grant, simultaneous commit and abort, unknown PHY busy state and
 resume invalidation while halted; the bulk framer's two history properties use
-`N2A_ASSERT_AFTER_RESET`.
+`ASSERT_AFTER_RESET`.
 
 ### Bulk wire extension
 

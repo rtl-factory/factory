@@ -35,9 +35,9 @@ module n2m_uart_loader #(
   // Reported in every status byte.
   input  logic                                   backing_initialized_i,
   // Load port of the cartridge backing (one outstanding request).
-  output n2m_cartridge_pkg::backing_request_t    load_request_o,
+  output n2m_cartridge_pkg::t_backing_request    load_request_o,
   input  logic                                   load_ready_i,
-  input  n2m_cartridge_pkg::backing_response_t   load_response_i,
+  input  n2m_cartridge_pkg::t_backing_response   load_response_i,
   // High while a load-port request is presented or awaits its response.
   output logic                                   load_busy_o,
   // Display frame snapshot: pin/release requests, the pin and display-valid
@@ -46,9 +46,9 @@ module n2m_uart_loader #(
   output logic                                   snapshot_release_o,
   input  logic                                   snapshot_pinned_i,
   input  logic                                   snapshot_available_i,
-  output n2m_snapshot_pkg::snapshot_request_t     snapshot_request_o,
+  output n2m_snapshot_pkg::t_snapshot_request     snapshot_request_o,
   input  logic                                   snapshot_ready_i,
-  input  n2m_snapshot_pkg::snapshot_response_t    snapshot_response_i
+  input  n2m_snapshot_pkg::t_snapshot_response    snapshot_response_i
 );
   import n2m_cartridge_pkg::*;
   import n2m_loader_pkg::*;
@@ -56,14 +56,14 @@ module n2m_uart_loader #(
   localparam int unsigned TIMEOUT_WIDTH = $clog2(RX_TIMEOUT_CLOCKS + 1);
   localparam int unsigned RESPONSE_HEADER_BYTES = 7;
 
-  `N2A_ASSERT_PARAM(g_invalid_timeout, RX_TIMEOUT_CLOCKS >= 10 * CLKS_PER_BIT,
+  `ASSERT_PARAM(g_invalid_timeout, RX_TIMEOUT_CLOCKS >= 10 * CLKS_PER_BIT,
       "n2m_uart_loader RX_TIMEOUT_CLOCKS must cover at least one serial frame")
 
   logic        rx_valid, rx_framing;
   logic [7:0]  rx_byte;
   logic        tx_ready;
 
-  loader_state_t state_q, state_d;
+  t_loader_state state_q, state_d;
   logic [7:0]  cmd_q, cmd_d, len_q, len_d, crc_lo_q, crc_lo_d;
   logic [23:0] addr_q, addr_d;
   logic [15:0] crc_q, crc_d, resp_crc_q, resp_crc_d;
@@ -356,39 +356,39 @@ module n2m_uart_loader #(
     end
   end
 
-  `N2A_DFF_RST_VAL(state_q, state_d, clk_i, reset_i, IDLE)
-  `N2A_DFF_RST(cmd_q, cmd_d, clk_i, reset_i)
-  `N2A_DFF_RST(addr_q, addr_d, clk_i, reset_i)
-  `N2A_DFF_RST(len_q, len_d, clk_i, reset_i)
-  `N2A_DFF_RST(crc_lo_q, crc_lo_d, clk_i, reset_i)
-  `N2A_DFF_RST(crc_q, crc_d, clk_i, reset_i)
-  `N2A_DFF_RST(crc_match_q, crc_match_d, clk_i, reset_i)
-  `N2A_DFF_RST(index_q, index_d, clk_i, reset_i)
-  `N2A_DFF_RST(resp_index_q, resp_index_d, clk_i, reset_i)
-  `N2A_DFF_RST(resp_crc_q, resp_crc_d, clk_i, reset_i)
-  `N2A_DFF_RST(status_q, status_d, clk_i, reset_i)
-  `N2A_DFF_RST(read_byte_q, read_byte_d, clk_i, reset_i)
-  `N2A_DFF_RST(hold_q, hold_d, clk_i, reset_i)
-  `N2A_DFF_RST(framing_q, framing_d, clk_i, reset_i)
-  `N2A_DFF_RST(timeout_q, timeout_d, clk_i, reset_i)
-  `N2A_DFF_RST(overrun_q, overrun_d, clk_i, reset_i)
-  `N2A_DFF_RST(tx_pending_q, tx_pending_d, clk_i, reset_i)
-  `N2A_DFF_RST(tx_byte_q, tx_byte_d, clk_i, reset_i)
-  `N2A_DFF_RST(timeout_count_q, timeout_count_d, clk_i, reset_i)
+  `DFF_RST_VAL(state_q, state_d, clk_i, reset_i, IDLE)
+  `DFF_RST(cmd_q, cmd_d, clk_i, reset_i)
+  `DFF_RST(addr_q, addr_d, clk_i, reset_i)
+  `DFF_RST(len_q, len_d, clk_i, reset_i)
+  `DFF_RST(crc_lo_q, crc_lo_d, clk_i, reset_i)
+  `DFF_RST(crc_q, crc_d, clk_i, reset_i)
+  `DFF_RST(crc_match_q, crc_match_d, clk_i, reset_i)
+  `DFF_RST(index_q, index_d, clk_i, reset_i)
+  `DFF_RST(resp_index_q, resp_index_d, clk_i, reset_i)
+  `DFF_RST(resp_crc_q, resp_crc_d, clk_i, reset_i)
+  `DFF_RST(status_q, status_d, clk_i, reset_i)
+  `DFF_RST(read_byte_q, read_byte_d, clk_i, reset_i)
+  `DFF_RST(hold_q, hold_d, clk_i, reset_i)
+  `DFF_RST(framing_q, framing_d, clk_i, reset_i)
+  `DFF_RST(timeout_q, timeout_d, clk_i, reset_i)
+  `DFF_RST(overrun_q, overrun_d, clk_i, reset_i)
+  `DFF_RST(tx_pending_q, tx_pending_d, clk_i, reset_i)
+  `DFF_RST(tx_byte_q, tx_byte_d, clk_i, reset_i)
+  `DFF_RST(timeout_count_q, timeout_count_d, clk_i, reset_i)
 
-  `N2A_ASSERT(load_response_requested, clk_i, reset_i,
+  `ASSERT(load_response_requested, clk_i, reset_i,
       !load_response_i.valid || (state_q == COMMIT_WAIT) || (state_q == RESPOND_READ_WAIT))
-  `N2A_ASSERT(snapshot_response_requested, clk_i, reset_i,
+  `ASSERT(snapshot_response_requested, clk_i, reset_i,
       !snapshot_response_i.valid || ((state_q == RESPOND_READ_WAIT) && snap_read))
-  `N2A_ASSERT(commit_data_valid, clk_i, reset_i,
+  `ASSERT(commit_data_valid, clk_i, reset_i,
       !$rose(state_q == COMMIT_REQUEST) || buffer_valid)
-  `N2A_ASSERT(load_response_known, clk_i, reset_i,
+  `ASSERT(load_response_known, clk_i, reset_i,
       !load_response_i.valid || !$isunknown(load_response_i))
-  `N2A_ASSERT_KNOWN(load_ready_known, clk_i, reset_i, load_ready_i)
-  `N2A_ASSERT_KNOWN(snapshot_levels_known, clk_i, reset_i,
+  `ASSERT_KNOWN(load_ready_known, clk_i, reset_i, load_ready_i)
+  `ASSERT_KNOWN(snapshot_levels_known, clk_i, reset_i,
       {snapshot_pinned_i, snapshot_available_i, snapshot_ready_i, snapshot_response_i.valid})
-  `N2A_ASSERT(snapshot_response_known, clk_i, reset_i,
+  `ASSERT(snapshot_response_known, clk_i, reset_i,
       !snapshot_response_i.valid || !$isunknown(snapshot_response_i))
-  `N2A_ASSERT_KNOWN(uart_rx_known, clk_i, reset_i, uart_rx_i)
+  `ASSERT_KNOWN(uart_rx_known, clk_i, reset_i, uart_rx_i)
 endmodule
 /* verilator lint_on SYNCASYNCNET */

@@ -25,7 +25,7 @@ module n2d_rv32im_core #(
     parameter int BTB_ENTRIES = n2d_core_pkg::BTB_ENTRIES_DEFAULT
 ) (
     input  logic        clk_i,
-    input  logic        rst_i,
+    input  logic        reset_i,
     input  logic        enable_i,
     input  logic        halt_request_i,
     input  logic        reset_pc_request_i,
@@ -152,7 +152,7 @@ module n2d_rv32im_core #(
         .BTB_ENTRIES(BTB_ENTRIES)
     ) u_if (
         .clk_i(clk_i),
-        .rst_i(rst_i),
+        .reset_i(reset_i),
         .enable_i(enable_i),
         .fetch_allow_i(fetch_allow),
         .flush_i(if_flush),
@@ -183,7 +183,7 @@ module n2d_rv32im_core #(
 
     n2a_rv32_regfile u_register_file (
         .clk_i(clk_i),
-        .rst_i(rst_i),
+        .reset_i(reset_i),
         .read_a_index_i(rf_rs1_index),
         .read_a_data_o(rf_rs1_data),
         .read_b_index_i(rf_rs2_index),
@@ -226,7 +226,7 @@ module n2d_rv32im_core #(
 
     n2d_muldiv u_muldiv (
         .clk_i(clk_i),
-        .rst_i(rst_i),
+        .reset_i(reset_i),
         .issue_i(muldiv_issue),
         .funct3_i(dec_Q102H.funct3),
         .rs1_i(rs1_value_Q102H),
@@ -259,7 +259,7 @@ module n2d_rv32im_core #(
 
     n2d_csr u_csr (
         .clk_i(clk_i),
-        .rst_i(rst_i),
+        .reset_i(reset_i),
         .csr_address_i(dec_Q102H.csr_address),
         .csr_op_i(csr_op_Q102H),
         .csr_write_intent_i(dec_Q102H.csr_write),
@@ -293,7 +293,7 @@ module n2d_rv32im_core #(
 
     n2d_ctrl u_ctrl (
         .clk_i(clk_i),
-        .rst_i(rst_i),
+        .reset_i(reset_i),
         .enable_i(enable_i),
         .halt_request_i(halt_request_i),
         .reset_pc_request_i(reset_pc_request_i),
@@ -398,7 +398,7 @@ module n2d_rv32im_core #(
         if (pipe_q.q104.valid) pipe_d.order = pipe_q.order + 64'd1;
     end
 
-    `N2A_DFF_RST(pipe_q, pipe_d, clk_i, rst_i)
+    `DFF_RST(pipe_q, pipe_d, clk_i, reset_i)
 
     n2d_wb u_wb (
         .q105_i(pipe_q.q105),
@@ -425,11 +425,11 @@ module n2d_rv32im_core #(
         .observation_trap_value_o(observation_trap_value_o)
     );
 
-    `N2A_ASSERT_NEVER(pipe_hold_without_memory, clk_i, rst_i,
+    `ASSERT_NEVER(pipe_hold_without_memory, clk_i, reset_i,
         hold_Q103H && !(pipe_q.q103.is_load || pipe_q.q103.is_store))
-    `N2A_ASSERT_NEVER(pipe_q102_advance_under_q103_trap, clk_i, rst_i,
+    `ASSERT_NEVER(pipe_q102_advance_under_q103_trap, clk_i, reset_i,
         advance_Q102H && trap_Q103H)
-    `N2A_ASSERT(pipe_prediction_is_control_transfer, clk_i, rst_i,
+    `ASSERT(pipe_prediction_is_control_transfer, clk_i, reset_i,
         !(pipe_q.slot_Q102H.valid && pipe_q.slot_Q102H.predicted_taken) ||
         ((dec_Q102H.is_jal || dec_Q102H.is_branch || dec_Q102H.is_jalr) &&
          !pipe_q.slot_Q102H.fetch_error))

@@ -171,7 +171,7 @@ def stage(root: Path, output: Path, config: dict) -> None:
            'set_global_assignment -name VERILOG_MACRO "SYNTHESIS=1"',
            # Why: Quartus drops the assertions anyway, so disabling them omits their unused
            # history logic; simulation must keep them, so the opt-out lives only here.
-           'set_global_assignment -name VERILOG_MACRO "N2A_DISABLE_ASSERTIONS=1"',
+           'set_global_assignment -name VERILOG_MACRO "DISABLE_ASSERTIONS=1"',
            f'source "{config["settings"]}"',
            f'set_global_assignment -name SDC_FILE "{config["constraints"]}"']
     qsf += [f'set_global_assignment -name SYSTEMVERILOG_FILE "{name}"'

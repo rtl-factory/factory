@@ -23,9 +23,9 @@ package n2m_cartridge_pkg;
   localparam int unsigned MIN_ROM_BYTES     = 32768;
   localparam int unsigned MIN_RAM_BYTES     = RAM_BANK_BYTES;
 
-  typedef logic [ROM_ADDRESS_WIDTH-1:0] rom_address_t;
-  typedef logic [ROM_BANK_WIDTH-1:0]    rom_bank_t;
-  typedef logic [RAM_BANK_WIDTH-1:0]    ram_bank_t;
+  typedef logic [ROM_ADDRESS_WIDTH-1:0] t_rom_address;
+  typedef logic [ROM_BANK_WIDTH-1:0]    t_rom_bank;
+  typedef logic [RAM_BANK_WIDTH-1:0]    t_ram_bank;
 
   // Backing port: the mapper presents one request and holds it until the
   // backing samples it with ready high; exactly one response follows on a
@@ -34,19 +34,19 @@ package n2m_cartridge_pkg;
     logic         valid;
     logic         write;
     logic         ram;
-    rom_address_t address;
+    t_rom_address address;
     logic [7:0]   write_data;
-  } backing_request_t;
+  } t_backing_request;
 
   typedef struct packed {
     logic       valid;
     logic [7:0] read_data;
-  } backing_response_t;
+  } t_backing_response;
 
   // Header bytes the mapper observes on the load port.
-  localparam rom_address_t HEADER_TYPE_OFFSET     = 21'h000147;
-  localparam rom_address_t HEADER_ROM_SIZE_OFFSET = 21'h000148;
-  localparam rom_address_t HEADER_RAM_SIZE_OFFSET = 21'h000149;
+  localparam t_rom_address HEADER_TYPE_OFFSET     = 21'h000147;
+  localparam t_rom_address HEADER_ROM_SIZE_OFFSET = 21'h000148;
+  localparam t_rom_address HEADER_RAM_SIZE_OFFSET = 21'h000149;
 
   // Cartridge types this block implements; every other type behaves as
   // ROM-only without cartridge RAM.
@@ -80,8 +80,8 @@ package n2m_cartridge_pkg;
 
   // Header $0148: code n means 2 << n banks for n <= 6; every larger code is
   // beyond the MBC1 reach and keeps all seven bank bits.
-  function automatic rom_bank_t rom_bank_mask(input logic [7:0] rom_size_code);
-    rom_bank_t mask;
+  function automatic t_rom_bank rom_bank_mask(input logic [7:0] rom_size_code);
+    t_rom_bank mask;
     case (rom_size_code)
       8'h00: mask = 7'h01;
       8'h01: mask = 7'h03;
@@ -102,7 +102,7 @@ package n2m_cartridge_pkg;
            (ram_size_code == 8'h04) || (ram_size_code == 8'h05);
   endfunction
 
-  function automatic ram_bank_t ram_bank_mask(input logic [7:0] ram_size_code);
+  function automatic t_ram_bank ram_bank_mask(input logic [7:0] ram_size_code);
     return ((ram_size_code == 8'h03) || (ram_size_code == 8'h04) || (ram_size_code == 8'h05)) ?
            2'b11 : 2'b00;
   endfunction

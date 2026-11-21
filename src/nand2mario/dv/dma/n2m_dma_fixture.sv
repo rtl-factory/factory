@@ -12,11 +12,11 @@ module n2m_dma_fixture (
   input  logic                                clk_i,
   input  logic                                reset_i,
   // CPU bus as the test drives it.
-  input  n2m_interfaces_pkg::bus_request_t    cpu_request_i,
-  output n2m_interfaces_pkg::bus_response_t   cpu_response_o,
+  input  n2m_interfaces_pkg::t_bus_request    cpu_request_i,
+  output n2m_interfaces_pkg::t_bus_response   cpu_response_o,
   // Cartridge image load port.
   input  logic                                rom_load_write_i,
-  input  n2m_cartridge_pkg::rom_address_t     rom_load_address_i,
+  input  n2m_cartridge_pkg::t_rom_address     rom_load_address_i,
   input  logic [7:0]                          rom_load_data_i,
   // Holds the backing not ready (a slow backing such as SDRAM under load).
   input  logic                                backing_stall_i,
@@ -35,19 +35,19 @@ module n2m_dma_fixture (
   output logic [7:0]                          oam_data_o
 );
   logic                                dot_enable, machine_cycle_enable;
-  n2m_interfaces_pkg::bus_request_t    request, io_request;
-  n2m_interfaces_pkg::bus_response_t   response, io_response, dma_response;
+  n2m_interfaces_pkg::t_bus_request    request, io_request;
+  n2m_interfaces_pkg::t_bus_response   response, io_response, dma_response;
   logic                                dma_selected;
   logic [4:0]                          interrupt_enable;
   logic                                oam_write;
   logic [7:0]                          oam_address, oam_data;
   logic                                ppu_vram_read;
   logic [12:0]                         ppu_vram_address;
-  n2m_interfaces_pkg::bus_request_t    cart_request;
-  n2m_interfaces_pkg::bus_response_t   cart_response;
+  n2m_interfaces_pkg::t_bus_request    cart_request;
+  n2m_interfaces_pkg::t_bus_response   cart_response;
   logic                                cart_ready, backing_ready;
-  n2m_cartridge_pkg::backing_request_t  backing_request;
-  n2m_cartridge_pkg::backing_response_t backing_response;
+  n2m_cartridge_pkg::t_backing_request  backing_request;
+  n2m_cartridge_pkg::t_backing_response backing_response;
 
   n2m_timebase u_timebase (
     .clk_i                  (clk_i),
@@ -123,13 +123,13 @@ module n2m_dma_fixture (
   // preload can become plain ROM writes, and its responses and the constant
   // initialization status need no check here. Gating the request while stalled
   // keeps a stalled backing from seeing a cartridge request.
-  n2m_cartridge_pkg::backing_request_t backing_gated;
+  n2m_cartridge_pkg::t_backing_request backing_gated;
   always_comb begin
     backing_gated = backing_request;
     backing_gated.valid = backing_request.valid && !backing_stall_i;
   end
 
-  n2m_cartridge_pkg::backing_request_t rom_load_request;
+  n2m_cartridge_pkg::t_backing_request rom_load_request;
   always_comb begin
     rom_load_request.valid = rom_load_write_i;
     rom_load_request.write = 1'b1;

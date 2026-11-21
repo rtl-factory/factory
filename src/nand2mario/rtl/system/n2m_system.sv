@@ -56,7 +56,7 @@ module n2m_system #(
   // edge into the backing; the mapper reads the header bytes as they pass.
   // Not used together with the loader.
   input  logic                               rom_load_write_i,
-  input  n2m_cartridge_pkg::rom_address_t    rom_load_address_i,
+  input  n2m_cartridge_pkg::t_rom_address    rom_load_address_i,
   input  logic [7:0]                         rom_load_data_i,
   output logic                               rom_load_ready_o,
   // Cartridge loader serial link (8-N-1).
@@ -71,7 +71,7 @@ module n2m_system #(
   output logic                               serial_tx_valid_o,
   output logic [7:0]                         serial_tx_data_o,
   // Architectural observation and execution status from the CPU.
-  output n2m_interfaces_pkg::retirement_t    retirement_o,
+  output n2m_interfaces_pkg::t_retirement    retirement_o,
   output logic                               halted_o,
   output logic                               stopped_o,
   output logic                               locked_o,
@@ -114,18 +114,18 @@ module n2m_system #(
   // with ready/response, one outstanding request (g_external below). The
   // other backings ignore the inputs (waived here, so no placeholder object
   // reaches a Quartus build).
-  output n2m_cartridge_pkg::backing_request_t  cart_bus_request_o,
+  output n2m_cartridge_pkg::t_backing_request  cart_bus_request_o,
   /* verilator lint_off UNUSEDSIGNAL */
   input  logic                                 cart_bus_ready_i,
-  input  n2m_cartridge_pkg::backing_response_t cart_bus_response_i
+  input  n2m_cartridge_pkg::t_backing_response cart_bus_response_i
   /* verilator lint_on UNUSEDSIGNAL */
 );
   logic                                core_reset, library_hold;
   logic                                legacy_cart_ready;
-  n2m_interfaces_pkg::bus_request_t    legacy_cart_request;
-  n2m_interfaces_pkg::bus_response_t   legacy_cart_response;
-  n2m_cartridge_pkg::backing_request_t legacy_backing_request;
-  n2m_cartridge_pkg::backing_response_t legacy_backing_response;
+  n2m_interfaces_pkg::t_bus_request    legacy_cart_request;
+  n2m_interfaces_pkg::t_bus_response   legacy_cart_response;
+  n2m_cartridge_pkg::t_backing_request legacy_backing_request;
+  n2m_cartridge_pkg::t_backing_response legacy_backing_response;
   logic                                dot_enable, machine_cycle_enable;
   logic [4:0]                          interrupt_enable;
   logic [4:0]                          interrupt_flags;
@@ -140,13 +140,13 @@ module n2m_system #(
   logic                                apu_sequencer_bit;
   logic                                serial_clock;
   logic                                joyp_selected_active, wake;
-  n2m_interfaces_pkg::bus_request_t    cpu_request, request;
-  n2m_interfaces_pkg::bus_response_t   cpu_response, response;
-  n2m_interfaces_pkg::bus_request_t    io_request;
-  n2m_interfaces_pkg::bus_response_t   io_response;
-  n2m_interfaces_pkg::bus_response_t   timer_response, interrupts_response, ppu_response;
-  n2m_interfaces_pkg::bus_response_t   joypad_response, serial_response, dma_response;
-  n2m_interfaces_pkg::bus_response_t   apu_response;
+  n2m_interfaces_pkg::t_bus_request    cpu_request, request;
+  n2m_interfaces_pkg::t_bus_response   cpu_response, response;
+  n2m_interfaces_pkg::t_bus_request    io_request;
+  n2m_interfaces_pkg::t_bus_response   io_response;
+  n2m_interfaces_pkg::t_bus_response   timer_response, interrupts_response, ppu_response;
+  n2m_interfaces_pkg::t_bus_response   joypad_response, serial_response, dma_response;
+  n2m_interfaces_pkg::t_bus_response   apu_response;
   logic                                ppu_vram_read, ppu_vram_valid;
   logic [12:0]                         ppu_vram_address;
   logic [7:0]                          ppu_vram_data;
@@ -155,13 +155,13 @@ module n2m_system #(
   logic                                dma_oam_write, dma_active;
   logic [7:0]                          dma_oam_address, dma_oam_data;
   logic                                vram_blocked, oam_blocked;
-  n2m_interfaces_pkg::bus_request_t    cart_request;
-  n2m_interfaces_pkg::bus_response_t   cart_response;
+  n2m_interfaces_pkg::t_bus_request    cart_request;
+  n2m_interfaces_pkg::t_bus_response   cart_response;
   logic                                cart_ready, backing_ready, backing_initialized;
-  n2m_cartridge_pkg::backing_request_t  backing_request;
-  n2m_cartridge_pkg::backing_response_t backing_response;
-  n2m_cartridge_pkg::backing_request_t  loader_request, direct_request, load_request;
-  n2m_cartridge_pkg::backing_response_t load_response, loader_response;
+  n2m_cartridge_pkg::t_backing_request  backing_request;
+  n2m_cartridge_pkg::t_backing_response backing_response;
+  n2m_cartridge_pkg::t_backing_request  loader_request, direct_request, load_request;
+  n2m_cartridge_pkg::t_backing_response load_response, loader_response;
   logic                                load_owner_direct_q;
   logic                                load_outstanding_q, load_outstanding_d, direct_valid;
   logic                                load_ready, loader_ready, loader_hold, loader_busy;
@@ -170,14 +170,14 @@ module n2m_system #(
   // core reset) in one clock domain, so it needs reset handling but no
   // synchronizer.
   logic                                snapshot_pin, snapshot_release, snapshot_pinned, snapshot_ready;
-  n2m_snapshot_pkg::snapshot_request_t  snapshot_request;
-  n2m_snapshot_pkg::snapshot_response_t snapshot_response;
+  n2m_snapshot_pkg::t_snapshot_request  snapshot_request;
+  n2m_snapshot_pkg::t_snapshot_response snapshot_response;
   logic                                lcd_enable;
   logic [3:0]                          display_red, display_green, display_blue;
   logic                                display_hsync, display_vsync, display_pixel_start;
   logic                                display_swapped, display_dropped, display_repeated;
   logic                                display_valid, display_pinned, display_snapshot_ready;
-  n2m_snapshot_pkg::snapshot_response_t display_snapshot_response;
+  n2m_snapshot_pkg::t_snapshot_response display_snapshot_response;
 
   assign core_reset = reset_i || loader_hold || !backing_initialized || library_hold;
   assign core_reset_o = core_reset;
@@ -187,7 +187,7 @@ module n2m_system #(
   // leaves VRAM zeroed as the DMG boot ROM does.
   logic [12:0] vram_clear_q, vram_clear_d;
   assign vram_clear_d = core_reset ? vram_clear_q + 13'd1 : 13'd0;
-  `N2A_DFF(vram_clear_q, vram_clear_d, clk_i)
+  `DFF(vram_clear_q, vram_clear_d, clk_i)
 
   n2m_timebase u_timebase (
     .clk_i                  (clk_i),
@@ -285,9 +285,9 @@ module n2m_system #(
   // Why: the ordinary mapper instance and hierarchy stay unchanged for
   // existing CPU/DMA/cartridge consumers. The library configuration owns the
   // backing reader and serves CPU reads from its private active image instead.
-  `N2A_ASSERT_PARAM(g_one_backing, (CART_SDRAM == 0) || (CART_EXTERNAL == 0),
+  `ASSERT_PARAM(g_one_backing, (CART_SDRAM == 0) || (CART_EXTERNAL == 0),
       "n2m_system selects one cartridge backing: CART_SDRAM or CART_EXTERNAL")
-  `N2A_ASSERT_PARAM(g_library_capacity,
+  `ASSERT_PARAM(g_library_capacity,
       (CART_LIBRARY == 0) || (CART_SDRAM != 0) || (CART_EXTERNAL != 0) ||
       (CART_ROM_BYTES >= n2m_library_pkg::LIBRARY_ROM_BYTES),
       "library backing must hold all 64 window banks (at least 1 MiB)")
@@ -295,7 +295,7 @@ module n2m_system #(
     if (CART_LIBRARY != 0) begin : g_library
       assign legacy_cart_request = '0;
       assign legacy_backing_response = '0;
-      `N2A_UNUSED_BITS(unused_legacy_cartridge,
+      `UNUSED_BITS(unused_legacy_cartridge,
           {legacy_cart_ready, legacy_cart_response, legacy_backing_request})
       n2m_library u_library (
         .clk_i (clk_i), .reset_i (reset_i), .core_reset_i (core_reset),
@@ -333,7 +333,7 @@ module n2m_system #(
   // edge; after reset the on-chip backing takes one every second edge and
   // the SDRAM backing one per access.
   assign load_outstanding_d = load_accept || (load_outstanding_q && !load_response.valid);
-  `N2A_DFF_RST(load_outstanding_q, load_outstanding_d, clk_i, reset_i)
+  `DFF_RST(load_outstanding_q, load_outstanding_d, clk_i, reset_i)
   assign direct_valid = rom_load_write_i && !load_outstanding_q;
   assign rom_load_ready_o = load_ready && !load_outstanding_q;
   assign loader_ready = load_ready && !rom_load_write_i;
@@ -343,7 +343,7 @@ module n2m_system #(
   // port is fire-and-forget (no response consumer). At most one load is
   // outstanding and its response arrives on a later edge, so the owner recorded
   // at acceptance is the owner of the next response.
-  `N2A_DFF_RST_EN(load_owner_direct_q, rom_load_write_i, clk_i, load_accept, reset_i, 1'b0)
+  `DFF_RST_EN(load_owner_direct_q, rom_load_write_i, clk_i, load_accept, reset_i, 1'b0)
   always_comb begin
     loader_response = load_response;
     loader_response.valid = load_response.valid && !load_owner_direct_q;
@@ -400,8 +400,8 @@ module n2m_system #(
       assign ext_accept = cart_bus_request_o.valid && cart_bus_ready_i;
       assign ext_response_valid = ext_outstanding_q && cart_bus_response_i.valid;
       assign ext_outstanding_d = ext_accept || (ext_outstanding_q && !cart_bus_response_i.valid);
-      `N2A_DFF_RST(ext_outstanding_q, ext_outstanding_d, clk_i, reset_i)
-      `N2A_DFF_RST_EN(ext_owner_load_q, !backing_request.valid, clk_i, ext_accept, reset_i, 1'b0)
+      `DFF_RST(ext_outstanding_q, ext_outstanding_d, clk_i, reset_i)
+      `DFF_RST_EN(ext_owner_load_q, !backing_request.valid, clk_i, ext_accept, reset_i, 1'b0)
       assign backing_initialized = 1'b1;
       always_comb begin
         backing_response.valid = ext_response_valid && !ext_owner_load_q;
@@ -409,11 +409,11 @@ module n2m_system #(
         load_response.valid = ext_response_valid && ext_owner_load_q;
         load_response.read_data = cart_bus_response_i.read_data;
       end
-      `N2A_ASSERT_KNOWN(cart_bus_ready_known, clk_i, reset_i, cart_bus_ready_i)
-      `N2A_ASSERT_KNOWN(cart_bus_response_valid_known, clk_i, reset_i, cart_bus_response_i.valid)
-      `N2A_ASSERT(cart_bus_response_requested, clk_i, reset_i,
+      `ASSERT_KNOWN(cart_bus_ready_known, clk_i, reset_i, cart_bus_ready_i)
+      `ASSERT_KNOWN(cart_bus_response_valid_known, clk_i, reset_i, cart_bus_response_i.valid)
+      `ASSERT(cart_bus_response_requested, clk_i, reset_i,
           !cart_bus_response_i.valid || ext_outstanding_q)
-      `N2A_ASSERT_NEVER(cart_bus_rom_write_rejected, clk_i, reset_i,
+      `ASSERT_NEVER(cart_bus_rom_write_rejected, clk_i, reset_i,
           backing_request.valid && !backing_request.ram && backing_request.write)
       assign dram_addr_o = '0;
       assign dram_ba_o = '0;
@@ -658,14 +658,14 @@ module n2m_system #(
   logic unused_dma_active;
   assign unused_dma_active = dma_active;
 
-  `N2A_ASSERT(system_io_claim_exclusive, clk_i, core_reset,
+  `ASSERT(system_io_claim_exclusive, clk_i, core_reset,
       $onehot0({timer_selected, interrupts_selected, ppu_selected, joypad_selected,
                 serial_selected, dma_selected, apu_selected}))
-  `N2A_ASSERT_NEVER(system_load_ports_exclusive, clk_i, reset_i,
+  `ASSERT_NEVER(system_load_ports_exclusive, clk_i, reset_i,
       rom_load_write_i && (loader_request.valid || loader_busy))
-  `N2A_ASSERT(system_load_response_requested, clk_i, reset_i,
+  `ASSERT(system_load_response_requested, clk_i, reset_i,
       !load_response.valid || load_outstanding_q)
-  `N2A_ASSERT_NEVER(system_load_one_outstanding, clk_i, reset_i,
+  `ASSERT_NEVER(system_load_one_outstanding, clk_i, reset_i,
       load_accept && load_outstanding_q)
 endmodule
 /* verilator lint_on SYNCASYNCNET */

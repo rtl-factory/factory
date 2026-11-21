@@ -24,7 +24,7 @@ module n2m_frame_bridge (
   input  logic                           lcd_enable_i,
   // PPU pixel stream: one-cycle pulses with the shade and coordinates.
   input  logic                           pixel_valid_i,
-  input  n2m_display_pkg::shade_t        pixel_shade_i,
+  input  n2m_display_pkg::t_shade        pixel_shade_i,
   input  logic [7:0]                     pixel_x_i,
   input  logic [7:0]                     pixel_y_i,
   // Raster origin (0, 0) of the VGA timing, one cycle per VGA frame.
@@ -34,14 +34,14 @@ module n2m_frame_bridge (
   input  logic                           snapshot_release_i,
   // Frame store write port.
   output logic                           write_enable_o,
-  output n2m_display_pkg::bank_t         write_bank_o,
-  output n2m_display_pkg::frame_index_t  write_index_o,
-  output n2m_display_pkg::shade_t        write_shade_o,
+  output n2m_display_pkg::t_bank         write_bank_o,
+  output n2m_display_pkg::t_frame_index  write_index_o,
+  output n2m_display_pkg::t_shade        write_shade_o,
   // Bank the scanout reads and whether it holds a complete frame to show.
-  output n2m_display_pkg::bank_t         display_bank_o,
+  output n2m_display_pkg::t_bank         display_bank_o,
   output logic                           display_valid_o,
   // Frame ID of the displayed bank and the snapshot pin level.
-  output n2m_snapshot_pkg::frame_id_t     display_id_o,
+  output n2m_snapshot_pkg::t_frame_id     display_id_o,
   output logic                           snapshot_pinned_o,
   // One-cycle observation pulses of the bank policy, registered: each is
   // high in the cycle after the edge that applied the event.
@@ -52,10 +52,10 @@ module n2m_frame_bridge (
 );
   import n2m_display_pkg::*;
 
-  localparam frame_bridge_state_t STATE_RESET = '{write_bank: 2'd0, ready_bank: 2'd1, display_bank: 2'd2,
+  localparam t_frame_bridge_state STATE_RESET = '{write_bank: 2'd0, ready_bank: 2'd1, display_bank: 2'd2,
                                                   ready_fresh: 1'b0, display_valid: 1'b0, pinned: 1'b0,
                                                   frame_count: '0, display_id: '0};
-  frame_bridge_state_t state_q, state_d;
+  t_frame_bridge_state state_q, state_d;
   logic   complete, swapped, dropped, repeated;
 
   assign complete = pixel_valid_i && (pixel_x_i == 8'(FRAME_WIDTH - 1)) &&
@@ -108,24 +108,24 @@ module n2m_frame_bridge (
     end
   end
 
-  `N2A_DFF_RST_VAL(state_q, state_d, clk_i, reset_i, STATE_RESET)
-  `N2A_DFF_RST(frame_complete_o, complete, clk_i, reset_i)
-  `N2A_DFF_RST(frame_swapped_o, swapped, clk_i, reset_i)
-  `N2A_DFF_RST(frame_dropped_o, dropped, clk_i, reset_i)
-  `N2A_DFF_RST(frame_repeated_o, repeated, clk_i, reset_i)
+  `DFF_RST_VAL(state_q, state_d, clk_i, reset_i, STATE_RESET)
+  `DFF_RST(frame_complete_o, complete, clk_i, reset_i)
+  `DFF_RST(frame_swapped_o, swapped, clk_i, reset_i)
+  `DFF_RST(frame_dropped_o, dropped, clk_i, reset_i)
+  `DFF_RST(frame_repeated_o, repeated, clk_i, reset_i)
 
-  `N2A_ASSERT(banks_are_distinct, clk_i, reset_i,
+  `ASSERT(banks_are_distinct, clk_i, reset_i,
       (state_q.write_bank != state_q.ready_bank) && (state_q.ready_bank != state_q.display_bank) &&
       (state_q.display_bank != state_q.write_bank))
-  `N2A_ASSERT(display_bank_changes_at_origin, clk_i, reset_i,
+  `ASSERT(display_bank_changes_at_origin, clk_i, reset_i,
       (state_d.display_bank == state_q.display_bank) || vga_frame_start_i)
-  `N2A_ASSERT(pinned_bank_is_held, clk_i, reset_i,
+  `ASSERT(pinned_bank_is_held, clk_i, reset_i,
       !state_q.pinned || !state_d.pinned ||
       ((state_d.display_bank == state_q.display_bank) && (state_d.display_id == state_q.display_id)))
-  `N2A_ASSERT(pin_and_release_exclusive, clk_i, reset_i, !(snapshot_pin_i && snapshot_release_i))
-  `N2A_ASSERT(write_never_hits_display, clk_i, reset_i,
+  `ASSERT(pin_and_release_exclusive, clk_i, reset_i, !(snapshot_pin_i && snapshot_release_i))
+  `ASSERT(write_never_hits_display, clk_i, reset_i,
       !write_enable_o || (write_bank_o != display_bank_o))
-  `N2A_ASSERT(pixel_in_frame, clk_i, reset_i,
+  `ASSERT(pixel_in_frame, clk_i, reset_i,
       !pixel_valid_i || ((pixel_x_i < 8'(FRAME_WIDTH)) && (pixel_y_i < 8'(FRAME_HEIGHT))))
-  `N2A_ASSERT_KNOWN(pixel_control_known, clk_i, reset_i, {pixel_valid_i, lcd_enable_i, vga_frame_start_i, snapshot_pin_i, snapshot_release_i})
+  `ASSERT_KNOWN(pixel_control_known, clk_i, reset_i, {pixel_valid_i, lcd_enable_i, vga_frame_start_i, snapshot_pin_i, snapshot_release_i})
 endmodule

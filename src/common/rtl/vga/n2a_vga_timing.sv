@@ -54,18 +54,18 @@ module n2a_vga_timing #(
   logic [REQUIRED_H_COORD_WIDTH-1:0] horizontal_count_d;
   logic [REQUIRED_V_COORD_WIDTH-1:0] vertical_count_d;
 
-  `N2A_ASSERT_PARAM(g_invalid_horizontal_timing,
+  `ASSERT_PARAM(g_invalid_horizontal_timing,
       (H_VISIBLE >= 1) && (H_FRONT_PORCH >= 1) &&
       (H_SYNC >= 1) && (H_BACK_PORCH >= 1),
       "n2a_vga_timing horizontal segments must be at least 1")
-  `N2A_ASSERT_PARAM(g_invalid_vertical_timing,
+  `ASSERT_PARAM(g_invalid_vertical_timing,
       (V_VISIBLE >= 1) && (V_FRONT_PORCH >= 1) &&
       (V_SYNC >= 1) && (V_BACK_PORCH >= 1),
       "n2a_vga_timing vertical segments must be at least 1")
-  `N2A_ASSERT_PARAM(g_invalid_horizontal_width,
+  `ASSERT_PARAM(g_invalid_horizontal_width,
       H_COORD_WIDTH == REQUIRED_H_COORD_WIDTH,
       "n2a_vga_timing H_COORD_WIDTH must equal $clog2(H_TOTAL)")
-  `N2A_ASSERT_PARAM(g_invalid_vertical_width,
+  `ASSERT_PARAM(g_invalid_vertical_width,
       V_COORD_WIDTH == REQUIRED_V_COORD_WIDTH,
       "n2a_vga_timing V_COORD_WIDTH must equal $clog2(V_TOTAL)")
 
@@ -82,8 +82,8 @@ module n2a_vga_timing #(
     end
   end
 
-  `N2A_DFF_RST(horizontal_count, horizontal_count_d, clk_i, reset_i)
-  `N2A_DFF_RST(vertical_count, vertical_count_d, clk_i, reset_i)
+  `DFF_RST(horizontal_count, horizontal_count_d, clk_i, reset_i)
+  `DFF_RST(vertical_count, vertical_count_d, clk_i, reset_i)
 
   always_comb begin
     pixel_x_o = H_COORD_WIDTH'(horizontal_count);

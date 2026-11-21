@@ -17,7 +17,7 @@ module n2m_system_sdram_fixture #(
   input  logic [7:0]                         buttons_i,
   // Direct preload port of n2m_system, passed through.
   input  logic                               rom_load_write_i,
-  input  n2m_cartridge_pkg::rom_address_t    rom_load_address_i,
+  input  n2m_cartridge_pkg::t_rom_address    rom_load_address_i,
   input  logic [7:0]                         rom_load_data_i,
   output logic                               rom_load_ready_o,
   input  logic                               host_tx_valid_i,
@@ -28,7 +28,7 @@ module n2m_system_sdram_fixture #(
   output logic                               core_reset_o,
   output logic                               serial_tx_valid_o,
   output logic [7:0]                         serial_tx_data_o,
-  output n2m_interfaces_pkg::retirement_t    retirement_o,
+  output n2m_interfaces_pkg::t_retirement    retirement_o,
   output logic                               halted_o,
   output logic                               stopped_o,
   output logic                               locked_o,

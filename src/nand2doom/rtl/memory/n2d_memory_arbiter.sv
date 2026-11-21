@@ -116,14 +116,14 @@ module n2d_memory_arbiter (
         end
     end
 
-    `N2A_DFF_RST(next_owner_q, next_owner_d, clk_i, reset_i)
-    `N2A_DFF_RST(owner_q, owner_d, clk_i, reset_i)
-    `N2A_DFF_RST(busy_q, busy_d, clk_i, reset_i)
-    `N2A_DFF_RST(stalled_q, stalled_d, clk_i, reset_i)
-    `N2A_DFF_RST(stalled_owner_q, stalled_owner_d, clk_i, reset_i)
+    `DFF_RST(next_owner_q, next_owner_d, clk_i, reset_i)
+    `DFF_RST(owner_q, owner_d, clk_i, reset_i)
+    `DFF_RST(busy_q, busy_d, clk_i, reset_i)
+    `DFF_RST(stalled_q, stalled_d, clk_i, reset_i)
+    `DFF_RST(stalled_owner_q, stalled_owner_d, clk_i, reset_i)
 
-    `N2A_ASSERT_CLOCKED(clk_i, reset_i, $onehot0(master_request_ready_o))
-    `N2A_ASSERT_CLOCKED(clk_i, reset_i, $onehot0(master_response_valid_o))
-    `N2A_ASSERT_CLOCKED_WHEN(clk_i, reset_i, busy_q, !memory_request_valid_o)
-    `N2A_ASSERT_CLOCKED_WHEN(clk_i, reset_i, stalled_q, master_request_valid_i[stalled_owner_q])
+    `ASSERT_CLOCKED(clk_i, reset_i, $onehot0(master_request_ready_o))
+    `ASSERT_CLOCKED(clk_i, reset_i, $onehot0(master_response_valid_o))
+    `ASSERT_CLOCKED_WHEN(clk_i, reset_i, busy_q, !memory_request_valid_o)
+    `ASSERT_CLOCKED_WHEN(clk_i, reset_i, stalled_q, master_request_valid_i[stalled_owner_q])
 endmodule

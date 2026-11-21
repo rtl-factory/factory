@@ -1,5 +1,5 @@
-`ifndef N2A_MACROS_SVH
-`define N2A_MACROS_SVH
+`ifndef FACTORY_MACROS_VH
+`define FACTORY_MACROS_VH
 
 `include "src/common/rtl/pkg/assertion_macros.vh"
 
@@ -8,30 +8,30 @@
 // exact slices visible at each call site; no functional path may read NAME.
 // The simulator defines VERILATOR even with SYNTHESIS, so both simulation modes
 // retain the lint evidence. Hardware tools see neither a sink nor any logic.
-`define N2A_UNUSED_BITS(NAME, BITS) \
+`define UNUSED_BITS(NAME, BITS) \
   logic NAME; \
   assign NAME = ^(BITS);
 `else
-`define N2A_UNUSED_BITS(NAME, BITS)
+`define UNUSED_BITS(NAME, BITS)
 `endif
 
 // Canonical sequential vocabulary. Every form below expands to exactly one
 // state-owning always_ff process; callers keep next-state logic in blocking
 // combinational code and never write a clocked process of their own.
 // Argument order is normative: Q, D, CLK, then ENABLE, then RESET, then VALUE.
-`define N2A_DFF(Q, D, CLK) \
+`define DFF(Q, D, CLK) \
   always_ff @(posedge (CLK)) begin \
     Q <= D; \
   end
 
-`define N2A_DFF_EN(Q, D, CLK, ENABLE) \
+`define DFF_EN(Q, D, CLK, ENABLE) \
   always_ff @(posedge (CLK)) begin \
     if (ENABLE) begin \
       Q <= D; \
     end \
   end
 
-`define N2A_DFF_RST(Q, D, CLK, RESET) \
+`define DFF_RST(Q, D, CLK, RESET) \
   always_ff @(posedge (CLK)) begin \
     if (RESET) begin \
       Q <= '0; \
@@ -40,7 +40,7 @@
     end \
   end
 
-`define N2A_DFF_RST_VAL(Q, D, CLK, RESET, VALUE) \
+`define DFF_RST_VAL(Q, D, CLK, RESET, VALUE) \
   always_ff @(posedge (CLK)) begin \
     if (RESET) begin \
       Q <= VALUE; \
@@ -49,7 +49,7 @@
     end \
   end
 
-`define N2A_DFF_RST_EN(Q, D, CLK, ENABLE, RESET, VALUE) \
+`define DFF_RST_EN(Q, D, CLK, ENABLE, RESET, VALUE) \
   always_ff @(posedge (CLK)) begin \
     if (RESET) begin \
       Q <= VALUE; \
@@ -59,7 +59,7 @@
   end
 
 // Asynchronous assertion is used only where the owning HAS requires it.
-`define N2A_DFF_ARST_VAL(Q, D, CLK, RESET, VALUE) \
+`define DFF_ARST_VAL(Q, D, CLK, RESET, VALUE) \
   always_ff @(posedge (CLK) or posedge (RESET)) begin \
     if (RESET) begin \
       Q <= VALUE; \
@@ -68,7 +68,7 @@
     end \
   end
 
-`define N2A_DFF_ARST_EN(Q, D, CLK, ENABLE, RESET, VALUE) \
+`define DFF_ARST_EN(Q, D, CLK, ENABLE, RESET, VALUE) \
   always_ff @(posedge (CLK) or posedge (RESET)) begin \
     if (RESET) begin \
       Q <= VALUE; \
@@ -80,7 +80,7 @@
 // Register arrays: every element is copied from the next-state array. These
 // are flop arrays (palettes, small buffers, tables), never a RAM inference
 // shape. Synchronous reset clears every element and wins over the enable.
-`define N2A_DFF_ARRAY_EN(MEM, NEXT_MEM, CLK, ENABLE) \
+`define DFF_ARRAY_EN(MEM, NEXT_MEM, CLK, ENABLE) \
   always_ff @(posedge (CLK)) begin \
     if (ENABLE) begin \
       for (int n2a_i = $low(MEM); n2a_i <= $high(MEM); n2a_i++) begin \
@@ -89,7 +89,7 @@
     end \
   end
 
-`define N2A_DFF_ARRAY_RST_EN(MEM, NEXT_MEM, CLK, ENABLE, RESET) \
+`define DFF_ARRAY_RST_EN(MEM, NEXT_MEM, CLK, ENABLE, RESET) \
   always_ff @(posedge (CLK)) begin \
     if (RESET) begin \
       for (int n2a_i = $low(MEM); n2a_i <= $high(MEM); n2a_i++) begin \
@@ -107,7 +107,7 @@
 // Quartus rejects $low/$high on an indexed expression, so the caller names
 // the element range. Same body, reset priority, enable, and ordering as the
 // $low/$high forms; no whole-array copy is added.
-`define N2A_DFF_ARRAY_EN_RANGE(MEM, NEXT_MEM, CLK, ENABLE, LOW, HIGH) \
+`define DFF_ARRAY_EN_RANGE(MEM, NEXT_MEM, CLK, ENABLE, LOW, HIGH) \
   always_ff @(posedge (CLK)) begin \
     if (ENABLE) begin \
       for (int n2a_i = (LOW); n2a_i <= (HIGH); n2a_i++) begin \
@@ -116,7 +116,7 @@
     end \
   end
 
-`define N2A_DFF_ARRAY_RST_EN_RANGE(MEM, NEXT_MEM, CLK, ENABLE, RESET, LOW, HIGH) \
+`define DFF_ARRAY_RST_EN_RANGE(MEM, NEXT_MEM, CLK, ENABLE, RESET, LOW, HIGH) \
   always_ff @(posedge (CLK)) begin \
     if (RESET) begin \
       for (int n2a_i = (LOW); n2a_i <= (HIGH); n2a_i++) begin \
@@ -129,7 +129,7 @@
     end \
   end
 
-`define N2A_DFF_ARRAY_RST_RANGE(MEM, NEXT_MEM, CLK, RESET, LOW, HIGH) \
+`define DFF_ARRAY_RST_RANGE(MEM, NEXT_MEM, CLK, RESET, LOW, HIGH) \
   always_ff @(posedge (CLK)) begin \
     if (RESET) begin \
       for (int n2a_i = (LOW); n2a_i <= (HIGH); n2a_i++) begin \
@@ -146,14 +146,14 @@
 // writes of one array live in separate processes; nonblocking semantics make a
 // same-edge same-address collision read-first (old data), and the shape stays
 // a conventional inferred RAM template. No form resets or copies the array.
-`define N2A_MEM_WRITE(MEM, CLK, WRITE_ENABLE, ADDRESS, DATA) \
+`define MEM_WRITE(MEM, CLK, WRITE_ENABLE, ADDRESS, DATA) \
   always_ff @(posedge (CLK)) begin \
     if (WRITE_ENABLE) begin \
       MEM[ADDRESS] <= DATA; \
     end \
   end
 
-`define N2A_MEM_WRITE_LANES(MEM, CLK, WRITE_ENABLE, ADDRESS, DATA, LANE_ENABLE, LANE_WIDTH) \
+`define MEM_WRITE_LANES(MEM, CLK, WRITE_ENABLE, ADDRESS, DATA, LANE_ENABLE, LANE_WIDTH) \
   always_ff @(posedge (CLK)) begin \
     if (WRITE_ENABLE) begin \
       for (int n2a_l = 0; n2a_l < $bits(LANE_ENABLE); n2a_l++) begin \
@@ -165,12 +165,12 @@
     end \
   end
 
-`define N2A_MEM_READ(Q, MEM, CLK, ADDRESS) \
+`define MEM_READ(Q, MEM, CLK, ADDRESS) \
   always_ff @(posedge (CLK)) begin \
     Q <= MEM[ADDRESS]; \
   end
 
-`define N2A_MEM_READ_EN(Q, MEM, CLK, READ_ENABLE, ADDRESS) \
+`define MEM_READ_EN(Q, MEM, CLK, READ_ENABLE, ADDRESS) \
   always_ff @(posedge (CLK)) begin \
     if (READ_ENABLE) begin \
       Q <= MEM[ADDRESS]; \
@@ -182,8 +182,8 @@
 // `if (RESET) ... else` branch of an async-reset process so the reset net is
 // never sampled synchronously; the positive first condition matches the
 // reset edge (Quartus template) and a four-state RESET of X takes the else
-// branch as the original did. Reads use N2A_MEM_READ* or a combinational index.
-`define N2A_MEM_WRITE_ARST_GATED(MEM, CLK, RESET, WRITE_ENABLE, ADDRESS, DATA) \
+// branch as the original did. Reads use MEM_READ* or a combinational index.
+`define MEM_WRITE_ARST_GATED(MEM, CLK, RESET, WRITE_ENABLE, ADDRESS, DATA) \
   always_ff @(posedge (CLK) or posedge (RESET)) begin \
     if (RESET) begin \
     end else begin \
@@ -195,7 +195,7 @@
 
 // Register file: a synchronous reset sweeps every element to zero and wins
 // over the indexed write. This is a flop array, not an inferred RAM.
-`define N2A_MEM_WRITE_RST(MEM, CLK, WRITE_ENABLE, ADDRESS, DATA, RESET) \
+`define MEM_WRITE_RST(MEM, CLK, WRITE_ENABLE, ADDRESS, DATA, RESET) \
   always_ff @(posedge (CLK)) begin \
     if (RESET) begin \
       for (int n2a_i = $low(MEM); n2a_i <= $high(MEM); n2a_i++) begin \
@@ -210,7 +210,7 @@
 // and synthesis alike (Quartus infers an initialized memory). This is a
 // functional contract owned by the block's specification, never a diagnostic;
 // it adds no reset and never replaces a vendor backend boundary.
-`define N2A_MEM_INIT_FILE(MEM, FILE) \
+`define MEM_INIT_FILE(MEM, FILE) \
   initial begin \
     $readmemh(FILE, MEM); \
   end
@@ -220,7 +220,7 @@
 // its own time-zero initial and declared support name; the string lives inside
 // a macro-owned automatic task because synthesis tools accept string variables
 // only there. Nothing here changes stored data, reset, or a backend boundary.
-`define N2A_MEM_INIT_PLUSARG(MEM, PLUSARG_FORMAT, PATH_BITS, MESSAGE) \
+`define MEM_INIT_PLUSARG(MEM, PLUSARG_FORMAT, PATH_BITS, MESSAGE) \
   logic [(PATH_BITS)-1:0] MEM``_init_path; \
   initial begin \
     if ($value$plusargs(PLUSARG_FORMAT, MEM``_init_path)) begin \
@@ -230,7 +230,7 @@
     end \
   end
 
-`define N2A_PLUSARG_INT(VAR, FORMAT, DEFAULT) \
+`define PLUSARG_INT(VAR, FORMAT, DEFAULT) \
   initial begin \
     VAR = DEFAULT; \
     if (!$value$plusargs(FORMAT, VAR)) begin \
@@ -238,7 +238,7 @@
     end \
   end
 
-`define N2A_PLUSARG_CHOICE2(VAR, FORMAT, DEFAULT, KEY_A, VALUE_A, KEY_B, VALUE_B, MESSAGE) \
+`define PLUSARG_CHOICE2(VAR, FORMAT, DEFAULT, KEY_A, VALUE_A, KEY_B, VALUE_B, MESSAGE) \
   task automatic VAR``_plusarg_read(); \
     string VAR``_plusarg; \
     VAR = DEFAULT; \
@@ -253,62 +253,5 @@
     end \
   endtask \
   initial VAR``_plusarg_read();
-
-// Transition-only: assignment inside a caller-owned process. Product RTL must
-// not use it; the style checker reports every product call site.
-`define N2A_NBA(Q, D) Q <= D
-
-// Transition-only cached-Linux vocabulary. Bodies equal the N2A_DFF forms
-// above (posedge CLK on a plain identifier) and the array forms with N2A
-// argument order. Deleted once nand2linux call sites use the canonical names.
-`define N2A_COMPAT_DFF(Q, D, CLK) \
-    always_ff @(posedge CLK) begin \
-        Q <= D; \
-    end
-
-`define N2A_COMPAT_DFF_RST(Q, D, CLK, RST) \
-    always_ff @(posedge CLK) begin \
-        if (RST) Q <= '0; \
-        else     Q <= D; \
-    end
-
-`define N2A_COMPAT_DFF_RST_VAL(Q, D, CLK, RST, RESET_VAL) \
-    always_ff @(posedge CLK) begin \
-        if (RST) Q <= RESET_VAL; \
-        else     Q <= D; \
-    end
-
-`define N2A_COMPAT_DFF_EN(Q, D, CLK, EN) \
-    always_ff @(posedge CLK) begin \
-        if (EN) Q <= D; \
-    end
-
-`define N2A_COMPAT_DFF_RST_EN(Q, D, CLK, EN, RST, RESET_VAL) \
-    always_ff @(posedge CLK) begin \
-        if (RST) Q <= RESET_VAL; \
-        else if (EN) Q <= D; \
-    end
-
-`define N2A_COMPAT_DFF_MEM(MEM, NEXT_MEM, CLK, EN) \
-    always_ff @(posedge CLK) begin \
-        if (EN) begin \
-            for (int i = 0; i < $size(MEM); i++) begin \
-                MEM[i] <= NEXT_MEM[i]; \
-            end \
-        end \
-    end
-
-`define N2A_COMPAT_DFF_MEM_RST(MEM, NEXT_MEM, CLK, RST, EN) \
-    always_ff @(posedge CLK) begin \
-        if (RST) begin \
-            for (int i = 0; i < $size(MEM); i++) begin \
-                MEM[i] <= '0; \
-            end \
-        end else if (EN) begin \
-            for (int i = 0; i < $size(MEM); i++) begin \
-                MEM[i] <= NEXT_MEM[i]; \
-            end \
-        end \
-    end
 
 `endif

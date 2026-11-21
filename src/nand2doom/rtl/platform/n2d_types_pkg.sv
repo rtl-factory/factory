@@ -13,12 +13,12 @@ package n2d_types_pkg;
         LINE_BRIDGE_IDLE,
         LINE_BRIDGE_ISSUE,
         LINE_BRIDGE_RESPONSE
-    } line_bridge_state_t;
+    } t_line_bridge_state;
 
     // n2d_debug_device_line_bridge state: one line transaction unpacked into
     // four word requests. address[25:17] and [3:0] are captured but unused.
     typedef struct packed {
-        line_bridge_state_t state;
+        t_line_bridge_state state;
         logic               write;
         logic               palette;
         logic [25:0]        address;
@@ -27,7 +27,7 @@ package n2d_types_pkg;
         logic [1:0]         word;
         logic [127:0]       response_data;
         logic               line_response_valid;
-    } line_bridge_regs_t;
+    } t_line_bridge_regs;
 
     // n2d_framebuffer_vga software-port bookkeeping and bank control. The
     // scan lane select follows FULL_WIDTH and is a register of its own.
@@ -37,7 +37,7 @@ package n2d_types_pkg;
         logic bank;
         logic front_bank;
         logic swap_pending;
-    } fb_cpu_t;
+    } t_fb_cpu;
 
     // n2d_framebuffer_vga two-stage pixel pipeline: timing/event delays plus
     // the palette lookup, whose RGB is the palette RAM's scan port output.
@@ -50,7 +50,7 @@ package n2d_types_pkg;
         logic       frame_start_q, frame_start_qq;
         logic       frame_end_q, frame_end_qq;
         logic       palette_committed;
-    } fb_pipe_t;
+    } t_fb_pipe;
 
     // n2d_framebuffer_vga palette aperture response, active bank, deferred
     // commit flag, and whether any commit has taken effect since reset.
@@ -59,7 +59,7 @@ package n2d_types_pkg;
         logic active_bank;
         logic commit_pending;
         logic committed;
-    } fb_pal_t;
+    } t_fb_pal;
 
     // n2d_pmon_platform_events per-transaction tracking.
     typedef struct packed {
@@ -68,7 +68,7 @@ package n2d_types_pkg;
         logic       dcache_line_read_pending;
         logic       memory_busy;
         logic [4:0] owner;    // MEM_OWNER_* of the transaction, by event order
-    } pmon_track_t;
+    } t_pmon_track;
 
     // n2d_ps2_keyboard physical receiver: synchronized-clock edge history,
     // frame assembly, prefix tracking and sticky diagnostics (asynchronous
@@ -86,7 +86,7 @@ package n2d_types_pkg;
         logic       parity_error;
         logic       frame_error;
         logic       timeout_error;
-    } ps2_rx_t;
+    } t_ps2_rx;
 
     // n2d_ps2_keyboard event FIFO bookkeeping (asynchronous reset); the
     // entries themselves are an unreset flop array written through the
@@ -96,7 +96,7 @@ package n2d_types_pkg;
         logic [2:0] fifo_write_pointer;
         logic [3:0] fifo_count;
         logic       overflow_error;
-    } ps2_fifo_t;
+    } t_ps2_fifo;
 
     // n2d_ps2_keyboard byte-stream prefix qualifiers, independent of the
     // physical receiver's: only reset or the byte that completes the event
@@ -104,7 +104,7 @@ package n2d_types_pkg;
     typedef struct packed {
         logic extended_prefix;
         logic break_prefix;
-    } ps2_scan_inject_t;
+    } t_ps2_scan_inject;
 
     // n2d_system data-port owner of the outstanding CPU data request.
     typedef enum logic [2:0] {
@@ -115,7 +115,7 @@ package n2d_types_pkg;
         DATA_SYSTEM,
         DATA_PS2,
         DATA_ERROR
-    } system_data_owner_t;
+    } t_system_data_owner;
 
     // n2d_system halt-time cache maintenance tracking.
     typedef struct packed {
@@ -123,14 +123,14 @@ package n2d_types_pkg;
         logic required;
         logic icache_complete;
         logic dcache_complete;
-    } system_maint_t;
+    } t_system_maint;
 
     // n2d_system debug memory port owner.
     typedef enum logic [1:0] {
         DEBUG_NONE,
         DEBUG_SDRAM,
         DEBUG_DEVICE
-    } system_debug_owner_t;
+    } t_system_debug_owner;
 
     // n2d_system uncached system/video-control register file and response.
     typedef struct packed {
@@ -139,21 +139,21 @@ package n2d_types_pkg;
         logic        response_error;
         logic [31:0] completion;
         logic [31:0] tick;
-    } system_regs_t;
+    } t_system_regs;
 
     // n2d_uart_bulk framing phase.
     typedef enum logic [3:0] {
         BULK_IDLE, BULK_RX_HEADER, BULK_RX_BODY, BULK_RX_CRC, BULK_CHECK, BULK_PREPARE,
         BULK_SEND_ENGINE, BULK_WAIT_ENGINE, BULK_CHECK_ENGINE,
         BULK_TX_HEADER, BULK_TX_DATA, BULK_TX_CRC, BULK_DRAIN, BULK_QUARANTINE, BULK_WAIT_OLD
-    } bulk_state_t;
+    } t_bulk_state;
 
     // n2d_uart_bulk framing state: request header, CRC accumulators,
     // progress counters and the engine hand-off bookkeeping. The gap and
     // frame timers follow the timeout parameters and are registers of their
     // own.
     typedef struct packed {
-        bulk_state_t state;
+        t_bulk_state state;
         logic [7:0]  version;
         logic [7:0]  command;
         logic [7:0]  seq;
@@ -176,7 +176,7 @@ package n2d_types_pkg;
         logic [7:0]  engine_status;
         logic [7:0]  engine_count;
         logic        engine_bad;
-    } bulk_regs_t;
+    } t_bulk_regs;
 
     // n2d_uart_debug_engine request parser phase.
     typedef enum logic [2:0] {
@@ -185,7 +185,7 @@ package n2d_types_pkg;
         DEBUG_RX_PAYLOAD,
         DEBUG_RX_DISCARD,
         DEBUG_RX_CHECKSUM
-    } debug_rx_state_t;
+    } t_debug_rx_state;
 
     // n2d_uart_debug_engine executor phase.
     typedef enum logic [3:0] {
@@ -198,14 +198,14 @@ package n2d_types_pkg;
         DEBUG_EXEC_COMMIT_WAIT,
         DEBUG_EXEC_ABORT_WAIT,
         DEBUG_EXEC_INPUT_WAIT
-    } debug_exec_state_t;
+    } t_debug_exec_state;
 
     // n2d_uart_debug_engine request parser: frame state, header fields and
     // per-byte checksum. The payload index and length, the inter-byte
     // counter and the payload image follow MAX_WORDS or
     // INTERBYTE_TIMEOUT_CYCLES and are registers of their own.
     typedef struct packed {
-        debug_rx_state_t rx_state;
+        t_debug_rx_state rx_state;
         logic [3:0]      rx_header_index;
         logic [9:0]      rx_discard_remaining;
         logic [7:0]      rx_crc;
@@ -221,12 +221,12 @@ package n2d_types_pkg;
         logic [7:0]      parser_error_status;
         logic [7:0]      parser_error_command;
         logic [7:0]      parser_error_sequence;
-    } debug_rx_t;
+    } t_debug_rx;
 
     // n2d_uart_debug_engine discard-only parser used while service is
     // occupied. Its inter-byte counter is a register of its own.
     typedef struct packed {
-        debug_rx_state_t busy_rx_state;
+        t_debug_rx_state busy_rx_state;
         logic [3:0]      busy_header_index;
         logic [9:0]      busy_payload_remaining;
         logic [7:0]      busy_crc;
@@ -234,14 +234,14 @@ package n2d_types_pkg;
         logic [7:0]      busy_sequence;
         logic [7:0]      busy_count;
         logic            busy_packet_valid;
-    } debug_busy_t;
+    } t_debug_busy;
 
     // n2d_uart_debug_engine executor and response serializer: command
     // sequencing and transaction pulses. The timeout counters, word and
     // response indices and the response image follow the block parameters
     // and are registers of their own.
     typedef struct packed {
-        debug_exec_state_t exec_state;
+        t_debug_exec_state exec_state;
         logic              transaction_active;
         logic [7:0]        abort_status;
         logic              busy_pending;
@@ -260,7 +260,7 @@ package n2d_types_pkg;
         logic              txn_begin;
         logic              txn_commit;
         logic              txn_abort;
-    } debug_exec_t;
+    } t_debug_exec;
 
     // n2d_uart_stream receive parser phase.
     typedef enum logic [1:0] {
@@ -268,7 +268,7 @@ package n2d_types_pkg;
         STREAM_RX_HEADER,
         STREAM_RX_PAYLOAD,
         STREAM_RX_CRC
-    } stream_rx_state_t;
+    } t_stream_rx_state;
 
     // n2d_uart_stream executor phase.
     typedef enum logic [2:0] {
@@ -279,7 +279,7 @@ package n2d_types_pkg;
         STREAM_X_RSP,
         STREAM_X_COMMIT,
         STREAM_X_ABORT
-    } stream_x_state_t;
+    } t_stream_x_state;
 
     // n2d_uart_stream received frame: header fields, the digest seed and the
     // receive verdict that decides whether the executor touches memory.
@@ -290,7 +290,7 @@ package n2d_types_pkg;
         logic [31:0] length;
         logic [31:0] seed;
         logic [7:0]  status;
-    } stream_entry_t;
+    } t_stream_entry;
 
     // n2d_uart_stream block state: session/receive parser, two-entry
     // in-order queue, executor and reply serializer. The gap, session-idle
@@ -299,22 +299,22 @@ package n2d_types_pkg;
     typedef struct packed {
         logic                session;
         logic                closing;
-        stream_rx_state_t    rx_state;
+        t_stream_rx_state    rx_state;
         logic [3:0]          header_index;
         logic [7:0]          header_crc;
         logic [31:0]         crc;
-        stream_entry_t       frame;
+        t_stream_entry       frame;
         logic [10:0]         payload_bytes;
         logic [10:0]         payload_index;
         logic [31:0]         word_acc;
         logic [1:0]          crc_index;
         logic [23:0]         received_crc;
         logic                store;
-        stream_entry_t [1:0] entries;
+        t_stream_entry [1:0] entries;
         logic                wr_ptr;
         logic                rd_ptr;
         logic [1:0]          count;
-        stream_x_state_t     x_state;
+        t_stream_x_state     x_state;
         logic [31:0]         x_address;
         logic [31:0]         x_remaining;
         logic [7:0]          x_word;
@@ -332,7 +332,7 @@ package n2d_types_pkg;
         logic [15:0]         reply_seq;
         logic [7:0]          reply_status;
         logic [31:0]         reply_value;
-    } stream_regs_t;
+    } t_stream_regs;
 
     // n2d_uart_mem_port phase: a screen read, or one SDRAM word as one
     // debug-adapter transaction.
@@ -344,11 +344,11 @@ package n2d_types_pkg;
         MEM_PORT_REQ,
         MEM_PORT_RSP,
         MEM_PORT_FINISH
-    } mem_port_state_t;
+    } t_mem_port_state;
 
     // n2d_uart_mem_port request, result and transaction pulses.
     typedef struct packed {
-        mem_port_state_t state;
+        t_mem_port_state state;
         logic            write;
         logic [31:0]     addr;
         logic [31:0]     wdata;
@@ -358,5 +358,5 @@ package n2d_types_pkg;
         logic            txn_begin;
         logic            txn_commit;
         logic            txn_abort;
-    } mem_port_regs_t;
+    } t_mem_port_regs;
 endpackage

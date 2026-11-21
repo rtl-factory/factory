@@ -14,5 +14,5 @@ package n2m_timer_pkg;
     RELOAD_IDLE    = 2'd0,
     RELOAD_PENDING = 2'd1,
     RELOAD_HOLD    = 2'd2
-  } timer_reload_t;
+  } t_timer_reload;
 endpackage

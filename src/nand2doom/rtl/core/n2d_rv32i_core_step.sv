@@ -2,7 +2,7 @@
 
 module n2d_rv32i_core_step (
     input  logic        clk_i,
-    input  logic        rst_i,
+    input  logic        reset_i,
     input  logic        enable_i,
 
     output logic        instruction_request_valid_o,
@@ -44,7 +44,7 @@ module n2d_rv32i_core_step (
 );
     import n2d_core_types_pkg::*;
 
-    localparam step_regs_t REGS_RESET = '{
+    localparam t_step_regs REGS_RESET = '{
         state: STEP_FETCH_REQUEST,
         pc: 32'h0000_0000,
         instruction: 32'h0000_0013,
@@ -73,7 +73,7 @@ module n2d_rv32i_core_step (
         observation_trap: 1'b0,
         observation_cause: 32'h0000_0000,
         observation_trap_value: 32'h0000_0000};
-    step_regs_t regs_q, regs_d;
+    t_step_regs regs_q, regs_d;
 
     localparam logic [6:0] OPCODE_BRANCH = 7'b1100011;
     localparam logic [6:0] OPCODE_LOAD   = 7'b0000011;
@@ -111,7 +111,7 @@ module n2d_rv32i_core_step (
 
     n2a_rv32_regfile u_register_file (
         .clk_i             (clk_i),
-        .rst_i             (rst_i),
+        .reset_i             (reset_i),
         .read_a_index_i    (rs1_index),
         .read_a_data_o     (rs1_data),
         .read_b_index_i    (rs2_index),
@@ -363,7 +363,7 @@ module n2d_rv32i_core_step (
         endcase
     end
 
-    `N2A_DFF_RST_VAL(regs_q, regs_d, clk_i, rst_i, REGS_RESET)
+    `DFF_RST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
     assign observation_valid_o = regs_q.observation_valid;
     assign observation_order_o = regs_q.observation_order;
     assign observation_pc_o = regs_q.observation_pc;

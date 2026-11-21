@@ -108,12 +108,12 @@ module n2m_dual_port_ram #(
         else if ((read_a_i || write_a_i) && !b_owns) address = address_a_i;
       end
       assign pend_d = pend_capture || (pend_q && b_owns);
-      `N2A_DFF(pend_q, pend_d, clk_a_i)
-      `N2A_DFF_EN(pend_address_q, address_a_i, clk_a_i, pend_capture)
-      `N2A_DFF_EN(pend_data_q, write_data_a_i, clk_a_i, pend_capture)
+      `DFF(pend_q, pend_d, clk_a_i)
+      `DFF_EN(pend_address_q, address_a_i, clk_a_i, pend_capture)
+      `DFF_EN(pend_data_q, write_data_a_i, clk_a_i, pend_capture)
       assign forward_d = b_owns && pend_q && (address_b_i == pend_address_q);
-      `N2A_DFF(forward_q, forward_d, clk_a_i)
-      `N2A_DFF(forward_data_q, pend_data_q, clk_a_i)
+      `DFF(forward_q, forward_d, clk_a_i)
+      `DFF(forward_data_q, pend_data_q, clk_a_i)
 
       n2a_sync_ram_wt #(
         .DATA_WIDTH (DATA_WIDTH),
@@ -127,28 +127,28 @@ module n2m_dual_port_ram #(
       );
       assign array_a = store_data;
       assign array_b = forward_q ? forward_data_q : store_data;
-      `N2A_UNUSED_BITS(unused_shared_inputs, {clk_b_i, byte_enable_a_i})
+      `UNUSED_BITS(unused_shared_inputs, {clk_b_i, byte_enable_a_i})
 
-      `N2A_ASSERT_NEVER(shared_port_a_read_exclusive, clk_a_i, reset_any,
+      `ASSERT_NEVER(shared_port_a_read_exclusive, clk_a_i, reset_any,
           read_a_i && (read_b_i || pend_q))
-      `N2A_ASSERT_NEVER(shared_one_posted_write, clk_a_i, reset_any,
+      `ASSERT_NEVER(shared_one_posted_write, clk_a_i, reset_any,
           write_a && pend_q)
       // Why: no output takes the store's word of a write edge: a port-A read on
       // a port-A write edge is bypassed, and a store write never shares an
       // edge with a port-B read, so the store's collision rule is unused.
-      `N2A_ASSERT_NEVER(shared_write_word_unused, clk_a_i, reset_any,
+      `ASSERT_NEVER(shared_write_word_unused, clk_a_i, reset_any,
           store_write && ((read_a_i && !write_a_i) || read_b_i))
     end else begin : g_two_port
       // Why: both ports read every edge, read-first, like the FPGA template, so
       // the two backends return the same word on a write edge.
       logic [IMPLEMENTATION_DATA_WIDTH-1:0] memory [0:IMPLEMENTATION_DEPTH-1];
-      `N2A_MEM_WRITE_LANES(memory, clk_a_i, write_a, address_a_i, write_data_a_i,
+      `MEM_WRITE_LANES(memory, clk_a_i, write_a, address_a_i, write_data_a_i,
           byte_enable_a_i, 8)
-      `N2A_MEM_READ(array_a, memory, clk_a_i, address_a_i)
+      `MEM_READ(array_a, memory, clk_a_i, address_a_i)
       if (DUAL_CLOCK) begin : g_dual_clock_read
-        `N2A_MEM_READ(array_b, memory, clk_b_i, address_b_i)
+        `MEM_READ(array_b, memory, clk_b_i, address_b_i)
       end else begin : g_single_clock_read
-        `N2A_MEM_READ(array_b, memory, clk_a_i, address_b_i)
+        `MEM_READ(array_b, memory, clk_a_i, address_b_i)
       end
     end
   endgenerate
@@ -159,50 +159,50 @@ module n2m_dual_port_ram #(
   logic                  bypass_a_q, bypass_a_d;
   logic [DATA_WIDTH-1:0] write_data_a_q, held_a_q;
   assign bypass_a_d = write_a_i;
-  `N2A_DFF_RST(read_valid_a_o, read_a_i, clk_a_i, reset_a_i)
-  `N2A_DFF(bypass_a_q, bypass_a_d, clk_a_i)
-  `N2A_DFF(write_data_a_q, write_data_a_i, clk_a_i)
+  `DFF_RST(read_valid_a_o, read_a_i, clk_a_i, reset_a_i)
+  `DFF(bypass_a_q, bypass_a_d, clk_a_i)
+  `DFF(write_data_a_q, write_data_a_i, clk_a_i)
   assign read_data_a_o = !read_valid_a_o ? held_a_q :
                          (bypass_a_q ? write_data_a_q : array_a);
-  `N2A_DFF(held_a_q, read_data_a_o, clk_a_i)
+  `DFF(held_a_q, read_data_a_o, clk_a_i)
 
   logic [DATA_WIDTH-1:0] held_b_q;
   generate
     if (DUAL_CLOCK) begin : g_dual_clock_b
-      `N2A_DFF_RST(read_valid_b_o, read_b_i, clk_b_i, reset_b_i)
-      `N2A_DFF(held_b_q, read_data_b_o, clk_b_i)
-      `N2A_ASSERT(dual_clock_collision_a, clk_a_i,
+      `DFF_RST(read_valid_b_o, read_b_i, clk_b_i, reset_b_i)
+      `DFF(held_b_q, read_data_b_o, clk_b_i)
+      `ASSERT(dual_clock_collision_a, clk_a_i,
           (reset_a_i || reset_b_i),
           !(write_a_i && read_b_i && (address_a_i == address_b_i)))
-      `N2A_ASSERT(dual_clock_collision_b, clk_b_i,
+      `ASSERT(dual_clock_collision_b, clk_b_i,
           (reset_a_i || reset_b_i),
           !(write_a_i && read_b_i && (address_a_i == address_b_i)))
-      `N2A_ASSERT_KNOWN(b_control_known, clk_b_i, reset_b_i,
+      `ASSERT_KNOWN(b_control_known, clk_b_i, reset_b_i,
           {read_b_i, address_b_i})
     end else begin : g_single_clock_b
-      `N2A_DFF_RST(read_valid_b_o, read_b_i, clk_a_i, reset_b_i)
-      `N2A_DFF(held_b_q, read_data_b_o, clk_a_i)
-      `N2A_ASSERT_KNOWN(b_control_known, clk_a_i, reset_b_i,
+      `DFF_RST(read_valid_b_o, read_b_i, clk_a_i, reset_b_i)
+      `DFF(held_b_q, read_data_b_o, clk_a_i)
+      `ASSERT_KNOWN(b_control_known, clk_a_i, reset_b_i,
           {read_b_i, address_b_i})
     end
   endgenerate
   assign read_data_b_o = read_valid_b_o ? array_b : held_b_q;
 
-  `N2A_ASSERT_PARAM(g_invalid_data_width,
+  `ASSERT_PARAM(g_invalid_data_width,
       (DATA_WIDTH >= 8) && ((DATA_WIDTH % 8) == 0),
       "n2m_dual_port_ram DATA_WIDTH must be a positive byte multiple")
-  `N2A_ASSERT_PARAM(g_invalid_depth, DEPTH_IS_POWER_OF_TWO,
+  `ASSERT_PARAM(g_invalid_depth, DEPTH_IS_POWER_OF_TWO,
       "n2m_dual_port_ram DEPTH must be a power of two and at least 2")
-  `N2A_ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
+  `ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
       "n2m_dual_port_ram ADDR_WIDTH must equal $clog2(DEPTH)")
-  `N2A_ASSERT_PARAM(g_invalid_byte_lanes, BYTE_LANES == (DATA_WIDTH / 8),
+  `ASSERT_PARAM(g_invalid_byte_lanes, BYTE_LANES == (DATA_WIDTH / 8),
       "n2m_dual_port_ram BYTE_LANES must equal DATA_WIDTH/8")
 
-  `N2A_ASSERT_KNOWN(a_control_known, clk_a_i, reset_a_i,
+  `ASSERT_KNOWN(a_control_known, clk_a_i, reset_a_i,
       {read_a_i, write_a_i, address_a_i, byte_enable_a_i})
-  `N2A_ASSERT(a_write_data_known, clk_a_i, reset_a_i,
+  `ASSERT(a_write_data_known, clk_a_i, reset_a_i,
       !write_a_i || !$isunknown(write_data_a_i))
-  `N2A_ASSERT(a_read_write_all_lanes, clk_a_i, reset_a_i,
+  `ASSERT(a_read_write_all_lanes, clk_a_i, reset_a_i,
       !(read_a_i && write_a_i) || (&byte_enable_a_i))
 endmodule
 /* verilator lint_on DECLFILENAME */

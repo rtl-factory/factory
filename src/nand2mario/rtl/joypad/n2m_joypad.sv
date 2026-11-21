@@ -20,9 +20,9 @@ module n2m_joypad (
   input  logic [7:0]                         buttons_i,
   // Peripheral port from the memory map; kind is not consulted.
   /* verilator lint_off UNUSEDSIGNAL */
-  input  n2m_interfaces_pkg::bus_request_t   io_request_i,
+  input  n2m_interfaces_pkg::t_bus_request   io_request_i,
   /* verilator lint_on UNUSEDSIGNAL */
-  output n2m_interfaces_pkg::bus_response_t  io_response_o,
+  output n2m_interfaces_pkg::t_bus_response  io_response_o,
   output logic                               io_selected_o,
   // High while any button of a selected row is pressed (CPU STOP policy).
   output logic                               selected_active_o,
@@ -57,9 +57,9 @@ module n2m_joypad (
     event_d = |(pressed_d & ~pressed_q);
   end
 
-  `N2A_DFF_RST(buttons_q, buttons_d, clk_i, reset_i)
-  `N2A_DFF_RST(select_q, select_d, clk_i, reset_i)
-  `N2A_DFF_RST(event_q, event_d, clk_i, reset_i)
+  `DFF_RST(buttons_q, buttons_d, clk_i, reset_i)
+  `DFF_RST(select_q, select_d, clk_i, reset_i)
+  `DFF_RST(event_q, event_d, clk_i, reset_i)
 
   assign selected_active_o = |pressed_q;
   assign interrupt_o = event_q;
@@ -74,11 +74,11 @@ module n2m_joypad (
     io_response_o.read_data = {2'b11, select_q, ~pressed_q};
   end
 
-  `N2A_ASSERT_KNOWN(joypad_controls_known, clk_i, reset_i, {io_request_i.valid, buttons_i})
-  `N2A_ASSERT(joypad_access_known, clk_i, reset_i,
+  `ASSERT_KNOWN(joypad_controls_known, clk_i, reset_i, {io_request_i.valid, buttons_i})
+  `ASSERT(joypad_access_known, clk_i, reset_i,
       !io_request_i.valid || !$isunknown({io_request_i.write, io_request_i.address}))
-  `N2A_ASSERT(joypad_write_known, clk_i, reset_i,
+  `ASSERT(joypad_write_known, clk_i, reset_i,
       !write_p1 || !$isunknown(io_request_i.write_data))
-  `N2A_ASSERT(joypad_event_follows_fall, clk_i, reset_i,
+  `ASSERT(joypad_event_follows_fall, clk_i, reset_i,
       event_q |-> $past(|(pressed_d & ~pressed_q)))
 endmodule

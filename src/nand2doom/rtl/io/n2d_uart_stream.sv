@@ -38,11 +38,11 @@ module n2d_uart_stream
     input  logic                  legacy_idle_i,
     // Session ownership of the debug memory port (n2d_pkg groups).
     output logic                  session_o,
-    input  n2d_debug_status_t     debug_status_i,
-    output n2d_debug_txn_req_t    txn_req_o,
-    input  n2d_debug_txn_status_t txn_status_i,
-    output n2d_debug_mem_req_t    mem_req_o,
-    input  n2d_debug_mem_rsp_t    mem_rsp_i
+    input  t_n2d_debug_status     debug_status_i,
+    output t_n2d_debug_txn_req    txn_req_o,
+    input  t_n2d_debug_txn_status txn_status_i,
+    output t_n2d_debug_mem_req    mem_req_o,
+    input  t_n2d_debug_mem_rsp    mem_rsp_i
 );
     import n2d_types_pkg::*;
 
@@ -50,14 +50,14 @@ module n2d_uart_stream
     localparam int unsigned IDLE_WIDTH = $clog2(SESSION_IDLE_CYCLES);
     localparam int unsigned OP_WIDTH = $clog2(OP_TIMEOUT_CYCLES);
 
-    `N2A_ASSERT_PARAM(g_gap_timeout, GAP_TIMEOUT_CYCLES >= 2,
+    `ASSERT_PARAM(g_gap_timeout, GAP_TIMEOUT_CYCLES >= 2,
         "n2d_uart_stream GAP_TIMEOUT_CYCLES must be at least 2")
-    `N2A_ASSERT_PARAM(g_session_idle, SESSION_IDLE_CYCLES >= 2,
+    `ASSERT_PARAM(g_session_idle, SESSION_IDLE_CYCLES >= 2,
         "n2d_uart_stream SESSION_IDLE_CYCLES must be at least 2")
-    `N2A_ASSERT_PARAM(g_op_timeout, OP_TIMEOUT_CYCLES >= 2,
+    `ASSERT_PARAM(g_op_timeout, OP_TIMEOUT_CYCLES >= 2,
         "n2d_uart_stream OP_TIMEOUT_CYCLES must be at least 2")
 
-    localparam stream_regs_t REGS_RESET = '{
+    localparam t_stream_regs REGS_RESET = '{
         session: 1'b0, closing: 1'b0, rx_state: STREAM_RX_HUNT, header_index: '0,
         header_crc: '0, crc: '1, frame: '0, payload_bytes: '0,
         payload_index: '0, word_acc: '0, crc_index: '0, received_crc: '0,
@@ -68,14 +68,14 @@ module n2d_uart_stream
         txn_commit: 1'b0, txn_abort: 1'b0, committed: '0,
         reply_active: 1'b0, reply_index: '0, reply_crc: '0, reply_kind: '0,
         reply_seq: '0, reply_status: '0, reply_value: '0};
-    stream_regs_t regs_q, regs_d;
+    t_stream_regs regs_q, regs_d;
     // Why: the gap, session-idle and operation timer widths follow the timeout
     // parameters, so they are registers of their own beside the packaged state.
     logic [GAP_WIDTH-1:0]  gap_q, gap_d;
     logic [IDLE_WIDTH-1:0] idle_q, idle_d;
     logic [OP_WIDTH-1:0]   op_counter_q, op_counter_d;
 
-    stream_entry_t head;
+    t_stream_entry head;
     logic claim, halted, head_write;
     logic [2:0] word_bytes;
     logic [3:0] chunk_words;
@@ -87,7 +87,7 @@ module n2d_uart_stream
     logic push, pop, start_reply, header_good, kind_known, length_good;
     logic [7:0] start_status;
     logic [31:0] start_value;
-    stream_entry_t push_entry;
+    t_stream_entry push_entry;
 
     assign head = regs_q.entries[regs_q.rd_ptr];
     assign head_write = (head.kind == N2D_STREAM_WRITE);
@@ -456,19 +456,19 @@ module n2d_uart_stream
         end
     end
 
-    `N2A_DFF_ARST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
-    `N2A_DFF_ARST_VAL(gap_q, gap_d, clk_i, reset_i, '0)
-    `N2A_DFF_ARST_VAL(idle_q, idle_d, clk_i, reset_i, '0)
-    `N2A_DFF_ARST_VAL(op_counter_q, op_counter_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
+    `DFF_ARST_VAL(gap_q, gap_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(idle_q, idle_d, clk_i, reset_i, '0)
+    `DFF_ARST_VAL(op_counter_q, op_counter_d, clk_i, reset_i, '0)
 
-    `N2A_ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, regs_q.count <= 2'd2,
+    `ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, regs_q.count <= 2'd2,
         "stream queue overflow")
-    `N2A_ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, regs_q.session,
+    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, regs_q.session,
         (!down_rx_valid_o && !down_rx_error_o), "stream byte reached legacy path")
-    `N2A_ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, mem_req_o.valid,
+    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, mem_req_o.valid,
         (halted && regs_q.session), "stream memory access outside maintained halt")
-    `N2A_ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i,
+    `ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i,
         !(regs_q.txn_commit && regs_q.txn_abort), "stream commit and abort overlap")
-    `N2A_ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, ram_write,
+    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, ram_write,
         (regs_q.count != 2'd2), "stream wrote an occupied slot")
 endmodule

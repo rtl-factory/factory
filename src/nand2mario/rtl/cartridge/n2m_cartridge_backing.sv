@@ -21,14 +21,14 @@ module n2m_cartridge_backing #(
   input  logic                                   clk_i,
   input  logic                                   reset_i,
   // Backing port.
-  input  n2m_cartridge_pkg::backing_request_t    request_i,
+  input  n2m_cartridge_pkg::t_backing_request    request_i,
   output logic                                   ready_o,
-  output n2m_cartridge_pkg::backing_response_t   response_o,
+  output n2m_cartridge_pkg::t_backing_response   response_o,
   // Load port: ROM/RAM reads and writes with the backing records, accepted
   // regardless of reset (reset only drops the response).
-  input  n2m_cartridge_pkg::backing_request_t    load_request_i,
+  input  n2m_cartridge_pkg::t_backing_request    load_request_i,
   output logic                                   load_ready_o,
-  output n2m_cartridge_pkg::backing_response_t   load_response_o,
+  output n2m_cartridge_pkg::t_backing_response   load_response_o,
   // Constant: an on-chip store needs no initialization.
   output logic                                   initialized_o
 );
@@ -37,11 +37,11 @@ module n2m_cartridge_backing #(
   localparam int unsigned ROM_ADDRESS_BITS = $clog2(ROM_BYTES);
   localparam int unsigned RAM_ADDRESS_BITS = $clog2(RAM_BYTES);
 
-  `N2A_ASSERT_PARAM(g_invalid_rom_bytes,
+  `ASSERT_PARAM(g_invalid_rom_bytes,
       (ROM_BYTES >= MIN_ROM_BYTES) && (ROM_BYTES <= MAX_ROM_BYTES) &&
       ((ROM_BYTES & (ROM_BYTES - 1)) == 0),
       "n2m_cartridge_backing ROM_BYTES must be a power of two between 32 KiB and 2 MiB")
-  `N2A_ASSERT_PARAM(g_invalid_ram_bytes,
+  `ASSERT_PARAM(g_invalid_ram_bytes,
       (RAM_BYTES >= MIN_RAM_BYTES) && (RAM_BYTES <= MAX_RAM_BYTES) &&
       ((RAM_BYTES & (RAM_BYTES - 1)) == 0),
       "n2m_cartridge_backing RAM_BYTES must be a power of two between 8 KiB and 32 KiB")
@@ -139,35 +139,35 @@ module n2m_cartridge_backing #(
   // Why: every store answers on the next edge, so a response is a fixed one
   // edge after acceptance and the registered store selection picks its data.
   // Write responses carry no meaningful data.
-  `N2A_DFF_RST(valid_q, accept, clk_i, reset_i)
-  `N2A_DFF_RST_EN(ram_q, request_i.ram, clk_i, accept, reset_i, 1'b0)
-  `N2A_ASSERT_HISTORY_RST(logic, read_q, accept ? !request_i.write : read_q, clk_i, reset_i)
+  `DFF_RST(valid_q, accept, clk_i, reset_i)
+  `DFF_RST_EN(ram_q, request_i.ram, clk_i, accept, reset_i, 1'b0)
+  `ASSERT_HISTORY_RST(logic, read_q, accept ? !request_i.write : read_q, clk_i, reset_i)
   always_comb begin
     response_o.valid = valid_q;
     response_o.read_data = ram_q ? ram_data : rom_data;
   end
 
-  `N2A_DFF_RST(load_valid_q, load_accept, clk_i, reset_i)
-  `N2A_DFF_RST_EN(load_ram_q, load_request_i.ram, clk_i, load_accept, reset_i, 1'b0)
-  `N2A_ASSERT_HISTORY_RST(logic, load_read_q,
+  `DFF_RST(load_valid_q, load_accept, clk_i, reset_i)
+  `DFF_RST_EN(load_ram_q, load_request_i.ram, clk_i, load_accept, reset_i, 1'b0)
+  `ASSERT_HISTORY_RST(logic, load_read_q,
       load_accept ? !load_request_i.write : load_read_q, clk_i, reset_i)
   always_comb begin
     load_response_o.valid = load_valid_q;
     load_response_o.read_data = load_ram_q ? ram_data : load_rom_data;
   end
 
-  `N2A_ASSERT(request_known, clk_i, reset_i,
+  `ASSERT(request_known, clk_i, reset_i,
       !request_i.valid || !$isunknown(request_i))
-  `N2A_ASSERT(load_request_known, clk_i, reset_i,
+  `ASSERT(load_request_known, clk_i, reset_i,
       !load_request_i.valid || !$isunknown(load_request_i))
-  `N2A_ASSERT_NEVER(rom_write_rejected, clk_i, reset_i,
+  `ASSERT_NEVER(rom_write_rejected, clk_i, reset_i,
       request_i.valid && !request_i.ram && request_i.write)
-  `N2A_ASSERT(request_one_outstanding, clk_i, reset_i,
+  `ASSERT(request_one_outstanding, clk_i, reset_i,
       !valid_q || !request_i.valid)
-  `N2A_ASSERT(load_read_one_outstanding, clk_i, reset_i,
+  `ASSERT(load_read_one_outstanding, clk_i, reset_i,
       !(load_valid_q && load_read_q) || !load_request_i.valid)
-  `N2A_ASSERT(read_served, clk_i, reset_i,
+  `ASSERT(read_served, clk_i, reset_i,
       !(valid_q && read_q) || (ram_q ? ram_valid : rom_valid))
-  `N2A_ASSERT(load_read_served, clk_i, reset_i,
+  `ASSERT(load_read_served, clk_i, reset_i,
       !(load_valid_q && load_read_q) || (load_ram_q ? ram_valid : load_rom_valid))
 endmodule

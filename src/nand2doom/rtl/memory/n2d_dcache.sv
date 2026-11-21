@@ -38,7 +38,7 @@ module n2d_dcache #(
     parameter int unsigned PREFETCH_LINES = 0
 ) (
     input  logic         clk_i,
-    input  logic         rst_i,
+    input  logic         reset_i,
 
     input  logic         cpu_request_valid_i,
     output logic         cpu_request_ready_o,
@@ -97,10 +97,10 @@ module n2d_dcache #(
     localparam int unsigned BUFFER_SLOTS = PREFETCH ? PREFETCH_LINES : 1;
     localparam int unsigned SLOT_WIDTH = BUFFER_SLOTS > 1 ? $clog2(BUFFER_SLOTS) : 1;
 
-    `N2A_ASSERT_INITIAL(WAYS == 2 || WAYS == 4)
-    `N2A_ASSERT_INITIAL(PREFETCH_LINES <= 2)
+    `ASSERT_INITIAL(WAYS == 2 || WAYS == 4)
+    `ASSERT_INITIAL(PREFETCH_LINES <= 2)
 
-    localparam dcache_regs_t REGS_RESET = '{
+    localparam t_dcache_regs REGS_RESET = '{
         state: DCACHE_IDLE,
         request_address: 30'b0,
         request_write: 1'b0,
@@ -138,7 +138,7 @@ module n2d_dcache #(
         prefetch_useful_event: 1'b0,
         prefetch_cancel_event: 1'b0,
         prefetch_drop_backlog: 3'b0};
-    dcache_regs_t regs_q, regs_d;
+    t_dcache_regs regs_q, regs_d;
     // Why: fields whose widths follow WAYS or PREFETCH_LINES are registers of
     // their own beside the packaged cache state (same zero reset).
     // LOOKUP captures the miss victim way and the miss set's metadata word
@@ -310,7 +310,7 @@ module n2d_dcache #(
     // install, or a maintenance clear), so each rewrites the whole word from
     // the current one.
     logic meta_write;
-    assign meta_write = !rst_i && (!regs_q.init_done || lookup_hit ||
+    assign meta_write = !reset_i && (!regs_q.init_done || lookup_hit ||
         refill_ok || maintenance_clear);
     logic [SET_WIDTH-1:0] meta_write_set;
     assign meta_write_set = !regs_q.init_done ? regs_q.init_set :
@@ -447,9 +447,9 @@ module n2d_dcache #(
     generate
     for (way = 0; way < WAYS; way = way + 1) begin : g_way
         logic refill_write;
-        assign refill_write = !rst_i && refill_ok && victim_way_q == WAY_WIDTH'(way);
+        assign refill_write = !reset_i && refill_ok && victim_way_q == WAY_WIDTH'(way);
         logic hit_write;
-        assign hit_write = !rst_i && store_hit && selected_hit_way == WAY_WIDTH'(way);
+        assign hit_write = !reset_i && store_hit && selected_hit_way == WAY_WIDTH'(way);
         logic data_write;
         assign data_write = refill_write || hit_write;
         logic [127:0] write_line;
@@ -769,16 +769,16 @@ module n2d_dcache #(
         endcase
     end
 
-    `N2A_DFF_RST_VAL(regs_q, regs_d, clk_i, rst_i, REGS_RESET)
-    `N2A_DFF_RST(victim_way_q, victim_way_d, clk_i, rst_i)
-    `N2A_DFF_RST(miss_word_q, miss_word_d, clk_i, rst_i)
-    `N2A_DFF_RST(meta_forward_word_q, meta_forward_word_d, clk_i, rst_i)
-    `N2A_DFF_RST(forward_way_q, forward_way_d, clk_i, rst_i)
-    `N2A_DFF_RST(maintenance_way_q, maintenance_way_d, clk_i, rst_i)
-    `N2A_DFF_RST(buffer_valid_q, buffer_valid_d, clk_i, rst_i)
-    `N2A_DFF_RST(buffer_line_q, buffer_line_d, clk_i, rst_i)
-    `N2A_DFF_RST(buffer_data_q, buffer_data_d, clk_i, rst_i)
-    `N2A_DFF_RST(buffer_next_q, buffer_next_d, clk_i, rst_i)
+    `DFF_RST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
+    `DFF_RST(victim_way_q, victim_way_d, clk_i, reset_i)
+    `DFF_RST(miss_word_q, miss_word_d, clk_i, reset_i)
+    `DFF_RST(meta_forward_word_q, meta_forward_word_d, clk_i, reset_i)
+    `DFF_RST(forward_way_q, forward_way_d, clk_i, reset_i)
+    `DFF_RST(maintenance_way_q, maintenance_way_d, clk_i, reset_i)
+    `DFF_RST(buffer_valid_q, buffer_valid_d, clk_i, reset_i)
+    `DFF_RST(buffer_line_q, buffer_line_d, clk_i, reset_i)
+    `DFF_RST(buffer_data_q, buffer_data_d, clk_i, reset_i)
+    `DFF_RST(buffer_next_q, buffer_next_d, clk_i, reset_i)
     // Why: a hit responds combinationally in LOOKUP (stores return zero data); a
     // refill or local error responds from the registered fields. They never
     // coincide, so OR-ing the valids is safe.
@@ -799,39 +799,39 @@ module n2d_dcache #(
     assign write_buffer_pending_o = regs_q.write_buffer_valid;
     assign write_buffer_wait_o = regs_q.state == DCACHE_REFILL_REQUEST && write_buffer_block;
 
-    `N2A_ASSERT_CLOCKED_ERROR_WHEN_UNGUARDED(clk_i, rst_i, request_accept,
+    `ASSERT_CLOCKED_ERROR_WHEN_UNGUARDED(clk_i, reset_i, request_accept,
         !$isunknown(cpu_request_address_i[1:0]),
         "D-cache request byte offset is unknown")
-    `N2A_ASSERT_CLOCKED_ERROR_UNGUARDED(clk_i, rst_i,
+    `ASSERT_CLOCKED_ERROR_UNGUARDED(clk_i, reset_i,
         !(lookup_hit && regs_q.cpu_response_valid),
         "D-cache hit and registered response coincide")
-    `N2A_ASSERT_CLOCKED_ERROR_UNGUARDED(clk_i, rst_i, !lookup || $onehot0(hit_ways),
+    `ASSERT_CLOCKED_ERROR_UNGUARDED(clk_i, reset_i, !lookup || $onehot0(hit_ways),
         "D-cache tag present in more than one way")
-    `N2A_ASSERT_CLOCKED_ERROR_UNGUARDED(clk_i, rst_i,
+    `ASSERT_CLOCKED_ERROR_UNGUARDED(clk_i, reset_i,
         !(prefetch_inflight && (regs_q.write_buffer_active ||
           regs_q.state == DCACHE_REFILL_RESPONSE ||
           regs_q.state == DCACHE_MAINTENANCE_WRITEBACK_RESPONSE)),
         "D-cache prefetch owed while a demand line response is owed")
-    `N2A_ASSERT_CLOCKED_ERROR_UNGUARDED(clk_i, rst_i,
+    `ASSERT_CLOCKED_ERROR_UNGUARDED(clk_i, reset_i,
         !line_response_valid_i || prefetch_response ||
         write_buffer_response ||
         regs_q.state == DCACHE_REFILL_RESPONSE ||
         regs_q.state == DCACHE_MAINTENANCE_WRITEBACK_RESPONSE,
         "D-cache line response without an accepted transaction")
-    `N2A_ASSERT_CLOCKED_ERROR_UNGUARDED(clk_i, rst_i,
+    `ASSERT_CLOCKED_ERROR_UNGUARDED(clk_i, reset_i,
         {1'b0, regs_q.prefetch_drop_backlog} + {1'b0, drop_count} <= 4'd7,
         "D-cache prefetch drop backlog overflow")
-    `N2A_ASSERT_CLOCKED_ERROR_UNGUARDED(clk_i, rst_i,
+    `ASSERT_CLOCKED_ERROR_UNGUARDED(clk_i, reset_i,
         !write_buffer_enqueue || !regs_q.write_buffer_valid,
         "D-cache displaced dirty line overwrites a full write buffer")
-    `N2A_ASSERT_CLOCKED_ERROR_UNGUARDED(clk_i, rst_i,
+    `ASSERT_CLOCKED_ERROR_UNGUARDED(clk_i, reset_i,
         !regs_q.write_buffer_active || regs_q.write_buffer_valid,
         "D-cache drain has no buffered dirty line")
-    `N2A_ASSERT_ERROR_STABLE_WHEN(line_request_held, clk_i, rst_i,
+    `ASSERT_ERROR_STABLE_WHEN(line_request_held, clk_i, reset_i,
         line_request_valid_o && !line_request_ready_i,
         {line_request_valid_o, line_request_write_o, line_request_address_o,
          line_request_write_data_o, line_request_byte_enable_o, line_request_prefetch_o})
-    `N2A_ASSERT_ERROR_STABLE_WHEN(data_request_held, clk_i, rst_i,
+    `ASSERT_ERROR_STABLE_WHEN(data_request_held, clk_i, reset_i,
         cpu_request_valid_i && !cpu_request_ready_o,
         {cpu_request_valid_i, cpu_request_write_i, cpu_request_address_i,
          cpu_request_write_data_i, cpu_request_byte_enable_i})

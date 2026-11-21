@@ -23,12 +23,12 @@ module n2m_memory (
   input  logic                                 clk_i,
   input  logic                                 reset_i,
   // CPU bus (requester holds the request until the response is sampled).
-  input  n2m_interfaces_pkg::bus_request_t     request_i,
-  output n2m_interfaces_pkg::bus_response_t    response_o,
+  input  n2m_interfaces_pkg::t_bus_request     request_i,
+  output n2m_interfaces_pkg::t_bus_response    response_o,
   // Peripheral port: the held request while it decodes to $FF00-$FF7F, and
   // the peripheral's response passed back to the CPU in the same cycle.
-  output n2m_interfaces_pkg::bus_request_t     io_request_o,
-  input  n2m_interfaces_pkg::bus_response_t    io_response_i,
+  output n2m_interfaces_pkg::t_bus_request     io_request_o,
+  input  n2m_interfaces_pkg::t_bus_response    io_response_i,
   // IE register bits consumed by the CPU interrupt logic.
   output logic [4:0]                           interrupt_enable_o,
   // PPU read port into the VRAM store: sampled every edge, data valid the
@@ -57,18 +57,18 @@ module n2m_memory (
   // Cartridge port: the live request while it decodes to ROM or cartridge
   // RAM, held until the cartridge samples it ready; the cartridge's response
   // completes the CPU response in the same cycle.
-  output n2m_interfaces_pkg::bus_request_t     cart_request_o,
+  output n2m_interfaces_pkg::t_bus_request     cart_request_o,
   input  logic                                 cart_ready_i,
-  input  n2m_interfaces_pkg::bus_response_t    cart_response_i
+  input  n2m_interfaces_pkg::t_bus_response    cart_response_i
 );
   import n2m_memory_pkg::*;
 
   // Why: reads must sample their store on the acceptance edge, before the held
   // copy exists, so the live request is decoded too; the held copy drives the
   // response, writes and the peripheral forward.
-  destination_t destination, held_destination;
-  offset_t      offset, held_offset;
-  n2m_interfaces_pkg::bus_request_t held_q;
+  t_destination destination, held_destination;
+  t_offset      offset, held_offset;
+  n2m_interfaces_pkg::t_bus_request held_q;
   logic         held_io, held_cart, cart_dest;
   logic [7:0]   write_data;
   logic         accept, pending_q, pending_d;
@@ -102,8 +102,8 @@ module n2m_memory (
   // exactly once.
   assign accept = request_i.valid && !pending_q;
   assign pending_d = accept || (pending_q && !response_o.valid);
-  `N2A_DFF_RST(pending_q, pending_d, clk_i, reset_i)
-  `N2A_DFF_RST_EN(held_q, request_i, clk_i, accept, reset_i, '0)
+  `DFF_RST(pending_q, pending_d, clk_i, reset_i)
+  `DFF_RST_EN(held_q, request_i, clk_i, accept, reset_i, '0)
   assign held_io = held_destination == DEST_IO;
   assign held_cart = (held_destination == DEST_ROM) || (held_destination == DEST_CART_RAM);
   assign cart_dest = (destination == DEST_ROM) || (destination == DEST_CART_RAM);
@@ -115,14 +115,14 @@ module n2m_memory (
   // samples on the same edge.
   assign cart_accept = cart_request_o.valid && cart_ready_i;
   assign cart_wait_d = cart_accept || (cart_wait_q && !cart_response_i.valid);
-  `N2A_DFF_RST(cart_wait_q, cart_wait_d, clk_i, reset_i)
+  `DFF_RST(cart_wait_q, cart_wait_d, clk_i, reset_i)
 
   // Why: blocking is decided once, on the acceptance edge, so a PPU mode change
   // mid-request cannot split it: the read is not issued and the response
   // returns open bus, or the write is dropped on the pending edge.
   assign blocked_d = ((destination == DEST_VRAM) && vram_blocked_i) ||
                      ((destination == DEST_OAM) && oam_blocked_i);
-  `N2A_DFF_RST_EN(blocked_q, blocked_d, clk_i, accept, reset_i, 1'b0)
+  `DFF_RST_EN(blocked_q, blocked_d, clk_i, accept, reset_i, 1'b0)
 
   assign store_read = accept && !request_i.write && !blocked_d;
   assign store_write = pending_q && held_q.write && !held_io && !held_cart && !blocked_q;
@@ -242,7 +242,7 @@ module n2m_memory (
 
   // Ref: Pan Docs "IE ($FFFF)": all eight bits read back; the CPU consumes the
   // five interrupt sources. Reset clears it (DMG post-boot value).
-  `N2A_DFF_RST_EN(ie_q, write_data, clk_i, ie_write, reset_i, 8'h00)
+  `DFF_RST_EN(ie_q, write_data, clk_i, ie_write, reset_i, 8'h00)
   assign interrupt_enable_o = ie_q[4:0];
 
   // Why: a PPU-blocked VRAM/OAM access reads open bus, as on the DMG.
@@ -271,35 +271,35 @@ module n2m_memory (
     cart_request_o.valid = request_i.valid && cart_dest && !cart_wait_q;
   end
 
-  `N2A_ASSERT(request_known, clk_i, reset_i,
+  `ASSERT(request_known, clk_i, reset_i,
       !request_i.valid || !$isunknown(request_i))
-  `N2A_ASSERT(request_held, clk_i, reset_i,
+  `ASSERT(request_held, clk_i, reset_i,
       (request_i.valid && !response_o.valid) |=> $stable(request_i))
-  `N2A_ASSERT(request_matches_held, clk_i, reset_i,
+  `ASSERT(request_matches_held, clk_i, reset_i,
       !pending_q || (request_i.valid && request_i == held_q))
-  `N2A_ASSERT(io_response_requested, clk_i, reset_i,
+  `ASSERT(io_response_requested, clk_i, reset_i,
       !io_response_i.valid || io_request_o.valid)
-  `N2A_ASSERT(io_response_known, clk_i, reset_i,
+  `ASSERT(io_response_known, clk_i, reset_i,
       !io_request_o.valid || !$isunknown(io_response_i))
-  `N2A_ASSERT(cart_response_requested, clk_i, reset_i,
+  `ASSERT(cart_response_requested, clk_i, reset_i,
       !cart_response_i.valid || cart_wait_q)
-  `N2A_ASSERT(cart_response_known, clk_i, reset_i,
+  `ASSERT(cart_response_known, clk_i, reset_i,
       !cart_wait_q || !$isunknown(cart_response_i))
-  `N2A_ASSERT_KNOWN(cart_ready_known, clk_i, reset_i, cart_ready_i)
-  `N2A_ASSERT(cart_never_faults, clk_i, reset_i,
+  `ASSERT_KNOWN(cart_ready_known, clk_i, reset_i, cart_ready_i)
+  `ASSERT(cart_never_faults, clk_i, reset_i,
       !cart_response_i.valid || !cart_response_i.fault)
-  `N2A_ASSERT(vram_read_served, clk_i, reset_i,
+  `ASSERT(vram_read_served, clk_i, reset_i,
       !(pending_q && !held_q.write && held_destination == DEST_VRAM && !blocked_q) || vram_valid)
-  `N2A_ASSERT(wram_read_served, clk_i, reset_i,
+  `ASSERT(wram_read_served, clk_i, reset_i,
       !(pending_q && !held_q.write && held_destination == DEST_WRAM) || wram_valid)
-  `N2A_ASSERT(oam_read_served, clk_i, reset_i,
+  `ASSERT(oam_read_served, clk_i, reset_i,
       !(pending_q && !held_q.write && held_destination == DEST_OAM && !blocked_q) || oam_valid)
-  `N2A_ASSERT_KNOWN(ppu_port_known, clk_i, reset_i,
+  `ASSERT_KNOWN(ppu_port_known, clk_i, reset_i,
       {ppu_vram_read_i, ppu_oam_read_i, vram_blocked_i, oam_blocked_i})
-  `N2A_ASSERT(dma_oam_port_uncontended, clk_i, reset_i,
+  `ASSERT(dma_oam_port_uncontended, clk_i, reset_i,
       !(dma_oam_write_i && (oam_read || oam_write)))
-  `N2A_ASSERT(dma_oam_write_known, clk_i, reset_i,
+  `ASSERT(dma_oam_write_known, clk_i, reset_i,
       !dma_oam_write_i || !$isunknown({dma_oam_address_i, dma_oam_data_i}))
-  `N2A_ASSERT(hram_read_served, clk_i, reset_i,
+  `ASSERT(hram_read_served, clk_i, reset_i,
       !(pending_q && !held_q.write && held_destination == DEST_HRAM) || hram_valid)
 endmodule

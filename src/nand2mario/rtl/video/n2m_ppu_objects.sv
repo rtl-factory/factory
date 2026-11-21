@@ -18,8 +18,8 @@ module n2m_ppu_objects (
   input  logic                   reset_i,
   input  logic                   dot_enable_i,
   input  logic                   lcd_enable_i,
-  input  n2m_ppu_pkg::dot_t      dot_i,
-  input  n2m_ppu_pkg::line_t     ly_i,
+  input  n2m_ppu_pkg::t_dot      dot_i,
+  input  n2m_ppu_pkg::t_line     ly_i,
   input  logic [7:0]             lcdc_i,
   // OAM read port: one registered read per cycle, data valid the next cycle.
   output logic                   oam_read_o,
@@ -40,7 +40,7 @@ module n2m_ppu_objects (
 );
   import n2m_ppu_pkg::*;
 
-  object_scan_state_t  scan_q, scan_d;
+  t_object_scan_state  scan_q, scan_d;
   logic         visible_line, scan_launch, line_end, scan_busy;
   logic [5:0]   entry_q, entry_d;
   logic [1:0]   byte_select;
@@ -49,9 +49,9 @@ module n2m_ppu_objects (
   logic [7:0]   ly_offset, distance, height;
   logic         tall, on_line, keep;
   logic [3:0]   count_q, count_d;
-  object_t      objects_q [0:OBJECTS_PER_LINE-1];
-  object_t      objects_d [0:OBJECTS_PER_LINE-1];
-  object_t      scanned;
+  t_object      objects_q [0:OBJECTS_PER_LINE-1];
+  t_object      objects_d [0:OBJECTS_PER_LINE-1];
+  t_object      scanned;
   logic         objects_update;
 
   logic         fetch_start, fetch_busy_q, fetch_busy_d;
@@ -70,11 +70,11 @@ module n2m_ppu_objects (
   logic [7:0]   best_x;
   logic [3:0]   best_index;
 
-  assign visible_line = ly_i < line_t'(VISIBLE_LINES);
-  assign line_end = dot_enable_i && lcd_enable_i && (dot_i == dot_t'(DOTS_PER_LINE - 1));
+  assign visible_line = ly_i < t_line'(VISIBLE_LINES);
+  assign line_end = dot_enable_i && lcd_enable_i && (dot_i == t_dot'(DOTS_PER_LINE - 1));
 
   assign scan_launch = dot_enable_i && lcd_enable_i && visible_line &&
-                       (dot_i < dot_t'(MODE2_DOTS)) && !dot_i[0];
+                       (dot_i < t_dot'(MODE2_DOTS)) && !dot_i[0];
   always_comb begin
     scan_d = scan_q;
     case (scan_q)
@@ -87,11 +87,11 @@ module n2m_ppu_objects (
     endcase
     if (!lcd_enable_i) scan_d = SCAN_IDLE;
   end
-  `N2A_DFF_RST_VAL(scan_q, scan_d, clk_i, reset_i, SCAN_IDLE)
+  `DFF_RST_VAL(scan_q, scan_d, clk_i, reset_i, SCAN_IDLE)
   assign scan_busy = scan_q != SCAN_IDLE;
 
   assign entry_d = dot_i[6:1];
-  `N2A_DFF_RST_EN(entry_q, entry_d, clk_i, scan_launch, reset_i, 6'd0)
+  `DFF_RST_EN(entry_q, entry_d, clk_i, scan_launch, reset_i, 6'd0)
 
   always_comb begin
     byte_select = 2'd0;
@@ -110,9 +110,9 @@ module n2m_ppu_objects (
   assign x_capture = scan_q == SCAN_TILE;
   assign tile_capture = scan_q == SCAN_ATTR;
   assign attr_valid = scan_q == SCAN_DECIDE;
-  `N2A_DFF_RST_EN(y_q, oam_data_i, clk_i, y_capture, reset_i, 8'h00)
-  `N2A_DFF_RST_EN(x_q, oam_data_i, clk_i, x_capture, reset_i, 8'h00)
-  `N2A_DFF_RST_EN(tile_q, oam_data_i, clk_i, tile_capture, reset_i, 8'h00)
+  `DFF_RST_EN(y_q, oam_data_i, clk_i, y_capture, reset_i, 8'h00)
+  `DFF_RST_EN(x_q, oam_data_i, clk_i, x_capture, reset_i, 8'h00)
+  `DFF_RST_EN(tile_q, oam_data_i, clk_i, tile_capture, reset_i, 8'h00)
 
   // Ref: Pan Docs "OAM": the object covers the line when LY + 16 - Y, in eight
   // bits, is below its height; the line's size select is read here.
@@ -137,14 +137,14 @@ module n2m_ppu_objects (
     if (keep) count_d = count_q + 4'd1;
     if (line_end || !lcd_enable_i) count_d = 4'd0;
   end
-  `N2A_DFF_RST(count_q, count_d, clk_i, reset_i)
+  `DFF_RST(count_q, count_d, clk_i, reset_i)
 
   // Why: two reads per kept object, one per plane, pipelined so step s captures
   // the data of step s - 1 (step s < 2 * count reads plane s[0] of object
   // s[4:1]); done after 2 * count + 1 steps, none when no object was kept, so
   // the fetch ends before the first background fetch at dot 91.
   assign fetch_start = dot_enable_i && lcd_enable_i && visible_line &&
-                       (dot_i == dot_t'(MODE2_DOTS)) && (count_q != 4'd0);
+                       (dot_i == t_dot'(MODE2_DOTS)) && (count_q != 4'd0);
   assign read_steps = {count_q, 1'b0};
   always_comb begin
     step_d = step_q;
@@ -161,8 +161,8 @@ module n2m_ppu_objects (
       step_d = 5'd0;
     end
   end
-  `N2A_DFF_RST(step_q, step_d, clk_i, reset_i)
-  `N2A_DFF_RST(fetch_busy_q, fetch_busy_d, clk_i, reset_i)
+  `DFF_RST(step_q, step_d, clk_i, reset_i)
+  `DFF_RST(fetch_busy_q, fetch_busy_d, clk_i, reset_i)
 
   assign read_now = fetch_busy_q && (step_q < read_steps);
   assign read_entry = step_q[4:1];
@@ -187,7 +187,7 @@ module n2m_ppu_objects (
     end
   end
   assign objects_update = keep || capture_now;
-  `N2A_DFF_ARRAY_RST_EN(objects_q, objects_d, clk_i, objects_update, reset_i)
+  `DFF_ARRAY_RST_EN(objects_q, objects_d, clk_i, objects_update, reset_i)
 
   // Ref: Pan Docs "Drawing priority": object i covers pixel x when
   // 0 <= x + 8 - X < 8 (eight-bit wrap puts every other distance at 8 or above);
@@ -214,17 +214,17 @@ module n2m_ppu_objects (
   assign candidate_color_o = colors[best_index];
   assign candidate_attributes_o = objects_q[best_index].attributes;
 
-  `N2A_ASSERT(scan_fits_in_two_dots, clk_i, reset_i, !(scan_launch && scan_busy))
-  `N2A_ASSERT(fetch_before_tiles, clk_i, reset_i,
-      !(dot_enable_i && fetch_busy_q && (dot_i >= dot_t'(FETCH_DOT))))
-  `N2A_ASSERT(oam_answers_reads, clk_i, reset_i,
+  `ASSERT(scan_fits_in_two_dots, clk_i, reset_i, !(scan_launch && scan_busy))
+  `ASSERT(fetch_before_tiles, clk_i, reset_i,
+      !(dot_enable_i && fetch_busy_q && (dot_i >= t_dot'(FETCH_DOT))))
+  `ASSERT(oam_answers_reads, clk_i, reset_i,
       !(y_capture || x_capture || tile_capture || attr_valid) || oam_valid_i)
-  `N2A_ASSERT(oam_data_known, clk_i, reset_i,
+  `ASSERT(oam_data_known, clk_i, reset_i,
       !(y_capture || x_capture || tile_capture || attr_valid) || !$isunknown(oam_data_i))
-  `N2A_ASSERT(object_vram_answers_reads, clk_i, reset_i, !capture_now || vram_valid_i)
-  `N2A_ASSERT(object_vram_data_known, clk_i, reset_i, !capture_now || !$isunknown(vram_data_i))
-  `N2A_ASSERT(count_in_range, clk_i, reset_i, count_q <= 4'(OBJECTS_PER_LINE))
-  `N2A_ASSERT(entry_in_range, clk_i, reset_i, !scan_busy || (entry_q < 6'(OAM_ENTRIES)))
-  `N2A_ASSERT_KNOWN(object_controls_known, clk_i, reset_i,
+  `ASSERT(object_vram_answers_reads, clk_i, reset_i, !capture_now || vram_valid_i)
+  `ASSERT(object_vram_data_known, clk_i, reset_i, !capture_now || !$isunknown(vram_data_i))
+  `ASSERT(count_in_range, clk_i, reset_i, count_q <= 4'(OBJECTS_PER_LINE))
+  `ASSERT(entry_in_range, clk_i, reset_i, !scan_busy || (entry_q < 6'(OAM_ENTRIES)))
+  `ASSERT_KNOWN(object_controls_known, clk_i, reset_i,
       {dot_enable_i, lcd_enable_i, lcdc_i, pixel_x_i})
 endmodule

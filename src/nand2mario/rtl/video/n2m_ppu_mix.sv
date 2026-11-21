@@ -14,7 +14,7 @@ module n2m_ppu_mix (
   input  logic                   reset_i,
   input  logic                   emit_i,
   input  logic [7:0]             pixel_x_i,
-  input  n2m_ppu_pkg::line_t     ly_i,
+  input  n2m_ppu_pkg::t_line     ly_i,
   input  logic [1:0]             color_i,
   input  logic                   object_valid_i,
   input  logic [1:0]             object_color_i,
@@ -41,13 +41,13 @@ module n2m_ppu_mix (
   assign object_shade = palette_shade(object_palette, object_color_i);
   assign shade = object_shown ? object_shade : tile_shade;
 
-  `N2A_DFF_RST(pixel_valid_o, emit_i, clk_i, reset_i)
-  `N2A_DFF_RST_EN(pixel_shade_o, shade, clk_i, emit_i, reset_i, 2'd0)
-  `N2A_DFF_RST_EN(pixel_x_o, pixel_x_i, clk_i, emit_i, reset_i, 8'd0)
-  `N2A_DFF_RST_EN(pixel_y_o, ly_i, clk_i, emit_i, reset_i, 8'd0)
+  `DFF_RST(pixel_valid_o, emit_i, clk_i, reset_i)
+  `DFF_RST_EN(pixel_shade_o, shade, clk_i, emit_i, reset_i, 2'd0)
+  `DFF_RST_EN(pixel_x_o, pixel_x_i, clk_i, emit_i, reset_i, 8'd0)
+  `DFF_RST_EN(pixel_y_o, ly_i, clk_i, emit_i, reset_i, 8'd0)
 
-  `N2A_ASSERT(object_candidate_opaque, clk_i, reset_i,
+  `ASSERT(object_candidate_opaque, clk_i, reset_i,
       !object_valid_i || (object_color_i != 2'd0))
-  `N2A_ASSERT_KNOWN(mix_controls_known, clk_i, reset_i,
+  `ASSERT_KNOWN(mix_controls_known, clk_i, reset_i,
       {emit_i, lcdc_i, bgp_i, obp0_i, obp1_i})
 endmodule

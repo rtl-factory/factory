@@ -16,12 +16,12 @@ module n2m_vga_scanout (
   input  logic                           clk_i,
   input  logic                           reset_i,
   // Bank to scan and whether it holds a complete frame (else white).
-  input  n2m_display_pkg::bank_t         display_bank_i,
+  input  n2m_display_pkg::t_bank         display_bank_i,
   input  logic                           display_valid_i,
   // Frame store read port; the shade arrives one edge after the index.
-  output n2m_display_pkg::bank_t         read_bank_o,
-  output n2m_display_pkg::frame_index_t  read_index_o,
-  input  n2m_display_pkg::shade_t        read_shade_i,
+  output n2m_display_pkg::t_bank         read_bank_o,
+  output n2m_display_pkg::t_frame_index  read_index_o,
+  input  n2m_display_pkg::t_shade        read_shade_i,
   // High in a cycle whose store read the scanout consumes (the image
   // window); in any other cycle another reader may take the read port.
   output logic                           read_busy_o,
@@ -47,7 +47,7 @@ module n2m_vga_scanout (
   localparam logic [V_COORD_WIDTH-1:0] IMAGE_TOP_Y    = V_COORD_WIDTH'(IMAGE_TOP);
   localparam logic [V_COORD_WIDTH-1:0] IMAGE_BOTTOM_Y = V_COORD_WIDTH'(IMAGE_BOTTOM);
   localparam logic [1:0] LAST_REPEAT = 2'(SCALE - 1);
-  localparam frame_index_t ROW_STRIDE = frame_index_t'(FRAME_WIDTH);
+  localparam t_frame_index ROW_STRIDE = t_frame_index'(FRAME_WIDTH);
 
   logic [H_COORD_WIDTH-1:0] timing_x;
   logic [V_COORD_WIDTH-1:0] timing_y;
@@ -56,14 +56,14 @@ module n2m_vga_scanout (
   logic h_image, v_image, in_image;
 
   // Source address generation.
-  localparam scanout_address_t ADDRESS_RESET = '{column: '0, repeat_x: '0, line_base: '0, repeat_y: '0};
-  scanout_address_t address_q, address_d;
+  localparam t_scanout_address ADDRESS_RESET = '{column: '0, repeat_x: '0, line_base: '0, repeat_y: '0};
+  t_scanout_address address_q, address_d;
 
   // Two-stage output pipeline: the frame-store read, then the palette.
-  localparam scanout_pipe_t PIPE_RESET = '{in_image_q: 1'b0, visible_q: 1'b0, hsync_q: 1'b1, vsync_q: 1'b1,
+  localparam t_scanout_pipe PIPE_RESET = '{in_image_q: 1'b0, visible_q: 1'b0, hsync_q: 1'b1, vsync_q: 1'b1,
                                            frame_start_q: 1'b0, rgb_qq: BLANK_RGB, hsync_qq: 1'b1,
                                            vsync_qq: 1'b1, frame_start_qq: 1'b0};
-  scanout_pipe_t pipe_q, pipe_d;
+  t_scanout_pipe pipe_q, pipe_d;
 
   n2a_vga_timing u_timing (
     .clk_i         (clk_i),
@@ -112,10 +112,10 @@ module n2m_vga_scanout (
     end
   end
 
-  `N2A_DFF_RST_VAL(address_q, address_d, clk_i, reset_i, ADDRESS_RESET)
+  `DFF_RST_VAL(address_q, address_d, clk_i, reset_i, ADDRESS_RESET)
 
   assign read_bank_o = display_bank_i;
-  assign read_index_o = address_q.line_base + frame_index_t'(address_q.column);
+  assign read_index_o = address_q.line_base + t_frame_index'(address_q.column);
   assign read_busy_o = in_image;
 
   // Why: the display bank and validity change only at the raster origin, hundreds
@@ -138,7 +138,7 @@ module n2m_vga_scanout (
     pipe_d.frame_start_qq = pipe_q.frame_start_q;
   end
 
-  `N2A_DFF_RST_VAL(pipe_q, pipe_d, clk_i, reset_i, PIPE_RESET)
+  `DFF_RST_VAL(pipe_q, pipe_d, clk_i, reset_i, PIPE_RESET)
 
   assign vga_red_o = pipe_q.rgb_qq.red;
   assign vga_green_o = pipe_q.rgb_qq.green;
@@ -147,10 +147,10 @@ module n2m_vga_scanout (
   assign vga_vsync_o = pipe_q.vsync_qq;
   assign pixel_start_o = pipe_q.frame_start_qq;
 
-  `N2A_ASSERT(frame_end_on_line_end, clk_i, reset_i, !timing_frame_end || timing_line_end)
-  `N2A_ASSERT(origin_on_line_start, clk_i, reset_i, !timing_frame_start || timing_line_start)
-  `N2A_ASSERT(image_read_in_frame, clk_i, reset_i,
-      !in_image || (read_index_o < frame_index_t'(FRAME_PIXELS)))
-  `N2A_ASSERT(image_column_in_row, clk_i, reset_i,
+  `ASSERT(frame_end_on_line_end, clk_i, reset_i, !timing_frame_end || timing_line_end)
+  `ASSERT(origin_on_line_start, clk_i, reset_i, !timing_frame_start || timing_line_start)
+  `ASSERT(image_read_in_frame, clk_i, reset_i,
+      !in_image || (read_index_o < t_frame_index'(FRAME_PIXELS)))
+  `ASSERT(image_column_in_row, clk_i, reset_i,
       !in_image || (address_q.column < 8'(FRAME_WIDTH)))
 endmodule

@@ -61,5 +61,5 @@ module n2d_wb (
         observation_trap_value_o = record.trap_value;
     end
 
-    `N2A_UNUSED_BITS(unused_wb, {record.counted_at_commit, record.is_mul})
+    `UNUSED_BITS(unused_wb, {record.counted_at_commit, record.is_mul})
 endmodule

@@ -4,12 +4,12 @@ module n2m_library_fixture (
   input logic reset_i,
   input logic host_hold_i,
   input logic backing_initialized_i,
-  input n2m_interfaces_pkg::bus_request_t request_i,
+  input n2m_interfaces_pkg::t_bus_request request_i,
   output logic ready_o,
-  output n2m_interfaces_pkg::bus_response_t response_o,
-  output n2m_cartridge_pkg::backing_request_t backing_request_o,
+  output n2m_interfaces_pkg::t_bus_response response_o,
+  output n2m_cartridge_pkg::t_backing_request backing_request_o,
   input logic backing_ready_i,
-  input n2m_cartridge_pkg::backing_response_t backing_response_i,
+  input n2m_cartridge_pkg::t_backing_response backing_response_i,
   output logic core_reset_o
 );
   logic hold;

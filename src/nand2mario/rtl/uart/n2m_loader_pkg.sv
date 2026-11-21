@@ -58,7 +58,7 @@ package n2m_loader_pkg;
     COMMIT_READ, COMMIT_REQUEST, COMMIT_WAIT,
     RESPOND_HEADER, RESPOND_READ_REQUEST, RESPOND_READ_WAIT, RESPOND_READ_BYTE,
     RESPOND_CRC_LO, RESPOND_CRC_HI
-  } loader_state_t;
+  } t_loader_state;
 
   // One byte through CRC-16/CCITT-FALSE, most significant bit first.
   function automatic logic [15:0] crc16_byte(input logic [15:0] crc, input logic [7:0] data);

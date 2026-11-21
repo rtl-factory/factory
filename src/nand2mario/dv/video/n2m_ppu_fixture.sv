@@ -17,8 +17,8 @@ module n2m_ppu_fixture (
   input  logic [7:0]                          oam_address_i,
   input  logic [7:0]                          oam_data_i,
   // LCD register port.
-  input  n2m_interfaces_pkg::bus_request_t    io_request_i,
-  output n2m_interfaces_pkg::bus_response_t   io_response_o,
+  input  n2m_interfaces_pkg::t_bus_request    io_request_i,
+  output n2m_interfaces_pkg::t_bus_response   io_response_o,
   output logic                                io_selected_o,
   // Timebase and PPU observation.
   output logic                                dot_enable_o,
@@ -35,9 +35,9 @@ module n2m_ppu_fixture (
   output logic                                vram_read_o,
   output logic                                oam_read_o,
   output logic                                lcd_enable_o,
-  output n2m_ppu_pkg::dot_t                   dot_o,
-  output n2m_ppu_pkg::line_t                  ly_o,
-  output n2m_ppu_pkg::mode_t                  mode_o
+  output n2m_ppu_pkg::t_dot                   dot_o,
+  output n2m_ppu_pkg::t_line                  ly_o,
+  output n2m_ppu_pkg::t_mode                  mode_o
 );
   logic        dot_enable, machine_cycle_enable;
   logic        vram_read, vram_valid;

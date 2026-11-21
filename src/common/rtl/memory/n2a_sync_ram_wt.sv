@@ -40,11 +40,11 @@ module n2a_sync_ram_wt #(
   // until their elaboration diagnostic fires. It is a no-op when supported.
   assign implementation_address = REQUIRED_ADDR_WIDTH'(address_i);
 
-  `N2A_ASSERT_PARAM(g_invalid_data_width, DATA_WIDTH >= 1,
+  `ASSERT_PARAM(g_invalid_data_width, DATA_WIDTH >= 1,
       "n2a_sync_ram_wt DATA_WIDTH must be at least 1")
-  `N2A_ASSERT_PARAM(g_invalid_depth, DEPTH_IS_POWER_OF_TWO,
+  `ASSERT_PARAM(g_invalid_depth, DEPTH_IS_POWER_OF_TWO,
       "n2a_sync_ram_wt DEPTH must be a power of two and at least 2")
-  `N2A_ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
+  `ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
       "n2a_sync_ram_wt ADDR_WIDTH must equal $clog2(DEPTH)")
 
   // Why: the array keeps the conventional read-first port pair so it still
@@ -52,11 +52,11 @@ module n2a_sync_ram_wt #(
   // and a one-bit "this edge wrote" flag are registered beside it and select
   // the new word on a write edge. The write always targets the read address
   // (single port), so this is exactly write-through.
-  `N2A_MEM_READ(stored_q, memory, clk_i, implementation_address)
-  `N2A_MEM_WRITE(memory, clk_i, write_enable_i, implementation_address,
+  `MEM_READ(stored_q, memory, clk_i, implementation_address)
+  `MEM_WRITE(memory, clk_i, write_enable_i, implementation_address,
       write_data_i)
-  `N2A_DFF(written_q, write_data_i, clk_i)
-  `N2A_DFF(wrote_q, write_enable_i, clk_i)
+  `DFF(written_q, write_data_i, clk_i)
+  `DFF(wrote_q, write_enable_i, clk_i)
 
   assign read_data_o = wrote_q ? written_q : stored_q;
 endmodule

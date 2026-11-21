@@ -6,15 +6,15 @@
 // through the same offset bits as its base address, so aliasing is a decode
 // fact rather than a copy. Service and read values belong to n2m_memory.
 module n2m_memory_decode (
-  input  n2m_interfaces_pkg::address_t  address_i,
-  output n2m_memory_pkg::destination_t  destination_o,
-  output n2m_memory_pkg::offset_t       offset_o
+  input  n2m_interfaces_pkg::t_address  address_i,
+  output n2m_memory_pkg::t_destination  destination_o,
+  output n2m_memory_pkg::t_offset       offset_o
 );
   import n2m_memory_pkg::*;
 
   // Why: the decode below relies on the map covering the whole 16-bit space
   // without gaps or overlaps, each backed region matching its store geometry.
-  `N2A_ASSERT_PARAM(g_map_not_contiguous,
+  `ASSERT_PARAM(g_map_not_contiguous,
       (ROM_START == 16'h0000) && (VRAM_START == ROM_END + 16'd1) &&
       (CART_RAM_START == VRAM_END + 16'd1) && (WRAM_START == CART_RAM_END + 16'd1) &&
       (ECHO_START == WRAM_END + 16'd1) && (OAM_START == ECHO_END + 16'd1) &&
@@ -22,7 +22,7 @@ module n2m_memory_decode (
       (HRAM_START == IO_END + 16'd1) && (IE_ADDRESS == HRAM_END + 16'd1) &&
       (IE_ADDRESS == 16'hFFFF),
       "n2m_memory_pkg regions must tile the 16-bit address space")
-  `N2A_ASSERT_PARAM(g_store_geometry,
+  `ASSERT_PARAM(g_store_geometry,
       (ROM_BYTES == 32'(ROM_END) - 32'(ROM_START) + 1) &&
       (VRAM_BYTES == 32'(VRAM_END) - 32'(VRAM_START) + 1) &&
       (WRAM_BYTES == 32'(WRAM_END) - 32'(WRAM_START) + 1) &&
