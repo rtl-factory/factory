@@ -20,7 +20,8 @@ Which topic sources each BKM used, and why the others were rejected, is recorded
 | `writing.md` Writing for agents, Skill mechanics | Skills for Real Engineers: `writing-for-agents` |
 | `first-mate.md` Running the crew | firstmate: roles, principles, crewmate brief; topic #34 for orchestration, sources in its front matter |
 | `fpga.md`; the install method in `wiki/tools/toolchain/spec.md` | nand2anything: host routing, bitstream handoff, Quartus build gates, native pinned Quartus install |
-| `principles.md` (23 principles) | pstack: every `principle-*` skill except `principle-experience-first` |
+| `principles.md` (the 23 principles other than Program Strategically) | pstack: every `principle-*` skill except `principle-experience-first` |
+| `principles.md` Program Strategically; glossary Strategic and Tactical programming | John Ousterhout, *A Philosophy of Software Design*, ch. 3 "Working Code Isn't Enough" (the terms; no text copied); Skills for Real Engineers: `chief-of-staff` ("think on two tracks", "no workarounds"); issue #158 |
 | `issues.md` Issues and epics | topic #33; sources used in its front matter |
 | `pull-requests.md` Review | topic #36; sources used in its front matter |
 | `pull-requests.md` Writing and landing | topics #35 and #37; sources used in its front matter |

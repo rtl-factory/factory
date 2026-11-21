@@ -1,6 +1,6 @@
 ---
 status: active
-upstream: cursor/plugins pstack/skills/principle-<name>/SKILL.md for each principle below @ aaeb0ea (MIT, see SOURCES.md)
+upstream: cursor/plugins pstack/skills/principle-<name>/SKILL.md for each principle below except Program Strategically @ aaeb0ea (MIT, see SOURCES.md); Program Strategically is factory-local, after John Ousterhout's A Philosophy of Software Design ch. 3 and mattpocock/skills skills/in-progress/chief-of-staff @ abeeaf95
 ---
 
 # Principles
@@ -71,7 +71,7 @@ Fix the fault, not the place where it surfaced. The root cause is the first plac
 
 - Reproduce first. Ask "why" until the answer is a wrong decision in the code. When stuck, instrument and read the actual state.
 - Ask whether the state that triggered the symptom is legitimate. If it is, handle it where the code broke. If it should never exist, a check there hides the bug, so find what produced it. Guards, retries, swallowed errors, clamped values, and discarded state are the usual ways to hide a bug.
-- Fix the pattern, not the instance. Find every place with the same fault.
+- Fix the pattern, not the instance. Find every place with the same fault. This is the debugging case of [Program Strategically](#program-strategically).
 - If the deciding fact took a deep dig, propose the cheap, always-on signal that would have shown it at first look.
 
 ## Foundational Thinking
@@ -180,6 +180,19 @@ Optimize for the intended, verifiable end state rather than preserving smooth in
 - Declare where temporary breakage is acceptable
 - Keep high-signal checks for actively touched areas while migrating
 - Require full static and runtime verification at plan completion
+
+## Program Strategically
+
+Apply to every change, before you choose how to fix or build it: a bug, a failing gate, a review finding, a feature, a BKM edit. Take the strategic fix over the tactical one, so the factory gets easier to change with every pull request.
+
+Tactical and strategic programming are defined in the [glossary](../project/GLOSSARY.md). Working code is not enough: the goal is a design that also works, and that makes the next change easier.
+
+- When a strategic fix and a tactical fix both exist, take the strategic one. Why: each tactical fix adds a little complexity, and complexity compounds until every change is slow and risky.
+- Fix the cause in the one place every future case passes through: the shared block, the template, the check, the tool, the BKM (a BKM, skill or glossary fix goes through its own issue). A special case, a copied block, a one-off flag or a retry that patches only this instance is tactical; a guard for a legitimate state ([Fix Root Causes](#fix-root-causes)) and an approved waiver ([learning from mistakes](writing.md#learning-from-mistakes)) are not. Why: a patch fixes this instance and teaches the next agent nothing; the structure fixes every instance.
+- If the strategic fix is too big for the issue, land the smallest fix that adds no debt, and open an issue for the strategic one, linked from the pull request. Never leave a workaround without that issue. Why: scope stays one issue, and the debt is visible instead of silent.
+- Leave what you touched simpler, within the issue's scope ([Subtract Before You Add](#subtract-before-you-add)); for a larger improvement, open an issue. Why: small, continual investments cost less than a rewrite later, and scope stays one issue.
+- Distrust your first instinct to patch where the symptom showed. Why: coding models are trained and scored mostly on tactical tasks, where one issue's tests pass or fail and nothing rewards leaving the repo easier to change; this principle supplies the strategic half that training does not.
+- As a reviewer, raise a tactical fix as a finding, at the severity [Review](pull-requests.md#review) sets, when a strategic one was within the issue's scope. Why: review is the last place to stop the patch before it lands.
 
 ## Prove It Works
 

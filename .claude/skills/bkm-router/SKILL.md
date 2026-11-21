@@ -60,6 +60,7 @@ Engineering principles, one `##` section each in `wiki/bkm/principles.md`. Follo
 - Model the Domain: Apply when writing stateful logic, or when code branches a lot or repeats a shape assumption across files.
 - Never Block on the Human: Apply when tempted to ask 'should I do X?' on reversible work.
 - Outcome-Oriented Execution: Apply during planned rewrites and migrations with explicit phase boundaries.
+- Program Strategically: Apply to every change, before you choose how to fix or build it: a bug, a failing gate, a review finding, a feature, a BKM edit.
 - Prove It Works: Apply after completing a piece of work, before declaring done.
 - Redesign From First Principles: Apply when integrating a new requirement into an existing design.
 - Separate Before Serializing Shared State: Apply when concurrent actors might write to the same file, branch, key, or state object.
