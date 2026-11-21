@@ -1,6 +1,7 @@
 # L0 regression (wiki/bkm/workflow/ci-levels.md): the comment lint, the scripts'
-# and tools' unit tests and every L0 simulation target, on Verilator and cocotb at the versions
-# pinned in cfg/toolchain.json and tools/sim/requirements.txt.
+# and tools' unit tests, every L0 simulation target and every L0 formal target,
+# on Verilator, cocotb and the OSS CAD Suite at the versions pinned in
+# cfg/toolchain.json and tools/sim/requirements.txt.
 name: l0
 
 on:
@@ -81,3 +82,29 @@ jobs:
 
       - name: L0 simulation targets
         run: python tools/sim/sim.py --workdir workdir/sim test --level L0
+
+      - name: Install the OSS CAD Suite (formal tools)
+        if: ${{ !cancelled() }}
+        run: |
+          read -r url sum < <(python3 -I -c 'import json; v = json.load(open("cfg/toolchain.json"))["oss_cad_suite"]; print(v["url"], v["sha256"])')
+          curl -fsSL --retry 4 -o "$RUNNER_TEMP/oss-cad-suite.tgz" "$url"
+          echo "$sum  $RUNNER_TEMP/oss-cad-suite.tgz" | sha256sum -c -
+          mkdir -p "$HOME/oss-cad-suite"
+          tar -xzf "$RUNNER_TEMP/oss-cad-suite.tgz" -C "$HOME/oss-cad-suite" --strip-components=1
+          rm "$RUNNER_TEMP/oss-cad-suite.tgz"
+          python3 tools/toolchain/check.py --tool oss-cad-suite
+
+      - name: L0 formal targets
+        if: ${{ !cancelled() }}
+        run: python tools/fv/fv.py run --level L0 --workdir workdir/fv
+
+      - name: Keep formal traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fv-traces
+          path: |
+            workdir/fv/**/*.vcd
+            workdir/fv/**/logfile.txt
+            workdir/fv/*.log
+          if-no-files-found: ignore
