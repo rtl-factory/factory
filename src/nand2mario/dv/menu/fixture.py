@@ -23,45 +23,39 @@ MBC1_BYTES = 65536
 CATALOGUE_ADDRESS, ENTRY_BYTES = 0x88000, 32
 LIBRARY_BYTES = 0x8C000
 ENTRY = struct.Struct('<BBHI16sB7x')
-# The tagline table follows the entries inside the same 1 KiB catalogue region:
-# 18 characters then 6 zero bytes per slot. The fixture declares no tagline, so
-# every record is zero and the library bytes are what they were before the
+# Why: the fixture declares no tagline, so every record of the table behind the
+# entries (18 characters then 6 zero bytes per slot, in the same 1 KiB region)
+# is zero and the library bytes are what they were before the
 # table existed; a scenario that wants one sets the row's `tagline`.
 TAGLINE_ADDRESS, TAGLINE_BYTES, TAGLINE_CHARS = 0x88220, 24, 18
 TAGLINE = struct.Struct('<18s6x')
 PROFILE_DIRECT, PROFILE_LOADER, PROFILE_MBC1 = 1, 2, 3
 GAME_EXIT_VALUE = 0x10
-# Seven 32 KiB stub games: two registered titles, a full
+# Why: the seven 32 KiB stubs cover the title cases (two registered titles, a full
 # sixteen-character title, a padded title with the CGB-only flag, a title
 # with digits and dashes, a fifteen-byte title with the CGB flag at header
-# 0x143 and one on the last row, so ten rows (with the exit demo, the short
+# 0x143 and one on the last row), so ten rows (with the exit demo, the short
 # slot and the 64 KiB game) are valid and the empty rows are the minority.
 GAMES = {0: b'SPRINGTRAIL', 2: b'V05 BUTTONS', 7: b'SIXTEEN CHAR ROW',
          8: b'CGB ONLY TITLE\x00\xC0', 9: b'ABC-123 XYZ 789', 10: b'CGB FLAGGED ROW\x80',
          15: b'LAST SLOT'}
-# Slot 1 holds the built `exit-demo` image (title EXIT DEMO, one Down from
-# the boot cursor): a solid bar on map row eight, and while Start is held
-# it writes the game exit value. Without the build (host-only tests) a stub
-# with the same title stands in, so the menu reference frames are equal.
+# Why: in host-only tests a stub titled EXIT DEMO stands in for the built `exit-demo`
+# image (one Down from the boot cursor; a solid bar on map row eight, the exit
+# value while Start is held), so the menu reference frames stay equal.
 EXIT_SLOT, EXIT_TITLE, EXIT_TARGET = 1, b'EXIT DEMO', 'exit-demo'
 BAR_ROW = 8
-# Slot 4 is valid to the menu (valid byte 1) but the engine refuses its
-# foreign length; slot 3 is the empty slot the refused-selection scenario uses.
+# Why: slot 4 is valid to the menu (valid byte 1) but has a foreign length, so the
+# engine's refusal is exercised; slot 3 stays empty for the refused-selection scenario.
 SHORT_SLOT, EMPTY_SLOT = 4, 3
-# The 64 KiB MBC1 stub game fills slots 5 and 6 under one entry at 5; the
-# menu lists it once and shows slot 6 as empty.
 MBC1_SLOT, MBC1_TITLE = 5, b'BANKED GAME'
-# Scripted frames in `menu-frames.hex` order.
 SCENARIO = [dict(cursor=0), dict(cursor=1), dict(cursor=2), dict(cursor=3),
             dict(cursor=3, result=reference.RESULT_INVALID_SLOT, index=3),
             dict(cursor=2, result=reference.RESULT_INVALID_SLOT, index=3),
             dict(cursor=MBC1_SLOT)]
-# The exit-demo game frame and the nudge phase frame follow the scenario
-# frames in `menu-frames.hex`.
 GAME_FRAME = len(SCENARIO)
 PHASE_FRAME = GAME_FRAME + 1
-# The boot splash frames go in their own file, `menu-splash.hex`, which only
-# the splash fixture reads: every displayed frame of the schedule from the
+# Why: the boot splash frames go in their own file, `menu-splash.hex`, so only
+# the splash fixture reads them: every displayed frame of the schedule from the
 # blank page to the settled list, which is the boot frame again.
 SPLASH_FRAME = PHASE_FRAME + 1
 SPLASH_FRAMES = reference.SETTLED_FRAME + 1
@@ -91,7 +85,7 @@ def mbc1_image():
     image[0x100:0x150] = bytes(0x50)
     image[0x100:0x104] = bytes([0x00, 0xC3, 0x50, 0x01])                    # nop; jp $0150
     image[0x134:0x144] = MBC1_TITLE.ljust(16, b'\0')
-    image[0x147], image[0x148], image[0x14a] = 0x01, 0x01, 1                 # MBC1, 64 KiB
+    image[0x147], image[0x148], image[0x14a] = 0x01, 0x01, 1                 # Ref: Pan Docs "The Cartridge Header": MBC1, 64 KiB
     image[0x150:0x158] = bytes([0x3E, 0x02, 0xEA, 0x00, 0x20, 0xC3, 0x00, 0x40])  # ld a,2; ld ($2000),a; jp $4000
     image[0x4000:0x4002] = bytes([0x18, 0xFE])                                # bank 1: jr $4000
     image[0x8000:0x8007] = bytes([0x3E, GAME_EXIT_VALUE, 0xEA, 0x00, 0x60, 0x18, 0xFE])  # bank 2: exit; jr

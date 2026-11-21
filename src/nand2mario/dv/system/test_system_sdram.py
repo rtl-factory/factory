@@ -26,12 +26,10 @@ from .test_system import CLOCK_PERIOD_NS, MACHINE_CYCLE_EDGES, compare_signature
 
 IMAGE_BYTES, BANKS = 1 << 17, 8
 INSTRUCTION_BOUND = 1500
-UART_CLKS_PER_BIT = 8                 # the registry's parameter for this target
+UART_CLKS_PER_BIT = 8                 # Why: must match the registry's parameter for this target.
 BYTE_CLOCKS = 10 * UART_CLKS_PER_BIT
-# Storage HAS: the SDRAM is initialized 5036 clocks after reset release and the
-# backing serves requests from clock 5038; the core reset releases with it.
 SDRAM_INITIALIZED_CLOCK = 5036
-VERIFY_EVERY = 16                     # every 16th chunk plus the last is read back
+VERIFY_EVERY = 16
 
 
 def load_image():
@@ -124,9 +122,6 @@ async def system_sdram_boot(dut):
     cocotb.start_soon(host.receiver())
     await ClockCycles(dut.clk_i, 2)
 
-    # The console is held in reset until the SDRAM initialized; a PING sent
-    # right away reports an uninitialized backing, later ones an initialized
-    # one, and the core reset releases with the initialization.
     assert int(dut.core_reset_o.value) == 1
     response = await host.exchange(encode_request(CMD_PING))
     assert response.ok and not response.initialized and not response.held, response.describe()
@@ -137,7 +132,6 @@ async def system_sdram_boot(dut):
     response = await host.exchange(encode_request(CMD_PING))
     assert response.ok and response.initialized and not response.held, response.describe()
 
-    # Hold the core and load the image chunk by chunk.
     started = time.monotonic()
     response = await host.exchange(encode_request(CMD_HOLD))
     assert response.ok and response.held
@@ -151,7 +145,7 @@ async def system_sdram_boot(dut):
     load_clocks = host.clock - load_start
     cocotb.log.info('image loaded: %d frames, %d clocks, %.1f s wall', len(pieces), load_clocks, time.monotonic() - started)
 
-    # Negative control: a corrupted rewrite of the first chunk is rejected
+    # Why: proves the check can fail: a corrupted rewrite of the first chunk must be rejected
     # and changes nothing; the readback still shows the image.
     frame = encode_request(CMD_WRITE, address_field(0), bytes(b ^ 0xFF for b in pieces[0][1]))
     frame = frame[:-1] + bytes([frame[-1] ^ 0x01])
@@ -164,7 +158,6 @@ async def system_sdram_boot(dut):
         response = await host.exchange(encode_request(CMD_READ, address_field(offset), length=len(data)))
         assert response.ok and response.payload == data, (offset, response.describe())
         verified += len(data)
-    # The header lives in SDRAM: the device model holds the loaded bytes.
     header_word = int(dut.u_sdram.memory[0x147 >> 1].value)
     assert (header_word >> 8) & 0xFF == 0x03, 'cartridge type byte in the device model'
 
@@ -182,7 +175,7 @@ async def release_and_verify(dut, system, host, image):
     n2m_system hierarchy, `host` the UART host. Shared by the SDRAM boot and
     the direct-preload tests; returns (retirements, run clocks, banks, WRAM
     bytes)."""
-    # Release: the core leaves reset when the loader executes RELEASE, before
+    # Why: release: the core leaves reset when the loader executes RELEASE, before
     # the response is on the wire, so retirements are recorded from here on
     # and replayed against the oracle. The program runs from SDRAM; every
     # retirement matches the oracle at the unstretched machine cadence.
@@ -206,7 +199,7 @@ async def release_and_verify(dut, system, host, image):
     await ReadOnly()
     assert int(dut.core_reset_o.value) == 0
     peripherals = Peripherals()
-    memory = GameBoyMemory(image, io_read=peripherals.read, io_write=peripherals.write)   # strict
+    memory = GameBoyMemory(image, io_read=peripherals.read, io_write=peripherals.write)
     cartridge = memory.cartridge
     model = CPU(mem=memory)
     retirements = 0
@@ -230,7 +223,7 @@ async def release_and_verify(dut, system, host, image):
         assert not mismatch, (f'retirement {retirements} pc={expected["pc_before"]:04x}', mismatch)
         retirements += 1
         assert retirements <= INSTRUCTION_BOUND, 'program did not halt within the instruction bound'
-        # Composed timing: the SDRAM backing answers inside the machine cycle,
+        # Why: composed timing: the SDRAM backing answers inside the machine cycle,
         # so the 23/24-edge cadence holds and no instruction is stretched.
         if anchor_edge is not None:
             anchor_cycles += instruction_cycles
@@ -248,11 +241,10 @@ async def release_and_verify(dut, system, host, image):
     assert int(dut.halted_o.value) == 1, 'CPU must report HALT after the halting retirement'
     assert banks_executed == set(range(BANKS)), ('code executes from bank 0 and every switched bank', sorted(banks_executed))
 
-    # Exact WRAM signature against the oracle and pinned independently.
     wram_observed, wram_expected = defined_signature(store_bytes(system.u_memory.u_wram.memory), memory, 'wram')
     compare_signature(wram_observed, wram_expected, 'WRAM')
     wram = store_bytes(system.u_memory.u_wram.memory)
-    # The mode-1 low window selects BANK2 << 5 = 32, which the 8-bank mask
+    # Why: the mode-1 low window selects BANK2 << 5 = 32, which the 8-bank mask
     # reduces to bank 0: both low-window reads see bank 0's unused $FF bytes.
     pinned = {0x00: 0x53, 0x01: 0xFF, 0x02: 0xFF, 0x03: 0x60, 0x04: 0xFF, 0x13: 0x01, 0x14: BANKS - 1}
     for bank in range(1, BANKS):
@@ -262,8 +254,6 @@ async def release_and_verify(dut, system, host, image):
         assert wram[offset] == value, f'pinned WRAM[{offset:02x}] observed {wram[offset]:02x} expected {value:02x}'
     assert len(wram_observed) >= 0x15
 
-    # Cartridge RAM read back over the UART after holding the core again:
-    # the oracle's eight defined bytes, and a whole bank through one frame.
     response = await host.exchange(encode_request(CMD_HOLD))
     assert response.ok and response.held
     ram_pairs = cartridge.defined_ram_bytes()
@@ -281,7 +271,7 @@ async def release_and_verify(dut, system, host, image):
     assert response.ok and response.payload[-1] == 0x63
     assert not response.framing and not response.timeout and not response.overrun, 'no line event during the run'
 
-    # Negative control: the signature comparison rejects a single flipped byte.
+    # Why: proves the check can fail: the signature comparison must reject a single flipped byte.
     corrupted = bytearray(wram_expected)
     corrupted[0] ^= 0x01
     try:

@@ -15,7 +15,7 @@ class InterruptsModel:
         self.reset()
 
     def reset(self):
-        # DMG boot-ROM handoff leaves VBlank pending (IF reads $E1).
+        # Ref: Pan Docs "Power Up Sequence": the DMG boot-ROM handoff leaves VBlank pending (IF reads $E1).
         self.flags = 0x01
 
     def read(self):

@@ -11,8 +11,8 @@ P1 = 0xFF00
 RIGHT, LEFT, UP, DOWN, A, B, SELECT, START = 1, 2, 4, 8, 16, 32, 64, 128
 BUTTONS = {'right': RIGHT, 'left': LEFT, 'up': UP, 'down': DOWN,
            'a': A, 'b': B, 'select': SELECT, 'start': START}
-SELECT_DIRECTIONS = 0b10   # P1[5:4]: bit 4 low selects the direction row
-SELECT_ACTIONS = 0b01      # P1[5:4]: bit 5 low selects the action row
+SELECT_DIRECTIONS = 0b10   # Ref: Pan Docs "Joypad Input": P1 bit 4 low selects the direction row.
+SELECT_ACTIONS = 0b01      # Ref: Pan Docs "Joypad Input": P1 bit 5 low selects the action row.
 SELECT_BOTH = 0b00
 SELECT_NONE = 0b11
 

@@ -21,8 +21,6 @@ from .test_system import (idle_host, CLOCK_PERIOD_NS, MACHINE_CYCLE_EDGES, compa
 
 IMAGE_BYTES = 1 << 20
 INSTRUCTION_BOUND = 2000
-# Bank numbers the program's table reaches through the high window, in order
-# (cartridge DV plan): each is followed by that bank's pattern byte $7F80.
 TABLE_BANKS = (1, 2, 1, 31, 33, 63, 33, 5, 1, 35)
 
 
@@ -52,7 +50,7 @@ async def system_mbc1(dut):
     cocotb.log.info('n2m_system MBC1 seed=%d (directed) bound=%d', seed, bound)
     image = load_image()
     cycles = 0
-    # The 1 MiB ROM store is defined entirely by the load below, so its
+    # Why: the 1 MiB ROM store is defined entirely by the load below, so its
     # (costly) simulator handle is not touched; RAM and the map stores get
     # garbage.
     power_up(dut, random.Random(seed), rom_bytes=0)
@@ -66,7 +64,7 @@ async def system_mbc1(dut):
     cocotb.start_soon(Clock(dut.clk_i, CLOCK_PERIOD_NS, unit='ns').start())
     await RisingEdge(dut.clk_i)
 
-    # Load the whole cartridge through the load port while in reset; the
+    # Why: load the whole cartridge through the load port while in reset; the
     # mapper captures the header bytes as they pass.
     for address, byte in enumerate(image):
         await FallingEdge(dut.clk_i)
@@ -83,7 +81,7 @@ async def system_mbc1(dut):
     load_edges = cycles
 
     peripherals = Peripherals()
-    memory = GameBoyMemory(image, io_read=peripherals.read, io_write=peripherals.write)   # strict
+    memory = GameBoyMemory(image, io_read=peripherals.read, io_write=peripherals.write)
     cartridge = memory.cartridge
     model = CPU(mem=memory)
     retirements = 0
@@ -102,7 +100,6 @@ async def system_mbc1(dut):
         if not record['valid']:
             continue
         assert not record['is_interrupt'], 'the program enables no interrupt'
-        # Which physical bank the retiring instruction was fetched from.
         pc = model.pc
         if pc < 0x8000:
             banks_executed.add(cartridge.rom_bank(pc))
@@ -111,7 +108,7 @@ async def system_mbc1(dut):
         assert not mismatch, (f'retirement {retirements} pc={expected["pc_before"]:04x}', mismatch)
         retirements += 1
         assert retirements <= INSTRUCTION_BOUND, 'program did not halt within the instruction bound'
-        # Composed timing: the 23/24-edge machine cadence with no stall, so
+        # Why: composed timing: the 23/24-edge machine cadence with no stall, so
         # the one-edge on-chip backing never stretches an instruction.
         if anchor_edge is not None:
             anchor_cycles += instruction_cycles
@@ -126,8 +123,6 @@ async def system_mbc1(dut):
         await ReadOnly()
     assert int(dut.halted_o.value) == 1, 'CPU must report HALT after the halting retirement'
 
-    # Exact signature: every WRAM byte the program defined, and every
-    # cartridge RAM byte it wrote, read back from the RTL stores.
     wram_observed, wram_expected = defined_signature(store_bytes(dut.u_memory.u_wram.memory), memory, 'wram')
     compare_signature(wram_observed, wram_expected, 'WRAM')
     ram_store = store_bytes(dut.g_onchip.u_backing.u_ram.memory)
@@ -138,7 +133,7 @@ async def system_mbc1(dut):
     assert [value for _, value in ram_pairs] == [0x50, 0x60, 0x51, 0x61, 0x52, 0x62, 0x53, 0x63]
     assert len(wram_observed) >= 0x20, ('the program defines at least $C000-$C01F', len(wram_observed))
 
-    # Pinned evidence independent of the oracle (cartridge DV plan).
+    # Why: pinned evidence independent of the oracle.
     wram = store_bytes(dut.u_memory.u_wram.memory)
     pinned = {0x00: 0x52, 0x01: bank_pattern(32, 0x3F80), 0x02: 0x20, 0x03: 0x21, 0x04: 0xC3, 0x05: 0x01,
               0x06: 0x50, 0x07: 0x60, 0x08: 0xFF, 0x09: 0x50, 0x0A: 0xFF, 0x1F: len(TABLE_BANKS)}
@@ -150,7 +145,7 @@ async def system_mbc1(dut):
     assert banks_executed >= {0} | set(TABLE_BANKS), ('code must execute from bank 0 and every table bank', sorted(banks_executed))
     assert cartridge.registers['mode'] == 0 and cartridge.registers['ramg'] is True
 
-    # Negative control: the signature comparison rejects a single flipped byte.
+    # Why: proves the check can fail: the signature comparison must reject a single flipped byte.
     corrupted = bytearray(wram_expected)
     corrupted[0] ^= 0x01
     try:

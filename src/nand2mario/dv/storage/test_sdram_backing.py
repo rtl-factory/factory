@@ -15,7 +15,7 @@ from .test_sdram_ctrl import IDLE_CLOCK, READ_RESPONSE, REFRESH_CLOCKS, WRITE_ID
 
 CLOCK_PERIOD_NS = 40
 ROM_BYTES, RAM_BYTES = 1 << 21, 1 << 15
-RAM_DEVICE_BASE = 1 << 21        # device byte address of cartridge RAM byte 0
+RAM_DEVICE_BASE = 1 << 21        # Why: cartridge RAM byte 0 sits right above the 2 MiB ROM in the device.
 
 
 def request_word(valid, write, ram, address, data):
@@ -38,7 +38,7 @@ class Bench:
         self.bound = int(os.environ['DV_MAX_CYCLES'])
         self.clock = -1
         self.rom, self.ram = {}, {}
-        self.stalls = []                # presentation-to-acceptance delays seen
+        self.stalls = []
 
     def idle(self):
         self.dut.request_i.value = 0
@@ -73,7 +73,7 @@ class Bench:
             await RisingEdge(self.dut.clk_i)
         await RisingEdge(self.dut.clk_i)
         await ReadOnly()
-        accepted = self.clock - 1          # the clock the accepting edge ends
+        accepted = self.clock - 1
         await FallingEdge(self.dut.clk_i)
         request.value = 0
         latency = None
@@ -129,9 +129,6 @@ async def backing_contract(dut):
     cocotb.log.info('nand2mario SDRAM backing seed=%d', seed)
     b = await start(dut, seed)
 
-    # Initialization stall: a load write presented from reset release is
-    # accepted on the controller's first idle clock, the mapper port is not
-    # ready before that, and initialized_o rises two clocks earlier.
     initialized_clock = None
     await FallingEdge(dut.clk_i)
     dut.load_request_i.value = request_word(1, 1, 0, 0x147, 0x03)
@@ -153,8 +150,6 @@ async def backing_contract(dut):
     assert await b.read(0x147) == 0x03
 
     cocotb.log.info('section: ROM through the load port clock=%d', b.clock)
-    # ROM through the load port, read back through both ports; both byte
-    # lanes, both ends, the device placement of ROM at device address 0.
     addresses = sorted({0, 1, 2, 3, 0x148, 0x149, 0x3FFF, 0x4000, 0x7FFF, ROM_BYTES - 2, ROM_BYTES - 1}
                        | {b.rng.randrange(ROM_BYTES) for _ in range(48)})
     for address in addresses:
@@ -164,8 +159,6 @@ async def backing_contract(dut):
         assert await b.read(address, load=True) == b.rom[address]
         assert b.device_byte(address) == b.rom[address], 'ROM byte at device address = ROM offset'
     cocotb.log.info('section: RAM section clock=%d', b.clock)
-    # RAM through the mapper port and the load port at both ends; the ROM at
-    # the same offsets is untouched and RAM lives at device address 2 MiB.
     ram_addresses = sorted({0, 1, 0x147, 0x1FFF, 0x2000, RAM_BYTES - 2, RAM_BYTES - 1}
                            | {b.rng.randrange(RAM_BYTES) for _ in range(24)})
     for address in ram_addresses:
@@ -178,21 +171,18 @@ async def backing_contract(dut):
         await b.read(address)
     await b.write(0x2345, 0x5A, ram=True)
     assert await b.read(0x2345, ram=True) == 0x5A
-    # Address bits above a store wrap (the mapper may present a 21-bit RAM
+    # Why: address bits above a store wrap (the mapper may present a 21-bit RAM
     # address; the backing uses bits [14:0]).
     assert await b.read(RAM_BYTES + 0x2345, ram=True) == 0x5A
 
     cocotb.log.info('section: arbitration clock=%d', b.clock)
-    # Arbitration: both ports present on one edge; the mapper is accepted,
-    # the load port is not ready until the mapper's transaction completed,
-    # and each port receives its own data.
     await b.write(0x1000, 0x11)
     await b.write(0x1001, 0x22)
     await FallingEdge(dut.clk_i)
     dut.request_i.value = request_word(1, 0, 0, 0x1000, 0)
     dut.load_request_i.value = request_word(1, 0, 0, 0x1001, 0)
     await ReadOnly()
-    while not int(dut.ready_o.value):           # a refresh may be in progress
+    while not int(dut.ready_o.value):           # Why: a refresh may be in progress.
         await RisingEdge(dut.clk_i)
         await ReadOnly()
     assert int(dut.load_ready_o.value) == 0, 'the mapper wins the shared edge'
@@ -221,9 +211,9 @@ async def backing_contract(dut):
     assert mapper_response == (READ_RESPONSE, 0x11), mapper_response
     assert loader_accept - accepted in (READ_RESPONSE + 1, READ_RESPONSE + 1 + REFRESH_CLOCKS), (loader_accept, accepted)
     assert loader_response == (READ_RESPONSE, 0x22), loader_response
-    await RisingEdge(dut.clk_i)              # the response is sampled before the next request
+    await RisingEdge(dut.clk_i)              # Why: the response is sampled before the next request.
     cocotb.log.info('section: mapper waits for loader clock=%d', b.clock)
-    # A mapper request presented while a load transaction is in flight waits
+    # Why: a mapper request presented while a load transaction is in flight waits
     # for it (ready is a function of state, not of the live request).
     await FallingEdge(dut.clk_i)
     dut.load_request_i.value = request_word(1, 1, 0, 0x1002, 0x33)
@@ -255,9 +245,6 @@ async def backing_contract(dut):
     await RisingEdge(dut.clk_i)
 
     cocotb.log.info('section: random phase clock=%d', b.clock)
-    # Randomized two-port traffic against the shadow: ROM writes and reads on
-    # the load port, ROM reads and RAM reads/writes on the mapper port, RAM
-    # on the load port too; refresh stalls appear in the acceptance delays.
     region = b.rng.randrange(0, ROM_BYTES - 0x2000, 0x100)
     counts = {'rom_load_write': 0, 'rom_mapper_read': 0, 'rom_load_read': 0, 'ram_mapper_write': 0,
               'ram_mapper_read': 0, 'ram_load_read': 0, 'ram_load_write': 0}

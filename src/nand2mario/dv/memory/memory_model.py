@@ -12,8 +12,6 @@ OPEN_BUS = 0xFF
 ROM_BYTES, VRAM_BYTES, WRAM_BYTES, OAM_BYTES, HRAM_BYTES = 32768, 8192, 8192, 160, 127
 CARTRIDGE = {'rom', 'cart_ram'}
 
-# (first, last, destination) in address order; every byte of the 16-bit
-# space belongs to exactly one row.
 REGIONS = (
     (0x0000, 0x7FFF, 'rom'),
     (0x8000, 0x9FFF, 'vram'),

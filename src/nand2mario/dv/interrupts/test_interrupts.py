@@ -96,17 +96,13 @@ async def interrupt_flags_contract(dut):
     await RisingEdge(dut.clk_i)
     await b.reset()
 
-    # Reset state (VBlank pending, the DMG boot-ROM handoff IF $E1), upper
-    # read bits and the address claim.
+    # Ref: Pan Docs "Power Up Sequence": IF is $E1 at DMG boot-ROM handoff (VBlank pending).
     assert await b.edge(read=IF) == 0xE1
     for address in UNCLAIMED:
         await b.edge(read=address)
         await b.edge(write=(address, 0x1F))
     assert await b.edge(read=IF) == 0xE1
 
-    # Literal per-bit truth table: for each bit, every combination of the
-    # stored flag, a source set, a CPU write of 0/1/none and an acknowledge,
-    # with the other bits holding a distinct pattern.
     for bit in range(5):
         for stored, source, written, ack in itertools.product((0, 1), (0, 1), (None, 0, 1), (0, 1)):
             others = 0b10101 if bit % 2 else 0b01010
@@ -115,7 +111,6 @@ async def interrupt_flags_contract(dut):
             if written is None:
                 write, expected_others = None, others
             else:
-                # The write also replaces the other bits with a new pattern.
                 expected_others = (others ^ 0b00111) & ~(1 << bit) & MASK
                 write = (IF, expected_others | (written << bit))
             await b.edge(sources=source << bit, write=write, ack=ack << bit)
@@ -129,8 +124,6 @@ async def interrupt_flags_contract(dut):
             assert value == 0xE0 | expected_others | (expected_bit << bit), (
                 'truth table', bit, stored, source, written, ack, hex(value))
 
-    # Several sources on one edge set together; an acknowledge clears only
-    # its own bit; a write of all ones then zero round-trips bits [4:0].
     await b.edge(write=(IF, 0))
     await b.edge(sources=0b10110)
     assert await b.edge(read=IF) == 0xF6
@@ -141,12 +134,10 @@ async def interrupt_flags_contract(dut):
     await b.edge(write=(IF, 0x00))
     assert await b.edge(read=IF) == 0xE0
 
-    # Reset replaces pending flags with the handoff value.
     await b.edge(sources=MASK)
     await b.reset()
     assert await b.edge(read=IF) == 0xE1
 
-    # Seeded random traffic against the model.
     for _ in range(2000):
         roll = b.rng.random()
         sources = b.rng.randrange(32) if b.rng.random() < 0.3 else 0

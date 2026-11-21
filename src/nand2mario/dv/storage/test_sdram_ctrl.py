@@ -19,12 +19,6 @@ from cocotb.triggers import FallingEdge, ReadOnly, RisingEdge
 from .sdram_pin_monitor import SdramPinMonitor, join, split
 
 CLOCK_PERIOD_NS = 40
-# Storage HAS contract clocks: PRECHARGE ALL at 5000, eight refreshes from
-# 5003 every four clocks, mode register at 5035, initialized from 5036, idle
-# from 5038; read response at 9 and idle at 10 after acceptance, write 10/11;
-# the refresh age counts from the clock after an AUTO REFRESH, ready drops at
-# age 160 and the next AUTO REFRESH issues at age 161 (162 clocks apart when
-# idle), occupying five clocks.
 INIT_PRECHARGE_CLOCK = 5000
 INIT_REFRESH_CLOCKS = [5003 + 4 * k for k in range(8)]
 INIT_MODE_CLOCK = 5035
@@ -38,12 +32,12 @@ class Bench:
         self.dut = dut
         self.rng = random.Random(seed)
         self.bound = int(os.environ['DV_MAX_CYCLES'])
-        self.clock = -1                 # clock period starting at the last edge
+        self.clock = -1
         self.monitor = SdramPinMonitor()
         self.initialized_clock = self.idle_clock = None
         self.dqm_before_init = set()
         self.dqm_after_init = set()
-        self.shadow = {}                # byte address -> byte (what the bench wrote)
+        self.shadow = {}
 
     def idle(self):
         d = self.dut
@@ -97,7 +91,7 @@ class Bench:
             await RisingEdge(d.clk_i)
         await RisingEdge(d.clk_i)
         await ReadOnly()
-        # Contract clock 0 is the clock the accepting edge ends; the ACTIVATE
+        # Why: contract clock 0 is the clock the accepting edge ends; the ACTIVATE
         # command is presented in clock 1.
         accepted = self.clock - 1
         await FallingEdge(d.clk_i)
@@ -167,8 +161,6 @@ async def sdram_ctrl_contract(dut):
     cocotb.log.info('nand2mario SDRAM controller seed=%d', seed)
     b = await start(dut, seed)
 
-    # Initialization: exact command clocks, nothing before the power-up
-    # wait, masks high until the mode register is set.
     while b.idle_clock is None:
         await RisingEdge(dut.clk_i)
         await ReadOnly()
@@ -181,9 +173,6 @@ async def sdram_ctrl_contract(dut):
     assert b.dqm_before_init == {(1, 1)}, b.dqm_before_init
     assert int(dut.request_ready_o.value) == 1
 
-    # Idle refresh cadence: with no traffic every refresh is 162 clocks after
-    # the previous one, and the request ready drops for exactly five clocks
-    # around it (the age-160 idle clock, the command and its three waits).
     refreshes = len(b.monitor.refresh_clocks)
     runs, run = [], 0
     while len(b.monitor.refresh_clocks) < refreshes + 3 or run:
@@ -199,8 +188,6 @@ async def sdram_ctrl_contract(dut):
     assert idle_gaps == [REFRESH_IDLE_GAP] * 2, idle_gaps
     assert runs == [REFRESH_CLOCKS] * 3, runs
 
-    # Directed accesses: both lanes, each lane masked, every bank, row and
-    # column extremes; a masked write leaves the other lane's garbage.
     base = join(1, 0x0123, 0x0100)
     await b.write(base, 0xBEEF)
     await b.read(base)
@@ -218,8 +205,6 @@ async def sdram_ctrl_contract(dut):
     assert {bank for bank, *_ in (split(a) for a in b.shadow)} == {0, 1, 2, 3}
     assert b.dqm_after_init == {(0, 0)}, b.dqm_after_init
 
-    # Back-to-back traffic: a request held through a due refresh waits exactly
-    # the five refresh clocks, and refresh gaps grow by at most one access.
     stalls, refreshes_before = [], len(b.monitor.refresh_clocks)
     for i in range(80):
         address = join(i & 3, 0x0200 + i, 8 * i)
@@ -229,8 +214,6 @@ async def sdram_ctrl_contract(dut):
     traffic_gaps = b.monitor.refresh_gaps()[refreshes_before - 1:]
     assert max(traffic_gaps) <= REFRESH_DEADLINE and max(traffic_gaps) > REFRESH_IDLE_GAP, traffic_gaps
 
-    # Randomized phase: words and single lanes across several regions against
-    # the shadow; the device model checks every command spacing meanwhile.
     regions = [b.rng.randrange(0, 1 << 26, 1 << 12) for _ in range(6)]
     lanes, reads, writes, stalled = {0b01: 0, 0b10: 0, 0b11: 0}, 0, 0, 0
     before = len(b.monitor.refresh_clocks)

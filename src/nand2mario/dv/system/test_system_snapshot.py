@@ -33,8 +33,8 @@ from .test_system_preload import UART_CLKS_PER_BIT, LineHost
 
 CLOCK_PERIOD_NS = 40
 SNAPSHOTS = 3
-FRAMES_BETWEEN = 1      # PPU completions the bench lets pass between snapshots
-# A SNAP_READ pixel byte waits for clocks the scanout leaves free (up to
+FRAMES_BETWEEN = 1
+# Why: a SNAP_READ pixel byte waits for clocks the scanout leaves free (up to
 # about 500), several times the 80-clock simulated byte time.
 EXCHANGE_LIMIT = 300_000
 
@@ -96,9 +96,9 @@ class Observer:
 
     def __init__(self, dut):
         self.dut = dut
-        self.frames = {}          # completion number -> 23040 shades
+        self.frames = {}
         self.completions = 0
-        self.swaps = []           # edges of frame_swapped_o pulses
+        self.swaps = []
 
     async def pixels(self):
         d = self.dut
@@ -147,7 +147,7 @@ async def snapshot(host, after_pin=None):
     result = None
     for index, frame in enumerate(frames):
         if index == len(frames) - 1:
-            released_edge = edge_now()          # the release is decided after its request arrives
+            released_edge = edge_now()          # Why: the release is decided after its request arrives.
         response = await host.exchange(frame, EXCHANGE_LIMIT)
         assert response.ok, (index, response.describe())
         responses.append(response)
@@ -201,7 +201,6 @@ async def system_frame_snapshot(dut):
     cocotb.start_soon(observer.pixels())
     cocotb.start_soon(observer.swap_watch())
 
-    # First frame: nothing is displayed yet.
     assert (await host.exchange(encode_request(CMD_SNAP_PIN))).code == STATUS_NO_FRAME
     assert (await host.exchange(encode_request(CMD_SNAP_READ, 0, length=8))).code == STATUS_NOT_PINNED
     assert observer.completions == 0 and not int(dut.display_valid_o.value)
@@ -245,7 +244,6 @@ async def system_frame_snapshot(dut):
     assert all(later > earlier for earlier, later in zip(ids, ids[1:])), ids
     assert len({s.shades for s in snapshots}) == SNAPSHOTS, 'three different pictures'
 
-    # A HOLD resets the core and the display: the pin is gone.
     assert (await host.exchange(encode_request(CMD_SNAP_PIN))).ok
     assert (await host.exchange(encode_request(CMD_HOLD))).held
     assert (await host.exchange(encode_request(CMD_SNAP_READ, 0, length=8))).code == STATUS_NOT_PINNED

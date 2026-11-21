@@ -30,7 +30,7 @@ from ...scripts.board.cart_loader import (CMD_HOLD, CMD_PING, CMD_READ, CMD_RELE
 from .loader_model import SNAPSHOT_RECORD_BYTES, LoaderModel
 
 CLOCK_PERIOD_NS = 40
-CLKS_PER_BIT, RX_TIMEOUT_CLOCKS = 8, 4000     # the registry's parameters for this target
+CLKS_PER_BIT, RX_TIMEOUT_CLOCKS = 8, 4000     # Why: must match the registry's parameters for this target.
 BYTE_CLOCKS = 10 * CLKS_PER_BIT
 SYNC = 0xA5
 
@@ -66,11 +66,10 @@ class Bench:
         self.clock = 0
         self.store = Store(random.Random(seed ^ 0x5A5A))
         self.model = LoaderModel(self.store)
-        self.received = []          # (clock, byte) from the loader
-        self.ops = []               # accepted load-port operations
+        self.received = []
+        self.ops = []
         self.stalled = 0
         self.slow = False
-        # Display side of the snapshot, played by `display_player`.
         self.record = bytes(random.Random(seed ^ 0x3C3C).randrange(256) for _ in range(SNAPSHOT_RECORD_BYTES))
         self.model.record = self.record
         self.available = False
@@ -78,7 +77,7 @@ class Bench:
         self.pins = self.releases = 0
         self.snap_reads = 0
         self.snap_stalled = 0
-        self.drop_after = None      # lose the pin at this accepted snapshot request, never answering it
+        self.drop_after = None
 
     def idle(self):
         d = self.dut
@@ -117,14 +116,14 @@ class Bench:
         (1-4 edges) delays; `slow` forces the maxima."""
         d = self.dut
         ready_delay = 0
-        pending = None                      # [edges left, response word]
+        pending = None
         while True:
             await FallingEdge(d.clk_i)
             ready_now = ready_delay == 0
             d.load_ready_i.value = int(ready_now)
             d.load_response_i.value = pending[1] if pending and pending[0] == 0 else 0
-            # The request the loader presents during this clock is what the
-            # coming edge accepts; sample it before the edge.
+            # Why: the request the loader presents during this clock is what the
+            # coming edge accepts, so sample it before the edge.
             await ReadOnly()
             request = request_fields(int(d.load_request_o.value))
             await RisingEdge(d.clk_i)
@@ -157,7 +156,7 @@ class Bench:
         request is never answered."""
         d = self.dut
         ready_delay = 0
-        pending = None                      # [edges left, byte]
+        pending = None
         while True:
             await FallingEdge(d.clk_i)
             ready_now = ready_delay == 0
@@ -295,8 +294,6 @@ async def loader_contract(dut):
     await ClockCycles(dut.clk_i, 4)
     rng = b.rng
 
-    # PING: not held, initialized, no flags. Line noise before the frame is
-    # ignored. An uninitialized backing shows in the status.
     response = await b.exchange(encode_request(CMD_PING), [])
     assert (response.code, response.held, response.initialized, response.status & 0x38) == (STATUS_OK, False, True, 0)
     assert int(dut.hold_o.value) == 0
@@ -310,7 +307,6 @@ async def loader_contract(dut):
     dut.backing_initialized_i.value = 1
     b.model.initialized = True
 
-    # Writes and reads need the hold; HOLD raises the core reset request.
     response = await b.exchange(encode_request(CMD_WRITE, address_field(0x100), b'\x12'), [])
     assert response.code == STATUS_NOT_HELD and int(dut.hold_o.value) == 0
     response = await b.exchange(encode_request(CMD_READ, address_field(0x100)), [])
@@ -319,29 +315,22 @@ async def loader_contract(dut):
     assert response.ok and response.held and int(dut.hold_o.value) == 1
     assert (await b.exchange(encode_request(CMD_HOLD), [])).held, 'HOLD is idempotent'
 
-    # WRITE 1, 7 and 256 bytes including both ends of the ROM space; every
-    # byte reaches the load port in order; READ returns them.
     for offset, data in ((0x0147, b'\x03'), (0x0000, bytes(range(7))), (ROM_BYTES - 256, bytes(rng.randrange(256) for _ in range(256))),
                          (0x3FFF, bytes(rng.randrange(256) for _ in range(2)))):
         response = await b.exchange(encode_request(CMD_WRITE, address_field(offset), data), b.write_ops(offset, data))
         assert response.ok and response.length == len(data) and response.offset == offset and not response.ram
         response = await b.exchange(encode_request(CMD_READ, address_field(offset), length=len(data)), b.read_ops(offset, len(data)))
         assert response.ok and response.payload == data, (response.payload.hex(), data.hex())
-    # Cartridge RAM through the RAM bit, both ends.
     for offset, data in ((0x0000, b'\x50\x60'), (RAM_BYTES - 256, bytes(rng.randrange(256) for _ in range(256)))):
         response = await b.exchange(encode_request(CMD_WRITE, address_field(offset, ram=True), data), b.write_ops(offset, data, True))
         assert response.ok and response.ram and response.offset == offset
         response = await b.exchange(encode_request(CMD_READ, address_field(offset, ram=True), length=len(data)), b.read_ops(offset, len(data), True))
         assert response.ok and response.payload == data
-    # ROM and RAM bytes at one offset are distinct stores.
     response = await b.exchange(encode_request(CMD_READ, address_field(0), length=2), b.read_ops(0, 2))
     assert response.payload == bytes(range(2))
     response = await b.exchange(encode_request(CMD_READ, address_field(0, ram=True), length=2), b.read_ops(0, 2, True))
     assert response.payload == b'\x50\x60'
 
-    # Error classes: bad CRC (payload and CRC byte corrupted) commits
-    # nothing and the frame data are echoed; unknown command; arguments on
-    # argument-free commands; ranges past either space and reserved bits.
     good = encode_request(CMD_WRITE, address_field(0x200), bytes(range(16)))
     for index in (7, len(good) - 1, len(good) - 2):
         response = await b.exchange(corrupt(good, index), [])
@@ -363,16 +352,12 @@ async def loader_contract(dut):
         assert response.code == STATUS_BAD_ADDRESS, (hex(address), length, response.describe())
         response = await b.exchange(encode_request(CMD_WRITE, address, bytes(length)), [])
         assert response.code == STATUS_BAD_ADDRESS, (hex(address), length, response.describe())
-    # The last valid byte of each space is reachable.
     for address in (ROM_BYTES - 256, address_field(RAM_BYTES - 1, ram=True)):
         length = 256 if address == ROM_BYTES - 256 else 1
         assert (await b.exchange(encode_request(CMD_READ, address, length=length))).ok
 
-    # Framing error inside a frame: no response, the frame is dropped, the
-    # next response reports it once; a byte with a bad stop bit outside a
-    # frame is reported too.
     await b.send(bytes([SYNC, CMD_WRITE, 0x00]))
-    await b.send_bits([0, 1, 0, 1, 0, 1, 0, 1, 0, 0])      # start, 8 data bits, low stop bit
+    await b.send_bits([0, 1, 0, 1, 0, 1, 0, 1, 0, 0])      # Ref: UART framing: start bit, eight data bits, then a low (invalid) stop bit.
     b.model.event('framing')
     await ClockCycles(dut.clk_i, 4 * BYTE_CLOCKS)
     count = len(b.received)
@@ -383,7 +368,6 @@ async def loader_contract(dut):
     b.model.event('framing')
     await ClockCycles(dut.clk_i, 2 * BYTE_CLOCKS)
     assert (await b.exchange(encode_request(CMD_PING), [])).framing
-    # Receive timeout: a partial frame left idle is dropped and flagged.
     await b.send(bytes([SYNC, CMD_READ, 0x10, 0x00]))
     await ClockCycles(dut.clk_i, RX_TIMEOUT_CLOCKS + 2 * BYTE_CLOCKS)
     b.model.event('timeout')
@@ -391,7 +375,6 @@ async def loader_contract(dut):
     response = await b.exchange(encode_request(CMD_PING), [])
     assert response.timeout and not response.framing and len(b.received) == count + 9
     assert not (await b.exchange(encode_request(CMD_PING), [])).timeout
-    # A frame sent slowly, but inside the timeout, still completes.
     frame = encode_request(CMD_READ, address_field(0x0147))
     expected = b.model.respond(frame)
     for index, byte in enumerate(frame):
@@ -399,8 +382,6 @@ async def loader_contract(dut):
             await ClockCycles(dut.clk_i, RX_TIMEOUT_CLOCKS - 4 * BYTE_CLOCKS)
         await b.send_byte(byte)
     await b.expect_response(expected, 4000)
-    # Overrun: bytes arriving while a WRITE is committed (slow backing) are
-    # dropped and flagged in the next response; the WRITE itself completes.
     b.slow = True
     frame = encode_request(CMD_WRITE, address_field(0x1000), bytes(rng.randrange(256) for _ in range(256)))
     expected = b.model.respond(frame)
@@ -417,8 +398,6 @@ async def loader_contract(dut):
     response = await b.exchange(encode_request(CMD_READ, address_field(0x1000), length=256), b.read_ops(0x1000, 256))
     assert response.payload == frame[6:-2]
 
-    # RELEASE drops the hold; reload without reset: hold again and rewrite
-    # the header area, the new bytes read back.
     response = await b.exchange(encode_request(CMD_RELEASE), [])
     assert response.ok and not response.held and int(dut.hold_o.value) == 0
     assert (await b.exchange(encode_request(CMD_RELEASE), [])).ok, 'RELEASE is idempotent'
@@ -428,9 +407,6 @@ async def loader_contract(dut):
     response = await b.exchange(encode_request(CMD_READ, address_field(0x147), length=3), b.read_ops(0x147, 3))
     assert response.payload == b'\x01\x02\x03'
 
-    # Frame snapshot. No frame displayed: SNAP_PIN answers NO_FRAME and pins
-    # nothing, SNAP_READ NOT_PINNED, SNAP_RELEASE is harmless. Arguments on
-    # the control commands are rejected; a corrupted SNAP_PIN pins nothing.
     assert int(dut.hold_o.value) == 1, 'the snapshot commands work while the core is held'
     assert (await b.exchange(encode_request(CMD_SNAP_PIN), [])).code == STATUS_NO_FRAME
     assert (await b.exchange(encode_request(CMD_SNAP_READ, 0, length=8), [])).code == STATUS_NOT_PINNED
@@ -440,8 +416,6 @@ async def loader_contract(dut):
     assert (await b.exchange(encode_request(CMD_SNAP_RELEASE, length=2), [])).code == STATUS_BAD_ARGUMENT
     assert (await b.exchange(corrupt(encode_request(CMD_SNAP_PIN), 3), [])).code == STATUS_BAD_CRC
     assert b.pins == 0 and not b.pinned
-    # Pin, idempotent pin (also once the display went blank), the whole
-    # record in 256-byte chunks, both range ends.
     assert (await b.exchange(encode_request(CMD_SNAP_PIN), [])).ok and b.pinned and b.pins == 1
     b.set_available(False)
     assert (await b.exchange(encode_request(CMD_SNAP_PIN), [])).ok and b.pinned, 'a held pin is kept'
@@ -455,9 +429,9 @@ async def loader_contract(dut):
                             (1 << 23, 1), (1 << 21, 1)):
         response = await b.exchange(encode_request(CMD_SNAP_READ, address, length=length), [])
         assert response.code == STATUS_BAD_ADDRESS, (hex(address), length, response.describe())
-    # A pin lost under a payload (the display reset with the core): the bytes
-    # already answered are the record's, the rest are zero, the status said
-    # OK; afterwards the loader answers NOT_PINNED. Once with the request
+    # Why: a pin can be lost under a payload when the display resets with the core:
+    # the bytes already answered are the record's, the rest are zero, the status said
+    # OK; afterwards the loader answers NOT_PINNED. Check once with the request
     # outstanding (the wait escape), once more on the next request.
     for drop_after in (37, 0):
         b.set_available(True)
@@ -472,7 +446,6 @@ async def loader_contract(dut):
         assert response.ok and not b.pinned and b.drop_after is None
         b.model.pinned = False
         assert (await b.exchange(encode_request(CMD_SNAP_READ, 0, length=8), [])).code == STATUS_NOT_PINNED
-    # SNAP_READ and the pin do not need the hold; RELEASE of the pin.
     assert (await b.exchange(encode_request(CMD_RELEASE), [])).ok and int(dut.hold_o.value) == 0
     b.set_available(True)
     assert (await b.exchange(encode_request(CMD_SNAP_PIN), [])).ok
@@ -483,7 +456,7 @@ async def loader_contract(dut):
     assert (await b.exchange(encode_request(CMD_HOLD), [])).held
     cocotb.log.info('snapshot commands verified: %d snapshot reads, %d stalled edges', b.snap_reads, b.snap_stalled)
 
-    # Negative control for the bench itself: the comparison rejects a
+    # Why: proves the bench's comparison can fail: it must reject a
     # response that differs in one byte.
     try:
         await b.expect_response(corrupt(b.model.respond(encode_request(CMD_PING)), 1), 1)
@@ -492,8 +465,6 @@ async def loader_contract(dut):
     else:
         raise AssertionError('the response comparison accepted a wrong frame')
 
-    # Randomized phase: valid and invalid frames with their predicted
-    # responses and backing operations; coverage asserted below.
     codes = {code: 0 for code in range(8)}
     ok_writes = ok_reads = ok_snap_reads = 0
     lengths, spaces = set(), set()
@@ -526,13 +497,13 @@ async def loader_contract(dut):
             if frame[2:6] == bytes(4):
                 frame = encode_request(CMD_PING, length=2)
         elif kind == 'badaddr':
-            # Past the end of the selected space (the range end is what the
-            # loader checks) or with a reserved address bit set.
+            # Why: the loader checks the range end, so step just past the end of the
+            # selected space, or set a reserved address bit.
             address = rng.choice((space - length + 1 + rng.randrange(0, 4) | (ram << 21), rng.randrange(1 << 22, 1 << 24)))
             command = rng.choice((CMD_READ, CMD_WRITE))
             frame = encode_request(command, address, bytes(length) if command == CMD_WRITE else b'', length=length)
         elif kind == 'snappin':
-            # Whether a frame is displayed is the pin's real input. Half the
+            # Why: whether a frame is displayed is the pin's real input. Half the
             # pins find nothing to pin (released first, display blank).
             if rng.random() < 0.5:
                 if b.model.pinned:
@@ -546,7 +517,6 @@ async def loader_contract(dut):
             frame = encode_request(CMD_SNAP_RELEASE)
         elif kind == 'snapread':
             if not b.model.pinned and rng.random() < 0.8:
-                # Mostly read a pinned frame: pin one first (its own frame).
                 b.set_available(True)
                 response = await b.exchange(encode_request(CMD_SNAP_PIN), settle=False)
                 codes[response.code] += 1
@@ -555,7 +525,6 @@ async def loader_contract(dut):
                                                               rng.randrange(SNAPSHOT_RECORD_BYTES - snap_length + 1))),
                                    length=snap_length)
         elif kind == 'snapunpinned':
-            # A read after the release: NOT_PINNED.
             if b.model.pinned:
                 response = await b.exchange(encode_request(CMD_SNAP_RELEASE), settle=False)
                 codes[response.code] += 1

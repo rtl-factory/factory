@@ -32,7 +32,7 @@ class Bench:
         self.rng = random.Random(seed)
         self.bound = int(os.environ['DV_MAX_CYCLES'])
         self.cycles = 0
-        self.stat_events = []       # cumulative; checked phase by phase from the cursor
+        self.stat_events = []
         self.stat_cursor = 0
         self.vblank_events = []
         self.vram = bytearray(8192)
@@ -64,11 +64,11 @@ class Bench:
             await self.edge()
         await FallingEdge(d.clk_i)
         d.reset_i.value = 0
-        # Post-boot state (no boot ROM): LCD on with LCDC $91 and BGP $FC.
+        # Ref: Pan Docs "Power Up Sequence": post-boot LCDC is $91 and BGP $FC.
         # The benches then turn the LCD off first, as DMG programs do, so
         # every phase starts the raster from its origin with no retained flag.
         assert await self.read(m.LCDC) == 0x91 and await self.read(m.BGP) == 0xFC, 'post-boot LCDC/BGP'
-        # LYC $FF first clears the coincidence flag (LY 0 = LYC 0 at boot)
+        # Why: LYC $FF first clears the coincidence flag (LY 0 = LYC 0 at boot)
         # so it is not retained across the LCD-off write.
         await self.write(m.LYC, 0xFF)
         for _ in range(8):
@@ -251,7 +251,7 @@ async def ppu_background_contract(dut):
     cocotb.log.info('nand2mario PPU background seed=%d', seed)
     b = Bench(dut, seed)
     b.idle()
-    # VRAM and OAM have no power-up value: fill them with seeded garbage
+    # Why: VRAM and OAM have no power-up value: fill them with seeded garbage
     # first; the background frames run with LCDC.1 and LCDC.5 clear, so the
     # scanned garbage objects and the window never reach the pixel stream.
     for index in range(8192):
@@ -264,7 +264,7 @@ async def ppu_background_contract(dut):
     model = m.PpuTiming()
     b.retained = False
 
-    # Reset state (post-boot, then LCD off and BGP cleared by Bench.reset) and register file with the LCD off: every register reads
+    # Ref: Pan Docs "LCD Status Registers": with the LCD off every register reads
     # back, STAT keeps only bits 6:3 (bit 7 reads 1, mode 0, no coincidence
     # retained), LY is read-only, unclaimed addresses are not selected.
     assert await b.read(m.LCDC) == 0 and await b.read(m.LY) == 0 and await b.read(m.STAT) == 0x80
@@ -291,8 +291,6 @@ async def ppu_background_contract(dut):
     assert int(dut.ly_o.value) == 0 and int(dut.mode_o.value) == 0 and int(dut.pixel_valid_o.value) == 0
     await FallingEdge(dut.clk_i)
 
-    # Frame 1: random VRAM, random registers, every STAT source enabled with a
-    # random LYC. Compare every dot and pixel with the model.
     image = bytes(b.rng.randrange(256) for _ in range(8192))
     await b.load_vram(image)
     await b.write(m.SCY, b.rng.randrange(256))
@@ -318,7 +316,7 @@ async def ppu_background_contract(dut):
                     lcdc, b.regs[m.SCX], b.regs[m.SCY], b.regs[m.BGP], b.regs[m.LYC], len(expected_edges))
     m.write_png(Path.cwd() / 'frame1.png', [[pixels[(x, y)] for x in range(160)] for y in range(144)])
 
-    # Negative control: the frame comparison rejects one changed pixel.
+    # Why: proves the check can fail: the frame comparison must reject one changed pixel.
     corrupted = [row[:] for row in expected]
     corrupted[17][23] ^= 1
     try:
@@ -328,9 +326,6 @@ async def ppu_background_contract(dut):
     else:
         raise AssertionError('frame comparison accepted a corrupted expectation')
 
-    # Frame 2 runs partially, then the LCD is switched off inside a visible
-    # line: the raster returns to line 0, dot 0 in mode 0, no pixel or VBlank
-    # follows, blocking is lifted and the coincidence flag is retained.
     b.vblank_events.clear()
     stop_line, stop_dot = b.rng.randrange(1, m.VISIBLE_LINES), b.rng.randrange(m.DOTS_PER_LINE)
     partial = stop_line * m.DOTS_PER_LINE + stop_dot
@@ -339,7 +334,7 @@ async def ppu_background_contract(dut):
     b.retained = model.ly == b.regs[m.LYC]
     await b.write(m.LCDC, lcdc & 0x7F)
     model.disable()
-    # Frame 2 continues frame 1: its first edge depends on the line level at
+    # Why: frame 2 continues frame 1: its first edge depends on the line level at
     # the last dot of frame 1 (the wrap edge, when predicted, is consumed here).
     expected_partial = [edge for edge in m.stat_edges(b.enables, b.regs[m.LYC], b.regs[m.SCX], start_line_low=wrap_low)
                         if edge < (stop_line, stop_dot)]
@@ -348,7 +343,6 @@ async def ppu_background_contract(dut):
         expected_partial.append((0, 0))
     check_edges(b, expected_partial, 'STAT edges before/at LCD off')
     assert b.vblank_events == [], 'no VBlank in the visible lines'
-    # The counters return to the origin on the edge after LCDC.7 fell.
     await b.edge()
     await ReadOnly()
     assert int(dut.ly_o.value) == 0 and int(dut.mode_o.value) == 0
@@ -361,12 +355,11 @@ async def ppu_background_contract(dut):
     await FallingEdge(dut.clk_i)
     assert await b.read(m.LY) == 0
     assert await b.read(m.STAT) == 0x80 | b.enables | (int(b.retained) << 2), 'coincidence retained while off'
-    # A LYC change while off does not touch the retained flag.
     await b.write(m.LYC, (b.regs[m.LYC] + 1) % 256)
     assert await b.read(m.STAT) == 0x80 | b.enables | (int(b.retained) << 2)
     assert b.stat_events[b.stat_cursor:] == [], 'no STAT edge from a LYC write while off'
 
-    # Frame 3: new VRAM and registers while off, then a complete enabled
+    # Ref: Pan Docs, DMG LCDC bit 0: frame 3 sets new VRAM and registers while off, then a complete enabled
     # frame with the background disabled: every pixel is white (shade 0)
     # although BGP maps color 0 to a nonzero shade (DMG LCDC.0 behavior).
     image = bytes(b.rng.randrange(256) for _ in range(8192))

@@ -139,7 +139,6 @@ async def library_contract(dut):
             assert await b.access(address) == b.menu[address]
         for address in (0xa004, 0xa100, 0xbfff):
             assert await b.access(address) == 0xff
-        # Snapshot bank: a later host-source change does not leak into CPU reads.
         await b.window(0x52)
         assert await b.access(0x4000) == b.memory[18 * 16384]
         old = await b.access(0x4567)
@@ -147,11 +146,8 @@ async def library_contract(dut):
         assert await b.access(0x4567) == old
         await b.window(18)
         assert await b.access(0x4567) == old ^ 0xff
-        # Highest six-bit bank and its last byte cannot wrap or truncate.
         await b.window(255)
         assert await b.access(0x7fff) == b.memory[0xfffff]
-        # Busy reads and writes have defined behavior: high ROM is masked,
-        # second bank/select commits are ignored and cannot redirect the copy.
         await b.access(0x2000, 34)
         assert await b.access(0x4000) == 0xff
         assert await b.access(0x100) == b.menu[0x100], "fixed menu remains readable during fill"
@@ -160,17 +156,16 @@ async def library_contract(dut):
         await b.idle()
         assert await b.access(0xa001) == 34
         assert await b.access(0xa003) == 0xff
-        assert await b.access(0x4000) == 1  # slot 0 valid
+        assert await b.access(0x4000) == 1
         before = len(b.requests)
         for index in (17, 255):
             await b.access(0x6000, index)
         assert len(b.requests) == before, 'out-of-range selection must be inert'
-        for index in (3, 4):  # absent entry and illegal length
+        for index in (3, 4):  # Why: slot 3 is absent and slot 4 has an illegal length.
             await b.select(index)
             assert await b.access(0xa002) == 2
             assert await b.access(0xa003) == index
             assert (await b.access(0xa000)) & 0x40, 'refusal must retain snapshot'
-        # Unknown profile and a 24-bit length must not be silently truncated.
         b.memory[0x88000 + 2 * 32 + 1] = 99
         await b.select(2)
         assert await b.access(0xa002) == 2
@@ -179,7 +174,7 @@ async def library_contract(dut):
         await b.select(2)
         assert await b.access(0xa002) == 2
         b.memory[0x88000 + 2 * 32 + 24] = 0
-        # The RTL must independently reject a two-slot image at slot 15;
+        # Why: the RTL must independently reject a two-slot image at slot 15;
         # a host packer check alone cannot protect against malformed bytes.
         entry15 = 0x88000 + 15 * 32
         previous15 = bytes(b.memory[entry15:entry15 + 32])
@@ -188,13 +183,12 @@ async def library_contract(dut):
         await b.select(15)
         assert await b.access(0xa002) == 2
         b.memory[entry15:entry15 + 32] = previous15
-        # A valid direct game sees ordinary ROM/open-bus rules, then returns.
         await b.access(0x6000, 1)
         await Timer(15_000_000, unit='ns')
         assert not int(dut.core_reset_o.value)
         assert await b.access(0xa000) == 0xff
         assert await b.access(0x134) == ord('E')
-        # A refused menu return must leave a running game and its active
+        # Why: a refused menu return must leave a running game and its active
         # bytes usable. Observe reset events, not merely the final low level.
         b.memory[0x88200] = 0
         resets_before = b.reset_edges
@@ -207,7 +201,6 @@ async def library_contract(dut):
         await b.idle()
         assert await b.access(0xa003) == 1, 'return retains last selected index'
         assert await b.access(0xa002) == 1
-        # MBC1's second slot is really copied; the active mapper can bank it.
         await b.access(0x6000, 5)
         await Timer(24_000_000, unit='ns')
         assert not int(dut.core_reset_o.value)
@@ -218,8 +211,6 @@ async def library_contract(dut):
         await b.access(0x6000, 16)
         await b.idle()
         assert await b.access(0xa003) == 5
-        # CRC failure cannot execute partly copied bytes. Host HOLD and a
-        # repaired source followed by RELEASE must restore the menu.
         b.memory[7 * 32768 + 0x700] ^= 1
         await b.access(0x6000, 7)
         await Timer(15_000_000, unit='ns')
@@ -228,14 +219,12 @@ async def library_contract(dut):
         await Timer(4000, unit='ns')
         assert count == len(b.requests), 'failed image must not auto-retry'
         dut.host_hold_i.value = 1
-        b.memory[7 * 32768 + 0x700] ^= 1  # host repairs the failed image while held
+        b.memory[7 * 32768 + 0x700] ^= 1  # Why: the host repairs the failed image while held.
         await Timer(400, unit='ns')
         dut.host_hold_i.value = 0
         await b.idle()
         assert await b.access(0xa003) == 7
         assert await b.access(0x134) == ord('G')
-        # HOLD in an outstanding bank read drains it even if RELEASE arrives
-        # before the response. A late byte must not contaminate the next boot.
         b.forced_delay = 20
         await b.access(0x2000, 1)
         while b.pending is None:

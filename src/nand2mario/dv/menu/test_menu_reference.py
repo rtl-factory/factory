@@ -41,7 +41,6 @@ class Font(unittest.TestCase):
         for flag in (0x80, 0xC0):
             tiles = R.title_tiles(b'CGB FLAGGED ROW' + bytes([flag]))
             self.assertEqual(tiles, R.text_tiles('CGB FLAGGED ROW') + [R.TILE_BLANK], flag)
-            # The same byte anywhere before the flag position still draws the dash.
             self.assertEqual(R.title_tiles(bytes([flag]) + b'A' * 14 + bytes([flag]))[0], R.TILE_DASH)
             self.assertEqual(R.title_tiles(b'A' * 14 + bytes([flag, flag]))[14], R.TILE_DASH)
         self.assertEqual(R.title_tiles(b'SIXTEEN CHAR ROW'), R.text_tiles('SIXTEEN CHAR ROW'))
@@ -57,8 +56,6 @@ class Layout(unittest.TestCase):
     def test_fixture_library(self):
         self.assertEqual([row['valid'] for row in self.entries], [1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1])
         self.assertGreaterEqual(sum(row['valid'] for row in self.entries[:16]), 6)
-        # The 64 KiB MBC1 stub: one entry at slot 5 with its profile and length, slot 6 empty, its
-        # two halves at slots 5 and 6, MBC1 header bytes and the bank-2 exit code.
         banked = fixture.mbc1_image()
         self.assertEqual(len(banked), 65536)
         self.assertEqual((self.entries[5]['profile'], self.entries[5]['length'], self.entries[5]['crc32']),
@@ -69,7 +66,7 @@ class Layout(unittest.TestCase):
         self.assertEqual((banked[0x147], banked[0x148]), (1, 1))
         self.assertEqual(banked[0x8000:0x8002], bytes([0x3E, fixture.GAME_EXIT_VALUE]))
         self.assertEqual(self.entries[0]['title'], b'SPRINGTRAIL'.ljust(16, b'\0'))
-        # Slot 1 is the exit demo: the stub stands in for the built image with the same title.
+        # Why: slot 1's stub stands in for the built exit demo, under the same title.
         self.assertEqual(self.entries[1]['title'], b'EXIT DEMO'.ljust(16, b'\0'))
         self.assertEqual(self.entries[1]['crc32'], zlib.crc32(fixture.exit_stub()))
         real = bytearray(fixture.exit_stub())
@@ -83,7 +80,6 @@ class Layout(unittest.TestCase):
         self.assertEqual(self.entries[8]['title'], b'CGB ONLY TITLE\x00\xC0')
         self.assertEqual(self.entries[15]['title'], b'LAST SLOT'.ljust(16, b'\0'))
         self.assertEqual(len(set(row['title'] for row in self.entries if row['valid'])), 11)
-        # The stub image carries the flag at header 0x143, as a CGB-flagged homebrew does.
         self.assertEqual(fixture.game_image(10, fixture.GAMES[10])[0x143], 0x80)
         self.assertEqual(self.entries[fixture.SHORT_SLOT]['length'], 16384)
         self.assertEqual(self.entries[16]['profile'], fixture.PROFILE_LOADER)
@@ -94,7 +90,6 @@ class Layout(unittest.TestCase):
         valid, profile, length, crc32, title = struct.Struct('<BBHI16s8x').unpack(entry)
         self.assertEqual((valid, profile, length, crc32), (1, 1, 32768, zlib.crc32(fixture.game_image(0, 'SPRINGTRAIL'))))
         self.assertEqual(title, self.entries[0]['title'])
-        # The 64 KiB entry keeps the 16-bit length word at 0 and carries bit 16 in byte 24; slot 6's entry is empty.
         entry = library[fixture.CATALOGUE_ADDRESS + 5 * 32:fixture.CATALOGUE_ADDRESS + 6 * 32]
         self.assertEqual((entry[0], entry[1], entry[2:4], entry[24], entry[25:]), (1, 3, bytes(2), 1, bytes(7)))
         self.assertEqual(library[fixture.CATALOGUE_ADDRESS + 6 * 32:fixture.CATALOGUE_ADDRESS + 7 * 32], bytes(32))
@@ -106,14 +101,14 @@ class Layout(unittest.TestCase):
         library = fixture.library_bytes(MENU_IMAGE)
         start = fixture.TAGLINE_ADDRESS
         self.assertEqual(start, fixture.CATALOGUE_ADDRESS + fixture.IMAGES * fixture.ENTRY_BYTES)
-        # The fixture declares no tagline, so the table and the rest of the
+        # Why: the fixture declares no tagline, so the table and the rest of the
         # 1 KiB region are zero: these are the bytes the menu targets preloaded
         # before the table existed.
         self.assertEqual(library[start:fixture.CATALOGUE_ADDRESS + 1024],
                          bytes(fixture.CATALOGUE_ADDRESS + 1024 - start))
         self.assertEqual([row['tagline'] for row in self.entries], [b''] * fixture.IMAGES)
-        # A catalogue that does carry taglines packs them behind the entries and
-        # still renders the same frame: no cell of this reference reads one.
+        # Why: taglines packed behind the entries must not change the frame; no cell
+        # of this reference reads one.
         tagged = [dict(row, tagline=f'SLOT {index} TAGLINE'.encode()) for index, row in enumerate(self.entries)]
         table = b''.join(fixture.pack_tagline(row) for row in tagged)
         self.assertEqual(table[:fixture.TAGLINE_CHARS], b'SLOT 0 TAGLINE'.ljust(fixture.TAGLINE_CHARS, b'\0'))
@@ -127,17 +122,15 @@ class Layout(unittest.TestCase):
     def test_tilemap_rows(self):
         rows = reference.tilemap(self.entries)
         grey = reference.TILE_GREY
-        # The header is a grey plate: two caps, the 3-to-2 gradient and grey text.
         self.assertEqual((rows[0][0], rows[0][19]), (reference.TILE_CAP_LEFT, reference.TILE_CAP_RIGHT))
         self.assertEqual(rows[0][4:16], [grey + tile for tile in reference.text_tiles('GAME LIBRARY')])
         self.assertEqual(rows[0][1:4], [reference.TILE_FADE32] * 3)
-        # Every slot row is plain: the cursor is an object, so no row is re-banked.
+        # Why: the cursor is an object, so every slot row stays plain and no row is re-banked.
         self.assertEqual(rows[1][0], reference.TILE_BLANK)
         self.assertEqual(rows[1][1:3], reference.text_tiles('00'))
         self.assertEqual(rows[1][4:20], reference.text_tiles('SPRINGTRAIL     '))
         self.assertEqual(rows[4][4:20], [reference.TILE_BLANK] * 16)
         self.assertEqual(rows[5][4:20], reference.text_tiles('SHORT IMAGE     '))
-        # The 64 KiB entry is listed once: slot 5 carries its title, slot 6 (its upper half) is blank.
         self.assertEqual(rows[6][4:20], reference.text_tiles('BANKED GAME     '))
         self.assertEqual(rows[7][1:3], reference.text_tiles('06'))
         self.assertEqual(rows[7][4:20], [reference.TILE_BLANK] * 16)
@@ -148,19 +141,15 @@ class Layout(unittest.TestCase):
         self.assertEqual(rows[12][4:20], [reference.TILE_BLANK] * 16)
         self.assertEqual(rows[16][1:3], reference.text_tiles('15'))
         self.assertEqual(rows[16][4:20], reference.text_tiles('LAST SLOT       '))
-        # The plate moved to the window, so the list's last row is the page.
+        # Why: the plate moved to the window, so the list's last row is the page.
         self.assertEqual(rows[17], [reference.TILE_BLANK] * 20)
-        # A blank bottom plate is the gradient fill alone between the two caps.
         self.assertEqual(reference.window_rows()[1], [reference.TILE_CAP_LEFT]
                          + [reference.TILE_FADE21] * 18 + [reference.TILE_CAP_RIGHT])
-        # A message sits on the plate, biased left, with the fill either side of it.
         message = reference.window_rows(result=reference.RESULT_INVALID_SLOT, index=3)[1]
         self.assertEqual(message[1], reference.TILE_FADE21)
         self.assertEqual(message[2:17], [grey + tile for tile in reference.text_tiles('SLOT 03 INVALID')])
         self.assertEqual(message[17:19], [reference.TILE_FADE21] * 2)
-        # The menu entry itself is never listed.
         self.assertFalse(any(reference.text_tiles('GAME MENU') == row[4:13] for row in rows))
-        # The cursor never reaches the map: every slot draws the same cells.
         self.assertEqual(reference.tilemap(self.entries, cursor=15), rows)
         with self.assertRaises(ValueError):
             reference.tilemap(self.entries, cursor=16)
@@ -168,7 +157,6 @@ class Layout(unittest.TestCase):
         self.assertEqual(partial[2][4:20], [reference.TILE_BLANK] * 16)
 
     def test_the_cursor_is_an_object_and_the_phase_is_its_tile(self):
-        # The slot never changes a map cell; the phase changes the star cells alone.
         self.assertEqual(reference.tilemap(self.entries, cursor=2), reference.tilemap(self.entries))
         settled = reference.tilemap(self.entries)
         twinkled = reference.tilemap(self.entries, phase=1)
@@ -184,27 +172,22 @@ class Layout(unittest.TestCase):
                 reference.objects(**bad)
             with self.assertRaises(ValueError):
                 reference.tilemap(self.entries, **bad)
-        # The phase follows from the frame number alone: 16 frames a hold.
         self.assertEqual([reference.phase_of_frame(n) for n in (0, 15, 16, 31, 32, 47, 48)],
                          [0, 0, 1, 1, 0, 0, 1])
         with self.assertRaises(ValueError):
             reference.phase_of_frame(-1)
         bank = reference.bank_tiles()
         self.assertEqual(len(bank), reference.BANK_TILES)
-        # The two pointer phases are the committed art, the same arrow one pixel apart.
         art = reference.atlas_tiles(reference.POINTER_ART, reference.POINTER_TILES)
         self.assertEqual(bank[reference.TILE_POINTER:reference.TILE_POINTER + reference.POINTER_TILES], art)
         self.assertEqual(art[1], [[0] + row[:7] for row in art[0]])
         self.assertTrue(all(row[0] == 0 for row in art[1]))
-        # The grey bank is the font on a mid-grey page: shade 0 becomes 2, the ink stays.
         for tile in range(reference.FONT_TILES):
             self.assertEqual(bank[reference.TILE_GREY + tile], reference.greyed(bank[tile]), tile)
             self.assertLessEqual({shade for row in bank[tile] for shade in row}, {0, 3}, tile)
         self.assertEqual(bank[reference.TILE_GREY + reference.TILE_BLANK], [[2] * 8] * 8)
-        # The splash badge is the committed art, four cells by two above the list's bank.
         self.assertEqual(bank[reference.TILE_BADGE:reference.TILE_BADGE + reference.BADGE_TILES],
                          reference.atlas_tiles(reference.SPLASH_ART, reference.BADGE_TILES))
-        # The star field's four cells close the bank.
         self.assertEqual(bank[reference.TILE_STAR:],
                          reference.atlas_tiles(reference.STAR_ART, reference.STAR_TILES))
 
@@ -218,13 +201,11 @@ class Layout(unittest.TestCase):
                                             for c in reference.STAR_COLUMNS}]
         self.assertEqual(len(starred), 8)
         self.assertLessEqual({column for column, _ in starred}, set(reference.STAR_COLUMNS))
-        # A star's cell follows from its coordinates and the phase alone.
         for column, map_row in starred:
             for phase in range(reference.PHASES):
                 tile = reference.star_tile(column, map_row, phase)
                 self.assertEqual(tile, reference.TILE_STAR + (column + map_row + phase) % 4)
                 self.assertLess(tile, reference.BANK_TILES)
-        # No title cell is ever a star, whatever the catalogue holds.
         for cells in reference.list_rows(self.entries)[1:17]:
             self.assertTrue(all(tile < reference.TILE_STAR for tile in cells[1:3] + cells[4:]))
 
@@ -242,7 +223,6 @@ class Layout(unittest.TestCase):
                 row, column = y - reference.WINDOW_Y, x - (reference.WINDOW_X - 7)
                 self.assertEqual(settled[y * reference.WIDTH + x],
                                  bank[plate[row // 8][column // 8]][row % 8][column % 8], (x, y))
-        # A sliding frame has no window at all: those rows are the background's.
         self.assertNotEqual(sliding[reference.WINDOW_Y * reference.WIDTH:],
                             settled[reference.WINDOW_Y * reference.WIDTH:])
 
@@ -260,29 +240,25 @@ class Layout(unittest.TestCase):
         for row, column, text in ((reference.SPLASH_TITLE_ROW, reference.SPLASH_TITLE_COLUMN, reference.SPLASH_TITLE),
                                   (reference.SPLASH_HINT_ROW, reference.SPLASH_HINT_COLUMN, reference.SPLASH_HINT)):
             self.assertEqual(splash[row][column:column + len(text)], reference.text_tiles(text))
-        # The map is the splash above the list, with the list's last rows wrapped
-        # over the splash's own top rows.
         listing = reference.list_rows(self.entries)
         drawn = reference.background_map(self.entries)
         undrawn = reference.background_map(self.entries, wrapped=0)
         self.assertEqual(len(drawn), reference.MAP_ROWS)
         self.assertEqual(undrawn[:reference.ROWS], splash)
         self.assertEqual(drawn[:reference.WRAPPED_ROWS], listing[reference.ROWS - reference.WRAPPED_ROWS:])
-        # A wrapped row's cells, its stars included, reach the map only on the
-        # slide frame that draws that row: until then the splash owns the row.
         for row in range(reference.WRAPPED_ROWS):
             waiting = reference.background_map(self.entries, wrapped=row)
             self.assertEqual(waiting[row], splash[row])
             self.assertTrue(all(tile < reference.TILE_STAR for tile in waiting[row]), row)
         self.assertEqual(drawn[reference.LIST_MAP_ROW:], listing[:reference.MAP_ROWS - reference.LIST_MAP_ROW])
-        # The settled view is the list alone, so every menu frame is unchanged.
+        # Why: the settled view is the list alone, so every menu frame stays unchanged.
         self.assertEqual(reference.tilemap(self.entries), listing)
         with self.assertRaises(ValueError):
             reference.tilemap(self.entries, scy=4)
         with self.assertRaises(ValueError):
             reference.background_map(self.entries, wrapped=reference.WRAPPED_ROWS + 1)
-        # The schedule: every fade step in order, then the slide, from the frame
-        # number alone. No frame number is named here that the constants do not give.
+        # Why: derive every frame number of the schedule (each fade step in order,
+        # then the slide) from the constants, never from a literal.
         steps = [reference.splash_state(frame * reference.FADE_HOLD)[0] for frame in range(len(reference.FADE))]
         self.assertEqual(steps, list(reference.FADE))
         for number in range(reference.FADE_FRAMES):
@@ -291,9 +267,6 @@ class Layout(unittest.TestCase):
             palette, scy, wrapped = reference.splash_state(reference.FADE_FRAMES + step - 1)
             self.assertEqual((palette, scy), (reference.FADE[-1], reference.SLIDE_STEP * step))
             self.assertEqual(wrapped, min(step, reference.WRAPPED_ROWS))
-        # Each wrapped row is drawn on the slide frame that first counts it, after
-        # its splash row has left the top of the screen and before the list row it
-        # carries reaches the bottom.
         for row in range(reference.WRAPPED_ROWS):
             drawing = next(number for number in range(reference.SETTLED_FRAME + 1)
                            if reference.splash_state(number)[2] == row + 1)
@@ -301,8 +274,6 @@ class Layout(unittest.TestCase):
             self.assertGreater(top, row)
             self.assertLessEqual(top + reference.ROWS, reference.MAP_ROWS + row)
         self.assertEqual(reference.splash_state(reference.SETTLED_FRAME)[1], reference.SETTLED_SCY)
-        # A press skips in at most two frames, each of them a frame of the
-        # schedule, the last settled, and no frame draws more than SKIP_ROWS.
         for number in range(reference.SETTLED_FRAME + 1):
             shown = reference.skip_schedule(number)
             self.assertLessEqual(len(shown), 2, number)
@@ -315,20 +286,17 @@ class Layout(unittest.TestCase):
             self.assertEqual(drawn, reference.WRAPPED_ROWS, number)
         with self.assertRaises(ValueError):
             reference.splash_state(-1)
-        # The splash is the cold boot's alone: the catalogue must list at boot
-        # and no selection can have happened since reset.
         self.assertTrue(reference.splash_at_boot())
         self.assertFalse(reference.splash_at_boot(sdram_ready=False))
         for index in (0, 1, 3, reference.SLOTS, 16):
             self.assertFalse(reference.splash_at_boot(index), index)
         self.assertTrue(reference.splash_at_boot(reference.NO_INDEX))
-        # The first frame is the page alone and the last is the menu itself.
         self.assertEqual(set(reference.expected('splash-0', self.entries)), {0})
         self.assertEqual(reference.expected(f'splash-{reference.SETTLED_FRAME}', self.entries),
                          reference.frame(self.entries))
         self.assertNotEqual(reference.expected(f'splash-{reference.SETTLED_FRAME - 1}', self.entries),
                             reference.frame(self.entries))
-        # The fade is a palette, not a redraw: every shade maps through BGP.
+        # Why: the fade is a palette, not a redraw: every shade maps through BGP.
         cells = reference.tilemap(self.entries, scy=0, wrapped=0)
         bank = reference.bank_tiles()
         for number in range(reference.FADE_FRAMES):
@@ -338,7 +306,7 @@ class Layout(unittest.TestCase):
                 for x in (0, 67, 159):
                     shade = bank[cells[y // 8][x // 8]][y % 8][x % 8]
                     self.assertEqual(pixels[y * reference.WIDTH + x], (palette >> (2 * shade)) & 3, (number, x, y))
-        # The cursor object rides no scroll, so it waits for the settled view.
+        # Why: the cursor object rides no scroll, so it waits for the settled view.
         self.assertEqual(reference.objects(scy=0), [])
         self.assertEqual(reference.objects(scy=reference.SETTLED_SCY), reference.objects())
 
@@ -347,13 +315,12 @@ class Layout(unittest.TestCase):
         plain = reference.frame(self.entries, cursor=4, phase=1)
         bank = reference.bank_tiles()
         top = 8 * (reference.SLOT_ROW + 4)
-        # Column 0 of a slot row is the blank page, so a transparent pointer pixel
+        # Why: column 0 of a slot row is the blank page, so a transparent pointer pixel
         # leaves shade 0 there and an opaque one draws its own shade.
         for y in range(8):
             for x in range(8):
                 self.assertEqual(frame[(top + y) * 160 + x], bank[reference.TILE_POINTER][y][x], (x, y))
         self.assertTrue(any(bank[reference.TILE_POINTER][y][x] == 0 for y in range(8) for x in range(8)))
-        # A phase change moves the pointer's own eight rows and the star cells, nothing else.
         stars = {(row, column) for row, cells in enumerate(reference.tilemap(self.entries, cursor=4))
                  for column, tile in enumerate(cells) if tile >= reference.TILE_STAR}
         allowed = set(range(top, top + 8)) | {8 * row + line for row, _ in stars for line in range(8)}
@@ -380,7 +347,6 @@ class Layout(unittest.TestCase):
         for pixels in frames:
             self.assertEqual(len(pixels), 23040)
             self.assertLessEqual(set(pixels), {0, 1, 2, 3})
-        # The exit-demo game frame: shade 3 exactly on pixel rows 64..71.
         game = frames[fixture.GAME_FRAME]
         self.assertEqual(game, fixture.exit_frame())
         self.assertEqual({y for y in range(144) if game[y * 160]}, set(range(64, 72)))

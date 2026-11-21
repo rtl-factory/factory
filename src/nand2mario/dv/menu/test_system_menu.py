@@ -33,9 +33,9 @@ async def sdram_load(dut, image):
         dut.reset_i.value = 0
         response = await host.exchange(encode_request(CMD_HOLD))
         assert response.ok and response.held
-        await Timer(250_000, unit='ns')  # specified 5038-clock SDRAM initialization
-        # Every byte read by these selections is written through the real UART.
-        # Other game slots remain seeded garbage and are never selected.
+        await Timer(250_000, unit='ns')  # Why: covers the specified 5038-clock SDRAM initialization.
+        # Why: only the bytes these selections read go through the real UART; the other
+        # game slots can stay seeded garbage because they are never selected.
         ranges = ((32768, 65536), (5 * 32768, 7 * 32768), (0x80000, 0x8c000))
         loaded = 0
         for start, end in ranges:
@@ -161,7 +161,7 @@ async def system_menu(dut):
         cocotb.log.info('MENU_FRAME %s index=%d sha256=%s', label, consumed, record['sha256'])
 
     try:
-        # LCD startup displays the initial fade state before the first
+        # Why: LCD startup displays the initial fade state before the first
         # WaitVBlank loop. Thereafter the donor's numbered schedule applies.
         await next_frame('lcd-start', reference.expected('splash-0', entries))
         for number in range(reference.SETTLED_FRAME + 1):
@@ -197,17 +197,14 @@ async def system_menu(dut):
         await tap(0x10, 'refused', new_result=2, new_index=3)
         await tap(0x04, 'up-with-message', 2)
         await tap(0x04, 'up-exit-demo', 1)
-        # Cross the automatic cursor/star phase boundary with no input.
         while menu_number < 17:
             await menu_frame(f'phase-{menu_number + 1}')
-        # The built direct game shows the independently specified solid bar.
         await FallingEdge(dut.clk_i)
         dut.buttons_i.value = 0x10
         await next_frame('exit-demo', fixture.exit_frame())
         await FallingEdge(dut.clk_i)
         dut.buttons_i.value = 0
         await next_frame('exit-demo-idle', fixture.exit_frame())
-        # Start is consumed by the actual game, which writes the exit ABI.
         await FallingEdge(dut.clk_i)
         dut.buttons_i.value = 0x80
         await next_frame('returned-menu', reference.frame(entries))
@@ -216,7 +213,7 @@ async def system_menu(dut):
         menu_number, cursor, result, index = 0, 0, 0, 1
         await menu_frame('returned-idle')
         assert len(resets) == 2, ('direct selection and return resets', resets)
-        # The owner's 64 KiB fixture selects bank 2 and executes its exit
+        # Why: the owner's 64 KiB fixture selects bank 2 and executes its exit
         # code there. Returning therefore proves both image slots copied.
         for number in range(1, 6):
             await tap(0x08, f'mbc1-down-{number}', number)

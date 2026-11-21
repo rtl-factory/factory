@@ -66,7 +66,7 @@ class Bench:
         """One system edge with the given stimulus; returns the read byte."""
         d = self.dut
         await FallingEdge(d.clk_i)
-        # The bench plays the timer: a free-running divider whose bit 6
+        # Why: the bench plays the timer: a free-running divider whose bit 6
         # falling edge is the shift clock pulse on every 128th tick.
         d.shift_clock_i.value = int(tick and self.model.shift_clock)
         address = write[0] if write else read
@@ -117,7 +117,7 @@ class Bench:
         return await self.edge(tick=tick, read=address)
 
     async def start(self, byte, control=0x81):
-        # The shift clock is free running; align it so the first shift
+        # Why: the shift clock is free running; align it so the first shift
         # lands BIT_PERIOD ticks after the SC write.
         while self.model.prescale:
             await self.edge(tick=True)
@@ -137,7 +137,6 @@ async def serial_contract(dut):
     await RisingEdge(dut.clk_i)
     await b.reset()
 
-    # Reset values, the address claim, and the SC read mask.
     assert (await b.read(SB), await b.read(SC)) == (0x00, 0x7E), 'reset values'
     for address in UNCLAIMED:
         await b.read(address)
@@ -153,13 +152,13 @@ async def serial_contract(dut):
     await b.write(SB, 0x3C)
     assert (await b.read(SB), await b.read(SC)) == (0x3C, 0x7E)
 
-    # Closed-form transfer: one shift every 128 ticks, ones shifted in, the
+    # Ref: Pan Docs, serial transfer: with the internal clock one bit shifts every 128 ticks, ones shift in, the
     # eighth shift completes 1024 ticks after the SC write with one pulse,
     # the transmitted byte, SC bit 7 clear and SB all ones.
     await b.start(0xA5)
     assert (await b.read(SB), await b.read(SC)) == (0xA5, 0xFF)
     for k in range(1, 8):
-        await b.ticks(BIT_PERIOD - 1)                    # reads are not ticks
+        await b.ticks(BIT_PERIOD - 1)                    # Why: reads are not ticks.
         assert await b.read(SB) == shifted(0xA5, k - 1), ('before shift', k)
         await b.ticks(1)
         assert await b.read(SB) == shifted(0xA5, k), ('after shift', k)
@@ -168,15 +167,13 @@ async def serial_contract(dut):
     await b.ticks(BIT_PERIOD - 1)
     assert len(b.completions) == 0, 'no completion before the 1024th tick'
     await b.ticks(1)
-    await b.edge()                                   # the pulse cycle
+    await b.edge()
     assert len(b.completions) == 1 and b.completions[0][1] == 0xA5, b.completions
     assert (await b.read(SB), await b.read(SC)) == (0xFF, 0x7F)
     await b.ticks(2 * BYTE_PERIOD)
     assert len(b.completions) == 1, 'a completed transfer does not repeat'
     assert int(dut.tx_data_o.value) == 0xA5, 'tx_data holds the last byte'
 
-    # Idle edges do not advance; only ticks do. The real 24-edge spacing
-    # gives the same 1024-tick byte.
     await b.start(0x5A)
     for _ in range(3 * BIT_PERIOD):
         await b.edge()
@@ -187,7 +184,7 @@ async def serial_contract(dut):
     await b.edge()
     assert len(b.completions) == 2 and b.completions[1][1] == 0x5A
 
-    # External clock: the enable stays set, nothing shifts, software clears it.
+    # Ref: Pan Docs, serial transfer: with the external clock and no partner nothing shifts; the enable stays set until software clears it.
     await b.start(0x69, 0x80)
     await b.ticks(2 * BYTE_PERIOD)
     assert (await b.read(SB), await b.read(SC)) == (0x69, 0xFE), 'external clock waits'
@@ -197,9 +194,6 @@ async def serial_contract(dut):
     await b.ticks(BYTE_PERIOD)
     assert len(b.completions) == 2
 
-    # Cancel mid-transfer: three shifts happened, no completion; a restart
-    # mid-transfer completes eight shift clocks after the second write with the bits
-    # shifted from the restart; an SB write mid-transfer replaces the value.
     await b.start(0xA5)
     await b.ticks(3 * BIT_PERIOD + 5)
     await b.write(SC, 0x01)
@@ -208,10 +202,10 @@ async def serial_contract(dut):
     assert len(b.completions) == 2, 'a cancelled transfer never completes'
     await b.start(0x0F)
     await b.ticks(5 * BIT_PERIOD + 7)
-    await b.write(SC, 0x81)                          # restart with SB = shifted(0x0F, 5)
+    await b.write(SC, 0x81)
     restart_value = shifted(0x0F, 5)
     assert await b.read(SB) == restart_value
-    # The restart clears the bit count but not the free-running clock, so
+    # Why: the restart clears the bit count but not the free-running clock, so
     # the byte completes 7 ticks sooner than a phase-aligned start.
     await b.ticks(BYTE_PERIOD - 7 - 1)
     assert len(b.completions) == 2
@@ -220,20 +214,17 @@ async def serial_contract(dut):
     assert len(b.completions) == 3 and b.completions[2][1] == restart_value
     await b.start(0xF0)
     await b.ticks(2 * BIT_PERIOD)
-    await b.write(SB, 0x0F)                          # the remaining six bits come from 0x0F
+    await b.write(SB, 0x0F)                          # Why: the remaining six bits come from 0x0F.
     await b.ticks(6 * BIT_PERIOD)
     await b.edge()
     assert len(b.completions) == 4 and b.completions[3][1] == ((0xF0 >> 6) << 6 | (0x0F >> 2)) & 0xFF
-    # An SB write on the shift tick wins; the shifted-out bit was the old bit 7.
     await b.start(0x80)
     await b.ticks(BIT_PERIOD - 1)
-    await b.write(SB, 0x00, tick=True)               # shift tick: old bit 7 (1) goes out
+    await b.write(SB, 0x00, tick=True)
     assert await b.read(SB) == 0x00
     await b.ticks(7 * BIT_PERIOD)
     await b.edge()
     assert len(b.completions) == 5 and b.completions[4][1] == 0x80
-    # An SC write on the completing tick: the completion still happens and
-    # the written control bits replace the cleared enable (restart).
     await b.start(0x81)
     await b.ticks(BYTE_PERIOD - 1)
     await b.write(SC, 0x81, tick=True)
@@ -242,7 +233,6 @@ async def serial_contract(dut):
     assert await b.read(SC) == 0xFF, 'the same-edge SC write restarts'
     await b.write(SC, 0x00)
 
-    # Reset mid-transfer cancels it.
     await b.start(0x3C)
     await b.ticks(4 * BIT_PERIOD)
     await b.reset()
@@ -250,8 +240,6 @@ async def serial_contract(dut):
     await b.ticks(BYTE_PERIOD)
     assert len(b.completions) == 6
 
-    # Seeded random traffic against the model, then steered transfer
-    # episodes with a perturbation each, counting completions.
     for _ in range(1500):
         roll = b.rng.random()
         tick = b.rng.random() < 0.5
