@@ -7,9 +7,9 @@ How the toolchain is built, against its [requirements](prd.md). Decisions: ADR 0
 | Part | Role |
 |---|---|
 | Versions file (`cfg/toolchain.json`) | The single source of every pinned tool version, install location and checksum; Python packages are pinned in `tools/sim/requirements.txt` |
-| Readiness check (`tools/toolchain/check.py`) | Reads the versions file; prints PASS, WARN or FAIL per tool with the fix; exit code is nonzero on any FAIL; never changes the host |
+| Readiness check (`tools/toolchain/check.py`) | Reads the versions file; prints PASS, WARN or FAIL per tool with the fix (`--tool oss-cad-suite` or `--tool quartus` checks one); exit code is nonzero on any FAIL; never changes the host |
 | Install procedure (this spec, Install) | Verbatim, checksum-pinned steps per tool for a Linux host |
-| Cloud session hook (`.claude/hooks/session-start.sh`) | Installs the pinned Quartus at session start in a cloud agent session, fetched from private storage named by an environment variable |
+| Cloud session hook (`.claude/hooks/session-start.sh`) | Installs the pinned OSS CAD Suite and Quartus at session start in a cloud agent session; Quartus is fetched from private storage named by an environment variable |
 
 ## Versions
 
@@ -18,7 +18,7 @@ How the toolchain is built, against its [requirements](prd.md). Decisions: ADR 0
 | Verilator | 5.052 | Built from the upstream tag; pinned in `cfg/toolchain.json`; cocotb needs 5.036 or newer; 5.054 is newer but unproven here |
 | cocotb | 2.1.0 | pip, pinned with the other simulation packages in `tools/sim/requirements.txt`; a coverage library for functional coverage is chosen in the build issue |
 | Python | 3.12 or newer | |
-| Yosys, SymbiYosys and solvers | one dated OSS CAD Suite release (to verify) | One bundle keeps Yosys, SymbiYosys and the SMT solvers mutually compatible |
+| Yosys, SymbiYosys, solvers and yosys-slang | OSS CAD Suite `2026-11-01` (Yosys 0.70+286, SymbiYosys 0.70, Yices 2.7.0) | One dated bundle keeps Yosys, SymbiYosys, the solvers and the yosys-slang SystemVerilog front end mutually compatible; pinned by release date and SHA-256 in `cfg/toolchain.json` |
 | Quartus Prime Lite | 25.1std.0 Build 1129 | Proven for both boards in nand2anything |
 
 Quartus files, downloaded in a browser from Altera's *Quartus Prime Lite 25.1 for Linux* page, "Individual Files" tab (scripted downloads are refused):
@@ -51,6 +51,15 @@ A first install takes about three minutes (about 40 s download, 2 min install, 9
 
 Known host issues: a `setlocale` warning needs an `en_US.UTF-8` locale; on Arch, `quartus_map` and friends need `libxcrypt-compat`.
 
+## Install (OSS CAD Suite)
+
+1. Download `oss-cad-suite-linux-x64-20261101.tgz` from the `2026-11-01` release of `YosysHQ/oss-cad-suite-build` on GitHub (the URL is in `cfg/toolchain.json`; about 750 MB) and check it with `sha256sum` against the pin.
+2. Unpack it into the home directory: `tar -xzf oss-cad-suite-linux-x64-20261101.tgz -C ~` gives `~/oss-cad-suite/` (about 2.5 GB).
+3. Do not add `~/oss-cad-suite/bin` to `PATH`: the suite carries its own Verilator, Python and cocotb, which would shadow the pinned ones. The [formal runner](../fv/spec.md) calls `~/oss-cad-suite/bin/sby` directly, and the suite's wrappers find their own tools.
+4. `python3 tools/toolchain/check.py --tool oss-cad-suite` checks the release stamp (`~/oss-cad-suite/VERSION`), the Yosys version, `sby`, `yosys-smtbmc`, `yosys-abc` and `yices-smt2`, and that the `slang` plugin loads.
+
+The cloud session hook runs these steps when the check fails (about 45 s), before the Quartus steps; a failure is logged and does not stop the Quartus install. The `l0` CI job runs steps 1 and 2 on every run.
+
 ## Install (Verilator, CI)
 
 The `l0` CI job ([ci-levels.md](../../bkm/workflow/ci-levels.md)) builds Verilator from the pinned tag on Ubuntu 24.04 (`bison`, `flex`, `libfl-dev`, `help2man`, `zlib1g-dev`; `autoconf`, `./configure --prefix=~/verilator`, `make`, `make install`) and caches the install by the pinned tag, so only the first run after a pin change rebuilds it. The same steps install it on a Linux host. The job also installs `liblz4-dev` (FST waveform targets) and, for the nand2doom C-program targets, `gcc-riscv64-unknown-elf` and `picolibc-riscv64-unknown-elf` from Ubuntu's archive.
@@ -69,5 +78,4 @@ On the board host: a udev rule granting the Altera USB devices (vendor `09fb`) t
 ## Open
 
 - Which coverage library the cocotb testbenches use for functional coverage.
-- Which OSS CAD Suite release to pin.
 - The mapping of each tool to regression levels, added to `wiki/bkm/workflow/ci-levels.md` once the tools are installed.

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Toolchain readiness check: reads cfg/toolchain.json and reports PASS, WARN
-or FAIL per tool, with the fix. Never changes the host. Exit status is
+or FAIL per tool (OSS CAD Suite, Quartus), with the fix. Never changes the host. Exit status is
 nonzero on any FAIL; READY is printed when nothing fails.
 
-    python3 tools/toolchain/check.py [--config cfg/toolchain.json] [--json]
+    python3 tools/toolchain/check.py [--config cfg/toolchain.json] [--json] [--tool NAME]
 
 Spec: wiki/tools/toolchain/spec.md.
 """
@@ -21,6 +21,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = ROOT / "cfg" / "toolchain.json"
 SPEC = "wiki/tools/toolchain/spec.md (Install, Quartus)"
+FORMAL_SPEC = "wiki/tools/toolchain/spec.md (Install, OSS CAD Suite)"
 
 
 def run(command: list[str], timeout: int = 120) -> tuple[int, str]:
@@ -68,16 +69,61 @@ def check_quartus(pin: dict, *, runner=run, which=shutil.which) -> dict:
     return dict(result, status="PASS", found=f'{found} with {", ".join(pin["families"])}')
 
 
-def check(config: dict, *, runner=run, which=shutil.which) -> list[dict]:
-    return [check_quartus(config["quartus"], runner=runner, which=which)]
+def read_stamp(path: Path) -> str | None:
+    try:
+        return path.read_text().strip()
+    except OSError:
+        return None
+
+
+def check_oss_cad_suite(pin: dict, *, runner=run, is_file=os.path.isfile, read=read_stamp) -> dict:
+    """The pinned OSS CAD Suite: its release stamp, Yosys version, formal tools
+    and the SystemVerilog front-end plugin. Only the install directory is used,
+    never PATH, because the suite also ships its own Verilator and Python."""
+    result = {"tool": "oss-cad-suite", "want": f'{pin["version"]} (Yosys {pin["yosys"]}, slang)'}
+    root = Path(pin["install_dir"]).expanduser()
+    fix = (f'install OSS CAD Suite {pin["version"]} per {FORMAL_SPEC}, '
+           "or rerun .claude/hooks/session-start.sh in a cloud session")
+    stamp = read(root / "VERSION")
+    if stamp is None:
+        return dict(result, status="FAIL", found=f"not installed in {root}", fix=fix)
+    if stamp != pin["version"].replace("-", ""):
+        return dict(result, status="FAIL", found=f"release {stamp}", fix=fix)
+    missing = [tool for tool in ["yosys"] + pin["tools"] if not is_file(str(root / "bin" / tool))]
+    if missing:
+        return dict(result, status="FAIL", found=f"release {stamp}; missing {', '.join(missing)}", fix=fix)
+    status, text = runner([str(root / "bin" / "yosys"), "-V"])
+    match = re.search(r"Yosys\s+(\S+)", text)
+    found = match.group(1) if match else "unknown"
+    if status != 0 or found != pin["yosys"]:
+        return dict(result, status="FAIL", found=f"Yosys {found}", fix=fix)
+    for plugin in pin["plugins"]:
+        status, text = runner([str(root / "bin" / "yosys"), "-q", "-m", plugin, "-p", f"help read_{plugin}"])
+        if status != 0:
+            return dict(result, status="FAIL", found=f"Yosys {found}; plugin {plugin} does not load", fix=fix)
+    return dict(result, status="PASS", found=f'{pin["version"]} (Yosys {found}, {", ".join(pin["plugins"])})')
+
+
+TOOLS = ("oss-cad-suite", "quartus")
+
+
+def check(config: dict, *, runner=run, which=shutil.which, tools=TOOLS) -> list[dict]:
+    results = []
+    if "oss-cad-suite" in tools:
+        results.append(check_oss_cad_suite(config["oss_cad_suite"], runner=runner))
+    if "quartus" in tools:
+        results.append(check_quartus(config["quartus"], runner=runner, which=which))
+    return results
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--json", action="store_true", help="print the results as JSON")
+    parser.add_argument("--tool", choices=TOOLS, action="append",
+                        help="check only this tool (repeatable); default every tool")
     args = parser.parse_args(argv)
-    results = check(json.loads(args.config.read_text()))
+    results = check(json.loads(args.config.read_text()), tools=args.tool or TOOLS)
     failed = any(r["status"] == "FAIL" for r in results)
     if args.json:
         print(json.dumps({"ready": not failed, "tools": results}, indent=2))

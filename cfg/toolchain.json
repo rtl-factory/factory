@@ -5,6 +5,15 @@
     "tag": "v5.052",
     "repository": "https://github.com/verilator/verilator"
   },
+  "oss_cad_suite": {
+    "version": "2026-11-01",
+    "url": "https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2026-11-01/oss-cad-suite-linux-x64-20261101.tgz",
+    "sha256": "c61fb5b91c72ecb1f2a61b166d65fd387d5ad51b12476078e96ef8db1c6f37a3",
+    "install_dir": "~/oss-cad-suite",
+    "yosys": "0.70+286",
+    "tools": ["sby", "yosys-smtbmc", "yosys-abc", "yices-smt2"],
+    "plugins": ["slang"]
+  },
   "quartus": {
     "version": "25.1std.0 Build 1129",
     "edition": "Lite",
