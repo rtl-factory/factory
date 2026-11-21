@@ -196,15 +196,17 @@ CRC32 is IEEE reflected `0xedb88320`, init and final XOR `0xffffffff`
 whole clocks plus a remainder fed to the common PHYs' fractional accumulator
 ([fractional period](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/uart/HAS.md#fractional-period)), so the
 average rate is exact. `n2d_system` exposes `UART_BAUD` (default 1 Mbaud: the
-DE10-Lite and simulation fixtures). The DE2-115 selects `N2D_UART_LOAD_BAUD`,
-**3 Mbaud** (8 1/3 clocks/bit) for the whole link.
+simulation fixtures). Both board tops select `N2D_UART_BOARD_BAUD`,
+**2 Mbaud** (12 1/2 clocks/bit), for the whole link: the factory board rate,
+the same on every board and project (issue #129).
 `src/nand2doom/cfg/uart.json` records `board_baudrates`; every host `--baud`
 accepts a board name.
 
-3 Mbaud is the FT232R maximum and an exactly generated rate (3 MHz /
-(n + k/8), n ≥ 2, plus 3 and 2 Mbaud). Integer-divisor rates 3.125 Mbaud and
-2.083 Mbaud sit 4.2% from the nearest FT232R rate, too close to the last-bit
-edge.
+2 Mbaud is an exactly generated FT232R rate (3 MHz / (n + k/8), n ≥ 2, plus
+3 and 2 Mbaud) that the common USB-to-UART adapters (FT232R, FT2232H,
+CP2102N, CH340) all reach. Integer-divisor rates 3.125 Mbaud and 2.083 Mbaud
+sit 4.2% from the nearest FT232R rate, too close to the last-bit edge, so the
+board rate needs the fractional accumulator at 25 MHz.
 
 ### Streaming load session
 
@@ -244,8 +246,8 @@ CRC-32.
 - **Queue.** Two 1 KiB slots in one 512x32 `n2a_sdp_ram`; a slot is reserved
   on a good header; a frame finding both full is dropped without reply. Only
   CRC-valid frames do memory work, and only in maintained Halt (else
-  not-halted). No credit gates transmission (a 1 KiB frame is ~87,000 clocks
-  at 3 Mbaud); only a Digest makes the host wait for its reply.
+  not-halted). No credit gates transmission (a 1 KiB frame is ~130,000 clocks
+  at 2 Mbaud); only a Digest makes the host wait for its reply.
 - **Commit.** Ascending eight-word transactions through the unchanged
   `n2d_debug_memory_adapter`; a short final word uses low byte enables. Grant
   loss, word error or an `OP_TIMEOUT_CYCLES` timeout aborts, waits for
@@ -306,8 +308,8 @@ The scanned palette view exists only for the endpoint; the CPU map has no
   it, and it has priority over the CPU, which waits that one cycle.
 - **CPU cost.** The endpoint paces live reads 64 clocks apart, so the CPU
   loses at most one framebuffer or palette port cycle per 64 clocks. SDRAM,
-  the caches and VGA scanout are untouched. At 3 Mbaud a 64,000-byte frame
-  plus the palette is about 0.22 s on the wire, about 4.5 fps. At 1 Mbaud it
+  the caches and VGA scanout are untouched. At the 2 Mbaud board rate a 64,000-byte frame
+  plus the palette is about 0.33 s on the wire, about 3 fps. At 1 Mbaud it
   is about 0.65 s.
 - **Assertions.** No byte reaches the n2d routers during an endpoint frame.
   No other path requests memory while the port is busy. A release never
@@ -436,9 +438,9 @@ stays in reset where the scan ports are tied idle.
 
 ## Design choices
 
-- **3 Mbaud load rate on the DE2-115**, the FT232R maximum and an exactly
-  generated rate, with 2 Mbaud as the fallback ([link rate](#link-rate),
-  budget below).
+- **2 Mbaud on both boards**, the factory board rate shared with nand2mario
+  (issue #129): a wider bit-timing margin than 3 Mbaud (budget below) and one
+  rate for every board and project, for about 50 s more Doom wire time.
 - **Bulk and stream as routers in front of the unchanged version-1 engine**,
   so the engine and its atomic transactions are reused
   ([bulk](#bulk-wire-extension), [stream](#streaming-load-session)).
@@ -465,10 +467,10 @@ four tolerance corners:
 | 2 Mbaud (500 ns) | Device receive | 220.0 ns | 212.0 ns | 42% |
 | 2 Mbaud | Host receive | 188.3 ns | 180.8 ns | 36% |
 
-The load rate stays 3 Mbaud (Doom manifest wire time 98.9 s, plus USB
-scheduling and one 7.3-million-word digest scan). If bring-up shows errors
-resends cannot absorb, the fallback is exactly 2 Mbaud by changing
-`N2D_UART_LOAD_BAUD` alone (148 s wire time).
+The board rate is 2 Mbaud (Doom manifest wire time 148 s, plus USB
+scheduling and one 7.3-million-word digest scan). 3 Mbaud would load in
+98.9 s with the smaller host-receive margin above; it is a one-constant
+change (`N2D_UART_BOARD_BAUD`) but would split the factory rate.
 
 ## Verification
 

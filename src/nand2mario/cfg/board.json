@@ -5,9 +5,9 @@
   "load": ["{python}", "src/nand2mario/scripts/board/n2m_board.py", "load", "{program}",
            "--board", "{board}", "--port", "{port}", "--baud", "{baud}", "--yes"],
   "boards": {
-    "de10_lite": {"idcode": "031050DD", "baud": 115200,
+    "de10_lite": {"idcode": "031050DD", "baud": 2000000,
                   "sof": "workdir/quartus/n2m_de10_lite/output_files/n2m_de10_lite.sof"},
-    "de2_115": {"idcode": "020F70DD", "baud": 115200,
+    "de2_115": {"idcode": "020F70DD", "baud": 2000000,
                 "sof": "workdir/quartus/n2m_de2_115/output_files/n2m_de2_115.sof"}
   }
 }

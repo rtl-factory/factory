@@ -133,7 +133,7 @@ class LoadTests(unittest.TestCase):
         self.assertEqual((0, ""), (code, err))
         argv = started[0].argv
         self.assertEqual(["src/nand2mario/scripts/board/n2m_board.py", "load", image.name, "--board", "de10_lite",
-                          "--port", "/dev/ttyUSB0", "--baud", "115200", "--yes"], argv[1:])
+                          "--port", "/dev/ttyUSB0", "--baud", "2000000", "--yes"], argv[1:])
         self.assertEqual(ROOT, started[0].kwargs["cwd"])
         self.assertEqual(["segment 1 loaded", "done"], lines[1:])
 

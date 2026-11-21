@@ -20,7 +20,7 @@ A Game Boy-compatible system (LR35902 CPU, memory map, cartridge mapper, timer, 
 | video | `rtl/video/` | The PPU (registers, timing, window, objects, background, mix) and the display tier that stores complete frames and scans them out 3x scaled on 640x480 VGA through the common raster timing and RAM; also the frame snapshot |
 | dma | `rtl/dma/` | OAM DMA |
 | storage | `rtl/storage/` | The SDRAM controller and package (adapted under their MIT notice) and the SDRAM cartridge backing |
-| uart | `rtl/uart/` | The UART cartridge loader over the common byte PHY; its host side is the script `scripts/board/cart_loader.py` |
+| uart | `rtl/uart/` | The UART cartridge loader over the common byte PHY, at the factory board rate of 2 Mbaud on both boards (12 1/2 clocks per bit at 25 MHz, through the PHY's fractional accumulator; `UART_CLKS_PER_BIT`, `UART_FRAC_NUM`, `UART_FRAC_DEN`); its host side is the script `scripts/board/cart_loader.py` |
 | audio | `rtl/audio/` | The APU: the full DMG sound register behaviour (power control, channel status, length counters, wave RAM) but **no audio output**; the system is silent by design |
 
 The PPU and the DMA are independent rewrites from public Game Boy documentation.

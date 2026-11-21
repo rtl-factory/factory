@@ -7,8 +7,7 @@
 module n2d_system
     import n2d_pkg::*;
 #(
-    // Debug/load UART rate; a board top selects N2D_UART_LOAD_BAUD for fast
-    // streaming loads (wiki/src/nand2doom/rtl/io/mas.md "Link rate").
+    // Debug/load UART rate; the board tops select N2D_UART_BOARD_BAUD (wiki/src/nand2doom/rtl/io/mas.md "Link rate").
     parameter int unsigned UART_BAUD = N2D_UART_BAUD,
     // Framebuffer bank geometry: 320x200 banks, or 160x200 half-width banks
     // (wiki/src/nand2doom/rtl/video/mas.md). Board tops select it.

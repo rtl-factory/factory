@@ -277,13 +277,13 @@ class BaudOptionTests(unittest.TestCase):
     """Every n2d host tool opens the port at the loaded image's rate."""
 
     def test_board_names_and_integers(self):
-        self.assertEqual(host.baud_value("de2_115"), 3_000_000)
-        self.assertEqual(host.baud_value("de10_lite"), 1_000_000)
+        self.assertEqual(host.baud_value("de2_115"), 2_000_000)
+        self.assertEqual(host.baud_value("de10_lite"), 2_000_000)
         self.assertEqual(host.baud_value("3000000"), 3_000_000)
         for bad in ("fast", "100", "0x10000000"):
             with self.assertRaises(Exception):
                 host.baud_value(bad)
-        self.assertEqual(host.CONFIG["board_baudrates"]["de2_115"], 3_000_000)
+        self.assertEqual(host.CONFIG["board_baudrates"]["de2_115"], 2_000_000)
 
     def test_control_and_capture_pass_the_rate_to_the_opener(self):
         from src.nand2doom.scripts.host import n2d_control as control
@@ -301,12 +301,12 @@ class BaudOptionTests(unittest.TestCase):
         control.Worker("PORT", .01, 3_000_000, factory=lambda *args: worker_args.append(args))
         plan = subprocess.run([sys.executable, "-S", "-B", str(ROOT / "src/nand2doom/scripts/host/n2d_control.py"),
                                "--baud", "de2_115", "--plan"], capture_output=True, text=True, check=True)
-        self.assertEqual(json.loads(plan.stdout)["baud"], 3_000_000)
+        self.assertEqual(json.loads(plan.stdout)["baud"], 2_000_000)
         args = capture.parser().parse_args(["--manifest", "m", "--output", "o", "--hardware-image", "h",
                                             "--baud", "de2_115"])
-        self.assertEqual(args.baud, 3_000_000)
+        self.assertEqual(args.baud, 2_000_000)
         self.assertEqual(capture.parser().parse_args(
-            ["--manifest", "m", "--output", "o", "--hardware-image", "h"]).baud, 1_000_000)
+            ["--manifest", "m", "--output", "o", "--hardware-image", "h"]).baud, 2_000_000)
 
 
 class OwnedHandleTests(unittest.TestCase):

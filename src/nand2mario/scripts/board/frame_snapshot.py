@@ -2,7 +2,7 @@
 """nand2mario frame snapshot: capture over the UART loader and offline decode.
 
     python3 src/nand2mario/scripts/board/frame_snapshot.py plan [--out PATH]
-    python3 src/nand2mario/scripts/board/frame_snapshot.py capture --port DEVICE [--baud 115200] [--out PATH] [--deadline S]
+    python3 src/nand2mario/scripts/board/frame_snapshot.py capture --port DEVICE [--baud 2000000] [--out PATH] [--deadline S]
     python3 src/nand2mario/scripts/board/frame_snapshot.py decode DUMP [--manifest JSON] [--png PATH] [--vga-png PATH]
     python3 src/nand2mario/scripts/board/frame_snapshot.py gif DUMP... --durations-ms MS... --out PATH [--vga] [--manifests JSON...]
 

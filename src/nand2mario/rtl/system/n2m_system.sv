@@ -46,9 +46,12 @@ module n2m_system #(
     parameter int unsigned DISPLAY = 1,
     // 1: backing contains the pinned 16-slot library; boot its menu on release.
     parameter int unsigned CART_LIBRARY = 0,
-    // Loader UART bit period in clocks (217 is 115200 baud at 25 MHz);
-    // simulation targets shorten it.
-    parameter int unsigned UART_CLKS_PER_BIT = 217
+    // Loader UART bit period: UART_CLKS_PER_BIT + UART_FRAC_NUM/UART_FRAC_DEN
+    // clocks. 12 1/2 is the 2 Mbaud board rate at 25 MHz; simulation targets
+    // shorten it.
+    parameter int unsigned UART_CLKS_PER_BIT = 12,
+    parameter int unsigned UART_FRAC_NUM = 1,
+    parameter int unsigned UART_FRAC_DEN = 2
 ) (
     input  logic                               clk_i,
     input  logic                               reset_i,
@@ -469,7 +472,9 @@ module n2m_system #(
     // Why: the loader runs in the system reset domain because it holds the
     // core in reset while it loads.
     n2m_uart_loader #(
-        .CLKS_PER_BIT (UART_CLKS_PER_BIT)
+        .CLKS_PER_BIT (UART_CLKS_PER_BIT),
+        .FRAC_NUM     (UART_FRAC_NUM),
+        .FRAC_DEN     (UART_FRAC_DEN)
     ) u_loader (
         .clk_i                 (clk_i),
         .reset_i               (reset_i),

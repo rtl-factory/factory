@@ -12,7 +12,7 @@
 `compile` runs the Quartus build (n2m_quartus.py). `program` prints the exact
 quartus_pgm command for the built SOF and runs it only with --yes. `load`
 sends a cartridge image through the UART loader host (cart_loader.py) at the
-board's 115200 baud: without --yes it writes the request frames to a dump
+board's 2 Mbaud: without --yes it writes the request frames to a dump
 under workdir and opens no port. `snapshot` reads back the displayed frame
 through frame_snapshot.py capture; without --yes it writes the planned
 request frames under workdir and opens no port. `joypad`
@@ -233,14 +233,14 @@ def parser() -> argparse.ArgumentParser:
     lo = sub.add_parser("load", help="load a cartridge image over the UART loader (dry-run dump without --yes)")
     lo.add_argument("image", help="cartridge image file")
     lo.add_argument("--port", help="serial device of the 3.3 V USB-to-UART adapter (pyserial)")
-    lo.add_argument("--baud", type=int, default=115200, help="board loader rate (default 115200)")
+    lo.add_argument("--baud", type=int, default=2_000_000, help="board loader rate (default 2000000)")
     lo.add_argument("--dump", default="workdir/n2m_board/load_frames.bin",
                     help="dry-run frame dump below workdir (default workdir/n2m_board/load_frames.bin)")
     lo.add_argument("--no-verify", action="store_true", help="skip the readback comparison")
     lo.add_argument("--yes", action="store_true", help="open the port and load; without it only the dump is written")
     sn = sub.add_parser("snapshot", help="read back the displayed frame over the UART loader (dry run without --yes)")
     sn.add_argument("--port", help="serial device of the 3.3 V USB-to-UART adapter (pyserial)")
-    sn.add_argument("--baud", type=int, default=115200, help="board loader rate (default 115200)")
+    sn.add_argument("--baud", type=int, default=2_000_000, help="board loader rate (default 2000000)")
     sn.add_argument("--out", default="workdir/n2m_board/snapshot",
                     help="capture stem below workdir, .bin and .json (default workdir/n2m_board/snapshot)")
     sn.add_argument("--plan-file", default="workdir/n2m_board/snapshot_frames.bin",

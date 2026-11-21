@@ -18,7 +18,7 @@ map and top-level behaviour; the board tops wrap it with
 
 | Parameter | Default | Meaning |
 | --- | --- | --- |
-| `UART_BAUD` | `N2D_UART_BAUD` (1 Mbaud) | Debug/load UART rate; the DE2-115 top selects `N2D_UART_LOAD_BAUD` (3 Mbaud) ([link rate](../io/mas.md#link-rate)). |
+| `UART_BAUD` | `N2D_UART_BAUD` (1 Mbaud) | Debug/load UART rate; both board tops select `N2D_UART_BOARD_BAUD` (2 Mbaud) ([link rate](../io/mas.md#link-rate)). |
 | `FRAMEBUFFER_FULL_WIDTH` | 1 | Framebuffer bank geometry: 320x200 banks, or 160x200 half-width banks on the DE10-Lite ([video](../video/mas.md#framebuffer-and-palette)). |
 | `DCACHE_WAYS` | 4 | D-cache ways over 512 sets of 16-byte lines: 4 (32 KiB) on the DE2-115, 2 (16 KiB) on the DE10-Lite ([memory](../memory/mas.md#cache-and-line-contracts)). |
 | `DCACHE_PREFETCH_LINES` | 2 | D-cache next-line prefetch buffer lines; 0 disables the prefetch ([memory](../memory/mas.md#next-line-prefetch)). Both board tops pass 2. |
