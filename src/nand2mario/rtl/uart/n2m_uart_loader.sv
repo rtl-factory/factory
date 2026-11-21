@@ -2,7 +2,7 @@
 `include "src/common/rtl/pkg/macros.vh"
 
 // UART cartridge loader: the host side of the nand2mario cartridge slot. It
-// receives checksummed frames over the common 8-N-1 byte PHY, holds and
+// receives checksummed frames as bytes from the UART link, holds and
 // releases the console core's reset, writes image bytes into the cartridge
 // backing through the load port and reads them back, pins and reads back
 // the displayed frame through the display's snapshot port, and answers every
@@ -12,24 +12,23 @@
 // arrive while a frame is executed or answered are dropped and flagged, a
 // framing error or a receive timeout aborts the frame in progress and is
 // flagged in the next response. The loader lives in the system reset domain
-// so it keeps working while it holds the core in reset.
-//
-// reset_i is the synchronous system reset. The common UART PHYs assert it
-// asynchronously by their own contract; because reset_i is a registered
-// system signal whose release is synchronous to clk_i, the mixed use is
-// intended (the same waiver as the Doom and Hack system tops).
-/* verilator lint_off SYNCASYNCNET */
+// so it keeps working while it holds the core in reset. The PHYs and the
+// common UART memory endpoint in front of it are in n2m_uart_link.
 module n2m_uart_loader #(
-    parameter int unsigned CLKS_PER_BIT = 217,
-    parameter int unsigned FRAC_NUM = 0,
-    parameter int unsigned FRAC_DEN = 1,
     // Idle clocks inside a frame after which the partial frame is dropped.
     parameter int unsigned RX_TIMEOUT_CLOCKS = 65536
 ) (
     input  logic                                   clk_i,
     input  logic                                   reset_i,
-    input  logic                                   uart_rx_i,
-    output logic                                   uart_tx_o,
+    // Byte stream from and to the link (receive pulses, transmit handshake).
+    input  logic [7:0]                             rx_byte_i,
+    input  logic                                   rx_valid_i,
+    input  logic                                   rx_error_i,
+    output logic [7:0]                             tx_byte_o,
+    output logic                                   tx_valid_o,
+    input  logic                                   tx_ready_i,
+    // Between frames: no frame received, executed or answered.
+    output logic                                   idle_o,
     // Core reset request: high from an accepted HOLD to an accepted RELEASE.
     output logic                                   hold_o,
     // Reported in every status byte.
@@ -55,9 +54,6 @@ module n2m_uart_loader #(
 
     localparam int unsigned TIMEOUT_WIDTH = $clog2(RX_TIMEOUT_CLOCKS + 1);
     localparam int unsigned RESPONSE_HEADER_BYTES = 7;
-
-    `ASSERT_PARAM(g_invalid_timeout, RX_TIMEOUT_CLOCKS >= 10 * CLKS_PER_BIT,
-        "n2m_uart_loader RX_TIMEOUT_CLOCKS must cover at least one serial frame")
 
     logic        rx_valid, rx_framing;
     logic [7:0]  rx_byte;
@@ -88,37 +84,15 @@ module n2m_uart_loader #(
     logic        snap_read, snap_accept, snap_lost;
     logic [12:0] snap_offset;
 
-    // Why: the PHY busy levels are not consumed: the frame parser follows the byte
-    // pulses and the transmitter handshake.
+    assign rx_byte = rx_byte_i;
+    assign rx_valid = rx_valid_i;
+    assign rx_framing = rx_error_i;
+    assign tx_ready = tx_ready_i;
+    assign tx_byte_o = tx_byte_q;
+    assign tx_valid_o = tx_pending_q;
+    assign idle_o = (state_q == IDLE) && !tx_pending_q;
+
     /* verilator lint_off PINCONNECTEMPTY */
-    n2a_uart_rx #(
-        .CLKS_PER_BIT (CLKS_PER_BIT),
-        .FRAC_NUM     (FRAC_NUM),
-        .FRAC_DEN     (FRAC_DEN)
-    ) u_rx (
-        .clk_i           (clk_i),
-        .reset_i         (reset_i),
-        .rx_i            (uart_rx_i),
-        .byte_o          (rx_byte),
-        .byte_valid_o    (rx_valid),
-        .busy_o          (),
-        .framing_error_o (rx_framing)
-    );
-
-    n2a_uart_tx #(
-        .CLKS_PER_BIT (CLKS_PER_BIT),
-        .FRAC_NUM     (FRAC_NUM),
-        .FRAC_DEN     (FRAC_DEN)
-    ) u_tx (
-        .clk_i        (clk_i),
-        .reset_i      (reset_i),
-        .byte_valid_i (tx_pending_q),
-        .byte_ready_o (tx_ready),
-        .byte_i       (tx_byte_q),
-        .busy_o       (),
-        .tx_o         (uart_tx_o)
-    );
-
     assign buffer_address = index_q[7:0];
     assign buffer_write = (state_q == PAYLOAD) && rx_valid;
     assign buffer_read = state_q == COMMIT_READ;
@@ -389,6 +363,5 @@ module n2m_uart_loader #(
         {snapshot_pinned_i, snapshot_available_i, snapshot_ready_i, snapshot_response_i.valid})
     `ASSERT(snapshot_response_known, clk_i, reset_i,
         !snapshot_response_i.valid || !$isunknown(snapshot_response_i))
-    `ASSERT_KNOWN(uart_rx_known, clk_i, reset_i, uart_rx_i)
+    `ASSERT_KNOWN(rx_valid_known, clk_i, reset_i, {rx_valid_i, rx_error_i, tx_ready_i})
 endmodule
-/* verilator lint_on SYNCASYNCNET */

@@ -13,7 +13,10 @@ errors, the receive timeout and overrun with their sticky flags, a reload
 without reset, and the snapshot commands (pin with and without a frame,
 idempotence, the whole record, range ends, a pin lost under a payload);
 a randomized phase mixes valid and invalid frames and asserts its own
-coverage.
+coverage. The bench then drives the common UART memory endpoint in front of
+the loader (identify, the not-held and range refusals, hold, ROM and RAM
+writes with readback as byte operations on the load port, a loader frame
+carrying the endpoint's start byte in its payload, entry and release).
 """
 import os
 import random
@@ -28,6 +31,7 @@ from ...scripts.board.cart_loader import (CMD_HOLD, CMD_PING, CMD_READ, CMD_RELE
                                   STATUS_NOT_HELD, STATUS_NOT_PINNED, STATUS_OK, address_field, crc16,
                                   decode_response, encode_request, response_total_length)
 from .loader_model import SNAPSHOT_RECORD_BYTES, LoaderModel
+from src.common.scripts.uart_mem import uart_mem as um
 
 CLOCK_PERIOD_NS = 40
 CLKS_PER_BIT, RX_TIMEOUT_CLOCKS = 8, 4000     # Why: must match the registry's parameters for this target.
@@ -556,3 +560,72 @@ async def loader_contract(dut):
     assert b.snap_stalled >= 20, 'the display player stalled the snapshot reads'
     cocotb.log.info('UART loader checks passed seed=%d clocks=%d codes=%s ok_writes=%d ok_reads=%d ok_snap_reads=%d',
                     seed, b.clock, codes, ok_writes, ok_reads, ok_snap_reads)
+    await endpoint_scenario(b)
+    cocotb.log.info('UART memory endpoint checks passed seed=%d clocks=%d', seed, b.clock)
+
+
+async def endpoint_exchange(b, command, address=0, length=0, payload=b'', expected_ops=()):
+    """One common UART memory frame; returns the decoded response after
+    checking the load-port operations it implies."""
+    b.seq = (getattr(b, 'seq', 0) + 1) & 0xFF
+    before, start = len(b.ops), len(b.received)
+    frame = um.encode_request(command, b.seq, address, length, payload)
+    await b.send(frame)
+    deadline = b.clock + BYTE_CLOCKS * (len(frame) + length + 16) + 16 * (length + 4) + 8000
+    total = None
+    while total is None or len(b.received) - start < total:
+        assert b.clock < deadline, ('endpoint response timeout', bytes(x for _, x in b.received[start:]).hex())
+        if total is None and len(b.received) - start >= 6:
+            total = 6 + int.from_bytes(bytes(x for _, x in b.received[start + 4:start + 6]), 'little') + 5
+        await RisingEdge(b.dut.clk_i)
+    response = um.decode_response(bytes(x for _, x in b.received[start:start + total]))
+    assert (response.command, response.seq) == (command, b.seq), response
+    await ClockCycles(b.dut.clk_i, 4)
+    assert b.ops[before:] == list(expected_ops), (hex(address), b.ops[before:before + 4], list(expected_ops)[:4])
+    return response
+
+
+async def endpoint_scenario(b):
+    dut, rng = b.dut, b.rng
+    if b.model.held:
+        await b.exchange(encode_request(CMD_RELEASE), [])
+    assert int(dut.hold_o.value) == 0
+    response = await endpoint_exchange(b, um.IDENTIFY)
+    assert response.status == um.OK
+    identity = um.parse_identity(response.payload)
+    assert (identity.project_id, identity.project, identity.entry, identity.held) == (0x206D326E, 'n2m ', 0x100, False)
+    assert identity.windows == (um.Window(0, ROM_BYTES, 3), um.Window(0x200000, RAM_BYTES, 3)), identity.windows
+    response = await endpoint_exchange(b, um.READ, 0x100, 4)
+    assert response.status == 0x07, response
+    response = await endpoint_exchange(b, um.HOLD)
+    assert response.status == um.OK and int(dut.hold_o.value) == 1
+
+    rom = bytes(rng.randrange(256) for _ in range(64))
+    ram = bytes(rng.randrange(256) for _ in range(8))
+    for base, data, space in ((0x150, rom, 0), (0x200010, ram, 1)):
+        offset = base & 0x1FFFFF
+        writes = [(1, space, offset + i, byte) for i, byte in enumerate(data)]
+        response = await endpoint_exchange(b, um.WRITE, base, len(data), data, writes)
+        assert response.status == um.OK, response
+        reads = [(0, space, offset + i, byte) for i, byte in enumerate(data)]
+        response = await endpoint_exchange(b, um.READ, base, len(data), expected_ops=reads)
+        assert (response.status, response.payload) == (um.OK, data), response
+    response = await endpoint_exchange(b, um.WRITE, 0x200000 + RAM_BYTES - 4, 8, bytes(8))
+    assert response.status == 0x05, response
+    response = await endpoint_exchange(b, um.ENTRY, 0x104)
+    assert response.status == 0x05, response
+
+    # Why: the endpoint claims a frame only at a loader frame boundary, so its
+    # start byte inside a loader payload stays loader data.
+    await b.exchange(encode_request(CMD_HOLD), [])
+    payload = bytes([um.REQUEST_SOF, 0x01, 0x01]) + bytes(rng.randrange(256) for _ in range(5))
+    await b.exchange(encode_request(CMD_WRITE, 0x400, payload))
+    response = await b.exchange(encode_request(CMD_READ, 0x400, length=len(payload)))
+    assert response.payload == payload
+    await b.exchange(encode_request(CMD_RELEASE), [])
+    assert int(dut.hold_o.value) == 1, 'the endpoint hold outlives the loader release'
+
+    response = await endpoint_exchange(b, um.ENTRY, 0x100)
+    assert response.status == um.OK, response
+    response = await endpoint_exchange(b, um.RELEASE)
+    assert response.status == um.OK and int(dut.hold_o.value) == 0
