@@ -7,8 +7,8 @@ the framebuffer port. The host side is the bench library codec."""
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import FallingEdge, RisingEdge, Timer, with_timeout
-from cocotb.utils import get_sim_time
 
+from src.common.dv.uart.uart_wire import UartWire
 from src.nand2doom.dv.memory.sdram_pin_model import WRITE, SdramPinModel
 from src.common.scripts.uart_mem import uart_mem as um
 
@@ -120,6 +120,7 @@ class BoardLink:
         self.dut, self.rx, self.tx = dut, getattr(dut, rx), getattr(dut, tx)
         self.clock, self.reset, self.dqm = getattr(dut, clock), getattr(dut, reset), dqm
         self.bit_ps = 10**12 / baud
+        self.wire = UartWire(rx=self.rx, tx=self.tx, bit_ps=self.bit_ps)
         self.model = SdramPinModel()
         self.received = bytearray()
 
@@ -135,7 +136,7 @@ class BoardLink:
         await Timer(100, unit="ns")
         self.reset.value = 1
         cocotb.start_soon(self._sdram())
-        cocotb.start_soon(self._receiver())
+        self.wire.start_receiver(self.received)
         await Timer(250, unit="us")
         assert int(dut.LEDR.value) & 7 == 7, "PLL/init/halt status after reset"
 
@@ -160,26 +161,8 @@ class BoardLink:
             if beats is not None:
                 cocotb.start_soon(self._read_return(beats))
 
-    async def _receiver(self):
-        while True:
-            await FallingEdge(self.tx)
-            start = get_sim_time(unit="ps")
-            value = 0
-            for bit in range(9):
-                await Timer(start + round((bit + 1.5) * self.bit_ps) - get_sim_time(unit="ps"),
-                            unit="ps")
-                if bit < 8:
-                    value |= int(self.tx.value) << bit
-            assert int(self.tx.value), "UART stop bit"
-            self.received.append(value)
-
     async def send(self, data):
-        start, index = get_sim_time(unit="ps"), 0
-        for value in data:
-            for bit in (0, *((value >> i) & 1 for i in range(8)), 1):
-                self.rx.value = bit
-                index += 1
-                await Timer(start + round(index * self.bit_ps) - get_sim_time(unit="ps"), unit="ps")
+        await self.wire.send(data)
 
     async def response(self):
         while True:

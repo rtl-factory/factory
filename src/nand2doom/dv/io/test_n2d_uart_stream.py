@@ -8,9 +8,9 @@ import zlib
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge, Timer
-from cocotb.utils import get_sim_time
+from cocotb.triggers import ClockCycles, RisingEdge
 
+from src.common.dv.uart.uart_wire import UartWire
 import src.nand2doom.scripts.host.n2d_uart_debug_host as wire
 
 
@@ -37,38 +37,26 @@ class Host:
 
     def __init__(self, dut):
         self.dut = dut
-        self.bit_ps = BIT_PS  # Why: an attribute, not BIT_PS, so the FT232R oscillator-tolerance case can skew it
+        self.wire = UartWire(rx=dut.uart_rx_i, tx=dut.uart_tx_o, bit_ps=BIT_PS,
+                             sample_window_ps=SAMPLE_WINDOW_PS)
         self.rx = bytearray()
         self.cursor = 0
 
+    @property
+    def bit_ps(self) -> float:
+        return self.wire.bit_ps
+
+    @bit_ps.setter
+    def bit_ps(self, value: float) -> None:
+        # Why: a settable rate, so the FT232R oscillator-tolerance case can skew both directions
+        self.wire.bit_ps = value
+
     async def send(self, data: bytes) -> None:
-        start = get_sim_time(unit="ps")
-        index = 0
-        for byte in data:
-            for level in [0] + [(byte >> bit) & 1 for bit in range(8)] + [1]:
-                self.dut.uart_rx_i.value = level
-                index += 1
-                await Timer(start + round(index * self.bit_ps) - get_sim_time(unit="ps"), unit="ps")
+        await self.wire.send(data)
 
     async def receive_loop(self) -> None:
         while True:
-            await FallingEdge(self.dut.uart_tx_o)
-            start = get_sim_time(unit="ps")
-            value = 0
-            for bit in range(10):
-                centre = start + round((bit + 0.5) * self.bit_ps)
-                samples = []
-                for offset in (-SAMPLE_WINDOW_PS, 0, SAMPLE_WINDOW_PS):
-                    await Timer(centre + offset - get_sim_time(unit="ps"), unit="ps")
-                    samples.append(int(self.dut.uart_tx_o.value))
-                assert len(set(samples)) == 1, f"device TX bit {bit} unstable in +/-100 ns window"
-                if bit == 0:
-                    assert samples[0] == 0, "device start bit not low at centre"
-                elif bit == 9:
-                    assert samples[0] == 1, "device stop bit not high at centre"
-                else:
-                    value |= samples[0] << (bit - 1)
-            self.rx.append(value)
+            self.rx.append(await self.wire.receive_byte())
 
     async def take(self, count: int, limit: int) -> bytes:
         for _ in range(limit):

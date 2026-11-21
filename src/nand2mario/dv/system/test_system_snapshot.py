@@ -29,6 +29,8 @@ from ...scripts.board.cart_loader import (CMD_HOLD, CMD_RELEASE, CMD_SNAP_PIN, C
                                   STATUS_NOT_PINNED, decode_response, encode_request, response_total_length)
 from ..video import display_model as dm
 from .test_system import idle_host, load_image, power_up
+from src.common.dv.uart.uart_wire import UartWire
+
 from .test_system_preload import UART_CLKS_PER_BIT, LineHost
 
 CLOCK_PERIOD_NS = 40
@@ -59,18 +61,9 @@ class FastLineHost(LineHost):
         return
 
     async def receiver(self):
-        d = self.dut
-        bit_ns = UART_CLKS_PER_BIT * CLOCK_PERIOD_NS
+        timed = UartWire(tx=self.dut.uart_tx_o, bit_ps=UART_CLKS_PER_BIT * CLOCK_PERIOD_NS * 1000)
         while True:
-            await FallingEdge(d.uart_tx_o)
-            await Timer(bit_ns // 2, unit='ns')
-            assert not int(d.uart_tx_o.value), 'start bit glitch on the loader line'
-            byte = 0
-            for bit in range(8):
-                await Timer(bit_ns, unit='ns')
-                byte |= int(d.uart_tx_o.value) << bit
-            await Timer(bit_ns, unit='ns')
-            assert int(d.uart_tx_o.value), 'loader stop bit low'
+            byte = await timed.receive_byte()
             assert edge_now() <= self.bound, 'finite simulation bound exceeded'
             self.received.append(byte)
 
