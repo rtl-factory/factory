@@ -23,6 +23,14 @@ These workflows run outside the levels; they are workflow rules, not regression 
 - `status-clear` removes `status:` labels from an issue when it closes, and sets `status:triage` when it reopens ([labels.md](labels.md)).
 - `pages` builds the wiki site (`mkdocs build --strict`) on every pull request that touches the wiki, and builds and deploys it on every merge to `main` that does ([wiki-site.md](wiki-site.md)).
 
+## Jobs
+
+| Level | Job | What it runs |
+|---|---|---|
+| L0 | `l0` (`.github/workflows/l0.yml`), on every pull request into `main` or an epic branch and every merge to `main` | the unit tests of every project's scripts and of the tools, and every L0 simulation target (`tools/sim/sim.py test --level L0`) |
+
+L1 to L4 have no job yet: until the L1 job exists, a pull request into `main` runs only L0 in CI.
+
 ## Rules
 
 - Put a check at the lowest level whose runtime fits that level. Why: the faster a failure shows up, the cheaper it is to fix.
@@ -33,4 +41,4 @@ These workflows run outside the levels; they are workflow rules, not regression 
 ## Open
 
 - Runtime budget per level is not yet set.
-- No level has a CI job yet; a self-hosted runner is planned.
+- L1 to L4 have no CI job yet; a self-hosted runner is planned for them.
