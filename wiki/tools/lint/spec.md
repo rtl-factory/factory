@@ -1,6 +1,6 @@
 # Lint: spec
 
-How the comment lint works ([requirements](prd.md)). Which comments to write is in [code comments](../../bkm/writing/code-comments.md).
+How the comment lint works ([requirements](prd.md)). Which comments to write is in [code comments](../../bkm/code-comments.md).
 
 ## Parts
 

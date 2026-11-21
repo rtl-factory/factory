@@ -3,7 +3,7 @@ name: flow
 description: How every change is driven, from alignment to landing on main. Use when starting, continuing or finishing work on an issue or epic, or when unsure what the next step is.
 ---
 
-Every change runs this loop. The rules for each step are in `wiki/bkm/workflow/flow.md`; read it before acting, and follow its Merging section for who may merge.
+Every change runs this loop. The rules for each step are in `wiki/bkm/flow.md`; read it before acting, and follow its Merging section for who may merge.
 
 1. **Align**: a captain and the first mate agree on the outcome (`/grill` if unclear).
 2. **Issue**: the goal becomes labelled GitHub issues, or an epic of sub-issues (`to-issues`). No issue, no change.

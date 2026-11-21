@@ -62,7 +62,7 @@ The cloud session hook runs these steps when the check fails (about 45 s), befor
 
 ## Install (Verilator, CI)
 
-The `l0` CI job ([ci-levels.md](../../bkm/workflow/ci-levels.md)) builds Verilator from the pinned tag on Ubuntu 24.04 (`bison`, `flex`, `libfl-dev`, `help2man`, `zlib1g-dev`; `autoconf`, `./configure --prefix=~/verilator`, `make`, `make install`) and caches the install by the pinned tag, so only the first run after a pin change rebuilds it. The same steps install it on a Linux host. The job also installs `liblz4-dev` (FST waveform targets) and, for the nand2doom C-program targets, `gcc-riscv64-unknown-elf` and `picolibc-riscv64-unknown-elf` from Ubuntu's archive.
+The `l0` CI job ([CI levels](../../bkm/flow.md#ci-levels)) builds Verilator from the pinned tag on Ubuntu 24.04 (`bison`, `flex`, `libfl-dev`, `help2man`, `zlib1g-dev`; `autoconf`, `./configure --prefix=~/verilator`, `make`, `make install`) and caches the install by the pinned tag, so only the first run after a pin change rebuilds it. The same steps install it on a Linux host. The job also installs `liblz4-dev` (FST waveform targets) and, for the nand2doom C-program targets, `gcc-riscv64-unknown-elf` and `picolibc-riscv64-unknown-elf` from Ubuntu's archive.
 
 The other tools' install steps are written by the build issue that installs them.
 
@@ -73,9 +73,9 @@ The other tools' install steps are written by the build issue that installs them
 | DE2-115 | Cyclone IV E EP4CE115F29C7 | On-board USB-Blaster |
 | DE10-Lite | MAX 10 10M50DAF484C7G | On-board USB-Blaster |
 
-On the board host: a udev rule granting the Altera USB devices (vendor `09fb`) to the user; the JTAG daemon runs on that host; `quartus_pgm -l` lists the cable and `quartus_pgm -m jtag -o "p;<file>.sof"` programs. The FTDI serial port needs the `dialout` group. Where builds and programming run is in `wiki/bkm/fpga/fpga.md`.
+On the board host: a udev rule granting the Altera USB devices (vendor `09fb`) to the user; the JTAG daemon runs on that host; `quartus_pgm -l` lists the cable and `quartus_pgm -m jtag -o "p;<file>.sof"` programs. The FTDI serial port needs the `dialout` group. Where builds and programming run is in `wiki/bkm/fpga.md`.
 
 ## Open
 
 - Which coverage library the cocotb testbenches use for functional coverage.
-- The mapping of each tool to regression levels, added to `wiki/bkm/workflow/ci-levels.md` once the tools are installed.
+- The mapping of each tool to regression levels, added to `wiki/bkm/flow.md` once the tools are installed.

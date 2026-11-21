@@ -1,4 +1,4 @@
-# Builds wiki/ into a site; deploys it to GitHub Pages on merges to main (wiki/bkm/workflow/wiki-site.md).
+# Builds wiki/ into a site; deploys it to GitHub Pages on merges to main (wiki/bkm/layout.md).
 name: pages
 
 on:

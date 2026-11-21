@@ -1,7 +1,7 @@
 # nand2mario HAS
 
 !!! note "Seed, not yet a full HAS"
-    This page is the block overview that used to sit in `src/nand2mario/README.md`, rearranged into the HAS sections ([standard documents](../../../bkm/design/standard-docs.md)). The full HAS and the block MASes live in nand2anything and are not ported yet. Sections with no content yet say so.
+    This page is the block overview that used to sit in `src/nand2mario/README.md`, rearranged into the HAS sections ([standard documents](../../../bkm/layout.md#standard-documents)). The full HAS and the block MASes live in nand2anything and are not ported yet. Sections with no content yet say so.
 
 ## Purpose
 

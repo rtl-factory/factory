@@ -1,6 +1,6 @@
 # nand2doom scripts
 
-The `scripts` discipline of nand2doom: host-side code bound to this design. Each script builds for, drives or measures nand2doom, and would be useless without it ([repository layout](../../../bkm/workflow/repo-layout.md)). Code: `src/nand2doom/scripts/<script>/`, with each script's tests in its `tests/` folder.
+The `scripts` discipline of nand2doom: host-side code bound to this design. Each script builds for, drives or measures nand2doom, and would be useless without it ([repository layout](../../../bkm/layout.md#repository-layout)). Code: `src/nand2doom/scripts/<script>/`, with each script's tests in its `tests/` folder.
 
 | Script | What it does |
 |---|---|

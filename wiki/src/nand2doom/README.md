@@ -4,7 +4,7 @@ Bare-metal Doom on our own RV32IM CPU: a six-stage pipelined core with I and D c
 
 ## Pages
 
-Each page sits at the wiki path that mirrors its code ([repository layout](../../bkm/workflow/repo-layout.md)). The [HAS](rtl/has.md) owns the block decomposition, the seams, the address map, clocks and resets and the reuse boundaries with `common`; each block's interface is in its MAS, and the [platform MAS](rtl/platform/mas.md) owns the composition of `n2d_system`.
+Each page sits at the wiki path that mirrors its code ([repository layout](../../bkm/layout.md#repository-layout)). The [HAS](rtl/has.md) owns the block decomposition, the seams, the address map, clocks and resets and the reuse boundaries with `common`; each block's interface is in its MAS, and the [platform MAS](rtl/platform/mas.md) owns the composition of `n2d_system`.
 
 | Block | Spec | Verification plan | Code |
 |---|---|---|---|

@@ -31,7 +31,7 @@ module n2d_ps2_keyboard_fv (
     // receiver's state small.
     n2d_ps2_keyboard #(.FRAME_TIMEOUT_CYCLES(4)) dut (.*);
 
-    // Why: every proof starts from the spec's reset state (wiki/bkm/fv/formal.md).
+    // Why: every proof starts from the spec's reset state (wiki/bkm/fv.md).
     logic init_q = 1'b1;
     always_ff @(posedge clk_i) init_q <= 1'b0;
     always_comb if (init_q) a_start_in_reset: assume (reset_i);

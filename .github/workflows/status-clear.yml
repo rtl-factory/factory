@@ -1,4 +1,4 @@
-# Keeps status: labels for open work only (wiki/bkm/workflow/labels.md):
+# Keeps status: labels for open work only (wiki/bkm/issues.md):
 # removes every status: label when an issue closes, and sets status:triage
 # when one reopens. Closes made by another workflow's GITHUB_TOKEN do not
 # trigger workflows, so those keep their label.

@@ -1,6 +1,6 @@
 # Formal runner: spec
 
-How the runner works, against its [requirements](prd.md). The tool is `tools/fv/fv.py`; it needs the OSS CAD Suite pinned in `cfg/toolchain.json` ([toolchain](../toolchain/spec.md)). How to choose targets and write properties is in the [formal verification BKM](../../bkm/fv/formal.md).
+How the runner works, against its [requirements](prd.md). The tool is `tools/fv/fv.py`; it needs the OSS CAD Suite pinned in `cfg/toolchain.json` ([toolchain](../toolchain/spec.md)). How to choose targets and write properties is in the [formal verification BKM](../../bkm/fv.md).
 
 ## Targets
 
@@ -8,7 +8,7 @@ A target is one SymbiYosys file, `src/<project>/fv/<block>/<target>.sby`, next t
 
 | Field | Meaning |
 |---|---|
-| `# level: L0` | Regression level, `L0` to `L4` ([ci-levels.md](../../bkm/workflow/ci-levels.md)), or `manual` (run only by name) |
+| `# level: L0` | Regression level, `L0` to `L4` ([CI levels](../../bkm/flow.md#ci-levels)), or `manual` (run only by name) |
 | `# timeout: 600` | Time budget in seconds for all the file's tasks together; 600 when absent, and never more |
 
 The `[tasks]` section lists the tasks; by convention `prove` (`mode prove`, engine `abc pdr`) and `cover` (`mode cover`, engine `smtbmc yices`, with a depth). The `[files]` section copies each source to its repository path (`src/...`), so ``` `include ``` paths stay root-relative, and the script reads them with yosys-slang:

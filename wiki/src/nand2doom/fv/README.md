@@ -1,6 +1,6 @@
 # nand2doom FV
 
-The `fv` discipline of nand2doom: property-checker proofs of the blocks where formal pays ([formal verification](../../../bkm/fv/formal.md)). Code: `src/nand2doom/fv/<block>/`, one SymbiYosys file per target, run with `tools/fv` ([formal runner](../../../tools/fv/README.md)).
+The `fv` discipline of nand2doom: property-checker proofs of the blocks where formal pays ([formal verification](../../../bkm/fv.md)). Code: `src/nand2doom/fv/<block>/`, one SymbiYosys file per target, run with `tools/fv` ([formal runner](../../../tools/fv/README.md)).
 
 | Block | FV plan | Target | Level |
 |---|---|---|---|

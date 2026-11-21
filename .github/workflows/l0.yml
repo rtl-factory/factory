@@ -1,4 +1,4 @@
-# L0 regression (wiki/bkm/workflow/ci-levels.md): the comment lint, the scripts'
+# L0 regression (wiki/bkm/flow.md): the comment lint, the scripts'
 # and tools' unit tests, every L0 simulation target and every L0 formal target,
 # on Verilator, cocotb and the OSS CAD Suite at the versions pinned in
 # cfg/toolchain.json and tools/sim/requirements.txt.
