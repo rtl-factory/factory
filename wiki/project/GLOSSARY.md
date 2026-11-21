@@ -139,6 +139,14 @@ _Avoid_: log, journal, notes
 A review of past sessions or a landed epic that traces each mistake or slowdown to its cause in the factory and proposes a fix for each as an issue.
 _Avoid_: postmortem, reflection
 
+**Template**:
+One of the four issue bodies (Enhancement, Bug, BKM, Epic) or the one pull request body in `wiki/bkm/workflow/templates.md`, mirrored in `.github/`. Every issue and pull request uses one.
+_Avoid_: form, issue type
+
+**Blast radius**:
+What else a change can affect beyond its own scope (blocks, interfaces, CI, agents following a changed BKM), and how hard it is to revert. A section of every template.
+_Avoid_: impact, side effects
+
 **Label**:
 A GitHub label named `kind:value`, defined in `.github/labels.json`. Labels are how work is tracked, grouped on dashboards and checked by agents.
 _Avoid_: tag

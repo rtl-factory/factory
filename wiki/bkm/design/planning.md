@@ -52,7 +52,7 @@ How to turn an aligned idea into a written plan (a tool's PRD, an interface sket
 ## Steps: plan work too large for one session
 
 1. Name the destination with the captain: the PRD, the decision or the change this effort is finding its way to. It fixes the scope.
-2. Open a planning issue (`type:spec`): **Destination**; **Notes** (BKMs to follow, standing preferences); **Decisions so far**, one line per closed issue with its link; **Not yet specified**, the in-scope questions you cannot yet state sharply; **Out of scope**.
+2. Open a planning issue (`type:spec`): **Spec references** ([templates.md](../workflow/templates.md)); **Destination**; **Notes** (BKMs to follow, standing preferences); **Decisions so far**, one line per closed issue with its link; **Not yet specified**, the in-scope questions you cannot yet state sharply; **Out of scope**.
 3. Open an issue for each question you can state sharply now, even if you cannot act on it yet; leave the rest in Not yet specified. Label it per [labels.md](../workflow/labels.md) (`type:research` for research and prototypes). Make the planning issue blocked by each, and link order between them with "blocked by". Do not make them sub-issues: the planning issue is not an epic, since decisions land nothing together (ADR 0004).
 4. Resolve one issue per session (research issues may run in parallel): move it to `status:in-progress` per [labels.md](../workflow/labels.md), resolve it by grilling, prototype, research or the work it waits on, post the answer as a comment, close it, and add its line to Decisions so far.
 5. After each, open issues for questions that became sharp, remove them from Not yet specified, and close any issue the answer moved past the destination, with a line in Out of scope.

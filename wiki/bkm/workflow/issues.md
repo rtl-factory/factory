@@ -5,7 +5,7 @@ upstream: mattpocock/skills skills/engineering/to-tickets/SKILL.md @ abeeaf95, m
 
 # Issues and epics
 
-How to write any issue, how to turn an aligned plan, spec or conversation into well-formed issues, when they become an epic, and how to triage an issue until it is `status:ready`. The steps of a change and the epic branch mechanics are in [flow.md](flow.md); label names and moves are in [labels.md](labels.md).
+How to turn an aligned plan, spec or conversation into well-formed issues, when they become an epic, and how to triage an issue until it is `status:ready`. The steps of a change and the epic branch mechanics are in [flow.md](flow.md); label names and moves are in [labels.md](labels.md).
 
 ## Rules
 
@@ -18,7 +18,7 @@ How to write any issue, how to turn an aligned plan, spec or conversation into w
 - Open an epic only when the issues cannot reach `main` one by one: each would break `main` until the others land (ADR 0004). Being related, large or ordered is not enough; link those issues instead. Why: an epic branch drifts from `main` and delays real regression.
 - For a wide mechanical change (rename a shared interface, retype a bus) prefer expand–contract over an epic: an issue that adds the new form beside the old, migrate issues per block each blocked by it, and a contract issue that removes the old form, blocked by every migrate issue. Use an epic only when even the batches cannot stay green alone. Why: expand–contract keeps every step landable on `main`.
 - Make an issue a sub-issue only of an epic. Why: every parent issue is an epic (glossary).
-- Open every issue with the issue body below, whatever route opens it: a plan split, a bug found mid-work, a follow-up from review, an audit log. The one exception is a planning issue, which uses the body in [planning.md](../design/planning.md) because it tracks decisions, not a slice to build. Why: the ready test and the first mate read those headings, and an issue in another shape has to be rewritten before anyone can dispatch it.
+- Open every issue with its template from [templates.md](templates.md), whatever route opens it: a plan split, a bug found mid-work, a follow-up from review, an audit log. Why: the ready test and the first mate read those headings, and an issue in another shape has to be rewritten before anyone can dispatch it.
 - Label every issue you open per [labels.md](labels.md); an epic carries `type:epic`, and each sub-issue carries its own labels. Why: the first mate reads kind and status from labels.
 - An issue **must** pass the ready test below before it moves to `status:ready`. Why: a crewmate is dispatched only on `status:ready` ([flow.md](flow.md)).
 
@@ -26,31 +26,11 @@ How to write any issue, how to turn an aligned plan, spec or conversation into w
 
 An issue is ready when all hold:
 
-- What to build is stated as behaviour, with no decision left that only a captain can make.
+- It uses its template from [templates.md](templates.md) with Spec references filled, and its What to build (Expected behaviour for a bug, What to change for a BKM) is stated as behaviour, with no decision left that only a captain can make.
 - Every acceptance criterion is a check with a pass predicate.
 - Its labels are complete per [labels.md](labels.md), and its "blocked by" links are set.
-- It fits one crewmate, one issue branch and one pull request.
+- It fits one crewmate, one issue branch and one pull request: its size is not `size:xlarge`.
 - For a bug, the failure is reproduced: a failing test, seed, waveform or counterexample is named in the issue.
-
-## Issue body
-
-Every issue uses this body. The templates in `.github/ISSUE_TEMPLATE/` carry the same headings for the web UI; when you open an issue through the API or `gh`, write it yourself.
-
-```markdown
-## What to build
-<the behaviour this issue makes work>
-
-## Reproduce
-<bugs only: the failing test, seed, waveform or counterexample, and how to run it>
-
-## Acceptance criteria
-- [ ] <check with a pass predicate>
-
-## Blocked by
-<#n, or "None"; omit when set as native dependencies>
-```
-
-Keep these headings as written and in this order; drop "Reproduce" when the issue is not a bug. Other sections (Why, Notes, Findings) may sit around them when the issue needs them, but never replace one.
 
 ## Steps: splitting a plan into issues
 
@@ -58,7 +38,7 @@ Keep these headings as written and in this order; drop "Reproduce" when the issu
 2. Look at the current blocks and specs for prefactoring that would make the slices easier.
 3. Draft the slices as a numbered list, each with a title, its blockers and what it delivers. Decide whether the set is an epic (Rules).
 4. If the split came out of an alignment session, show the list to the captain and adjust granularity and blockers until they agree. Within an already-aligned goal, go on and report the split afterwards ([never-block-on-the-human](../principles/never-block-on-the-human.md)).
-5. Open the issues blockers first, each with the issue body (above). For an epic, open the parent with `type:epic` and attach each issue as a sub-issue (`gh issue edit <epic> --add-sub-issue <n>`).
+5. Open the issues blockers first, each with its template from [templates.md](templates.md). For an epic, open the parent with `type:epic` and attach each issue as a sub-issue (`gh issue edit <epic> --add-sub-issue <n>`).
 6. If the source was an existing issue and the set is not an epic, narrow that issue to one slice and link the others with "relates to".
 7. Triage each new issue (next steps).
 
@@ -76,5 +56,5 @@ Keep these headings as written and in this order; drop "Reproduce" when the issu
 
 ## Exit criteria
 
-- Every issue from the source is open, written with the issue body, labelled, linked by its real blockers, and either `status:ready` or waiting in `status:triage` with its open questions written on it.
+- Every issue from the source is open, written with its template, labelled, linked by its real blockers, and either `status:ready` or waiting in `status:triage` with its open questions written on it.
 - An epic exists only where ADR 0004 requires one, with every issue attached as a sub-issue.
