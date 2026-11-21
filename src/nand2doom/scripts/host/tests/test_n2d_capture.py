@@ -98,8 +98,8 @@ class CaptureHostTests(unittest.TestCase):
     def operation(self,device):
         client=uart.Client(device,.1,clock=lambda:device.now,sleep=device.sleep)
         def clock():
-            # Healthy scheduling delay after a fully checked block, outside
-            # the Client transaction. Cleanup must retain its 120s reserve.
+            # Why: a healthy scheduling delay after a fully checked block, outside the
+            # Client transaction, must still leave cleanup its 120 s reserve.
             if device.budget_at==device.reads and not device.pending:
                 device.now=104.95;device.budget_at=None
             return device.now
@@ -286,8 +286,8 @@ class CaptureHostTests(unittest.TestCase):
 
     def test_command_overrun_discards_validated_late_block(self):
         d=Device();op=self.operation(d)
-        # Simulate descheduling after a complete transaction but before its
-        # capture-level post-check. No transport corruption is invented.
+        # Why: descheduling after a complete transaction but before the capture-level
+        # post-check must discard the block; no transport corruption is invented.
         checks=0
         def clock():
             nonlocal checks

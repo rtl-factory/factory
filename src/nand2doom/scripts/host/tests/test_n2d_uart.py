@@ -99,8 +99,8 @@ class UartTests(unittest.TestCase):
         with self.assertRaisesRegex(host.HostError, "device status 0x08; no retry"):
             client.command(wire.CMD_HALT)
         self.assertTrue(client.failed)
-        # Even if the device later stops, no caller can repair that failed
-        # session by Ping, re-Halt or Resume; clock history stays unknown.
+        # Why: even if the device later stops, no caller can repair a failed session by
+        # Ping, re-Halt or Resume, because clock history stays unknown.
         self.assertTrue(fake.halted)
         for command in (wire.CMD_PING, wire.CMD_HALT, wire.CMD_RESUME):
             with self.assertRaisesRegex(host.HostError, "session failed"):
@@ -333,8 +333,9 @@ class ManifestTests(unittest.TestCase):
                                      byte_length=len(data), address=doom.WAD_ADDRESS)
         manifest["segments"].append(dict(address=doom.WAD_ADDRESS, file="fixture.wad",
                                          byte_length=len(data), sha256=digest))
-        # Only fixture byte length/digest are replaced; all provenance fields
-        # still use the production recipe. No downloads or real assets.
+        # Why: only the fixture's byte length and digest are patched, so every
+        # provenance field still comes from the production recipe, with no downloads
+        # or real assets.
         with patch.object(doom, "WAD_SHA256", digest), patch.object(doom, "WAD_BYTE_LENGTH", len(data)):
             self.write_manifest(manifest)
             self.assertEqual(len(host.validate_manifest(self.path).segments), 2)

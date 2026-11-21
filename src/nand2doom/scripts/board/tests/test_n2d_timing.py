@@ -54,7 +54,7 @@ TSV = "\n".join(CLOCK_25 + [
     record("corepath", SLOW, 1, "9.1", "n2d_system:u_system|n2d_rv32im_core:u_core|regs_q.a[0]",
            "n2d_system:u_system|n2d_rv32im_core:u_core|regs_q.pc[9]", CLOCK, CLOCK, "40.0", "30.5", "21",
            "u_system|u_core|lpm_mult:Mult0|mult_core~7"),
-    record("fmax", FAST, CLOCK, "70.0", "70.0", ""),  # Quartus 25.1 appends the note cell
+    record("fmax", FAST, CLOCK, "70.0", "70.0", ""),  # Ref: Quartus 25.1 appends the note cell
     record("domain", FAST, "setup", CLOCK, "4.0", "0.0"),
     record("path", FAST, 1, "4.0", "a", "b", CLOCK, CLOCK, "20.0", "12.0", "3", "a b"),
 ]) + "\n"
@@ -67,11 +67,10 @@ class TimingTests(unittest.TestCase):
         self.assertTrue(text.endswith(SDC.split("derive_pll_clocks\n")[1]))
         self.assertIn("-multiply_by 50 -divide_by 50", text)
         self.assertEqual(1, text.count("create_generated_clock -name $what_if_name"))
-        # The PLL input pin comes from the derived clock, unescaped: an escaped
-        # get_pins pattern matched nothing and Quartus silently kept 25 MHz.
+        # Why: an escaped get_pins pattern matched nothing and Quartus silently kept
+        # 25 MHz, so the PLL input pin must come from the derived clock, unescaped.
         self.assertIn("-source [get_pins [get_clock_info -master_clock_pin $what_if_clock]]", text)
         self.assertNotIn("\\[", text.split("derive_pll_clocks\n")[1].split("# JTAG")[0])
-        # The shipped file itself is never the what-if.
         self.assertNotIn("what_if", SDC)
 
     def test_what_if_rejects_unknown_sdc_and_range(self):
@@ -92,7 +91,6 @@ class TimingTests(unittest.TestCase):
         }
         for (source, target), owner in cases.items():
             self.assertEqual(owner, timing.classify(source, target)[1], (source, target))
-        # A multiplier between core registers is found through the path's nodes.
         self.assertEqual("Multiply", timing.classify(
             "u_system|u_core|regs_q.instruction[3]", "u_system|u_core|regs_q.pc[4]",
             "u_system|u_core|u_decode_alu|lpm_mult:Mult0|mult_core~12")[0])
@@ -105,7 +103,7 @@ class TimingTests(unittest.TestCase):
         self.assertIn("| 1 | -3.500 | 17 | `u_system\\|u_core\\|state_q.pc[3]` | "
                       "`u_system\\|u_icache\\|regs_q.state[1]` | I-cache lookup to state | cache front end |", table)
         self.assertIn("| 2 | -1.000 | 1 | `DRAM_DQ[3]` |", table)
-        self.assertNotIn("| `a` |", table)  # other corners stay in the JSON only
+        self.assertNotIn("| `a` |", table)  # Why: other corners belong in the JSON only
         escaped = CLOCK.replace("|", "\\|")
         self.assertIn(f"| {SLOW} | setup | `{escaped}` | -3.500 | -120.000 |", table)
         self.assertEqual(1, len(result["core_paths"]))
@@ -132,7 +130,7 @@ class TimingTests(unittest.TestCase):
                       "<td>I-cache lookup to state</td>", rendered)
 
     def test_mas_table_rows_match_their_headers(self):
-        # GFM splits table cells on every unescaped pipe, inside backticks too.
+        # Ref: GFM splits table cells on every unescaped pipe, inside backticks too.
         mas = (ROOT / "wiki/src/nand2doom/fpga/de10_lite/board-spec.md").read_text().splitlines()
         width = None
         for line in mas:
@@ -166,7 +164,6 @@ class TimingTests(unittest.TestCase):
 
             config = {"project": "n2d_de2_115", "timeout_seconds": 10}
             with mock.patch.object(timing.quartus, "run", side_effect=fake_sta):
-                # A 25 MHz (40 ns) database requested as the 50 MHz what-if.
                 with self.assertRaisesRegex(ValueError, "analyzed system clock is 25 MHz"):
                     timing.analyze(config, output, 50, 20, "/q/quartus_sh", sta_only=True)
                 self.assertFalse((output / "timing.json").exists())
@@ -180,9 +177,9 @@ class TimingTests(unittest.TestCase):
             timing.parse(TSV + record("bogus", SLOW, "x") + "\n")
         with self.assertRaises(ValueError):
             timing.parse(record("fmax", SLOW, CLOCK, "41.2", "41.2") + "\n")
-        with self.assertRaises(ValueError):  # no analyzed clock record
+        with self.assertRaises(ValueError):
             timing.parse("\n".join(TSV.splitlines()[len(CLOCK_25):]) + "\n")
-        with self.assertRaises(ValueError):  # corners disagree on the clock
+        with self.assertRaises(ValueError):
             timing.parse(TSV + record("clock", FAST, CLOCK, "20.000") + "\n")
 
     def test_plan_writes_nothing_and_needs_no_tool(self):
@@ -204,7 +201,8 @@ class TimingTests(unittest.TestCase):
                                              "--build-dir", "workdir/quartus/n2d_de2_115"]))
         self.assertIn("25 MHz: workdir/quartus/n2d_de2_115", stdout.getvalue())
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            # The build directory is analysis input only: one clock, no compile, inside workdir.
+            # Why: the build directory is analysis input only, so each plan needs one clock,
+            # no compile, and a path inside workdir.
             self.assertEqual(1, timing.main(["--plan", "--board", "de2_115", "--sta-only",
                                              "--build-dir", "workdir/quartus/n2d_de2_115"]))
             self.assertEqual(1, timing.main(["--plan", "--mhz", "25",

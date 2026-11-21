@@ -176,9 +176,7 @@ def decode_bulk_response(packet: bytes) -> BulkResponse:
                         int.from_bytes(packet[11:13], "little"), packet[13:-4])
 
 
-# ---------------------------------------------------------------------------
-# Streaming load session (wiki/src/nand2doom/rtl/io/mas.md "Streaming load session").
-# ---------------------------------------------------------------------------
+# Ref: wiki/src/nand2doom/rtl/io/mas.md "Streaming load session".
 STREAM_SOF = 0xA7
 STREAM_REPLY_SOF = 0x7A
 STREAM_HELLO = 0x48

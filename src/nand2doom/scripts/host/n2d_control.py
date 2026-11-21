@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[4]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# Make events; the firmware keyboard map (sw/doom/keymap.h) maps every one.
+# Ref: sw/doom/keymap.h maps every one of these make codes.
 ACTIONS = {
     "Forward": 0x275, "Backward": 0x272, "Turn left": 0x26B,
     "Turn right": 0x274, "Fire": 0x014, "Use": 0x029,
@@ -38,7 +38,7 @@ BINDINGS = {
     "y": "Yes", "n": "No", "Tab": "Map",
     **{str(number): f"Weapon {number}" for number in range(1, 8)},
 }
-JTAG_EVENT_SECONDS = 3.0  # Per-event delivery bound over the JTAG keyboard.
+JTAG_EVENT_SECONDS = 3.0
 
 
 class ControlError(Exception):
@@ -51,7 +51,7 @@ class JtagClient:
     def __init__(self, jtag, transport, *, clock=None):
         import time
         self.jtag, self.clock = jtag, clock or time.monotonic
-        self.session = jtag.Session(transport)  # Reads the endpoint status identity.
+        self.session = jtag.Session(transport)
 
     @property
     def failed(self):
@@ -75,7 +75,6 @@ class Session:
         if not math.isfinite(timeout) or not .01 <= timeout <= 1:
             raise ValueError("timeout must be finite and in 0.01..1 seconds")
         self.port, self.timeout = port.strip(), timeout
-        # jtag: validated settings of the common JTAG keyboard transport; None selects UART.
         self.jtag, self.jtag_module = jtag, jtag_module
         if jtag is None:
             from src.nand2doom.scripts.host import n2d_uart as uart
@@ -92,7 +91,7 @@ class Session:
         transport, self.transport = self.transport, None
         self.closed = True
         if transport is not None:
-            result = transport.close()  # One attempt only, even if close raises.
+            result = transport.close()  # Why: close is attempted once, even if it raises, so a release is never repeated.
             if self.jtag is not None and result != "closed":
                 raise ControlError(f"JTAG release: {result}")
 
@@ -192,10 +191,10 @@ class Worker:
         self.port, self.timeout, self.factory = port, timeout, factory
         self.baud = baud
         self.commands = queue.Queue(maxsize=32)
-        self.notices = queue.SimpleQueue()  # Only connected and terminal notices.
+        self.notices = queue.SimpleQueue()
         self.stopping, self.aborting, self.ready = (threading.Event() for _ in range(3))
         self.reason = ""
-        self.terminal = None  # Published once before thread exit; notices are advisory.
+        self.terminal = None  # Why: set once before the thread exits; it, not the advisory notices, is the final disposition.
         self.thread = threading.Thread(target=self._run, name="n2d-controls", daemon=True)
 
     def start(self):
@@ -238,7 +237,7 @@ class Worker:
                 if self.aborting.is_set():
                     raise ControlError(self.reason)
                 if self.stopping.is_set():
-                    break  # Discard queued input; release only actually owned holds.
+                    break  # Why: once stopping, queued input is stale; only actually owned holds are released.
                 try:
                     operation, args = self.commands.get(timeout=.02)
                 except queue.Empty:
@@ -446,8 +445,8 @@ class App:
                     break
                 self.notice(kind, text)
             if not self.worker.thread.is_alive():
-                # The worker may have published after the empty-queue observation.
-                # Exit makes its final disposition authoritative, not queue timing.
+                # Why: the worker may publish after the empty-queue observation, so its exit,
+                # not queue timing, makes its final disposition authoritative.
                 terminal = self.worker.terminal
                 if (not isinstance(terminal, tuple) or len(terminal) != 2
                         or terminal[0] not in ("closed", "fault")):
@@ -544,7 +543,8 @@ def main(argv=None):
     try:
         root.mainloop()
     except KeyboardInterrupt:
-        # Ctrl-C in the launching terminal: release acknowledged holds, then close.
+        # Why: Ctrl-C in the launching terminal must still release acknowledged holds
+        # before closing.
         app.close()
         root.mainloop()
     if args.smoke_test:

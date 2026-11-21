@@ -37,12 +37,13 @@ from src.nand2doom.scripts.host import n2d_uart_debug_host as wire  # noqa: E402
 BOARDS = {
     "de2_115": dict(idcode="020F70DD", project="n2d_de2_115", baud="de2_115"),
 }
-# Processes that open the USB-Blaster through jtagd. jtagd itself is the shared server.
+# Why: these processes open the USB-Blaster through jtagd; jtagd itself is the
+# shared server, so it is not a conflicting client.
 JTAG_CLIENTS = frozenset({"quartus_pgm", "quartus_stp", "quartus_stpw", "quartus_stp_tcl",
                           "system-console", "nios2-terminal", "jtagconfig", "quartus_jli"})
 SEED = 0xFFFFFFFF
-FRAME_GAP_SECONDS = 0.05     # > the device's 40 ms partial-frame drop
-SESSION_IDLE_SECONDS = 2.0   # the device closes an abandoned stream session after this
+FRAME_GAP_SECONDS = 0.05     # Why: just over the device's 40 ms partial-frame abandon (wiki/src/nand2doom/rtl/io/mas.md "Streaming load session"), so a gap ends any partial frame
+SESSION_IDLE_SECONDS = 2.0   # Ref: wiki/src/nand2doom/rtl/io/mas.md "Streaming load session": the device closes an idle session after 2 s
 PROGRAM_TIMEOUT = 180
 JTAGCONFIG_TIMEOUT = 20
 PORT_ENV = "N2D_UART_PORT"
@@ -64,7 +65,6 @@ class LoadInterrupted(Exception):
         self.ended = ended
 
 
-# --------------------------------------------------------------------------- inputs
 
 def checkout_roots(root=ROOT):
     """This checkout first, then the main checkout when this is a linked worktree."""
@@ -106,7 +106,7 @@ def holders(port=None, *, jtag=True, proc=Path("/proc"), own=None):
             try:
                 fds = list((entry / "fd").iterdir())
             except OSError:
-                continue  # another user's process: not inspectable
+                continue  # Why: another user's process is not inspectable, so skip it
             for fd in fds:
                 try:
                     if os.readlink(fd) == target:
@@ -151,14 +151,13 @@ def run_tool(argv, timeout):
     return result.returncode, result.stdout
 
 
-# --------------------------------------------------------------------------- loading
 
 @dataclass
 class SegmentResult:
     name: str
     address: int
     size: int
-    action: str      # "skipped" (stored digest matched) or "loaded"
+    action: str
     reason: str
     seconds: float
 
@@ -188,7 +187,7 @@ def abandon(session):
         session.sleep(FRAME_GAP_SECONDS)
         session.end()
         return True
-    except BaseException:  # a second Ctrl-C or no reply: the device idle bound still applies
+    except BaseException:  # Why: after a second Ctrl-C or no reply, the device idle bound still closes the session
         return False
 
 
@@ -271,7 +270,6 @@ def ping_client(transport, timeout, attempts=3, settle=0.2, sleep=time.sleep):
     raise PlayError(f"no N2D1 Ping answer after {attempts} attempts: {last}")
 
 
-# --------------------------------------------------------------------------- command
 
 def parser():
     p = argparse.ArgumentParser(prog="n2d_play.py", description=__doc__.split("\n\n", 1)[0],
@@ -491,7 +489,7 @@ def play(args, board, manifest, sof, *, runner=run_tool, opener=uart.open_serial
             start(client, manifest)
             steps.done(f"entry 0x{manifest.entry:08x}")
     except _NoUart:
-        pass  # --skip-load with JTAG controls and no UART: nothing to check
+        pass  # Why: --skip-load with JTAG controls and no UART: nothing to check
     except uart.HostError as error:
         raise PlayError(f"UART: {error}") from error
     finally:
@@ -516,7 +514,7 @@ def main(argv=None, **kwargs):
     if args.plan:
         show_plan(args, board, manifest, sof)
         return EXIT_OK
-    previous = signal.signal(signal.SIGTERM, signal.default_int_handler)  # SIGTERM cleans up like Ctrl-C
+    previous = signal.signal(signal.SIGTERM, signal.default_int_handler)  # Why: SIGTERM must clean up like Ctrl-C
     try:
         return play(args, board, manifest, sof, **kwargs)
     except PlayError as error:

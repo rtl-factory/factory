@@ -36,9 +36,9 @@ WAD_BYTE_LENGTH = 28_795_076
 WAD_END_ADDRESS = WAD_ADDRESS + WAD_BYTE_LENGTH
 MEMORY_MAP_REVISION = "n2d-platform-v1"
 PICOLIBC_VERSION = "1.8.6-2"
-# Local cache of the pinned public inputs (sw/third_party/manifest.json). They
-# are not committed to the factory: the first build fetches each one from its
-# pinned origin, checks its SHA-256 and keeps it here for later builds.
+# Why: the pinned public inputs (sw/third_party/manifest.json) are not committed
+# to the factory: the first build fetches each one from its pinned origin,
+# checks its SHA-256 and keeps it here for later builds.
 VENDORED_DOWNLOADS = Path(__file__).resolve().parents[4] / "workdir/downloads/nand2doom"
 PICOLIBC_URL = (
     "http://archive.ubuntu.com/ubuntu/pool/universe/p/picolibc/"
@@ -60,15 +60,15 @@ PICOLIBC_COPYRIGHT_PATH = "share/doc/picolibc-riscv64-unknown-elf/copyright"
 PICOLIBC_INCLUDE_TREE_SHA256 = (
     "cd4d0ba9175675b6cf8c62f527502304cd0bc0c58a89e685360877c17f96ee1d"
 )
-# Firmware variants. Production keeps the real-time cycle clock. The
-# verification-only deterministic variant derives Doom time from retired
-# instructions (minstret) and pauses it across video waits. This defines a
-# reproducible time policy, not a cross-architecture frame/state guarantee.
-# Render verification fixes one game tic per display and requires state witnesses.
-# Each variant has a default engine compiler profile (wiki/src/nand2doom/sw/doom/spec.md, #75):
-# production and deterministic build the engine -O2 with engine-only LTO, the
-# measured speed winner; render verification stays -Os because LTO inlines
-# away the G_Ticker/D_Display call witnesses it needs.
+# Ref: wiki/src/nand2doom/sw/doom/spec.md "Doom time contract", "Engine compiler
+# experiments" and "Deterministic-time verification build": production keeps
+# the real-time cycle clock; the verification-only deterministic variant
+# derives Doom time from retired instructions (minstret) and pauses it across
+# video waits, a reproducible time policy, not a cross-architecture frame/state
+# guarantee; render verification fixes one game tic per display and requires
+# state witnesses. Production and deterministic build the engine -O2 with
+# engine-only LTO, the measured speed winner; render verification stays -Os
+# because LTO inlines away the G_Ticker/D_Display call witnesses it needs.
 VARIANTS = {
     "production": {
         "defines": [],
@@ -196,7 +196,7 @@ def _seed_inputs(output: Path, repository: Path) -> None:
         if not root.is_dir() or (output / tree).exists():
             continue
         if tree == "toolchain" and not (root / TOOLCHAIN_LIBC).is_file():
-            continue  # a partial extraction is never shared
+            continue  # Why: a partial extraction must not be seeded into another output
         for path in sorted(root.rglob("*")):
             if path.is_symlink():
                 raise ValueError(f"seed input is a symbolic link: {path}")
@@ -212,7 +212,6 @@ def _seed_inputs(output: Path, repository: Path) -> None:
 
 
 def _adapt_scene(text: str) -> str:
-    # Upgrade exactly the older seam declaration, then verify one occurrence.
     old_declaration = "extern void N2D_RecordSceneReady(void);\n"
     if old_declaration in text:
         if text.count(old_declaration) != 1 or text.count("N2D_RecordSceneReady();") != 2:
@@ -245,18 +244,20 @@ def _adapt_scene(text: str) -> str:
     return text
 
 
-# Doom draws straight into the back framebuffer bank (wiki/src/nand2doom/rtl/video/mas.md); the
-# platform requests a bank swap at frame end and, before the next frame's first
-# screen access, waits for it and copies the displayed bank into the back bank.
+# Ref: wiki/src/nand2doom/sw/doom/spec.md "Direct framebuffer rendering": Doom
+# draws straight into the back framebuffer bank; the platform requests a bank
+# swap at frame end and, before the next frame's first screen access, waits for
+# it and copies the displayed bank into the back bank.
 BACK_FRAMEBUFFER = "(pixel_t *)0x10000000u"
 ACQUIRE_DECLARATION = ("extern void N2D_FramebufferAcquire(void);\n"
                        "extern void N2D_FramebufferAcquireFrom(int first_row);\n")
 DISPLAY_SEAM = ("    if (nodrawers)\n"
                 "    \treturn;                    // for comparative timing / profiling\n")
 WIPE_SEAM = "\twipestart = nowtime;\n"
-# Status-bar-only persistence (wiki/src/nand2doom/sw/doom/spec.md): a full-width level view with
-# no wipe, resize, menu or automap redraws every row above viewheight, so only
-# the rows below it need the displayed image. Everything else copies it all.
+# Ref: wiki/src/nand2doom/sw/doom/spec.md "Status-bar-only persistence": a
+# full-width level view with no wipe, resize, menu or automap redraws every row
+# above viewheight, so only the rows below it need the displayed image.
+# Everything else copies it all.
 DISPLAY_ACQUIRE = (
     "    // n2d: a full-width level view redraws rows [0, viewheight).\n"
     "    N2D_FramebufferAcquireFrom(gamestate == GS_LEVEL && gamestate == wipegamestate\n"
@@ -268,7 +269,8 @@ WIPE_ACQUIRE = "\tN2D_FramebufferAcquire();\n"
 
 def _adapt_framebuffer_acquire(text: str) -> str:
     """Acquire the back bank before D_Display and before each wipe step draws."""
-    # Upgrade a tree prepared before status-bar-only persistence.
+    # Why: a tree prepared before status-bar-only persistence lacks the new
+    # declaration, so it is upgraded in place.
     if ACQUIRE_DECLARATION not in text:
         text = text.replace("extern void N2D_FramebufferAcquire(void);\n",
                             ACQUIRE_DECLARATION, 1)
@@ -317,11 +319,11 @@ def _adapt_direct_video(text: str) -> str:
     return text
 
 
-# Register-resident drawers (wiki/src/nand2doom/sw/doom/spec.md). Upstream reloads dc_source,
-# dc_colormap (ds_*) from globals after every byte store, which may alias them.
-# These bodies hold them in locals, consume the remainder first and unroll 4x.
-# Columns encode the original 23 relevant bits modulo32, shifted by nine;
-# every texture index and framebuffer byte stays identical.
+# Ref: wiki/src/nand2doom/sw/doom/spec.md "Register-resident drawers": upstream
+# reloads dc_source, dc_colormap (ds_*) from globals after every byte store,
+# which may alias them. These bodies hold them in locals, consume the remainder
+# first and unroll 4x. Columns encode the original 23 relevant bits modulo32,
+# shifted by nine; every texture index and framebuffer byte stays identical.
 DRAW_LOOPS_MARKER = "/* n2d: register-resident drawer */"
 DRAW_COLUMN = DRAW_LOOPS_MARKER + """
 void R_DrawColumn (void)
@@ -413,7 +415,6 @@ void R_DrawSpan (void)
 #undef N2D_SPOT
 }
 """
-# SHA-256 of each replaced upstream body (the first, active definition).
 DRAW_LOOPS_UPSTREAM = {
     "R_DrawColumn": ("3ee968f69352aa98d7494dea3c98c221c8163c6a5d7a61fcb26485a1212db17c",
                      DRAW_COLUMN),
@@ -427,8 +428,8 @@ def _adapt_draw_loops(text: str) -> str:
     if text.count(DRAW_LOOPS_MARKER) == 2 and DRAW_COLUMN in text and DRAW_SPAN in text:
         return text
     if DRAW_LOOPS_MARKER in text:
-        # Upgrade only the two exact maintained bodies from the previous port.
-        # A partially edited prepared tree still fails closed.
+        # Why: only the two exact maintained bodies of the previous port are upgraded,
+        # so a partially edited prepared tree still fails closed.
         previous = {
             "R_DrawColumn": "d825136c4e6f083fcc9df381a2862a0abba14502d31f08262f581e338bc4fe7e",
             "R_DrawSpan": "666e64214f46cf2b2695688ece4561cdd1611991b013b3e3e137a96ad66629e1",
@@ -446,7 +447,7 @@ def _adapt_draw_loops(text: str) -> str:
             text = text.replace(DRAW_LOOPS_MARKER + "\n" + matches[name], body, 1)
         return text
     for name, (digest, body) in DRAW_LOOPS_UPSTREAM.items():
-        # The first match is the active definition; later ones sit in #if 0.
+        # Ref: The first match is the active definition; later ones sit in #if 0.
         match = re.search(rf"^void {name} \(void\) *\n\{{ *\n.*?\n\}} *\n",
                           text, flags=re.MULTILINE | re.DOTALL)
         if match is None or hashlib.sha256(match.group().encode()).hexdigest() != digest:
@@ -455,8 +456,9 @@ def _adapt_draw_loops(text: str) -> str:
     return text
 
 
-# Wall-loop locals: callbacks retain the original published globals at every
-# call boundary; stepping values are owned by r_segs.c throughout this call.
+# Ref: wiki/src/nand2doom/sw/doom/spec.md "Wall-loop global contract": callbacks
+# see the original published globals at every call boundary; stepping values
+# are owned by r_segs.c throughout this call.
 WALL_LOOP_MARKER = "/* n2d: wall-loop locals */"
 WALL_LOOP_UPSTREAM_SHA256 = "3d89e7f4f777991af21da4dc842b4715b99848965916b6b6e13b2405fef0d767"
 WALL_LOOP_LOCALS = ("rw_x", "rw_scale", "topfrac", "bottomfrac")
@@ -490,8 +492,8 @@ def _adapt_wall_loop(text: str) -> str:
                 or WALL_LOOP_MARKER + "\n" + match.group() not in text):
             raise RuntimeError("partial or modified r_segs.c wall-loop rewrite")
         names = WALL_LOOP_LOCALS
-        # Reverse only the exact inserted declarations/publications; the final
-        # round trip below rejects a mixed, missing or modified prepared body.
+        # Why: only the exact inserted declarations and publications are reversed; the
+        # final round trip below rejects a mixed, missing or modified prepared body.
         for name in names:
             declaration = (
                 f"    {'int' if name == 'rw_x' else 'fixed_t'} n2d_{name} = {name};\n")
@@ -509,10 +511,10 @@ def _adapt_wall_loop(text: str) -> str:
     return text[:match.start()] + _wall_loop_body(source) + text[match.end():]
 
 
-# Lazy visplane fill (wiki/src/nand2doom/sw/doom/spec.md). Upstream sets all 320 top[] bytes of
-# every new visplane to 0xff (unused). Only top[minx..maxx] is ever read, so
-# these bodies mark just the columns a plane gains when it is created or grows;
-# plane selection, ranges and every value read are unchanged.
+# Ref: wiki/src/nand2doom/sw/doom/spec.md "Lazy visplane fill": upstream sets all
+# 320 top[] bytes of every new visplane to 0xff (unused). Only top[minx..maxx]
+# is ever read, so these bodies mark just the columns a plane gains when it is
+# created or grows; plane selection, ranges and every value read are unchanged.
 VISPLANES_MARKER = "/* n2d: lazy visplane fill */"
 FIND_PLANE = VISPLANES_MARKER + """
 visplane_t*
@@ -621,7 +623,6 @@ R_CheckPlane
     return pl;
 }
 """
-# SHA-256 of each replaced upstream r_plane.c body.
 VISPLANES_UPSTREAM = {
     "R_FindPlane": ("8aac6498a7a53a8d2bb50a9653ca66464472a8121c4543b7fffd517e26654dfe",
                     FIND_PLANE),
@@ -684,7 +685,6 @@ def prepare(output: Path, repository: Path | None = None) -> dict[str, object]:
     if wad.stat().st_size != WAD_BYTE_LENGTH:
         raise RuntimeError("Freedoom WAD length mismatch after extraction")
 
-    # Apply the small platform adaptation in the disposable source tree.
     video = engine_dir / "i_video.c"
     text = video.read_text(encoding="utf-8")
     declaration = "extern void N2D_SetPalette(const uint32_t *colors);\n"
@@ -797,9 +797,9 @@ void I_PrintBanner"""
 
     checksum = engine_dir / "w_checksum.c"
     text = checksum.read_text(encoding="utf-8")
-    # Network compatibility is deliberately absent on this single-player
-    # platform.  Drop the directory-walking helpers as well as their caller so
-    # the warning-clean build does not retain dead SHA-1 bookkeeping.
+    # Why: network compatibility is deliberately absent on this single-player
+    # platform; dropping the directory-walking helpers with their caller keeps the
+    # warning-clean build free of dead SHA-1 bookkeeping.
     text, count = re.subn(
         r"static wad_file_t \*\*open_wadfiles = NULL;.*?\n(?=void W_Checksum)",
         "", text, count=1, flags=re.DOTALL,
@@ -870,9 +870,9 @@ def _picolibc(output: Path, override: Path | None) -> Path:
     _download(PICOLIBC_URL, package, PICOLIBC_SHA256)
     root = output / "toolchain"
     if not (root / TOOLCHAIN_LIBC).is_file():
-        # Re-extract a partial tree from scratch. Removing it only unlinks
-        # these names, so files hard-linked from another output are never
-        # overwritten in place.
+        # Why: a partial tree is re-extracted from scratch; removing it only unlinks
+        # these names, so files hard-linked from another output are never overwritten
+        # in place.
         if root.exists():
             shutil.rmtree(root)
         root.mkdir(parents=True)
@@ -904,7 +904,7 @@ def _extract_deb_data(package: Path, root: Path) -> None:
             payload = archive[start:start + size]
             if name.endswith(".zst"):
                 try:
-                    from compression import zstd  # Python 3.14 standard library
+                    from compression import zstd
                 except ModuleNotFoundError as error:
                     raise RuntimeError(
                         f"{name} needs Python 3.14 compression.zstd; run with "
@@ -984,7 +984,7 @@ def compiler_options(engine_opt: str = "Os", engine_lto: bool = False) -> dict:
     if engine_lto:
         engine.append("-flto=1")
         platform.append("-fno-lto")
-        # Keep link-time optimization deterministic and within one worker.
+        # Why: one LTO partition and one worker keep link-time optimization deterministic.
         link = [f"-{engine_opt}", "-flto=1", "-flto-partition=one"]
     return {"engine_opt": engine_opt, "engine_lto": engine_lto,
             "engine_flags": engine, "platform_flags": platform, "link_flags": link}
@@ -999,8 +999,8 @@ def _compiler_flags(gcc: str, engine: Path, include: Path, output: Path,
         gcc, "-march=rv32im", "-mabi=ilp32", *optimization, "-ffreestanding",
         "-fno-builtin", "-fno-pic", "-fno-pie", "-mno-relax",
         "-msmall-data-limit=0",
-        # Upstream diagnostics use __FILE__.  Keep the firmware byte-identical
-        # across issue worktrees and disposable output locations.
+        # Why: upstream diagnostics embed __FILE__, so paths are mapped to keep the
+        # firmware byte-identical across issue worktrees and disposable output locations.
         f"-ffile-prefix-map={repository.resolve()}=/nand2anything",
         f"-ffile-prefix-map={output.resolve()}=/n2d-doom-build",
         f"-fmacro-prefix-map={repository.resolve()}=/nand2anything",
@@ -1055,8 +1055,8 @@ def build(output: Path, repository: Path,
         gcc, engine, include, output, repository, upstream=True,
         engine_opt=engine_opt, engine_lto=engine_lto
     ) + defines
-    # Input identity is computed BEFORE linking, so there is no self-hash cycle.
-    # The final manifest binds this recipe identity to full ELF and binary hashes.
+    # Why: input identity is computed before linking, so there is no self-hash
+    # cycle; the final manifest binds it to the full ELF and binary hashes.
     source_hashes = {
         str(path.relative_to(repository)): _sha256(path)
         for path in sorted((repository / "src/nand2doom/sw/doom").iterdir())
@@ -1071,7 +1071,8 @@ def build(output: Path, repository: Path,
         "compiler_options": options,
     }
     if defines:
-        # Production has no timing defines; other variants are distinct.
+        # Why: production has no timing defines, so its identity is unchanged; other
+        # variants get distinct identities.
         identity_inputs["variant_defines"] = defines
     identity = hashlib.sha256(json.dumps(
         identity_inputs, sort_keys=True, separators=(",", ":")
@@ -1188,14 +1189,15 @@ def selected_variants(command: str, variant: str | None,
     """Variants a command builds. A single --output without --variant keeps
     the historical meaning: the production image in that directory."""
     if command == "prepare" or output is not None:
-        # Inputs are variant-independent; one directory is prepared or built.
+        # Why: inputs are variant-independent, so prepare or an explicit --output works
+        # on one directory.
         if variant == "all":
             if output is not None:
                 raise ValueError("--output requires a single --variant")
             return ["production"]
         return [variant or "production"]
     if variant is None:
-        return ["production", "deterministic"]  # Preserve the ordinary default build.
+        return ["production", "deterministic"]  # Why: keeps the ordinary default build; render verification is opt-in.
     return list(VARIANTS) if variant == "all" else [variant]
 
 

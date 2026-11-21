@@ -27,9 +27,8 @@ ROOT = quartus.ROOT
 BOARD_MHZ = 25
 REFERENCE_MHZ = 50
 
-# Ordered (class, owner, pattern) rules over "<from> -> <to> via <through>"
-# node names; the first match wins. Owners name the roadmap work item that owns
-# the path. These rules are provisional until checked against real STA paths.
+# Why: the first match wins, so specific patterns must come before general
+# ones. The rules stay provisional until checked against real STA paths.
 CLASSES = [
     ("SDRAM pins / controller", "SDRAM controller", r"DRAM_|u_sdram\|"),
     ("Multiply", "M extension", r"u_core\|[^>]*(?:mult|mul_|product|lpm_mult|Mult\d)"),
@@ -140,7 +139,7 @@ def parse(tsv: str) -> dict:
                 raise ValueError("inconsistent system clock across corners")
             result["clock"] = clock
         elif kind == "fmax":
-            # get_clock_fmax_info rows end with the report's (often empty) note.
+            # Ref: Quartus 25.1 get_clock_fmax_info rows end with a (often empty) note cell.
             clock, fmax, restricted, *_ = cells
             result["fmax"].append({"corner": corner, "clock": clock,
                                    "fmax_mhz": float(fmax), "restricted_mhz": float(restricted)})

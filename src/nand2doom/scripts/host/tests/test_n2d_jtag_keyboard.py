@@ -19,7 +19,8 @@ from src.common.scripts.jtag import n2a_jtag_keyboard as jtag  # noqa: E402
 from src.common.scripts.jtag.tests.test_n2a_jtag_keyboard import Device  # noqa: E402
 
 CABLE = ["--cable", "USB-Blaster [1-1]", "--device", "@1: EP4CE115 (0x020F70DD)"]
-# quartus_stp names the same DE2-115 IDCODE differently on different installs.
+# Why: quartus_stp names the same DE2-115 IDCODE differently on different
+# installs, so both listings are tested.
 BANNER = "Info: *******************************************************************\nInfo: Running Quartus Prime Signal Tap\n"
 LISTING_EP4 = BANNER + "N2D_DEVICE @1: EP4CE115 (0x020F70DD)\nInfo: Quartus Prime Signal Tap was successful.\n"
 LISTING_10CL = BANNER + "N2D_DEVICE @1: 10CL120(Y|Z)/EP3C120/.. (0x020F70DD)\n"
@@ -135,7 +136,7 @@ class DeviceResolutionTests(unittest.TestCase):
                       resolve=listing(LISTING_10CL))
         self.assertEqual(code, 0)
         self.assertEqual(fake.opened[0]["jtag_device"], "@1: 10CL120(Y|Z)/EP3C120/.. (0x020F70DD)")
-        code, result = run([*CABLE, "--yes", "key", "Fire"], fake)   # no_listing: override wins
+        code, result = run([*CABLE, "--yes", "key", "Fire"], fake)   # Why: with no listing, the --device override wins
         self.assertEqual((code, result["jtag_device_source"]), (0, "--device"))
         self.assertEqual(fake.opened[1]["jtag_device"], "@1: EP4CE115 (0x020F70DD)")
 
@@ -215,11 +216,11 @@ class DeliveryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             run(["--yes", "key", "Fire"], fake)
         with self.assertRaises(ValueError):
-            run(["--device", "@1: EP4CE115 (0x020F70DD)", "key", "Fire"], fake)   # device without cable
+            run(["--device", "@1: EP4CE115 (0x020F70DD)", "key", "Fire"], fake)   # Why: --device without --cable is refused
         with self.assertRaises(ValueError):
             run([*CABLE, "--yes", "send", "0x0f0"], fake)
         with self.assertRaises(ValueError):
-            run([*CABLE, "--yes", "type", "\x01\x02\x00"], fake)        # no scan code for NUL
+            run([*CABLE, "--yes", "type", "\x01\x02\x00"], fake)        # Why: NUL has no scan code
         self.assertEqual(fake.opened, [])
         err = io.StringIO()
         with redirect_stderr(err):
@@ -261,8 +262,8 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual((code, result["status"]), (1, "error"))
 
     def test_delivery_bound_is_whole_request(self):
-        # A target that refuses every byte (input FIFO never drains) exhausts
-        # the bound instead of retrying forever; nothing was delivered.
+        # Why: a target that refuses every byte (input FIFO never drains) must exhaust
+        # the bound instead of retrying forever, with nothing delivered.
         fake = Fake(Device(limit=0))
         code, result = run([*CABLE, "--yes", "--seconds", "0.05", "key", "Fire"], fake)
         self.assertEqual((code, result["sent"], result["close"]), (1, 0, "closed"))

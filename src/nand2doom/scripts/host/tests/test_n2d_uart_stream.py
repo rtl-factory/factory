@@ -226,7 +226,6 @@ class StreamHostTests(unittest.TestCase):
         self.assertEqual(seed ^ 0xFFFFFFFF, zlib.crc32(image))
 
     def test_doom_manifest_wire_time_model(self):
-        # Pinned WAD plus a representative 0.5 MiB firmware image.
         firmware = 512 * 1024
         size = doom.WAD_BYTE_LENGTH + firmware
         frames = -(-doom.WAD_BYTE_LENGTH // 1024) + firmware // 1024

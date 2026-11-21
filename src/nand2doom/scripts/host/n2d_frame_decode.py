@@ -16,7 +16,7 @@ import stat
 import struct
 import sys
 
-# Fixed wire-image format owned by wiki/src/nand2doom/rtl/video/mas.md.
+# Ref: wiki/src/nand2doom/rtl/video/mas.md "Framebuffer and palette" owns this fixed wire-image format.
 WIDTH, HEIGHT = 320, 200
 INDEX_BYTES = WIDTH * HEIGHT
 PALETTE_BYTES = 256 * 4
@@ -87,7 +87,8 @@ def encode_frames(frames, durations_ms) -> EncodedFrames:
         image = Image.frombytes("P", (WIDTH, HEIGHT), indices)
         image.putpalette(_palette(palette))
         png = BytesIO()
-        # PNG save attaches encoder configuration; keep it off the GIF object.
+        # Why: PNG save attaches encoder configuration, so a copy is saved to keep it off
+        # the GIF object.
         image.copy().save(png, format="PNG", optimize=False, compress_level=9)
         data = png.getvalue()
         if len(data) > MAX_PNG_BYTES:
@@ -96,8 +97,8 @@ def encode_frames(frames, durations_ms) -> EncodedFrames:
         if index == 0:
             header, _ = GifImagePlugin.getheader(image, info={"loop": 0, "optimize": False})
             gif.extend(b"".join(header))
-        # Public low-level GIF helpers avoid Image.save's identical-frame
-        # coalescing. Full rectangles plus local palettes preserve every sample.
+        # Why: Image.save coalesces identical frames, so the public low-level GIF helpers
+        # are used; full rectangles plus local palettes preserve every sample.
         gif.extend(b"".join(GifImagePlugin.getdata(
             image, duration=duration, disposal=1, include_color_table=True)))
         if len(gif) + 1 > MAX_GIF_BYTES:
@@ -105,8 +106,8 @@ def encode_frames(frames, durations_ms) -> EncodedFrames:
     gif.extend(b";")
     result = EncodedFrames(tuple(pngs), bytes(gif))
 
-    # Fail closed if an encoder version changes palette, order, duration or
-    # coalescing behavior. This checks encoding, not physical capture validity.
+    # Why: fail closed if an encoder version changes palette, order, duration or
+    # coalescing; this checks encoding, not physical capture validity.
     for data, pixels in zip(result.pngs, expected):
         with Image.open(BytesIO(data)) as decoded:
             if decoded.size != (WIDTH, HEIGHT) or decoded.convert("RGB").tobytes() != pixels:
@@ -187,7 +188,8 @@ def main(argv=None, *, repo_root: Path = REPO_ROOT) -> int:
         encoded = encode_frames(frames, args.duration_ms)
         manifest["png_sha256"] = [_sha(png) for png in encoded.pngs]
         manifest["gif_sha256"] = _sha(encoded.gif)
-        # Recheck after encoding. Never reuse a pre-existing artifact directory.
+        # Why: the target is checked again after encoding and a pre-existing artifact
+        # directory is never reused, so old frames cannot mix into the output.
         target = _output_path(args.output, repo_root)
         target.mkdir(parents=True, exist_ok=False)
         for index, data in enumerate(encoded.pngs):
@@ -195,8 +197,8 @@ def main(argv=None, *, repo_root: Path = REPO_ROOT) -> int:
                 stream.write(data)
         with (target / "sampled.gif").open("xb") as stream:
             stream.write(encoded.gif)
-        # Written last: absence means incomplete output. No automatic cleanup
-        # or overwriting if filesystem I/O fails partway through publication.
+        # Why: decode.json is written last, so its absence marks incomplete output;
+        # nothing is cleaned up or overwritten if I/O fails partway.
         with (target / "decode.json").open("x", encoding="utf-8") as stream:
             stream.write(json.dumps(manifest, sort_keys=True, indent=2) + "\n")
         print(f"decoded {len(frames)} sampled frames: {target}")

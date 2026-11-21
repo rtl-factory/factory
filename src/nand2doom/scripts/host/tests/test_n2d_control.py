@@ -221,7 +221,7 @@ class EventTests(unittest.TestCase):
         self.events.key_press(25, "w")
         self.events.release_all()
         self.events.key_press(25, "w")
-        self.events.key_release(25)  # X11-style synthetic repeat pair.
+        self.events.key_release(25)  # Why: X11 reports auto-repeat as a synthetic release/press pair.
         self.events.key_press(25, "w")
         self.idle.drain()
         self.assertEqual(len(self.ops), 2)
@@ -335,7 +335,7 @@ class WorkerTests(unittest.TestCase):
 
     def test_healthy_close_drops_queued_presses_after_inflight(self):
         session, fake, _ = SessionTests().session()
-        session.connect = Mock()  # Already checked real Client setup above.
+        session.connect = Mock()  # Why: real Client setup is already checked above.
         entered, finish = threading.Event(), threading.Event()
         original = session.press
         def blocked(*args):
@@ -521,7 +521,7 @@ class TerminalParserTests(unittest.TestCase):
                   b"\x1b[57442;5u" b"\x1b[57441;2:3u" b"\x1b[9u" b"\x1b[13u" b"\x1b[27u" b"\x1b[32;1:3u"
                   b"\x1b[O" b"\x1b[I" b"\x1b[?11u" b"\x1b[99;5u" b"\x1b[21~")
         events = []
-        for index in range(0, len(stream), 5):  # sequences split across reads
+        for index in range(0, len(stream), 5):  # Why: escape sequences may split across reads
             events += parser.feed(stream[index:index + 5])
         self.assertEqual(events, [
             ("press", "w"), ("repeat", "w"), ("release", "w"), ("press", "Up"), ("release", "Up"),
