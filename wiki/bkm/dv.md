@@ -17,6 +17,7 @@ How to verify a block in simulation: plan from the spec, write the failing test 
 - Run every constrained-random test with an explicit seed that the log prints, and pin each regression to a fixed seed list, while the higher levels also run fresh random seeds, printed. Add every seed that ever found a bug to that list. Why: a failure you cannot rerun cannot be debugged or proven fixed, and a seed failure is a real bug, not a flake (["Getting it landable"](pull-requests.md#getting-it-landable)).
 - Never weaken a check, widen a tolerance, add a coverage exclusion or drop a seed to turn a run green, unless the spec says the case is legal; cite the spec line. Why: a weakened check lands the bug it was written to catch.
 - Treat coverage as a measured number you must explain ([Explain the Number](principles.md#explain-the-number)): name the holes and the reason for each, never only the percentage. Why: 95% says nothing about whether the missing 5% is the feature the issue is about.
+- Run tests through Bazel per [build](flow.md#build); a seed is `--test_env=SIM_SEED=<n>`. Why: Bazel runs what CI runs and caches what did not change.
 - Place each test per [CI levels](flow.md#ci-levels): a directed smoke test and a few seeds per feature in L0, seed sweeps and long tests at the higher levels. Why: the level rules live in one place.
 
 ## Steps

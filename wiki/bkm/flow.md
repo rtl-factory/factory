@@ -4,7 +4,7 @@ status: draft
 
 # Flow and CI
 
-The path every change takes from intent to `main`, the CI levels that gate it, and the GitHub settings that enforce it.
+The path every change takes from intent to `main`, the CI levels that gate it, how to build and check it with Bazel, and the GitHub settings that enforce it.
 
 ## Flow
 
@@ -94,6 +94,51 @@ L1 to L4 have no job yet: until the L1 job exists, a pull request into `main` ru
 
 - Runtime budget per level is not yet set.
 - L1 to L4 have no CI job yet; a self-hosted runner is planned for them.
+
+## Build
+
+How to build and check anything in the factory with Bazel: run a regression level, run one target, add a target, read a failure, keep the cache honest. How the build works inside is the [Bazel spec](../tools/bazel/spec.md); which level runs when is [CI levels](#ci-levels).
+
+### Rules
+
+- Run every check through Bazel: `bazel test --config=l0 //...` before every push, `--config=l<N>` for level N and the levels below it. Never run `tools/sim/sim.py test`, `tools/fv/fv.py run`, `pytest` or the comment lint directly to prove a change. Why: Bazel runs what CI runs, in parallel, and reruns only what the change touched.
+- Run one target by name: `bazel test //src/<project>:<target>` (simulation), `//src/<project>:<target>.formal` (formal), `//src/<project>:scripts_<folder>.unit` or `//tools:<tool>.unit` (unit tests), `//tools:comment_lint`. List them with `bazel query 'tests(//src/<project>:all)'`. Why: one target answers a question in seconds once its model is cached.
+- Declare a simulation target only in `src/<project>/cfg/targets.json`, a formal target only as its `.sby` file with its `# level:` and `# timeout:` header, and unit tests only as a `tests/` folder in a package that calls `unit_tests()`; never write a Bazel target for them by hand. Why: the registry is the one list of targets, and Bazel reads it ([Bazel spec](../tools/bazel/spec.md)).
+- List every file a simulation model compiles in the target's `sources`, every file a formal target reads in its `[files]` section, and keep `` `include `` files under `src/<project>/` with an `.svh` or `.vh` extension. Why: Bazel builds each model from its declared inputs only; a file it does not know about either breaks the sandboxed build or, worse, leaves a stale cached result.
+- A test reads its data through paths inside the repository and writes only to `$TEST_UNDECLARED_OUTPUTS_DIR` or `$TEST_TMPDIR` (or the runner's work folder). Two tests that may run at once never write the same file; write a unique temporary file and rename it into place. Why: a test that reads a file Bazel did not declare can pass from the cache after that file changed, and parallel tests that share a file fail at random.
+- Never pass `--nocache_test_results`, delete the disk cache or run `bazel clean` to make a failure go away; find the input the cache missed and declare it. Why: a cache that needs clearing is a missing input, and clearing it hides the bug for the next agent.
+- Change a pin (`.bazelversion`, `MODULE.bazel`, `tools/sim/requirements*.txt`, `cfg/toolchain.json`) only through its own issue, and regenerate `tools/sim/requirements_lock.txt` with the command in its header. Why: a pin change reruns everything and can change every result.
+- Put machine-only settings (a registry mirror, `BAZELISK_BASE_URL`, `--action_env=QUARTUS_SH`, cache paths) in `user.bazelrc` or `~/.bazelrc`, never in `.bazelrc`. Why: `.bazelrc` is what CI and every agent share.
+- State in a pull request's Evidence the Bazel command you ran, its `Executed N out of M tests` line and its failures. Why: the reviewer checks the same command, and the line shows what was cached.
+
+### Steps: check a change
+
+1. Run `bazel test --config=l0 //...`. Bazel prints one line per failing test and the path of its `test.log`.
+2. For each failure, read its `test.log` (`bazel-testlogs/<package>/<target>/test.log`); the runner prints the failing target's logs into it. The full logs, `results.xml`, waveforms and formal traces are in `bazel-testlogs/<package>/<target>/test.outputs/`.
+3. Fix per [debugging](debug.md), then rerun only the failing targets by name until they pass.
+4. Rerun `bazel test --config=l0 //...` once at the end; every unchanged simulation and formal target reports cached.
+
+### Steps: debug one simulation target
+
+1. Rerun it with another seed: `bazel test //src/<project>:<target> --test_env=SIM_SEED=<n>`. The seed is printed in the test's log.
+2. Get waveforms: `bazel test //src/<project>:<target> --//tools/bazel:waves`. This rebuilds the target's model with tracing; the waveform is under `test.outputs/`.
+3. When the model fails to build, read the build log in Bazel's error output, or rebuild it alone with `bazel build //src/<project>:<target>.model` (targets that share a model name the first of them).
+
+### Steps: add a target
+
+1. Simulation: add the entry to `src/<project>/cfg/targets.json` per the [simulation runner spec](../tools/sim/spec.md), with its `level`. Formal: add `src/<project>/fv/<block>/<target>.sby` per [formal](fv.md). Unit tests: add a `tests/` folder beside the script.
+2. Check the new test is listed with the level you meant: `bazel query 'attr(tags, L0, tests(//src/<project>:all))'`.
+3. Run it by name, then L0.
+
+### Steps: build a board image
+
+1. On a host with the pinned Quartus, with the change committed, run `bazel build //src/<project>:<board>_image` (`bazel query 'attr(tags, quartus, //src/...)'` lists them). Set `QUARTUS_SH` in `user.bazelrc` (`build --action_env=QUARTUS_SH=<path>`) when Quartus is not at the pinned install directory.
+2. Read the result in `bazel-bin/src/<project>/<board>_image/`: the SOF, `evidence.json` from the timing and warning gate, the logs and reports. A failed gate fails the build with the script's error. Hand the image on per [FPGA](fpga.md).
+
+### Exit criteria
+
+- `bazel test --config=l0 //...` passes, and the pull request's Evidence names the command and its `Executed` line.
+- No new target is written by hand in a `BUILD.bazel` file, and no check was run around Bazel.
 
 ## GitHub settings
 

@@ -23,6 +23,7 @@ Each row names a file and, after it, the section (its `##` heading) to follow.
 | writing or changing SystemVerilog RTL, or reviewing an RTL diff (names, flops, reset, structs, enums, parameters, packages, assertions) | `wiki/bkm/rtl.md` RTL coding |
 | designing a block or where its interface goes, finding where structure should change, refactoring a block, or explaining how and why a block works | `wiki/bkm/rtl.md` Architecture of blocks |
 | deciding where a check runs, or reading CI results | `wiki/bkm/flow.md` CI levels |
+| running any check (simulation, formal, unit tests, lint), adding a target, reading a test failure, building a board image, or changing a Bazel or toolchain pin | `wiki/bkm/flow.md` Build |
 | verifying a block in simulation: test-first, DV plans, testbenches, seeds, coverage | `wiki/bkm/dv.md` |
 | verifying a block formally: properties, assumptions, proofs, covers, counterexamples | `wiki/bkm/fv.md` |
 | building an FPGA image with Quartus, handing it to a board host, or programming a board | `wiki/bkm/fpga.md` |
