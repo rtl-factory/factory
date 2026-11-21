@@ -4,6 +4,7 @@ The tools: code any project can use unchanged. Each has its code in `tools/<tool
 
 | Tool | What it does |
 |---|---|
+| [bazel](bazel/README.md) | Builds every Verilator model once, runs every simulation target as a cached, parallel Bazel test |
 | [board](board/README.md) | Programs any project's SOF, loads its program and types on its JTAG keyboard, on either board |
 | [fv](fv/README.md) | Runs every project's formal proofs and covers with SymbiYosys |
 | [lint](lint/README.md) | Checks every Python and SystemVerilog comment against the keep list |

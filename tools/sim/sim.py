@@ -18,7 +18,9 @@ import subprocess
 import sys
 import time
 
-ROOT = Path(__file__).resolve().parents[2]
+# Why: a Bazel action or test sets SIM_ROOT to its own tree, so the runner reads
+# only the files Bazel declared, not the checkout behind the runfiles symlinks.
+ROOT = Path(os.environ["SIM_ROOT"]).absolute() if os.environ.get("SIM_ROOT") else Path(__file__).resolve().parents[2]
 DEFAULT_WORKDIR = ROOT / "workdir" / "sim"
 COMPILE_ALLOWANCE_SECONDS = 900
 LEVELS = ["L0", "L1", "L2", "L3", "L4"]
@@ -63,64 +65,101 @@ def fatal_matches(text: str, expected: dict) -> bool:
                for option in options)
 
 
-def run_one(name: str, target: dict, workdir: Path, seed: int, waves: bool) -> int:
-    """Build and test one target in this process (called in a child)."""
-    import cocotb_tools.runner
-    from cocotb_tools.runner import get_runner, get_results
-
-    if str(ROOT) not in sys.path:
-        sys.path.insert(0, str(ROOT))
-    base = workdir / "cocotb" / name
+def build_model(name: str, target: dict, build_dir: Path, log_file: Path, waves: bool) -> int:
+    """Build one target's simulation model into build_dir; 0 on success."""
     if target.get("kind") == "native":
-        return run_native(name, target, base)
-    build_dir, test_dir = base / "build", base / "test"
-    test_dir.mkdir(parents=True, exist_ok=True)
+        return build_native(name, target, build_dir, log_file)
+    import cocotb_tools.runner
+    from cocotb_tools.runner import get_runner
+
     cocotb_tools.runner.MAX_PARALLEL_BUILD_JOBS = int(os.environ.get("SIM_BUILD_JOBS", "2"))
-    runner = get_runner("verilator")
+    # Why: the runner hands its own sys.path to the build as PYTHONPATH, so the python3
+    # that Verilator's makefile calls must be this interpreter, not another one on PATH.
+    os.environ["PATH"] = os.pathsep.join([str(Path(sys.executable).parent), os.environ.get("PATH", "")])
     build_args = ["--timing", "--assert", "--Wall"]
     if target.get("public_depth"):
         build_args += ["--no-public-flat-rw", "--public-depth", str(target["public_depth"])]
-    runner.build(sources=[ROOT / s for s in target["sources"]], hdl_toplevel=target["top"],
-                 build_args=build_args, parameters=target.get("parameters", {}),
-                 build_dir=build_dir, cwd=ROOT, always=waves, waves=waves,
-                 log_file=base / "build.log")
+    get_runner("verilator").build(
+        sources=[ROOT / s for s in target["sources"]], hdl_toplevel=target["top"],
+        build_args=build_args, parameters=target.get("parameters", {}),
+        build_dir=build_dir, cwd=ROOT, always=waves, waves=waves, log_file=log_file)
+    return 0
+
+
+def model_binary(name: str, target: dict, build_dir: Path) -> Path:
+    if target.get("kind") == "native":
+        return build_dir / f"{name}_sim"
+    return build_dir / target["top"]
+
+
+def test_model(name: str, target: dict, build_dir: Path, test_dir: Path, seed: int, waves: bool,
+               log_file: Path) -> int:
+    """Run one target's test against its built model; 0 when it passes."""
+    if target.get("kind") == "native":
+        if target.get("regression_action") == "compile":
+            # Why: a harness that needs inputs prepared elsewhere (a program image, a
+            # script's plusargs): the regression only proves that it builds.
+            return 0
+        with open(log_file, "w") as log:
+            run = subprocess.run([str(model_binary(name, target, build_dir)), *target.get("plusargs", [])],
+                                 cwd=ROOT, stdout=log, stderr=subprocess.STDOUT)
+        return run.returncode
+    import cocotb_tools.config
+    from cocotb_tools.runner import get_runner, get_results
+
+    test_dir.mkdir(parents=True, exist_ok=True)
     results = test_dir / "results.xml"
-    runner.test(test_module=target["test_module"], hdl_toplevel=target["top"],
-                testcase=target["testcase"], seed=seed, waves=waves,
-                extra_env={"DV_CLOCK_HZ": str(target.get("clock_hz", 25_000_000)),
-                           "DV_MAX_CYCLES": str(target.get("max_cycles", 0)),
-                           "DV_SEED": str(seed),
-                           "COCOTB_RESULTS_RELATIVE_TO": str(test_dir)},
-                build_dir=build_dir, test_dir=test_dir, results_xml=str(results),
-                log_file=base / "test.log")
+    get_runner("verilator").test(
+        test_module=target["test_module"], hdl_toplevel=target["top"],
+        testcase=target["testcase"], seed=seed, waves=waves, hdl_toplevel_lang="verilog",
+        extra_env={"DV_CLOCK_HZ": str(target.get("clock_hz", 25_000_000)),
+                   "DV_MAX_CYCLES": str(target.get("max_cycles", 0)),
+                   "DV_SEED": str(seed),
+                   "COCOTB_RESULTS_RELATIVE_TO": str(test_dir),
+                   # Why: a model built elsewhere (a Bazel action) has its rpath pointing
+                   # at that build's cocotb; this finds the libraries of the cocotb running now.
+                   "LD_LIBRARY_PATH": os.pathsep.join(
+                       filter(None, [str(cocotb_tools.config.libs_dir), os.environ.get("LD_LIBRARY_PATH")]))},
+        build_dir=build_dir, test_dir=test_dir, results_xml=str(results), log_file=log_file)
     total, failed = get_results(results)
     return 0 if total and not failed else 1
 
 
-def run_native(name: str, target: dict, base: Path) -> int:
-    """Build a self-checking SystemVerilog top into a binary and run it."""
-    obj = base / "obj"
+def run_one(name: str, target: dict, workdir: Path, seed: int, waves: bool, model: Path | None = None) -> int:
+    """Build (unless model names a built one) and test one target in this process (called in a child)."""
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    base = workdir / "cocotb" / name
+    build_dir = model or (base / ("obj" if target.get("kind") == "native" else "build"))
+    if model is None:
+        build_dir.mkdir(parents=True, exist_ok=True)
+        if build_model(name, target, build_dir, base / "build.log", waves):
+            return 1
+    return test_model(name, target, build_dir, base / "test", seed, waves, base / "test.log")
+
+
+def build_native(name: str, target: dict, obj: Path, log_file: Path) -> int:
+    """Build a self-checking SystemVerilog top into a binary."""
     build = ["verilator", "--binary", "--timing", "--assert", "--Wall",
              "-j", os.environ.get("SIM_BUILD_JOBS", "2"),
              "--top-module", target["top"], "--Mdir", str(obj), "-o", f"{name}_sim",
              *(["--trace-fst"] if target.get("trace_fst") else []),
              *(f"-D{d}" for d in target.get("defines", [])),
              *(str(ROOT / s) for s in target["sources"])]
-    with open(base / "build.log", "w") as log:
-        if subprocess.run(build, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT).returncode:
-            return 1
-    if target.get("regression_action") == "compile":
-        # Why: a harness that needs inputs prepared elsewhere (a program image, a
-        # script's plusargs): the regression only proves that it builds.
-        return 0
-    with open(base / "test.log", "w") as log:
-        run = subprocess.run([str(obj / f"{name}_sim"), *target.get("plusargs", [])],
-                             cwd=ROOT, stdout=log, stderr=subprocess.STDOUT)
-    return run.returncode
+    with open(log_file, "w") as log:
+        return subprocess.run(build, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT).returncode
+
+
+def prune_model(name: str, target: dict, build_dir: Path) -> None:
+    """Keep only the model's executable, so a cached model holds no object files."""
+    keep = model_binary(name, target, build_dir)
+    for path in build_dir.iterdir():
+        if path != keep:
+            shutil.rmtree(path) if path.is_dir() and not path.is_symlink() else path.unlink()
 
 
 def run_target(name: str, target: dict, workdir: Path, seed: int | None, waves: bool,
-               direct: bool = False) -> bool:
+               direct: bool = False, spec: Path | None = None, model: Path | None = None) -> bool:
     native = target.get("kind") == "native"
     seed = target.get("default_seed", 1) if seed is None else seed
     wrapped = bool(target.get("wrapper")) and not direct
@@ -129,7 +168,7 @@ def run_target(name: str, target: dict, workdir: Path, seed: int | None, waves: 
     if base.exists():
         shutil.rmtree(base)
     base.mkdir(parents=True)
-    timeout = target.get("timeout_seconds", 600) + COMPILE_ALLOWANCE_SECONDS
+    timeout = target.get("timeout_seconds", 600) + (0 if model else COMPILE_ALLOWANCE_SECONDS)
     if wrapped:
         # Why: the wrapper prepares the program image before it runs this target
         # directly, so it needs a longer budget.
@@ -142,6 +181,8 @@ def run_target(name: str, target: dict, workdir: Path, seed: int | None, waves: 
         argv = [sys.executable, "-B", __file__, "--workdir", str(workdir), "_child", name, "--seed", str(seed)]
         if waves:
             argv.append("--waves")
+        if model:
+            argv += ["--spec", str(spec), "--model", str(model)]
     start = time.monotonic()
     log = base / "run.log"
     with log.open("w") as handle:
@@ -170,10 +211,27 @@ def run_target(name: str, target: dict, workdir: Path, seed: int | None, waves: 
     print(f"{name:45s} seed={shown!s:<10} {time.monotonic() - start:7.1f}s  {verdict}", flush=True)
     if not passed:
         print(f"    log: {log}", flush=True)
+        if os.environ.get("TEST_TMPDIR"):
+            # Why: under bazel test this output is the test log an agent reads first.
+            print(text, flush=True)
     return passed
 
 
+def prepend_tool_paths() -> None:
+    """Put the directories of the SIM_PATH_PREPEND files (Bazel's Verilator) first on PATH."""
+    dirs = []
+    for entry in os.environ.get("SIM_PATH_PREPEND", "").split():
+        path = Path(entry).absolute()
+        dirs.append(str(path if path.is_dir() else path.parent))
+    if dirs:
+        os.environ["PATH"] = os.pathsep.join(dict.fromkeys(dirs + [os.environ.get("PATH", "")]))
+
+
 def main(argv=None) -> int:
+    prepend_tool_paths()
+    # Why: rules_python sets this for its own interpreter; children that run a script
+    # by path (a wrapper's program build) need their own folder on sys.path.
+    os.environ.pop("PYTHONSAFEPATH", None)
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--workdir", type=Path, default=DEFAULT_WORKDIR)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -188,10 +246,21 @@ def main(argv=None) -> int:
                       help="targets at this regression level or below; alone, all such targets")
     test.add_argument("--direct", action="store_true",
                       help="run the target itself, not its wrapper (wrappers call this)")
+    build = sub.add_parser("build-model", help="build one target's model (Bazel's model action)")
+    build.add_argument("--spec", type=Path, required=True, help="JSON file: the target's name and fields")
+    build.add_argument("--out", type=Path, required=True)
+    build.add_argument("--waves", action="store_true")
+    run = sub.add_parser("run-model", help="test one target against a built model (Bazel's test)")
+    run.add_argument("--spec", type=Path, required=True)
+    run.add_argument("--model", type=Path, required=True)
+    run.add_argument("--seed", type=int)
+    run.add_argument("--waves", action="store_true")
     child = sub.add_parser("_child")
     child.add_argument("target")
     child.add_argument("--seed", type=int, required=True)
     child.add_argument("--waves", action="store_true")
+    child.add_argument("--spec", type=Path)
+    child.add_argument("--model", type=Path)
     args = parser.parse_args(argv)
     targets = load_targets()
     workdir = args.workdir if args.workdir.is_absolute() else ROOT / args.workdir
@@ -199,8 +268,31 @@ def main(argv=None) -> int:
         for name, target in sorted(targets.items()):
             print(f"{name:45s} {target['project']:12s} {target.get('level', ''):6s} {target.get('description', '')[:80]}")
         return 0
+    if args.command in ("build-model", "run-model") or getattr(args, "spec", None):
+        spec = json.loads(args.spec.read_text())
+        name, target = spec["name"], spec["target"]
+    if args.command == "build-model":
+        out = args.out.absolute()
+        out.mkdir(parents=True, exist_ok=True)
+        log = out.parent / f"{out.name}.log"
+        try:
+            code = build_model(name, target, out, log, args.waves)
+        except (RuntimeError, SystemExit, subprocess.CalledProcessError):
+            code = 1
+        if code:
+            print(log.read_text(errors="replace") if log.exists() else "", file=sys.stderr)
+            return code
+        prune_model(name, target, out)
+        return 0
+    if args.command == "run-model":
+        if args.seed is None and os.environ.get("SIM_SEED"):
+            args.seed = int(os.environ["SIM_SEED"])
+        outputs = Path(os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR") or workdir)
+        return 0 if run_target(name, target, outputs, args.seed, args.waves or bool(os.environ.get("SIM_WAVES")),
+                               spec=args.spec.absolute(), model=args.model.absolute()) else 1
     if args.command == "_child":
-        return run_one(args.target, targets[args.target], workdir, args.seed, args.waves)
+        target = target if args.spec else targets[args.target]
+        return run_one(args.target, target, workdir, args.seed, args.waves, args.model)
     if args.direct and args.seed is None and os.environ.get("SIM_SEED"):
         args.seed = int(os.environ["SIM_SEED"])
     if args.direct and os.environ.get("SIM_WAVES"):

@@ -1,0 +1,4 @@
+exports_files(
+    ["toolchain.json"],
+    visibility = ["//visibility:public"],
+)

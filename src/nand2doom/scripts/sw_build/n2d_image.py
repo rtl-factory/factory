@@ -45,17 +45,28 @@ def _tool(environment_name: str, default: str) -> str:
     return resolved
 
 
-def _confined_output(output: Path, root: Path) -> Path:
+def _scratch_roots(root: Path) -> list[Path]:
+    """The repository workdir, plus the scratch directories of the Bazel test running now."""
     workdir = root / "workdir"
     if workdir.is_symlink():
         raise ImageBuildError("repository workdir must not be a symbolic link")
+    bazel = [Path(os.environ[name]) for name in ("TEST_UNDECLARED_OUTPUTS_DIR", "TEST_TMPDIR")
+             if os.environ.get(name)]
+    return [workdir] + bazel
+
+
+def _confined_output(output: Path, root: Path) -> Path:
     resolved = output.resolve()
-    try:
-        relative = resolved.relative_to(workdir.resolve())
-    except ValueError as error:
+    for workdir in _scratch_roots(root):
+        try:
+            relative = resolved.relative_to(workdir.resolve())
+            break
+        except ValueError:
+            continue
+    else:
         raise ImageBuildError(
             f"output directory escapes repository workdir: {output}"
-        ) from error
+        )
     component = workdir
     for part in relative.parts:
         component /= part

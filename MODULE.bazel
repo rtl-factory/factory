@@ -1,0 +1,25 @@
+"""The factory's Bazel module (wiki/tools/bazel/spec.md)."""
+
+module(name = "rtl_factory")
+
+bazel_dep(name = "bazel_skylib", version = "1.9.0")
+bazel_dep(name = "rules_python", version = "2.5.1")
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(
+    # Why: CI and agent containers run as root; the toolchain refuses root without this.
+    ignore_root_user_error = True,
+    is_default = True,
+    python_version = "3.12",
+)
+
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+pip.parse(
+    hub_name = "pypi",
+    python_version = "3.12",
+    requirements_lock = "//tools/sim:requirements_lock.txt",
+)
+use_repo(pip, "pypi")
+
+hdl = use_extension("//tools/bazel:extensions.bzl", "hdl")
+use_repo(hdl, "hdl_registry", "verilator")

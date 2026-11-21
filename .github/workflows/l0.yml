@@ -1,7 +1,8 @@
 # L0 regression (wiki/bkm/workflow/ci-levels.md): the comment lint, the scripts'
-# and tools' unit tests, every L0 simulation target and every L0 formal target,
-# on Verilator, cocotb and the OSS CAD Suite at the versions pinned in
-# cfg/toolchain.json and tools/sim/requirements.txt.
+# and tools' unit tests, every L0 simulation target (through Bazel, cached) and
+# every L0 formal target, on Verilator, cocotb and the OSS CAD Suite at the
+# versions pinned in cfg/toolchain.json, tools/sim/requirements_lock.txt and
+# .bazelversion.
 name: l0
 
 on:
@@ -80,8 +81,24 @@ jobs:
       - name: Unit tests (scripts and tools)
         run: python -m pytest -q src/*/scripts tools
 
+      - uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-cache: true
+          # Why: models and test results survive between runs; a change reruns only
+          # what it touches (wiki/tools/bazel/spec.md).
+          disk-cache: l0
+          repository-cache: true
+
       - name: L0 simulation targets
-        run: python tools/sim/sim.py --workdir workdir/sim test --level L0
+        run: bazel test --config=ci --config=l0 //src/...
+
+      - name: Keep simulation logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sim-logs
+          path: bazel-testlogs/**/test.log
+          if-no-files-found: ignore
 
       - name: Install the OSS CAD Suite (formal tools)
         if: ${{ !cancelled() }}

@@ -1,0 +1,21 @@
+load("@pypi//:requirements.bzl", "requirement")
+load("@rules_python//python:py_binary.bzl", "py_binary")
+
+exports_files(
+    ["sim.py"],
+    visibility = ["//visibility:public"],
+)
+
+# The runner as a build tool: Bazel's model actions call its build-model command.
+py_binary(
+    name = "sim",
+    srcs = ["sim.py"],
+    visibility = ["//visibility:public"],
+    deps = [requirement("cocotb")],
+)
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"], exclude = ["BUILD.bazel"]),
+    visibility = ["//visibility:public"],
+)

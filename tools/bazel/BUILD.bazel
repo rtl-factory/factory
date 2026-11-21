@@ -1,0 +1,16 @@
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+exports_files(["hdl.bzl", "extensions.bzl"])
+
+# bazel test --//tools/bazel:waves <target>: rebuild models with tracing and write
+# waveforms into the test's outputs (bazel-testlogs/<package>/<target>/test.outputs/).
+bool_flag(
+    name = "waves",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "waves_on",
+    flag_values = {":waves": "true"},
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,22 @@
+# Bazel settings for every checkout (wiki/tools/bazel/spec.md). Put machine-only
+# settings in user.bazelrc, which git ignores.
+
+common --enable_bzlmod
+# Why: actions see a fixed PATH, so a cached result does not depend on whose shell ran it.
+build --incompatible_strict_action_env
+build --disk_cache=~/.cache/bazel-disk
+test --test_output=errors
+test --test_summary=terse
+
+# Regression levels (wiki/bkm/workflow/ci-levels.md); levels are cumulative.
+test:l0 --test_tag_filters=L0
+test:l1 --test_tag_filters=L0,L1
+test:l2 --test_tag_filters=L0,L1,L2
+test:l3 --test_tag_filters=L0,L1,L2,L3
+test:l4 --test_tag_filters=L0,L1,L2,L3,L4
+
+# CI: no progress spam, keep going so one run reports every failure.
+common:ci --color=no --curses=no --show_progress_rate_limit=30
+build:ci --keep_going
+
+try-import %workspace%/user.bazelrc

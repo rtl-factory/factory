@@ -38,6 +38,17 @@ python tools/sim/sim.py test --all
 
 Seeds: a wrapped target gets its seed and `--waves` through the `SIM_SEED` and `SIM_WAVES` environment variables, which the wrapper's own `test --direct` call reads, so the printed seed is the one the test used. Native targets take no seed and ignore `--waves` (a `trace_fst` harness writes its own FST window when its script asks); their result line shows `seed=-`. A target that runs past its budget is stopped with its whole process group.
 
+## Bazel commands
+
+Bazel ([spec](../bazel/spec.md)) runs every target through two commands that split a run into its cacheable halves; agents run targets through Bazel, not these.
+
+```
+python tools/sim/sim.py build-model --spec <target>.spec.json --out <dir> [--waves]
+python tools/sim/sim.py run-model --spec <target>.spec.json --model <dir> [--seed N] [--waves]
+```
+
+A spec file is `{"name": <target>, "target": <registry entry>}`. `build-model` builds the model into `<dir>` (log beside it as `<dir>.log`) and keeps only its executable. `run-model` tests the target against that model with the verdicts above, writing into `$TEST_UNDECLARED_OUTPUTS_DIR` (else `--workdir`); `SIM_SEED` and `SIM_WAVES` in the environment set the seed and waves when the flags are absent. `SIM_ROOT` replaces the repository root (Bazel sets it to the sandbox), and `SIM_PATH_PREPEND` names files or directories whose directories go first on `PATH` (Bazel's Verilator).
+
 ## Origin
 
 Replaces, for this factory, the larger harness in the captain's nand2anything repository (`tools/build/`); nand2mario's targets, wrappers and negative-test oracles were carried over from it (issue #67).
