@@ -794,6 +794,54 @@
       "default_seed": 73,
       "max_cycles": 400000,
       "level": "L0"
+    },
+    "n2a_sdram_ctrl_lockstep_line": {
+      "kind": "cocotb",
+      "description": "Common SDRAM controller in lockstep with nand2doom's n2d_sdram_controller on one random request stream: responses and pins compared every clock, with the listed differences masked",
+      "top": "n2a_sdram_ctrl_lockstep_fixture",
+      "sources": [
+        "src/nand2doom/rtl/memory/n2d_ls_types_pkg.sv",
+        "src/nand2doom/rtl/memory/n2d_sdram_controller.sv",
+        "src/nand2mario/rtl/storage/n2m_sdram_pkg.sv",
+        "src/nand2mario/rtl/storage/n2m_sdram_ctrl.sv",
+        "src/common/rtl/sdram/n2a_sdram_pkg.sv",
+        "src/common/rtl/sdram/n2a_sdram_ctrl.sv",
+        "src/common/dv/sdram/n2a_sdram_ctrl_lockstep_fixture.sv"
+      ],
+      "parameters": {
+        "LINE": 1
+      },
+      "test_module": "src.common.dv.sdram.test_sdram_ctrl_lockstep",
+      "testcase": "sdram_ctrl_lockstep",
+      "level": "L0",
+      "clock_hz": 25000000,
+      "default_seed": 41,
+      "max_cycles": 200000,
+      "timeout_seconds": 300
+    },
+    "n2a_sdram_ctrl_lockstep_word": {
+      "kind": "cocotb",
+      "description": "Common SDRAM controller in lockstep with nand2mario's n2m_sdram_ctrl on one random request stream: responses and pins compared every clock, with the listed differences masked",
+      "top": "n2a_sdram_ctrl_lockstep_fixture",
+      "sources": [
+        "src/nand2doom/rtl/memory/n2d_ls_types_pkg.sv",
+        "src/nand2doom/rtl/memory/n2d_sdram_controller.sv",
+        "src/nand2mario/rtl/storage/n2m_sdram_pkg.sv",
+        "src/nand2mario/rtl/storage/n2m_sdram_ctrl.sv",
+        "src/common/rtl/sdram/n2a_sdram_pkg.sv",
+        "src/common/rtl/sdram/n2a_sdram_ctrl.sv",
+        "src/common/dv/sdram/n2a_sdram_ctrl_lockstep_fixture.sv"
+      ],
+      "parameters": {
+        "LINE": 0
+      },
+      "test_module": "src.common.dv.sdram.test_sdram_ctrl_lockstep",
+      "testcase": "sdram_ctrl_lockstep",
+      "level": "L0",
+      "clock_hz": 25000000,
+      "default_seed": 43,
+      "max_cycles": 300000,
+      "timeout_seconds": 300
     }
   }
 }

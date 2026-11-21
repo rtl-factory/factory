@@ -58,7 +58,8 @@ module n2a_sdram_ctrl_fv #(
         .WAIT_WR          (WAIT_WR),
         .WAIT_MRD         (WAIT_MRD),
         .REFRESH_DUE      (REFRESH_DUE),
-        .REFRESH_DEADLINE (REFRESH_DEADLINE)
+        .REFRESH_DEADLINE (REFRESH_DEADLINE),
+        .REFRESH_AGE_FROM_MODE (!LINE)
     ) dut (
         .clk_i, .reset_i, .request_valid_i, .request_ready_o, .request_write_i, .request_address_i,
         .request_write_data_i(request_write_data_i[16*BEATS-1:0]),
@@ -123,7 +124,7 @@ module n2a_sdram_ctrl_fv #(
                 last_cmd_q <= cmd;
                 nops_q <= '0;
             end else if (nops_q != 8'hff) nops_q <= nops_q + 8'd1;
-            if (cmd == CMD_REFRESH) begin
+            if (cmd == CMD_REFRESH || (!LINE && cmd == CMD_MODE)) begin
                 refreshed_q <= 1'b1;
                 since_refresh_q <= 9'd1;
             end else if (refreshed_q && since_refresh_q != 9'h1ff) since_refresh_q <= since_refresh_q + 9'd1;

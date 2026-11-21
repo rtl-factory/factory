@@ -41,7 +41,8 @@ module n2a_sdram_ctrl_fixture #(
         .WAIT_WR          (LINE ? 0 : 2),
         .WAIT_MRD         (LINE ? 0 : 2),
         .REFRESH_DUE      (LINE ? 163 : 160),
-        .REFRESH_DEADLINE (LINE ? 194 : 195)
+        .REFRESH_DEADLINE (LINE ? 194 : 195),
+        .REFRESH_AGE_FROM_MODE (!LINE)
     ) u_ctrl (
         .clk_i, .reset_i, .request_valid_i, .request_ready_o, .request_write_i,
         .request_address_i,

@@ -8,6 +8,7 @@
 // every access is ACTIVATE, column command, PRECHARGE, and the response comes
 // one clock after the precharge wait. The WAIT_* parameters are the idle
 // clocks inserted after each command; init waits are at least INIT_WAIT_MIN.
+// The defaults are legal for the IS42S16320D-7 at 25 MHz.
 // Commands, DQ output enable and DQM are driven from registered state; the
 // board top drives DRAM_CLK as the inverted system clock, so read data
 // launched by the device is captured at the edge ending the clock after the
@@ -18,14 +19,15 @@ module n2a_sdram_ctrl #(
     parameter bit ROW_XOR_BANK = 1'b0,
     parameter int unsigned POWERUP_CLOCKS = 5000,
     parameter int unsigned INIT_REFRESHES = 2,
-    parameter int unsigned INIT_WAIT_MIN = 0,
+    parameter int unsigned INIT_WAIT_MIN = 2,
     parameter int unsigned WAIT_RCD = 0,
     parameter int unsigned WAIT_RP = 0,
     parameter int unsigned WAIT_RFC = 0,
-    parameter int unsigned WAIT_WR = 0,
+    parameter int unsigned WAIT_WR = 1,
     parameter int unsigned WAIT_MRD = 0,
     parameter int unsigned REFRESH_DUE = 163,
-    parameter int unsigned REFRESH_DEADLINE = 194
+    parameter int unsigned REFRESH_DEADLINE = 194,
+    parameter bit REFRESH_AGE_FROM_MODE = 1'b0
 ) (
     input  logic                       clk_i,
     input  logic                       reset_i,
@@ -67,9 +69,9 @@ module n2a_sdram_ctrl #(
     localparam int unsigned INIT_WAIT_RP = WAIT_RP > INIT_WAIT_MIN ? WAIT_RP : INIT_WAIT_MIN;
     localparam int unsigned INIT_WAIT_RFC = WAIT_RFC > INIT_WAIT_MIN ? WAIT_RFC : INIT_WAIT_MIN;
     localparam int unsigned INIT_WAIT_MRD = WAIT_MRD > INIT_WAIT_MIN ? WAIT_MRD : INIT_WAIT_MIN;
-    // Clocks from accepting a request at age REFRESH_DUE - 1 to the REFRESH
-    // command in the longest case: a row-miss line read then precharge-all
-    // (open row), or a write with its recovery and precharge (close page).
+    // An upper bound on the clocks from accepting a request at age
+    // REFRESH_DUE - 1 to the REFRESH command: it adds the precharge, activate,
+    // recovery and burst terms of every path, so it is not the exact worst case.
     localparam int unsigned WORST_TO_REFRESH = 6 + 2 * WAIT_RP + WAIT_RCD + WAIT_WR + BURST_BEATS;
 
     `ASSERT_PARAM(g_invalid_burst, BURST_BEATS == 1 || BURST_BEATS == 8,
@@ -79,6 +81,11 @@ module n2a_sdram_ctrl #(
     `ASSERT_PARAM(g_invalid_waits, POWERUP_CLOCKS < 8192 && INIT_REFRESHES >= 1 && INIT_REFRESHES <= 15 &&
         INIT_WAIT_RP < 8192 && INIT_WAIT_RFC < 8192 && INIT_WAIT_MRD < 8192 && WAIT_RCD < 8192 &&
         WAIT_WR < 8192, "n2a_sdram_ctrl wait counts must fit their counters")
+    // Ref: IS42S16320D-7 at 25 MHz: tRFC (two clocks) needs one idle clock between
+    // the init refreshes, and tWR (two clocks) one after a close-page write beat;
+    // every other minimum is met by the command sequence itself.
+    `ASSERT_PARAM(g_unsafe_waits, INIT_WAIT_RFC >= 1 && (OPEN_ROW || WAIT_WR >= 1),
+        "n2a_sdram_ctrl waits are below the IS42S16320D-7 minimums at 25 MHz")
 
     typedef enum logic [3:0] {
         SDRAM_POWERUP,
@@ -161,7 +168,9 @@ module n2a_sdram_ctrl #(
             end
             SDRAM_PRECHARGE: begin
                 // Ref: IS42S16320D datasheet PRECHARGE: A10 low precharges only the
-                // addressed bank.
+                // addressed bank. Why: close page has one bank open, and precharges
+                // all with A10 high, as the nand2mario controller did.
+                sdram_address_o[10] = !OPEN_ROW;
                 sdram_ras_n_o = 1'b0; sdram_we_n_o = 1'b0;
             end
             SDRAM_INIT_REFRESH, SDRAM_REFRESH: begin
@@ -217,7 +226,7 @@ module n2a_sdram_ctrl #(
         // than wrapping, so an overdue refresh never looks fresh.
         if (regs_q.refresh_tracking && regs_q.refresh_age != 9'h1ff)
             regs_d.refresh_age = regs_q.refresh_age + 9'd1;
-        case (regs_q.phase)
+        unique case (regs_q.phase)
             SDRAM_POWERUP: begin
                 if (int'(regs_q.count) == POWERUP_CLOCKS - 1) begin
                     regs_d.count = '0;
@@ -234,6 +243,7 @@ module n2a_sdram_ctrl #(
             end
             SDRAM_INIT_MODE: begin
                 regs_d.init_done = 1'b1;
+                if (REFRESH_AGE_FROM_MODE) regs_d.refresh_age = '0;
                 regs_d = after(regs_d, INIT_WAIT_MRD, SDRAM_IDLE);
             end
             SDRAM_WAIT: begin
@@ -307,6 +317,7 @@ module n2a_sdram_ctrl #(
 
     `DFF_RST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
 
+    `ASSERT_CLOCKED(clk_i, reset_i, regs_q.phase <= SDRAM_RESPOND && regs_q.after_wait <= SDRAM_RESPOND)
     // Why: immediate clocked forms, so the same checks run in simulation and in
     // the formal proof (wiki/src/common/fv/sdram/fv-plan.md).
     `ASSERT_CLOCKED_WHEN(clk_i, reset_i, sdram_dq_oe_o, regs_q.phase == SDRAM_WRITE)

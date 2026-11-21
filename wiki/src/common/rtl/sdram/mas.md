@@ -15,17 +15,20 @@
 | `ROW_XOR_BANK` | 0 | Address map: 0 is bank `[25:24]`, row `[23:11]`; 1 is row `[25:13]`, bank `[12:11]^[14:13]`. Column is `[10:1]` in both. |
 | `POWERUP_CLOCKS` | 5000 | NOP clocks after reset before the first PRECHARGE ALL. |
 | `INIT_REFRESHES` | 2 | Refreshes in the init sequence, 1 to 15. |
-| `INIT_WAIT_MIN` | 0 | Floor on the idle clocks after each init command. |
-| `WAIT_RCD`, `WAIT_RP`, `WAIT_RFC`, `WAIT_WR`, `WAIT_MRD` | 0 | Idle (NOP) clocks after ACTIVATE, PRECHARGE, REFRESH, the last write beat (close page only), and MODE REGISTER SET. |
+| `INIT_WAIT_MIN` | 2 | Floor on the idle clocks after each init command. |
+| `WAIT_RCD`, `WAIT_RP`, `WAIT_RFC`, `WAIT_WR`, `WAIT_MRD` | 0, 0, 0, 1, 0 | Idle (NOP) clocks after ACTIVATE, PRECHARGE, REFRESH, the last write beat (close page only), and MODE REGISTER SET. |
 | `REFRESH_DUE` | 163 | Refresh age at which the controller stops accepting and refreshes. |
 | `REFRESH_DEADLINE` | 194 | Refresh age the controller must never exceed; checked at elaboration against the longest access and in simulation. |
+| `REFRESH_AGE_FROM_MODE` | 0 | 1 starts the refresh age again at MODE REGISTER SET; 0 starts it at the first init refresh. |
+
+The defaults are legal for the IS42S16320D-7 at 25 MHz (40 ns clock: tRFC 63 ns needs one idle clock after REFRESH, tWR 14 ns plus the precharge needs one after the last close-page write beat). Elaboration fails when the init refresh wait or, in close page, `WAIT_WR` is zero.
 
 The project configurations:
 
-| Project | `BURST_BEATS` | `OPEN_ROW` | `ROW_XOR_BANK` | `POWERUP_CLOCKS` | `INIT_REFRESHES` | `INIT_WAIT_MIN` | RCD/RP/RFC/WR/MRD | DUE/DEADLINE |
-|---|---|---|---|---|---|---|---|---|
-| nand2doom | 8 | 1 | 1 | 5000 | 2 | 2 | 0/0/0/0/0 | 163/194 |
-| nand2mario | 1 | 0 | 0 | 5001 | 8 | 0 | 2/2/3/2/2 | 160/195 |
+| Project | `BURST_BEATS` | `OPEN_ROW` | `ROW_XOR_BANK` | `POWERUP_CLOCKS` | `INIT_REFRESHES` | `INIT_WAIT_MIN` | RCD/RP/RFC/WR/MRD | DUE/DEADLINE | `REFRESH_AGE_FROM_MODE` |
+|---|---|---|---|---|---|---|---|---|---|
+| nand2doom | 8 | 1 | 1 | 5000 | 2 | 2 | 0/0/0/1/0 (WR unused with open row) | 163/194 | 0 |
+| nand2mario | 1 | 0 | 0 | 5001 | 8 | 2 | 2/2/3/2/2 | 160/195 | 1 |
 
 ### Ports
 
@@ -77,7 +80,7 @@ Read capture: with DRAM_CLK inverted and CAS latency two, the beat for a READ is
 
 A close-page read walked by clock (nand2mario): 1 ACTIVATE, 2 and 3 wait, 4 READ, 5 capture, 6 PRECHARGE, 7 and 8 wait, 9 RESPOND with the data.
 
-The refresh age counts clocks since the last REFRESH (the first init refresh starts it) and saturates. `REFRESH_DUE + WORST_TO_REFRESH <= REFRESH_DEADLINE` is checked at elaboration, where `WORST_TO_REFRESH = 6 + 2*WAIT_RP + WAIT_RCD + WAIT_WR + BURST_BEATS` covers a request accepted one clock before the refresh is due.
+The refresh age counts clocks since the last REFRESH (the first init refresh starts it, or MODE REGISTER SET with `REFRESH_AGE_FROM_MODE`) and saturates. `REFRESH_DUE + WORST_TO_REFRESH <= REFRESH_DEADLINE` is checked at elaboration, where `WORST_TO_REFRESH = 6 + 2*WAIT_RP + WAIT_RCD + WAIT_WR + BURST_BEATS` is an upper bound on the clocks from a request accepted one clock before the refresh is due to the REFRESH. `REFRESH_DEADLINE` bounds the age the clock before a REFRESH, so the gap between two REFRESH commands can reach `REFRESH_DEADLINE + 1` clocks.
 
 ## Clocks and resets
 
@@ -88,7 +91,13 @@ One domain, `clk_i`. DRAM_CLK is the inverted `clk_i`, driven by the board top; 
 - One engine with wait parameters, against keeping two controllers. The two project controllers were the same command sequencer with different burst, row policy and NOP counts; parameterizing the counts keeps each project's existing contract test passing unchanged on the common block.
 - Reads ignore byte enables, where the nand2doom controller rejected a read with any enable set: nand2mario drives enables on reads, and an ignored field cannot corrupt memory.
 - Close page answers one clock after the precharge wait, to keep nand2mario's fixed 9/10 latency, rather than answering with the last beat.
+- Close page precharges with A10 high (all banks), as nand2mario did; open row precharges one bank with A10 low.
+
+Differences from the project controllers, the only ones the lockstep benches (`n2a_sdram_ctrl_lockstep_line`, `_word`) mask:
+
+- nand2doom: `init_done_o` rises with MODE REGISTER SET, two clocks before nand2doom's; DQM is `11` until then, where nand2doom drove it from reset; reads with byte enables are served, not rejected (above). nand2doom has no `idle_o`.
+- nand2mario: the address and bank are not held on NOP clocks; `response_data_o` on a write response is not defined (nand2mario repeated the last read, this block gives zero). The refresh age starts at MODE REGISTER SET in both, through `REFRESH_AGE_FROM_MODE`.
 
 ## Verification
 
-DV plan: [../../dv/sdram/dv-plan.md](../../dv/sdram/dv-plan.md). FV plan: [../../fv/sdram/fv-plan.md](../../fv/sdram/fv-plan.md): command spacing, refresh deadline, one response within the latency table, and misaligned errors, proven in both configurations. Each project's own controller contract runs on this block in that project's configuration (`n2a_sdram_ctrl_n2d_contract`, `n2a_sdram_ctrl_n2m_contract`), alongside the common random-traffic bench (`n2a_sdram_ctrl_line`, `n2a_sdram_ctrl_word`).
+DV plan: [../../dv/sdram/dv-plan.md](../../dv/sdram/dv-plan.md). FV plan: [../../fv/sdram/fv-plan.md](../../fv/sdram/fv-plan.md): command spacing, refresh deadline, one response within the latency table, and misaligned errors, proven in both configurations. Each project's own controller contract runs on this block in that project's configuration (`n2a_sdram_ctrl_n2d_contract`, `n2a_sdram_ctrl_n2m_contract`), alongside the common random-traffic bench (`n2a_sdram_ctrl_line`, `n2a_sdram_ctrl_word`) and a clock-by-clock lockstep against each project controller (`n2a_sdram_ctrl_lockstep_line`, `n2a_sdram_ctrl_lockstep_word`).

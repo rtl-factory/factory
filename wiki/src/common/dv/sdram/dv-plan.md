@@ -51,9 +51,10 @@ tWR is checked per bank, on a PRECHARGE of a bank that is open, from that bank's
 | C1 | Latency, row policy | 600 random reads and writes over three rows of every bank, 5% misaligned, random gaps | latency table by row state (taken from the command pins), byte shadow, error with no ACTIVATE on misaligned, close-page idle timing, at least 18 refreshes; the model checks every pin rule | `n2a_sdram_ctrl_line` (nand2doom configuration), `n2a_sdram_ctrl_word` (nand2mario configuration) | L0 |
 | C2 | nand2doom configuration | nand2doom's `sdram_pin_timing_contract` on the bare controller | that test's pin model, init order, latency and DQM checks; a read with byte enables must answer without error here (the project controller rejects it) | `n2a_sdram_ctrl_n2d_contract` | L0 |
 | C3 | nand2mario configuration | nand2mario's `sdram_ctrl_contract` through `n2a_sdram_ctrl_n2m_fixture`, which gives the controller the project fixture's port names | that test's init clock numbers, latencies, refresh cadence and shadow | `n2a_sdram_ctrl_n2m_contract` | L0 |
+| C4 | Lockstep with each project controller | 3000 random requests over three rows of every bank (3% misaligned in the line configuration), timed by the project controller's ready, random DQ input every clock, both controllers side by side in `n2a_sdram_ctrl_lockstep_fixture` | every pin, ready, idle and response identical each clock, apart from the differences the MAS lists, which are masked in the test and nowhere else | `n2a_sdram_ctrl_lockstep_line` (against `n2d_sdram_controller`), `n2a_sdram_ctrl_lockstep_word` (against `n2m_sdram_ctrl`) | L0 |
 
 In-RTL assertions: DQ is driven only in WRITE, ACTIVATE only to a closed bank, REFRESH only with every bank closed, close page leaves no bank open in IDLE, the refresh deadline holds, and a stalled request is stable.
 
 ## Status
 
-The project controllers' own benches cover the model on their real command streams. C2 and C3 show the common controller is a drop-in for both project controllers; stages 3 and 4 (#141, #142) switch the projects over.
+The project controllers' own benches cover the model on their real command streams. C2 and C3 show the common controller is a drop-in for both project controllers, and C4 that it matches them clock for clock; stages 3 and 4 (#141, #142) switch the projects over.
