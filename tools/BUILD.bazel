@@ -1,0 +1,11 @@
+load("@rules_python//python:py_library.bzl", "py_library")
+
+# The tools' Python that tests import (tools.board, ...); tools with their own
+# package (sim, bazel) are not part of it.
+py_library(
+    name = "python",
+    srcs = glob(["**/*.py"]),
+    data = glob(["**"], exclude = ["**/*.py", "BUILD.bazel"]),
+    imports = [".."],
+    visibility = ["//visibility:public"],
+)

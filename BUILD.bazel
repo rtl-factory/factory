@@ -1,0 +1,2 @@
+# The repository root package; every target lives in its project's or tool's package
+# (wiki/tools/bazel/spec.md).

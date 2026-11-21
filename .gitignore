@@ -16,3 +16,10 @@ __pycache__/
 *.gb
 *.gbc
 private/
+
+# Machine-only Bazel settings (registry mirror, cache paths)
+/user.bazelrc
+
+# Bazel lockfile: resolution is pinned by MODULE.bazel; the lockfile records the
+# registry mirror each host used.
+/MODULE.bazel.lock

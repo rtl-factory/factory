@@ -76,7 +76,7 @@ Outputs: `n2d_doom.elf`, `.bin`, `.map`, `manifest.json`, `inputs.json`, `freedo
 
 ## Confinement
 
-Both scripts resolve the output against the checkout root and require it below `workdir/`, with no link component below `workdir/`; `n2d_image.py` also refuses a `workdir` that is itself a link, and `n2d_doom.py` rejects any link or escaping path already inside the output tree, before and after extraction.
+Both scripts resolve the output against the checkout root and require it below `workdir/` (`n2d_image.py` also accepts the scratch directories of the Bazel test running it, `TEST_UNDECLARED_OUTPUTS_DIR` and `TEST_TMPDIR`), with no link component below that directory; `n2d_image.py` also refuses a `workdir` that is itself a link, and `n2d_doom.py` rejects any link or escaping path already inside the output tree, before and after extraction.
 
 ## Tests
 
