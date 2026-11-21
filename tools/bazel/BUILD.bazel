@@ -1,6 +1,9 @@
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 
-exports_files(["hdl.bzl", "extensions.bzl"])
+exports_files(
+    ["extensions.bzl", "hdl.bzl", "pytest_main.py"],
+    visibility = ["//visibility:public"],
+)
 
 # bazel test --//tools/bazel:waves <target>: rebuild models with tracing and write
 # waveforms into the test's outputs (bazel-testlogs/<package>/<target>/test.outputs/).

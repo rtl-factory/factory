@@ -6,7 +6,7 @@ The L0 regression took about 18 minutes, and every run rebuilt every Verilator m
 
 ## Requirements
 
-1. Make every simulation and formal target of every project a test, without listing targets anywhere but the simulation registry and the formal targets' own files.
+1. Make every simulation and formal target of every project, and every folder of unit tests, a test, without listing targets anywhere but the simulation registry and the formal targets' own files.
 2. Select the tests of a regression level and the levels below it in one command.
 3. Build each distinct model (top, sources, parameters) once, share it between targets that differ only in their test, and rebuild it only when one of its inputs changes.
 4. Rerun a test only when its model, its test code, its data or the runner changed.
@@ -20,7 +20,8 @@ The L0 regression took about 18 minutes, and every run rebuilt every Verilator m
 
 - A remote cache or remote execution server.
 - Building Verilator, the OSS CAD Suite or Quartus from Bazel; the toolchain installs them.
-- Unit tests, the comment lint and Quartus builds; later stages of the migration add them.
+- The comment lint, which compares against the base branch through git.
+- Quartus builds; a later stage of the migration adds them.
 
 ## Acceptance
 

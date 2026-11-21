@@ -1,8 +1,8 @@
-# L0 regression (wiki/bkm/flow.md CI levels): the comment lint, the scripts'
-# and tools' unit tests, every L0 simulation target and every L0 formal target
-# (both through Bazel, cached), on Verilator, cocotb and the OSS CAD Suite at the
-# versions pinned in cfg/toolchain.json, tools/sim/requirements_lock.txt and
-# .bazelversion.
+# L0 regression (wiki/bkm/flow.md CI levels): the comment lint, then one
+# `bazel test --config=l0 //...` for the scripts' and tools' unit tests, every L0
+# simulation target and every L0 formal target (cached between runs), on
+# Verilator, cocotb and the OSS CAD Suite at the versions pinned in
+# cfg/toolchain.json, tools/sim/requirements_lock.txt and .bazelversion.
 name: l0
 
 on:
@@ -71,16 +71,6 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq liblz4-dev gcc-riscv64-unknown-elf picolibc-riscv64-unknown-elf
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: tools/sim/requirements.txt
-      - run: pip install -r tools/sim/requirements.txt
-
-      - name: Unit tests (scripts and tools)
-        run: python -m pytest -q src/*/scripts tools
-
       - name: Install the OSS CAD Suite (formal tools)
         run: |
           read -r url sum < <(python3 -I -c 'import json; v = json.load(open("cfg/toolchain.json"))["oss_cad_suite"]; print(v["url"], v["sha256"])')
@@ -110,8 +100,8 @@ jobs:
           key: bazel-disk-l0-${{ runner.os }}-${{ github.sha }}
           restore-keys: bazel-disk-l0-${{ runner.os }}-
 
-      - name: L0 simulation and formal targets
-        run: bazel test --config=ci --config=l0 //src/...
+      - name: L0 unit, simulation and formal tests
+        run: bazel test --config=ci --config=l0 //...
 
       - name: Keep test logs and formal traces on failure
         if: failure()

@@ -1,4 +1,7 @@
+load("//tools/bazel:hdl.bzl", "unit_tests")
 exports_files(
     ["fv.py"],
     visibility = ["//visibility:public"],
 )
+
+unit_tests()
