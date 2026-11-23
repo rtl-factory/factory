@@ -64,6 +64,28 @@ Latency counts clocks after the accepting edge, up to and including the clock in
 
 The nand2doom memory MAS counts edges from acceptance to the registered response, which is one less than this table.
 
+### Initialization and refresh timeline
+
+The clock numbers the nand2mario configuration guarantees, which its benches pin. Clock 0 starts at the first rising edge after `reset_i` falls; a command or output at clock N is on the pins in the clock that starts at edge N.
+
+| Event | Clock |
+|---|---|
+| PRECHARGE ALL, the first command (`POWERUP_CLOCKS` 5001 NOP clocks before it) | 5000 |
+| The eight init REFRESHes, one every four clocks (`WAIT_RFC` 3) | 5003 + 4k, k = 0 to 7 |
+| MODE REGISTER SET | 5035 |
+| `init_done_o` high | 5036 |
+| `idle_o` high, `request_ready_o` high | 5038 |
+
+| Refresh fact | Clocks |
+|---|---|
+| Refresh due (`REFRESH_DUE`) | 160 |
+| Gap between two REFRESH commands with no traffic | 162 |
+| Gap between two REFRESH commands under traffic | at most 195 (`REFRESH_DEADLINE`) |
+| `request_ready_o` low for each refresh | 5 |
+| Clocks a request presented in IDLE waits to be accepted | 0, or 5 when a refresh comes first |
+
+`n2m_sdram_ctrl` (`src/nand2mario/dv/storage/test_sdram_ctrl.py`) checks every number here; the SDRAM system test and the DE10-Lite board smoke wait for clock 5036 before they expect the core out of reset. A change to the nand2mario parameters that moves one of them changes this table and those benches together.
+
 ### Reset and errors
 
 Reset returns to POWERUP with every bank closed. A misaligned request is answered in the next clock with `response_error_o` and issues no command. DQM stays `11` until the mode register is set.

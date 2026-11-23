@@ -1,7 +1,7 @@
 """Contract test for the common same-clock true-dual-port RAM.
 
-The oracle is the common memory HAS cycle contract, not either backend: every
-rising edge each port captures the pre-edge word at its own address, then the
+The oracle is the common RAM cycle contract (wiki/src/common/rtl/memory/mas.md),
+not either backend: every rising edge each port captures the pre-edge word at its own address, then the
 enabled writes of both ports land, so a same-edge collision on one port
 (same-port) or across the two ports (mixed-port) returns the complete old
 word. Two enabled writes to one address in one edge are forbidden by the

@@ -246,7 +246,7 @@
       "source": "src/sw/menu/main.asm",
       "sha256": "3b13f9ca817633c94de877bdba7c7a06a5dd3c294e50ea0855e922068ce25ce4",
       "destination": "src/nand2mario/sw/games/menu/main.asm",
-      "action": "owner-copy: unchanged"
+      "action": "owner-adapt: header contract paths pinned to the nand2mario source commit"
     },
     {
       "source": "src/sw/menu/layout.json",
@@ -312,7 +312,7 @@
       "source": "src/sw/exit-demo/main.asm",
       "sha256": "e99cc7f2a9e0551f4ba15484da03df492cf3210b1c320a558f53c171ec930321",
       "destination": "src/nand2mario/sw/system/menu_exit.asm",
-      "action": "owner-copy: unchanged"
+      "action": "owner-adapt: header contract paths pinned to the nand2mario source commit"
     },
     {
       "source": "src/sw/exit-demo/layout.json",

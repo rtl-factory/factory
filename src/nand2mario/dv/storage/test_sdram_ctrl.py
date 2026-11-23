@@ -8,6 +8,8 @@ cadence under idle and under traffic, and a randomized phase against a
 byte-lane shadow with phase-local coverage. The device model's timing
 assertions are active throughout; the second testcase lowers the refresh
 cadence to prove the model's deadline check is live (expected fatal).
+The clock numbers below are the controller's contract in
+wiki/src/common/rtl/sdram/mas.md#initialization-and-refresh-timeline.
 """
 import os
 import random

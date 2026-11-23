@@ -1,6 +1,6 @@
 `include "src/common/rtl/pkg/macros.vh"
 
-// Common UART memory endpoint (wiki/src/common/uart_mem/HAS.md).
+// Common UART memory endpoint (https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/uart_mem/HAS.md).
 //
 // A byte-stream router between the common UART PHYs and the project's own
 // UART traffic. At a project frame boundary (down_idle_i) a request SOF is

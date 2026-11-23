@@ -1,4 +1,4 @@
-"""Contract of the common UART memory endpoint (wiki/src/common/uart_mem/HAS.md).
+"""Contract of the common UART memory endpoint (wiki/src/common/scripts/uart_mem/spec.md).
 
 The bench drives the fixture's host PHY by bytes, keeps its own codec built
 from the HAS framing tables, and runs a cycle scoreboard: a shadow of the

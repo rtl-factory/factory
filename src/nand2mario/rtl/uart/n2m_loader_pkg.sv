@@ -2,7 +2,7 @@
 
 // nand2mario UART cartridge loader protocol facts: frame layout, command and
 // status encodings and the CRC-16 helper shared by the loader RTL, its
-// verification model and the host tool (wiki/src/nand2mario/rtl/uart/mas.md).
+// verification model and the host tool (wiki/src/nand2mario/scripts/board/spec.md#loader-protocol).
 // The package holds facts and pure helpers only; n2m_uart_loader owns the
 // behavior.
 package n2m_loader_pkg;
@@ -63,7 +63,7 @@ package n2m_loader_pkg;
     localparam logic [2:0] STATUS_NOT_PINNED   = 3'd7;
     /* verilator lint_on UNUSEDPARAM */
 
-    // Loader frame/commit/response sequencer states (wiki/src/nand2mario/rtl/uart/mas.md).
+    // Loader frame/commit/response sequencer states (wiki/src/nand2mario/scripts/board/spec.md#loader-protocol).
     typedef enum logic [4:0] {
         IDLE, CMD, ADDR0, ADDR1, ADDR2, LEN, PAYLOAD, CRC_LO, CRC_HI, DECIDE,
         COMMIT_READ, COMMIT_REQUEST, COMMIT_WAIT,
