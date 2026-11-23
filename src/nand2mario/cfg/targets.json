@@ -482,6 +482,25 @@
         "{workdir}"
       ]
     },
+    "n2m_system_uart_mem": {
+      "kind": "cocotb",
+      "description": "n2m_system loaded and booted by the common UART memory host library: uart_mem.load (identify, hold, write and read back, entry, release) over the serial pins at exactly 2 Mbaud against the board bit period (12 1/2 clocks through the fractional PHY), a cartridge header and a program at 0x0100 over garbage ROM, retired to its final HALT with its WRAM marker",
+      "top": "n2m_system",
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.nand2mario.dv.system.test_system_uart_mem",
+      "testcase": "system_uart_mem_load",
+      "default_seed": 42,
+      "max_cycles": 100000,
+      "parameters": {
+        "CART_ROM_BYTES": 32768,
+        "CART_RAM_BYTES": 8192,
+        "UART_CLKS_PER_BIT": 12,
+        "UART_FRAC_NUM": 1,
+        "UART_FRAC_DEN": 2
+      },
+      "level": "L0"
+    },
     "n2m_sdram_ctrl": {
       "kind": "cocotb",
       "description": "The common SDRAM controller in the nand2mario configuration against the common IS42S16320D device model: power-up initialization sequence and clock numbers, CL2 single-beat reads and byte-masked writes, response/ready latencies, refresh cadence and randomized traffic against the Python pin monitor and shadow",
