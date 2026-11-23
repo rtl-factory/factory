@@ -40,6 +40,7 @@ PICOLIBC_VERSION = "1.8.6-2"
 # Why: the pinned public inputs (sw/third_party/manifest.json) are not committed
 # to the factory: the first build fetches each one from its pinned origin,
 # checks its SHA-256 and keeps it here for later builds.
+USER_AGENT = "rtl-factory-n2d-build/1"
 VENDORED_DOWNLOADS = Path(__file__).resolve().parents[4] / "workdir/downloads/nand2doom"
 PICOLIBC_URL = (
     "http://archive.ubuntu.com/ubuntu/pool/universe/p/picolibc/"
@@ -181,7 +182,9 @@ def _download(url: str, destination: Path, expected: str) -> None:
         if local.exists():
             shutil.copyfile(local, temporary)
         else:
-            with urllib.request.urlopen(url, timeout=60) as response, temporary.open("wb") as out:
+            # Why: archive.ubuntu.com answers 403 to urllib's default Python-urllib agent.
+            request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+            with urllib.request.urlopen(request, timeout=60) as response, temporary.open("wb") as out:
                 shutil.copyfileobj(response, out)
         if _sha256(temporary) != expected:
             raise RuntimeError(f"digest mismatch for {url}")

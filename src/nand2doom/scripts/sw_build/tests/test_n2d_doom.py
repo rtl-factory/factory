@@ -379,6 +379,18 @@ class N2dDoomToolTests(unittest.TestCase):
                 self.assertFalse(output.exists())
                 network.assert_not_called()
 
+    def test_fetch_names_its_user_agent(self) -> None:
+        import hashlib, io
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output = root/'out/input.deb'
+            with mock.patch.object(n2d_doom, 'VENDORED_DOWNLOADS', root/'vendor'), \
+                    mock.patch.object(n2d_doom.urllib.request, 'urlopen', return_value=io.BytesIO(b'deb')) as network:
+                n2d_doom._download('http://example.invalid/input.deb', output, hashlib.sha256(b'deb').hexdigest())
+            request = network.call_args[0][0]
+            self.assertEqual(request.get_header('User-agent'), n2d_doom.USER_AGENT)
+            self.assertEqual(output.read_bytes(), b'deb')
+
     def test_inputs_are_immutable_and_licensed(self) -> None:
         self.assertEqual(40, len(n2d_doom.ENGINE_REVISION))
         self.assertEqual(64, len(n2d_doom.ENGINE_SHA256))
