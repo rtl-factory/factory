@@ -92,23 +92,23 @@ module n2m_sdram_backing (
 
     logic ctrl_response_error;
 
-    // Ref: wiki/src/common/rtl/sdram/mas.md, project configurations: burst one,
-    // close page, linear map and nand2mario's waits keep its fixed 9/10 latency.
+    // Ref: wiki/src/common/rtl/sdram/mas.md, project configurations; the set
+    // lives in n2m_sdram_backing_pkg, which every bench fixture reads too.
     n2a_sdram_ctrl #(
-        .BURST_BEATS           (1),
-        .OPEN_ROW              (1'b0),
-        .ROW_XOR_BANK          (1'b0),
-        .POWERUP_CLOCKS        (5001),
-        .INIT_REFRESHES        (8),
-        .INIT_WAIT_MIN         (2),
-        .WAIT_RCD              (2),
-        .WAIT_RP               (2),
-        .WAIT_RFC              (3),
-        .WAIT_WR               (2),
-        .WAIT_MRD              (2),
-        .REFRESH_DUE           (160),
-        .REFRESH_DEADLINE      (195),
-        .REFRESH_AGE_FROM_MODE (1'b1)
+        .BURST_BEATS           (n2m_sdram_backing_pkg::SDRAM_BURST_BEATS),
+        .OPEN_ROW              (n2m_sdram_backing_pkg::SDRAM_OPEN_ROW),
+        .ROW_XOR_BANK          (n2m_sdram_backing_pkg::SDRAM_ROW_XOR_BANK),
+        .POWERUP_CLOCKS        (n2m_sdram_backing_pkg::SDRAM_POWERUP_CLOCKS),
+        .INIT_REFRESHES        (n2m_sdram_backing_pkg::SDRAM_INIT_REFRESHES),
+        .INIT_WAIT_MIN         (n2m_sdram_backing_pkg::SDRAM_INIT_WAIT_MIN),
+        .WAIT_RCD              (n2m_sdram_backing_pkg::SDRAM_WAIT_RCD),
+        .WAIT_RP               (n2m_sdram_backing_pkg::SDRAM_WAIT_RP),
+        .WAIT_RFC              (n2m_sdram_backing_pkg::SDRAM_WAIT_RFC),
+        .WAIT_WR               (n2m_sdram_backing_pkg::SDRAM_WAIT_WR),
+        .WAIT_MRD              (n2m_sdram_backing_pkg::SDRAM_WAIT_MRD),
+        .REFRESH_DUE           (n2m_sdram_backing_pkg::SDRAM_REFRESH_DUE),
+        .REFRESH_DEADLINE      (n2m_sdram_backing_pkg::SDRAM_REFRESH_DEADLINE),
+        .REFRESH_AGE_FROM_MODE (n2m_sdram_backing_pkg::SDRAM_REFRESH_AGE_FROM_MODE)
     ) u_ctrl (
         .clk_i                 (clk_i),
         .reset_i               (reset_i),

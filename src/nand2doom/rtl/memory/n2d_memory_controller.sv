@@ -100,13 +100,23 @@ module n2d_memory_controller (
         .memory_response_data_i(memory_response_data),
         .memory_response_error_i(memory_response_error));
 
-    // Ref: wiki/src/common/rtl/sdram/mas.md, project configurations: burst eight,
-    // open row and the row-XOR-bank map keep nand2doom's line latency.
+    // Ref: wiki/src/common/rtl/sdram/mas.md, project configurations; the set
+    // lives in n2d_pkg, which every bench fixture reads too.
     n2a_sdram_ctrl #(
-        .BURST_BEATS   (8),
-        .OPEN_ROW      (1'b1),
-        .ROW_XOR_BANK  (1'b1),
-        .INIT_WAIT_MIN (2)
+        .BURST_BEATS           (n2d_pkg::N2D_SDRAM_BURST_BEATS),
+        .OPEN_ROW              (n2d_pkg::N2D_SDRAM_OPEN_ROW),
+        .ROW_XOR_BANK          (n2d_pkg::N2D_SDRAM_ROW_XOR_BANK),
+        .POWERUP_CLOCKS        (n2d_pkg::N2D_SDRAM_POWERUP_CLOCKS),
+        .INIT_REFRESHES        (n2d_pkg::N2D_SDRAM_INIT_REFRESHES),
+        .INIT_WAIT_MIN         (n2d_pkg::N2D_SDRAM_INIT_WAIT_MIN),
+        .WAIT_RCD              (n2d_pkg::N2D_SDRAM_WAIT_RCD),
+        .WAIT_RP               (n2d_pkg::N2D_SDRAM_WAIT_RP),
+        .WAIT_RFC              (n2d_pkg::N2D_SDRAM_WAIT_RFC),
+        .WAIT_WR               (n2d_pkg::N2D_SDRAM_WAIT_WR),
+        .WAIT_MRD              (n2d_pkg::N2D_SDRAM_WAIT_MRD),
+        .REFRESH_DUE           (n2d_pkg::N2D_SDRAM_REFRESH_DUE),
+        .REFRESH_DEADLINE      (n2d_pkg::N2D_SDRAM_REFRESH_DEADLINE),
+        .REFRESH_AGE_FROM_MODE (n2d_pkg::N2D_SDRAM_REFRESH_AGE_FROM_MODE)
     ) u_sdram (
         .clk_i, .reset_i,
         .request_valid_i(memory_request_valid), .request_ready_o(memory_request_ready),

@@ -94,6 +94,26 @@ package n2d_pkg;
     localparam int unsigned N2D_MEM_LIVE_GAP_CYCLES = 64;
     /* verilator lint_on UNUSEDPARAM */
 
+    // nand2doom's configuration of the common SDRAM controller (n2a_sdram_ctrl,
+    // wiki/src/common/rtl/sdram/mas.md "project configurations"): burst eight,
+    // open row and the row-XOR-bank map keep the line latency. The memory
+    // controller and every bench fixture take the parameters from here.
+    localparam int unsigned N2D_SDRAM_BURST_BEATS           = 8;
+    localparam bit          N2D_SDRAM_OPEN_ROW              = 1'b1;
+    localparam bit          N2D_SDRAM_ROW_XOR_BANK          = 1'b1;
+    localparam int unsigned N2D_SDRAM_POWERUP_CLOCKS        = 5000;
+    localparam int unsigned N2D_SDRAM_INIT_REFRESHES        = 2;
+    localparam int unsigned N2D_SDRAM_INIT_WAIT_MIN         = 2;
+    localparam int unsigned N2D_SDRAM_WAIT_RCD              = 0;
+    localparam int unsigned N2D_SDRAM_WAIT_RP               = 0;
+    localparam int unsigned N2D_SDRAM_WAIT_RFC              = 0;
+    // Why: open row never waits after a write beat; 1 is the controller default.
+    localparam int unsigned N2D_SDRAM_WAIT_WR               = 1;
+    localparam int unsigned N2D_SDRAM_WAIT_MRD              = 0;
+    localparam int unsigned N2D_SDRAM_REFRESH_DUE           = 163;
+    localparam int unsigned N2D_SDRAM_REFRESH_DEADLINE      = 194;
+    localparam bit          N2D_SDRAM_REFRESH_AGE_FROM_MODE = 1'b0;
+
     // ---------------------------------------------------------------------
     // Host debug protocol constants (wiki/src/nand2doom/rtl/io/mas.md). Compositions that elaborate
     // n2d_uart_bulk without the debug engine (the bulk-router fixture) use

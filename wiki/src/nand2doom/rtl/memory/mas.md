@@ -38,7 +38,8 @@ Every port is in the `clk_i` domain; the SDRAM pins are bound by the board top
 default 0); `n2d_cached_rv32im` `DCACHE_WAYS` (default 4);
 the common SDRAM controller `n2a_sdram_ctrl` takes the nand2doom configuration
 (`BURST_BEATS` 8, `OPEN_ROW` 1, `ROW_XOR_BANK` 1, `INIT_WAIT_MIN` 2, the rest at
-their defaults; [common MAS](../../../common/rtl/sdram/mas.md));
+the controller defaults; [common MAS](../../../common/rtl/sdram/mas.md)) from the
+`N2D_SDRAM_*` constants in `n2d_pkg`, which every bench fixture reads too;
 `n2d_debug_memory_adapter` `MAX_WORDS` (8).
 
 | Module | Port group | Ports (direction, width) | Contract |
