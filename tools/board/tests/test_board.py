@@ -103,12 +103,14 @@ class WindowBoardTests(unittest.TestCase):
         def missing(argv, timeout):
             raise FileNotFoundError("jtagconfig")
 
+        shared = JTAGCONFIG.rstrip("\n") + "\n  031050DD   10M50DA\n"
         for runner in (Recorder({"jtagconfig": (0, "")}), Recorder({"jtagconfig": (0, two)}),
+                       Recorder({"jtagconfig": (0, shared)}),
                        Recorder({"jtagconfig": (1, "")}), Recorder({"jtagconfig": (0, unknown)}), missing):
             with self.subTest(runner=runner):
                 board, why = console.detect_board(boards, runner=runner)
                 self.assertEqual("demo/de2_115", board.key)
-                self.assertIn("choose the board", why)
+                self.assertIn("opened on demo/de2_115; choose the board", why)
 
     def test_window_flags_pick_and_one_serial_port_is_prefilled(self):
         from tools.board import gui

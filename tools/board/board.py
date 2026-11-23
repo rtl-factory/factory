@@ -112,17 +112,21 @@ def detect_board(boards: dict[str, Board], quartus_bin=None, *, runner=jtag_chai
     JTAG chain, the newest built SOF winning among projects on that board; else
     the first board. Never raises: a failed listing only explains the fallback."""
     first = boards[sorted(boards)[0]]
+    fallback = f"opened on {first.key}; choose the board"
     try:
         rc, text = runner([jtag_chain.tool_path(quartus_bin, "jtagconfig")], jtag_chain.LIST_TIMEOUT)
     except (OSError, subprocess.TimeoutExpired) as exc:
-        return first, f"jtagconfig failed ({exc}); choose the board"
-    chains = jtag_chain.parse_jtagconfig(text) if rc == 0 else []
+        return first, f"jtagconfig failed ({exc}); {fallback}"
+    if rc:
+        return first, f"jtagconfig exited {rc}: {text.strip()[:200]}; {fallback}"
+    chains = jtag_chain.parse_jtagconfig(text)
     if len(chains) != 1 or len(chains[0][1]) != 1:
-        return first, f"found {len(chains)} JTAG cable(s), not one board; choose the board"
+        found = "; ".join(f"{c}: {', '.join(d for d, _ in devs) or 'no device'}" for c, devs in chains)
+        return first, f"expected one JTAG cable with one device, found {found or 'no cable'}; {fallback}"
     cable, [(idcode, _)] = chains[0]
     matches = [b for b in boards.values() if b.idcode == idcode]
     if not matches:
-        return first, f"{cable}: no board has IDCODE {idcode}; choose the board"
+        return first, f"{cable}: no board has IDCODE {idcode}; {fallback}"
 
     def built(board):
         sof = resolve_path(board.sof, root)
