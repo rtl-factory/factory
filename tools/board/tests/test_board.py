@@ -113,19 +113,46 @@ class WindowBoardTests(unittest.TestCase):
                 self.assertIn("opened on demo/de2_115; choose the board", why)
 
     def test_window_flags_pick_and_one_serial_port_is_prefilled(self):
-        from tools.board import gui
+        from tools.board import tui
         opened = []
-        real_main, real_ports = gui.main, console.serial_ports
-        gui.main = lambda boards, **kwargs: opened.append(kwargs) or 0
+        real_main, real_ports = tui.main, console.serial_ports
+        tui.main = lambda boards, **kwargs: opened.append(kwargs) or 0
         console.serial_ports = lambda: ["/dev/ttyUSB0"]
         try:
-            self.assertEqual(0, run(["gui", "--project", "nand2mario", "--board", "de2_115"])[0])
+            self.assertEqual(0, run(["tui", "--project", "nand2mario", "--board", "de2_115"])[0])
             console.serial_ports = lambda: ["/dev/ttyUSB0", "/dev/ttyUSB1"]
             self.assertEqual(0, run([], runner=Recorder({"jtagconfig": (0, JTAGCONFIG)}))[0])
         finally:
-            gui.main, console.serial_ports = real_main, real_ports
+            tui.main, console.serial_ports = real_main, real_ports
         self.assertEqual((opened[0]["first"][0].key, opened[0]["port"]), ("nand2mario/de2_115", "/dev/ttyUSB0"))
         self.assertEqual((opened[1]["first"][0].idcode, opened[1]["port"]), ("020F70DD", ""))
+
+
+class CheckChainTests(unittest.TestCase):
+    def test_every_cable_state_gives_a_finding_and_a_hint(self):
+        boards = console.load_boards()
+        mario = boards["nand2mario/de2_115"]
+        lite = "1) USB-Blaster [1-1]\n  031050DD   10M50DA\n"
+
+        def missing(argv, timeout):
+            raise FileNotFoundError("jtagconfig")
+
+        cases = [(Recorder({"jtagconfig": (0, JTAGCONFIG)}), True, "matches nand2mario/de2_115", "press k"),
+                 (Recorder({"jtagconfig": (0, lite)}), False, "expected 020F70DD", "press b until the board is one"),
+                 (Recorder({"jtagconfig": (0, "")}), False, "no JTAG cable", "plug in"),
+                 (Recorder({"jtagconfig": (0, JTAGCONFIG + "2) USB-Blaster [1-2]\n")}), False, "cables:", "unplug"),
+                 (Recorder({"jtagconfig": (1, "1) USB-Blaster [1-1]\n  Unable to lock chain - Insufficient port permissions\n")}),
+                  False, "not accessible", "udev rule"),
+                 (Recorder({"jtagconfig": (0, "1) USB-Blaster [1-1]\n")}), False, "no device", "power the board"),
+                 (Recorder({"jtagconfig": (0, "1) USB-Blaster [1-1]\n  Unable to lock chain - Chain in use - check SLD HUB CLIENT on 127.0.0.1\n")}),
+                  False, "in use by another program", "close the other board console"),
+                 (missing, False, "jtagconfig not found", "--quartus-bin")]
+        for runner, ready, finding, hint in cases:
+            with self.subTest(finding=finding):
+                got = console.check_chain(boards, mario, runner=runner)
+                self.assertEqual(got[0], ready)
+                self.assertIn(finding, got[1])
+                self.assertIn(hint, got[2])
 
 
 class ProgramTests(unittest.TestCase):

@@ -1,8 +1,9 @@
-"""Host keys to PS/2 Set-2 make and break codes for the board console.
+"""Terminal keys to PS/2 Set-2 make and break codes for the board console.
 
-A window reports key presses and releases by keysym (the Tk name of the key).
-Every board keyboard input decodes Set-2, so the console forwards the physical
-key and leaves its meaning to the program: Doom reads Ctrl as Fire, nand2mario
+The terminal reports keys as bytes; `TerminalKeys` turns them into press,
+repeat and release events by key name (the X11 keysym of the key). Every
+board keyboard input decodes Set-2, so the console forwards the physical key
+and leaves its meaning to the program: Doom reads Ctrl as Fire, nand2mario
 reads X as A. Auto-repeat is collapsed so a held key is one make and one break.
 Spec: wiki/tools/board/spec.md#keyboard.
 """
@@ -29,7 +30,7 @@ _EXTENDED = {
     "Prior": 0x7D, "Next": 0x7A, "Insert": 0x70, "Delete": 0x71,
     "Control_R": 0x14, "Alt_R": 0x11, "KP_Enter": 0x5A,
 }
-# Why: with Shift held Tk reports the shifted keysym; the key itself is the unshifted one.
+# Why: a shifted character names the unshifted key it was typed on.
 _SHIFTED = {"exclam": "1", "at": "2", "numbersign": "3", "dollar": "4", "percent": "5",
             "asciicircum": "6", "ampersand": "7", "asterisk": "8", "parenleft": "9", "parenright": "0",
             "underscore": "minus", "plus": "equal", "braceleft": "bracketleft",
@@ -56,11 +57,11 @@ def brk(key: str) -> bytes:
 
 class KeyState:
     """Press and release events in, Set-2 bytes out, one make and one break per
-    held key. X11 auto-repeat reports a held key as release then press at
-    once, so a release is only sent once `settle` seconds pass without a new
-    press of that key; `flush(now)` sends those."""
+    held key. A release is only sent once `settle` seconds pass without a new
+    press of that key, so a release then press at once (auto-repeat) is no
+    break; `flush(now)` sends those."""
 
-    def __init__(self, settle: float = 0.03):
+    def __init__(self, settle: float = 0.0):
         self.settle = settle
         self.held: set[str] = set()
         self.pending: dict[str, float] = {}
@@ -95,3 +96,107 @@ class KeyState:
         self.held.clear()
         self.pending.clear()
         return out
+
+
+class TimedKeys(KeyState):
+    """For a terminal without key releases: a press or repeat holds the key, and
+    the key breaks once `quiet` seconds pass with no repeat of it."""
+
+    def __init__(self, quiet: float = 0.15):
+        super().__init__(settle=quiet)
+
+    def press(self, keysym: str, now: float) -> bytes:
+        key = key_name(keysym)
+        out = super().press(keysym, now)
+        if key in self.held:
+            self.pending[key] = now
+        return out
+
+
+CTRL_RIGHT_BRACKET = "leave"
+
+# Ref: kitty keyboard protocol, "Functional key definitions" (CSI <code> u numbers).
+_KITTY_CODES = {9: "Tab", 13: "Return", 27: "Escape", 127: "BackSpace", 57358: "Caps_Lock",
+                57414: "KP_Enter", 57441: "Shift_L", 57442: "Control_L", 57443: "Alt_L",
+                57447: "Shift_R", 57448: "Control_R", 57449: "Alt_R"}
+_FINALS = {b"A": "Up", b"B": "Down", b"C": "Right", b"D": "Left", b"H": "Home", b"F": "End",
+           b"P": "F1", b"Q": "F2", b"R": "F3", b"S": "F4"}
+_TILDES = {2: "Insert", 3: "Delete", 5: "Prior", 6: "Next", 13: "F3", 15: "F5", 17: "F6", 18: "F7",
+           19: "F8", 20: "F9", 21: "F10", 23: "F11", 24: "F12"}
+_CHARS = {" ": "space", "-": "minus", "=": "equal", "[": "bracketleft", "]": "bracketright",
+          "\\": "backslash", ";": "semicolon", "'": "apostrophe", "`": "grave", ",": "comma",
+          ".": "period", "/": "slash", "!": "1", "@": "2", "#": "3", "$": "4", "%": "5", "^": "6",
+          "&": "7", "*": "8", "(": "9", ")": "0", "_": "minus", "+": "equal", "{": "bracketleft",
+          "}": "bracketright", "|": "backslash", ":": "semicolon", '"': "apostrophe", "~": "grave",
+          "<": "comma", ">": "period", "?": "slash"}
+_LEGACY = {b"\r": "Return", b"\n": "Return", b"\t": "Tab", b"\x7f": "BackSpace", b"\x08": "BackSpace"}
+
+
+def _char_key(char: str) -> str | None:
+    if char.isascii() and char.isalnum():
+        return char.lower()
+    return _CHARS.get(char)
+
+
+class TerminalKeys:
+    """Terminal input bytes to ("press" | "repeat" | "release", key name) events,
+    from the kitty keyboard protocol (flags 1|2|8: every key as an escape code
+    with its event type) or from plain bytes, which carry presses only. Ctrl+]
+    gives (CTRL_RIGHT_BRACKET, ""). A lone Escape is only told from the start of
+    a sequence once `escape_wait` seconds pass with nothing after it."""
+
+    def __init__(self, escape_wait: float = 0.05):
+        self.buffer, self.escape_wait, self.since = bytearray(), escape_wait, 0.0
+
+    def feed(self, data: bytes, now: float) -> list[tuple[str, str]]:
+        if data:
+            self.buffer += data
+            self.since = now
+        events = []
+        while self.buffer:
+            used, event = self._one(now)
+            if used == 0:
+                break
+            del self.buffer[:used]
+            if event is not None:
+                events.append(event)
+        return events
+
+    def _one(self, now: float):
+        buf = bytes(self.buffer)
+        if buf[0] == 0x1D:
+            return 1, (CTRL_RIGHT_BRACKET, "")
+        if buf[0] != 0x1B:
+            key = _LEGACY.get(buf[:1]) or (_char_key(chr(buf[0])) if buf[0] < 0x80 else None)
+            return 1, (("press", key) if key else None)
+        if len(buf) == 1:
+            return (1, ("press", "Escape")) if now - self.since >= self.escape_wait else (0, None)
+        if buf[1:2] == b"O":
+            if len(buf) < 3:
+                return 0, None
+            key = _FINALS.get(buf[2:3])
+            return 3, (("press", key) if key else None)
+        if buf[1:2] != b"[":
+            return 1, ("press", "Escape")
+        end = next((i for i in range(2, len(buf)) if 0x40 <= buf[i] <= 0x7E), None)
+        if end is None:
+            return 0, None
+        return end + 1, self._csi(buf[2:end].decode("ascii", "replace"), buf[end:end + 1])
+
+    @staticmethod
+    def _csi(params: str, final: bytes):
+        if params.startswith("?") or params.startswith(">"):
+            return None
+        fields = [f.split(":") for f in params.split(";")] if params else [[""]]
+        code = int(fields[0][0]) if fields[0][0].isdigit() else 1
+        mods = int(fields[1][0]) - 1 if len(fields) > 1 and fields[1][0].isdigit() else 0
+        kind = {"2": "repeat", "3": "release"}.get(fields[1][1] if len(fields) > 1 and len(fields[1]) > 1 else "", "press")
+        if final == b"u":
+            if code == 93 and mods & 4:
+                return (CTRL_RIGHT_BRACKET, "") if kind == "press" else None
+            key = _KITTY_CODES.get(code) or (_char_key(chr(code)) if code < 0x80 else None)
+        elif final == b"~":
+            key = _TILDES.get(code)
+        else:
+            key = _FINALS.get(final)
+        return (kind, key) if key else None
