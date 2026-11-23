@@ -38,6 +38,9 @@ def _registry_impl(rctx):
 
 hdl_registry = repository_rule(implementation = _registry_impl)
 
+# verilator_coverage is a Perl wrapper that runs the binary beside it.
+COVERAGE_TOOLS = ["verilator_coverage", "verilator_coverage_bin_dbg"]
+
 def _find_verilator(rctx):
     explicit = rctx.getenv("VERILATOR")
     if explicit:
@@ -63,7 +66,7 @@ def _verilator_impl(rctx):
     version = rctx.execute([exe, "--version"]).stdout.strip()
     if not version.startswith("Verilator %s " % pin) and version != "Verilator " + pin:
         fail("%s is '%s'; cfg/toolchain.json pins Verilator %s" % (exe, version, pin))
-    for tool in ["verilator", "verilator_bin", "verilator_includer"]:
+    for tool in ["verilator", "verilator_bin", "verilator_includer"] + COVERAGE_TOOLS:
         if bindir.get_child(tool).exists:
             rctx.symlink(bindir.get_child(tool), "bin/" + tool)
     rctx.file("BUILD.bazel", """\
@@ -71,10 +74,17 @@ def _verilator_impl(rctx):
 # binary invalidates every cached model.
 filegroup(
     name = "verilator",
-    srcs = glob(["bin/*"]),
+    srcs = glob(["bin/*"], exclude = {coverage}),
     visibility = ["//visibility:public"],
 )
-""".format(version = version, bindir = bindir))
+
+# The coverage report tool, an input of tests only, so it never rebuilds a model.
+filegroup(
+    name = "verilator_coverage",
+    srcs = glob({coverage}),
+    visibility = ["//visibility:public"],
+)
+""".format(version = version, bindir = bindir, coverage = ["bin/" + t for t in COVERAGE_TOOLS]))
 
 verilator_repository = repository_rule(
     implementation = _verilator_impl,

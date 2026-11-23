@@ -20,6 +20,20 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
+# bazel test --//tools/bazel:coverage <target>: rebuild models with Verilator's
+# --coverage and write each test's code coverage (coverage.dat, an lcov
+# coverage.info, annotated sources) and its summary into the test's outputs.
+bool_flag(
+    name = "coverage",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "coverage_on",
+    flag_values = {":coverage": "true"},
+    visibility = ["//visibility:public"],
+)
+
 # The board image action's entry point (hdl.bzl quartus_image).
 py_binary(
     name = "quartus_image",

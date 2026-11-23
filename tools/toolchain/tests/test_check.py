@@ -1,4 +1,4 @@
-"""Readiness check: passes only on the pinned Quartus with both families."""
+"""Readiness check: passes only on the pinned Verilator, OSS CAD Suite release and Quartus with both families."""
 import json
 from pathlib import Path
 import sys
@@ -88,3 +88,40 @@ def test_tool_selection():
     config = json.loads((check.DEFAULT_CONFIG).read_text())
     results = check.check(config, runner=suite_runner(), which=lambda _n: None, tools=("quartus",))
     assert [r["tool"] for r in results] == ["quartus"]
+
+
+VERILATOR = json.loads((check.DEFAULT_CONFIG).read_text())["verilator"]
+
+
+def verilator_runner(version=f'Verilator {VERILATOR["version"]} 2026-09-05 rev v{VERILATOR["version"]}\n'):
+    return lambda _command: (0, version)
+
+
+def on_path(name):
+    return "/opt/verilator/bin/verilator" if name == "verilator" else None
+
+
+def test_verilator_pass_on_pinned_version(monkeypatch):
+    monkeypatch.delenv("VERILATOR", raising=False)
+    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=on_path, is_file=lambda _p: True)
+    assert r["status"] == "PASS" and r["found"] == VERILATOR["version"]
+
+
+def test_verilator_fail_on_other_version(monkeypatch):
+    monkeypatch.delenv("VERILATOR", raising=False)
+    r = check.check_verilator(VERILATOR, runner=verilator_runner("Verilator 5.030 2024-10-27\n"),
+                              which=on_path, is_file=lambda _p: True)
+    assert r["status"] == "FAIL" and r["found"] == "5.030" and VERILATOR["tag"] in r["fix"]
+
+
+def test_verilator_fail_without_coverage_tool(monkeypatch):
+    monkeypatch.delenv("VERILATOR", raising=False)
+    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=on_path, is_file=lambda _p: False)
+    assert r["status"] == "FAIL" and "verilator_coverage" in r["found"]
+
+
+def test_verilator_fail_when_missing(monkeypatch, tmp_path):
+    monkeypatch.delenv("VERILATOR", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=lambda _n: None)
+    assert r["status"] == "FAIL" and r["fix"]
