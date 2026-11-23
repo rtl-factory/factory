@@ -3,7 +3,7 @@ load("@rules_python//python:py_binary.bzl", "py_binary")
 load("//tools/bazel:hdl.bzl", "unit_tests")
 
 exports_files(
-    ["comment_lint_main.py", "extensions.bzl", "hdl.bzl", "hdl_libraries.py", "pytest_main.py"],
+    ["comment_lint_main.py", "extensions.bzl", "hdl.bzl", "hdl_libraries.py", "pytest_main.py", "wiki_refs_main.py"],
     visibility = ["//visibility:public"],
 )
 

@@ -1,5 +1,5 @@
 ; Original exit-register demo for the game library. Contract:
-; wiki/src/rtl/cartridge/MAS_loader_profile.md#game-exit-register. The
+; https://github.com/amichai-bd/nand2mario/blob/510be34b49f5bc666ad828260ed0e193546736dd/wiki/src/rtl/cartridge/MAS_loader_profile.md#game-exit-register. The
 ; screen is one solid bar on map row eight over a blank background, so a
 ; host snapshot has a fixed reference; while Start is held the program
 ; writes LIBRARY_GAME_EXIT_VALUE to the exit register once per frame and the

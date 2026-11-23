@@ -9,7 +9,7 @@ Its documents are in the wiki at the mirrored path, `wiki/src/nand2doom/`: the l
 | `rtl/core/`, `rtl/memory/`, `rtl/video/`, `rtl/io/`, `rtl/platform/` | Product RTL |
 | `fpga/de10_lite/`, `fpga/de2_115/` | Board tops, clock backends, settings fragments and SDC |
 | `dv/<block>/` | cocotb tests, models and native harnesses |
-| `cfg/` | Simulation targets, the Quartus board config, UART and showcase settings |
+| `cfg/` | Simulation targets, the Quartus board config and UART settings |
 | `sw/` | C runtime, validation program, Doom platform adaptation, third-party notices |
 | `scripts/` | Host scripts, one folder per script group (`sw_build/`, `board/`, `host/`, `perf/`), each with its tests |
 

@@ -7,7 +7,7 @@ then uses these independent fixture bytes and reference frames. Seven small
 exercise the original layout/catalogue contract. All program bytes are
 owner-authored synthetic verification code, not external game images.
 
-Catalogue packing follows wiki/src/nand2mario/sw/HAS.md: valid, profile,
+Catalogue packing follows wiki/src/nand2mario/rtl/has.md#top-level-behaviour: valid, profile,
 length bits15:0, CRC32, title, length bits23:16 and seven reserved bytes.
 The original standalone build/$readmemh wrapper is intentionally not ported.
 """

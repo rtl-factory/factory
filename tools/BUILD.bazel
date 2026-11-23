@@ -27,3 +27,13 @@ py_test(
     # Why: it lists the checkout's tracked files with git, which no sandbox or cache sees.
     tags = ["L0", "external", "no-sandbox", "lint"],
 )
+
+# The wiki reference check as an L0 test: every wiki/ path cited outside wiki/ exists.
+py_test(
+    name = "wiki_refs",
+    srcs = ["//tools/bazel:wiki_refs_main.py"],
+    main = "//tools/bazel:wiki_refs_main.py",
+    deps = [":python"],
+    # Why: it lists the checkout's tracked files with git and reads the whole tree, which no sandbox or cache sees.
+    tags = ["L0", "external", "no-sandbox", "lint"],
+)

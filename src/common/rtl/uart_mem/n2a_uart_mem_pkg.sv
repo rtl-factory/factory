@@ -1,5 +1,5 @@
 // Common UART memory endpoint package: wire constants, pure CRC helpers and
-// the endpoint's state record (wiki/src/common/uart_mem/HAS.md). No state,
+// the endpoint's state record (https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/uart_mem/HAS.md). No state,
 // no timing.
 package n2a_uart_mem_pkg;
     // Framing (HAS "Framing").
