@@ -1,4 +1,4 @@
-"""Readiness check: passes only on the pinned Quartus with both families."""
+"""Readiness check: passes only on the pinned tools (Quartus with both families, OSS CAD Suite, Verilator, Bazelisk)."""
 import json
 from pathlib import Path
 import sys
@@ -88,3 +88,85 @@ def test_tool_selection():
     config = json.loads((check.DEFAULT_CONFIG).read_text())
     results = check.check(config, runner=suite_runner(), which=lambda _n: None, tools=("quartus",))
     assert [r["tool"] for r in results] == ["quartus"]
+
+
+CONFIG = json.loads((check.DEFAULT_CONFIG).read_text())
+VERILATOR = CONFIG["verilator"]
+
+
+def verilator_runner(version=f'Verilator {VERILATOR["version"]} 2025-11-02 rev v{VERILATOR["version"]}\n'):
+    return lambda _command: (0, version)
+
+
+def test_verilator_pass_on_pin(monkeypatch):
+    monkeypatch.delenv("VERILATOR", raising=False)
+    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=lambda _n: "/usr/bin/verilator")
+    assert r["status"] == "PASS" and r["path"] == "/usr/bin/verilator"
+
+
+def test_verilator_fail_on_other_version(monkeypatch):
+    monkeypatch.delenv("VERILATOR", raising=False)
+    r = check.check_verilator(VERILATOR, runner=verilator_runner("Verilator 5.020 2024-01-01\n"),
+                              which=lambda _n: "/usr/bin/verilator")
+    assert r["status"] == "FAIL" and "5.020" in r["found"] and r["fix"]
+
+
+def test_verilator_fail_on_baked_in_ccache(monkeypatch):
+    monkeypatch.delenv("VERILATOR", raising=False)
+    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=lambda _n: "/usr/bin/verilator",
+                              read=lambda _p: "VERILATOR_ROOT ?= x\nOBJCACHE ?= ccache\n")
+    assert r["status"] == "FAIL" and "ccache" in r["found"]
+
+
+def test_verilator_pass_on_empty_objcache(monkeypatch):
+    monkeypatch.delenv("VERILATOR", raising=False)
+    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=lambda _n: "/usr/bin/verilator",
+                              read=lambda _p: "OBJCACHE ?= \nCXX ?= g++\n")
+    assert r["status"] == "PASS"
+
+
+def test_verilator_falls_back_to_install_dir(monkeypatch, tmp_path):
+    monkeypatch.delenv("VERILATOR", raising=False)
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin" / "verilator").write_text("")
+    r = check.check_verilator(dict(VERILATOR, install_dir=str(tmp_path)), runner=verilator_runner(),
+                              which=lambda _n: None)
+    assert r["status"] == "PASS" and r["path"] == str(tmp_path / "bin" / "verilator")
+
+
+def test_verilator_fail_when_missing(monkeypatch, tmp_path):
+    monkeypatch.delenv("VERILATOR", raising=False)
+    r = check.check_verilator(dict(VERILATOR, install_dir=str(tmp_path)), runner=verilator_runner(),
+                              which=lambda _n: None)
+    assert r["status"] == "FAIL" and "not found" in r["found"]
+
+
+BAZELISK = CONFIG["bazelisk"]
+
+
+def pinned_bazelisk(tmp_path):
+    (tmp_path / "bazelisk").write_text("")
+    (tmp_path / "bazel").symlink_to(tmp_path / "bazelisk")
+    pin = dict(BAZELISK, install_dir=str(tmp_path))
+    return pin, lambda name: str(tmp_path / "bazel") if name.endswith("bazel") else None
+
+
+def test_bazel_pass_on_pinned_bazelisk(tmp_path):
+    pin, which = pinned_bazelisk(tmp_path)
+    assert check.check_bazel(pin, which=which, digest=lambda _p: BAZELISK["sha256"])["status"] == "PASS"
+
+
+def test_bazel_fail_on_changed_bazelisk(tmp_path):
+    pin, which = pinned_bazelisk(tmp_path)
+    r = check.check_bazel(pin, which=which, digest=lambda _p: "0" * 64)
+    assert r["status"] == "FAIL" and "SHA-256" in r["found"]
+
+
+def test_bazel_warn_on_other_bazel(tmp_path):
+    r = check.check_bazel(dict(BAZELISK, install_dir=str(tmp_path)), which=lambda _n: "/usr/local/bin/bazel")
+    assert r["status"] == "WARN" and r["path"] == "/usr/local/bin/bazel"
+
+
+def test_bazel_fail_when_missing(tmp_path):
+    r = check.check_bazel(dict(BAZELISK, install_dir=str(tmp_path)), which=lambda _n: None)
+    assert r["status"] == "FAIL" and r["fix"]

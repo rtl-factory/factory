@@ -3,7 +3,22 @@
   "verilator": {
     "version": "5.052",
     "tag": "v5.052",
-    "repository": "https://github.com/verilator/verilator"
+    "repository": "https://github.com/verilator/verilator",
+    "install_dir": "~/verilator"
+  },
+  "bazelisk": {
+    "version": "1.25.0",
+    "url": "https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-linux-amd64",
+    "sha256": "fd8fdff418a1758887520fa42da7e6ae39aefc788cf5e7f7bb8db6934d279fc4",
+    "install_dir": "~/.local/bin",
+    "mirror": {
+      "bazelisk_base_url": "https://github.com/bazelbuild/bazel/releases/download",
+      "registry": "https://raw.githubusercontent.com/bazelbuild/bazel-central-registry/main/"
+    }
+  },
+  "packages": {
+    "_comment": "Ubuntu packages the cloud session hook installs when missing: the Verilator build, FST waveforms and the nand2doom C programs.",
+    "apt": ["autoconf", "bison", "flex", "libfl-dev", "help2man", "zlib1g-dev", "make", "g++", "liblz4-dev", "gcc-riscv64-unknown-elf", "picolibc-riscv64-unknown-elf"]
   },
   "oss_cad_suite": {
     "version": "2026-11-01",
