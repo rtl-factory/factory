@@ -39,7 +39,7 @@ default 0); `n2d_cached_rv32im` `DCACHE_WAYS` (default 4);
 the common SDRAM controller `n2a_sdram_ctrl` takes the nand2doom configuration
 (`BURST_BEATS` 8, `OPEN_ROW` 1, `ROW_XOR_BANK` 1, `INIT_WAIT_MIN` 2, the rest at
 the controller defaults; [common MAS](../../../common/rtl/sdram/mas.md)) from the
-`N2D_SDRAM_*` constants in `n2d_pkg`, which every bench fixture reads too;
+`N2D_SDRAM_*` constants in `n2d_memory_controller_pkg`, which every bench fixture reads too;
 `n2d_debug_memory_adapter` `MAX_WORDS` (8).
 
 | Module | Port group | Ports (direction, width) | Contract |
@@ -367,7 +367,7 @@ Pulse outputs default low each clock.
 | --- | --- |
 | `src/nand2doom/rtl/memory/n2d_icache.sv`, `n2d_dcache.sv` | Caches |
 | `src/nand2doom/rtl/memory/n2d_cached_rv32im.sv` | Core plus caches |
-| `src/nand2doom/rtl/memory/n2d_memory_arbiter.sv`, `n2d_memory_controller.sv` | Arbitration and composition |
+| `src/nand2doom/rtl/memory/n2d_memory_arbiter.sv`, `n2d_memory_controller.sv`, `n2d_memory_controller_pkg.sv` | Arbitration and composition; the SDRAM controller configuration |
 | `src/nand2doom/rtl/memory/n2d_debug_memory_adapter.sv` | Debug word adapter |
 | `src/common/rtl/sdram/n2a_sdram_ctrl.sv` | SDRAM controller (common) |
 | `src/nand2doom/rtl/memory/n2d_ls_types_pkg.sv` | State records |

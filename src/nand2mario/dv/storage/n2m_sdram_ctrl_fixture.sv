@@ -71,6 +71,9 @@ module n2m_sdram_ctrl_fixture #(
     assign response_error_unused = response_error;
     /* verilator lint_on UNUSEDSIGNAL */
 
+    // Why: INIT_REFRESHES is the model's independent check value (the init
+    // refreshes nand2mario's contract requires), not a copy of the controller
+    // configuration, so it stays a literal here.
     n2a_sdram_model #(
         .INIT_REFRESHES (8),
         .FILL_SEED      (FILL_SEED)

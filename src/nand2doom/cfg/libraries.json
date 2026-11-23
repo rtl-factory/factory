@@ -253,10 +253,15 @@
         "macros",
         "n2a_sdram_ctrl",
         "n2d_memory_arbiter",
-        "n2d_pkg"
+        "n2d_memory_controller_pkg"
       ],
       "srcs": [
         "src/nand2doom/rtl/memory/n2d_memory_controller.sv"
+      ]
+    },
+    "n2d_memory_controller_pkg": {
+      "srcs": [
+        "src/nand2doom/rtl/memory/n2d_memory_controller_pkg.sv"
       ]
     },
     "n2d_memory_fast_preload_subsystem": {
@@ -448,7 +453,7 @@
     "n2d_sdram_ctrl_fixture": {
       "deps": [
         "n2a_sdram_ctrl",
-        "n2d_pkg"
+        "n2d_memory_controller_pkg"
       ],
       "srcs": [
         "src/nand2doom/dv/memory/n2d_sdram_ctrl_fixture.sv"

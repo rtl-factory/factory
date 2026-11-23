@@ -1,5 +1,5 @@
 // Simulation-only composition of the common SDRAM controller in the nand2doom
-// configuration (n2d_pkg N2D_SDRAM_*, the set n2d_memory_controller passes):
+// configuration (n2d_memory_controller_pkg, the set n2d_memory_controller passes):
 // the controller's own ports, unchanged. The n2d_sdram_controller target and
 // the platform and board-timing fixtures instantiate it, so every bench tests
 // the product's parameter values.
@@ -32,7 +32,7 @@ module n2d_sdram_ctrl_fixture (
     output logic         sdram_dq_oe_o,
     input  logic [15:0]  sdram_dq_i
 );
-    import n2d_pkg::*;
+    import n2d_memory_controller_pkg::*;
 
     n2a_sdram_ctrl #(
         .BURST_BEATS           (N2D_SDRAM_BURST_BEATS),
