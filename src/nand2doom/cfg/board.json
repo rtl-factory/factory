@@ -3,6 +3,9 @@
   "project": "nand2doom",
   "program": {"label": "Image manifest", "patterns": ["manifest.json", "*.json"],
               "default": "workdir/software/n2d_doom/manifest.json"},
+  "pad": {"Up": "Up", "Down": "Down", "Left": "Left", "Right": "Right", "Fire": "Control_L",
+          "Use": "space", "Run": "Shift_L", "Strafe": "Alt_L", "Enter": "Return", "Menu": "Escape",
+          "Map": "Tab", "Yes": "y"},
   "load": ["{python}", "src/nand2doom/scripts/host/n2d_play.py", "--board", "{board}",
            "--port", "{port}", "--manifest", "{program}", "--skip-program", "--controls", "none"],
   "boards": {
