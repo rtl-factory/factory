@@ -73,13 +73,13 @@ The other tools' install steps are written by the build issue that installs them
 | DE2-115 | Cyclone IV E EP4CE115F29C7 | On-board USB-Blaster |
 | DE10-Lite | MAX 10 10M50DAF484C7G | On-board USB-Blaster |
 
-On the board host, install the udev rule `tools/toolchain/51-fpga-boards.rules` once. It opens the USB-Blaster (vendor `09fb`, products `6001`, `6010`, `6810`) and the FTDI TTL-232R UART cable (`0403:6001`) to every local user, so both the desktop user and the CI runner's user service reach them with no group change or re-login:
+On the board host, install the udev rule `tools/toolchain/51-fpga-boards.rules` once. It opens the USB-Blaster (vendor `09fb`, products `6001`, `6010`, `6810`) and the FTDI TTL-232R UART cable (`0403:6001`, the stock FT232R ID, so every FT232R adapter on the host) to every local user, so both the desktop user and the CI runner's user service reach them with no group change or re-login:
 
 ```bash
 sudo install -m 644 tools/toolchain/51-fpga-boards.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger
 ```
 
-Without it, `jtagconfig` reports `Insufficient port permissions` and the serial port belongs to the distro's serial group (`dialout` on Debian and Ubuntu, `uucp` on Arch). Then `jtagconfig` lists the cable and the board's IDCODE, the JTAG daemon runs on that host, and `quartus_pgm -m jtag -o "p;<file>.sof"` programs. Where builds and programming run is in `wiki/bkm/fpga.md`.
+Without it, `jtagconfig` reports `Insufficient port permissions` and the serial port belongs to the distro's serial group (`dialout` on Debian and Ubuntu, `uucp` on Arch). With it installed, `jtagconfig` lists the cable and the board's IDCODE, the JTAG daemon runs on that host, and `quartus_pgm -m jtag -o "p;<file>.sof"` programs. Where builds and programming run is in `wiki/bkm/fpga.md`.
 
 ## Open
 
