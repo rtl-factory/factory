@@ -26,7 +26,7 @@ The pages came over from nand2anything (its per-area HAS and DV pages and tool s
 | Code | What it holds |
 |---|---|
 | `rtl/core/` | `n2d_rv32i_decode_alu`, `n2d_rv32i_core_step`, and the pipelined product core `n2d_rv32im_core` with its stages (`n2d_if`, `n2d_dec`, `n2d_exe`, `n2d_ma`, `n2d_wb`, `n2d_ctrl`, `n2d_csr`, `n2d_muldiv`), packages and `n2d_pmon`. Both cores use the common `n2a_rv32_regfile`. |
-| `rtl/memory/` | `n2d_icache`, `n2d_dcache`, `n2d_cached_rv32im`, `n2d_memory_arbiter`, `n2d_memory_controller` (which drives the common SDRAM controller `n2a_sdram_ctrl`), `n2d_debug_memory_adapter` and `n2d_ls_types_pkg` (the "ls" category of nand2anything). |
+| `rtl/memory/` | `n2d_icache`, `n2d_dcache`, `n2d_cached_rv32im`, `n2d_memory_arbiter`, `n2d_memory_controller` (which drives the common SDRAM controller `n2a_sdram_ctrl`) with `n2d_memory_controller_pkg` (its configuration), `n2d_debug_memory_adapter` and `n2d_ls_types_pkg` (the "ls" category of nand2anything). |
 | `rtl/video/` | `n2d_framebuffer_vga`: framebuffer, palette and VGA scanout over the common timing block. |
 | `rtl/io/` | `n2d_uart_debug`, `n2d_uart_debug_engine`, `n2d_uart_bulk`, `n2d_uart_stream`, `n2d_uart_mem_port` and `n2d_ps2_keyboard`. |
 | `rtl/platform/` | `n2d_system` (the product top shared by both boards), `n2d_pkg`, `n2d_types_pkg`, `n2d_debug_device_line_bridge`, `n2d_pmon_platform_events`. |

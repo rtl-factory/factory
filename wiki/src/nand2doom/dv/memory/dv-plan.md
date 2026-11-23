@@ -5,7 +5,8 @@
 The memory block (`n2d_icache`, `n2d_dcache` in both geometries with its
 victim buffer and prefetch, `n2d_cached_rv32im`, `n2d_memory_arbiter` and the
 fast line memory, `n2d_debug_memory_adapter`, and the common SDRAM controller
-`n2a_sdram_ctrl` in the nand2doom configuration, target `n2d_sdram_controller`), checked
+`n2a_sdram_ctrl` in the nand2doom configuration through `n2d_sdram_ctrl_fixture`,
+target `n2d_sdram_controller`), checked
 against the [memory MAS](../../rtl/memory/mas.md). The maintained Halt bound
 (MEM-R9) is checked in the [I/O DV plan](../io/dv-plan.md#features), the
 board SDRAM phase on the board tops in the [FPGA DV plan](../fpga/dv-plan.md),

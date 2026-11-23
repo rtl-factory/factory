@@ -75,7 +75,13 @@ async def sdram_pin_timing_contract(dut):
     dut.request_write_data_i.value = 0
     dut.request_byte_enable_i.value = 0
     dut.sdram_dq_i.value = POISON
-    for _ in range(3): await RisingEdge(dut.clk_i)
+    for edge in range(3):
+        await RisingEdge(dut.clk_i)
+        # Why: the board tops drive DRAM_CKE and DRAM_CS_N straight from these
+        # pins, so the device must see CKE low and the chip deselected in reset.
+        # The edge at time zero precedes the first evaluation of reset_i.
+        assert edge == 0 or (not int(dut.sdram_cke_o.value) and int(dut.sdram_cs_n_o.value)), \
+            "CKE high or chip selected during reset"
     dut.reset_i.value = 0
 
     cycle = {"value": 0}

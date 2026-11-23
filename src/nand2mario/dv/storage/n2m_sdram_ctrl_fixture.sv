@@ -6,8 +6,8 @@
 `default_nettype none
 
 module n2m_sdram_ctrl_fixture #(
-    parameter int unsigned REFRESH_INTERVAL = 160,
-    parameter int unsigned REFRESH_DEADLINE_CLOCKS = 195,
+    parameter int unsigned REFRESH_INTERVAL = n2m_sdram_backing_pkg::SDRAM_REFRESH_DUE,
+    parameter int unsigned REFRESH_DEADLINE_CLOCKS = n2m_sdram_backing_pkg::SDRAM_REFRESH_DEADLINE,
     parameter int unsigned FILL_SEED = 32'h2545F491
 ) (
     input  logic        clk_i,
@@ -37,21 +37,23 @@ module n2m_sdram_ctrl_fixture #(
 );
     logic response_error;
 
+    import n2m_sdram_backing_pkg::*;
+
     n2a_sdram_ctrl #(
-        .BURST_BEATS      (1),
-        .OPEN_ROW         (1'b0),
-        .ROW_XOR_BANK     (1'b0),
-        .POWERUP_CLOCKS   (5001),
-        .INIT_REFRESHES   (8),
-        .INIT_WAIT_MIN    (2),
-        .WAIT_RCD         (2),
-        .WAIT_RP          (2),
-        .WAIT_RFC         (3),
-        .WAIT_WR          (2),
-        .WAIT_MRD         (2),
-        .REFRESH_DUE      (REFRESH_INTERVAL),
-        .REFRESH_DEADLINE (REFRESH_DEADLINE_CLOCKS),
-        .REFRESH_AGE_FROM_MODE (1'b1)
+        .BURST_BEATS           (SDRAM_BURST_BEATS),
+        .OPEN_ROW              (SDRAM_OPEN_ROW),
+        .ROW_XOR_BANK          (SDRAM_ROW_XOR_BANK),
+        .POWERUP_CLOCKS        (SDRAM_POWERUP_CLOCKS),
+        .INIT_REFRESHES        (SDRAM_INIT_REFRESHES),
+        .INIT_WAIT_MIN         (SDRAM_INIT_WAIT_MIN),
+        .WAIT_RCD              (SDRAM_WAIT_RCD),
+        .WAIT_RP               (SDRAM_WAIT_RP),
+        .WAIT_RFC              (SDRAM_WAIT_RFC),
+        .WAIT_WR               (SDRAM_WAIT_WR),
+        .WAIT_MRD              (SDRAM_WAIT_MRD),
+        .REFRESH_DUE           (REFRESH_INTERVAL),
+        .REFRESH_DEADLINE      (REFRESH_DEADLINE_CLOCKS),
+        .REFRESH_AGE_FROM_MODE (SDRAM_REFRESH_AGE_FROM_MODE)
     ) u_ctrl (
         .clk_i, .reset_i, .request_valid_i, .request_ready_o, .request_write_i,
         .request_address_i, .request_write_data_i, .request_byte_enable_i,
@@ -69,6 +71,9 @@ module n2m_sdram_ctrl_fixture #(
     assign response_error_unused = response_error;
     /* verilator lint_on UNUSEDSIGNAL */
 
+    // Why: INIT_REFRESHES is the model's independent check value (the init
+    // refreshes nand2mario's contract requires), not a copy of the controller
+    // configuration, so it stays a literal here.
     n2a_sdram_model #(
         .INIT_REFRESHES (8),
         .FILL_SEED      (FILL_SEED)
