@@ -53,7 +53,7 @@ class Worker:
             raise RuntimeError(f"keyboard stopped: {exc}") from exc
 
 
-def main(boards: dict, *, port: str = "", quartus_bin=None) -> int:
+def main(boards: dict, *, port: str = "", quartus_bin=None, first=None) -> int:
     try:
         import tkinter as tk
         from tkinter import filedialog, ttk
@@ -69,7 +69,7 @@ def main(boards: dict, *, port: str = "", quartus_bin=None) -> int:
     state = KeyState()
 
     keys = sorted(boards)
-    board_var = tk.StringVar(value=keys[0])
+    board_var = tk.StringVar(value=first[0].key if first else keys[0])
     sof_var, program_var = tk.StringVar(), tk.StringVar()
     port_var = tk.StringVar(value=port)
     status_var = tk.StringVar(value="keyboard: not connected")
@@ -193,6 +193,8 @@ def main(boards: dict, *, port: str = "", quartus_bin=None) -> int:
 
     board_var.trace_add("write", on_board)
     on_board()
+    if first:
+        events.put(("log", first[1]))
     tick()
     try:
         root.mainloop()

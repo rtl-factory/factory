@@ -60,10 +60,10 @@ The window reports keys by Tk keysym. `keys.py` maps the physical key to its PS/
 
 From top to bottom:
 
-1. **Board**: every `project/board`. Choosing one fills in its SOF and default program.
+1. **Board**: every `project/board`. Choosing one fills in its SOF and default program. The window opens on the board `--project`/`--board` name; without them, one bounded `jtagconfig` run selects the board whose IDCODE is alone on the one chain, and among projects on that board the one with the most recently built SOF. With no cable, several cables or devices, or an unknown IDCODE it opens on the first board. The log's first line says which board was selected and why.
 2. **SOF**, a browse button, and **Program FPGA**. A browsed SOF whose file name is one board's default SOF selects that board.
 3. **Program file**, labelled by the project, a browse button, and **Load program**.
-4. **UART port**: the serial ports pyserial lists, or a typed path.
+4. **UART port**: the serial ports pyserial lists, or a typed path; prefilled from `--port`, or with the port when pyserial lists exactly one.
 5. **The keyboard pane**: click it and type. **Connect keyboard** finds the cable and device by IDCODE and opens the session. The status line names the board and the cable.
 6. **A log**: every command run and its output, and every error.
 
@@ -72,7 +72,7 @@ One worker thread runs the actions and the key sends in order, so the window nev
 ## Command line
 
 ```
-board.py [gui] [--port P]                    the window (default)
+board.py [gui] [--project X] [--board B] [--port P]   the window (default)
 board.py list                                projects, boards, built SOFs, default programs, serial ports
 board.py program --project X --board B [--sof S] [--cable C] [--yes]
 board.py load    --project X --board B [--program F] --port P [--yes]
