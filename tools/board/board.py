@@ -53,6 +53,7 @@ class Board:
     program_default: str
     load: tuple[str, ...]
     pad: tuple[tuple[str, str], ...] = ()
+    aliases: tuple[tuple[str, str], ...] = ()
 
     @property
     def key(self) -> str:
@@ -67,6 +68,9 @@ def parse_config(data: dict, source: str) -> list[Board]:
         pad = tuple(data.get("pad", {}).items())
         if any(key_name(key) is None for _, key in pad):
             raise BoardError(f"{source}: every pad button must name a console key")
+        aliases = tuple(data.get("aliases", {}).items())
+        if any(key_name(k) is None for pair in aliases for k in pair):
+            raise BoardError(f"{source}: every alias must map a console key to a console key")
         if not load or not all(isinstance(part, str) for part in load):
             raise BoardError(f"{source}: load must be a nonempty list of strings")
         for part in load:
@@ -81,7 +85,7 @@ def parse_config(data: dict, source: str) -> list[Board]:
             if not 9600 <= baud <= 12_000_000:
                 raise BoardError(f"{source}: {name} baud {baud} outside 9600..12000000")
             boards.append(Board(data["project"], name, idcode, baud, board["sof"], program["label"],
-                                tuple(program["patterns"]), program.get("default", ""), load, pad))
+                                tuple(program["patterns"]), program.get("default", ""), load, pad, aliases))
         return boards
     except (KeyError, TypeError, ValueError) as exc:
         raise BoardError(f"{source}: malformed board config: {exc!r}") from exc

@@ -30,6 +30,7 @@ Each project declares its boards in `src/<project>/cfg/board.json`. The console 
 | `program.label`, `program.patterns` | What the program file is called in the console, and its file patterns |
 | `program.default` | The program file when none is chosen; empty means the user must choose one |
 | `pad` | Optional. The project's controller: each pad button and the key name it stands for. `Up`, `Down`, `Left`, `Right` form the D-pad, `A`, `B`, `Select`, `Start` take a handheld's places, and every other button is an action key on a two-column grid, labelled with its name and key (nand2doom: Fire Ctrl, Use Space, Run Shift, Strafe Alt, Enter, Menu Esc, Map Tab, Yes y, from its key map). A key outside the key table is refused |
+| `aliases` | Optional. Laptop keys that stand for board keys in play, for keys a terminal or compositor may never report alone (Ctrl, Alt, Shift): nand2doom has F for Ctrl (fire), D for Alt (strafe) and R for Shift (run). The pad labels a button with its alias, and the key line lists both |
 | `load` | The loader command line, run from the repository root. The fields are `{python}` (this interpreter), `{root}`, `{program}`, `{port}`, `{baud}` and `{board}`; any other field is refused |
 | `boards.<board>.idcode` | The FPGA's JTAG IDCODE, eight hex digits |
 | `boards.<board>.baud` | The board UART rate of this project's image, 9600 to 12,000,000 |

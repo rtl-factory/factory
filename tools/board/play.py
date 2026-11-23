@@ -35,9 +35,11 @@ LAYOUT = {"Up": (1, 9, 7, "▲"), "Left": (4, 2, 7, "◀"), "Right": (4, 16, 7, 
 GRID_COLUMN, GRID_WIDTH, GRID_COLUMNS = 27, 14, 2
 
 
-def layout(pad: dict) -> dict:
+def layout(pad: dict, aliases: dict | None = None) -> dict:
     """Each pad button's (row, column, width, face): the handheld's named places,
-    then every other button on the action grid, labelled with its key."""
+    then every other button on the action grid, labelled with the laptop key to
+    press for it (an alias when the project declares one)."""
+    typed = {board: laptop for laptop, board in (aliases or {}).items()}
     places, slot = {}, 0
     for name, key in pad.items():
         if name in LAYOUT:
@@ -45,9 +47,13 @@ def layout(pad: dict) -> dict:
             continue
         row, column = divmod(slot, GRID_COLUMNS)
         places[name] = (1 + 3 * row, GRID_COLUMN + GRID_WIDTH * column, GRID_WIDTH - 1,
-                        f"{name}:{KEY_FACES.get(key, key)}"[:GRID_WIDTH - 3])
+                        f"{name}:{face(typed.get(key, key))}"[:GRID_WIDTH - 3])
         slot += 1
     return places
+
+
+def face(key: str) -> str:
+    return KEY_FACES.get(key, key.upper() if len(key) == 1 else key)
 
 
 KEY_FACES = {"Control_L": "Ctrl", "Control_R": "Ctrl", "Shift_L": "Shift", "Shift_R": "Shift",
@@ -80,6 +86,12 @@ def at(row: int, col: int) -> str:
     return f"\x1b[{row};{col}H"
 
 
+def legend(pad: dict, aliases: dict) -> str:
+    typed = {board: laptop for laptop, board in aliases.items()}
+    return "  ".join(f"{name}={face(key)}" + (f" or {face(typed[key])}" if key in typed else "")
+                     for name, key in pad.items())
+
+
 def button(places: dict, name: str, lit: bool) -> str:
     row, col, width, face = places[name]
     top, left = PAD_TOP + row, PAD_LEFT + col
@@ -89,15 +101,14 @@ def button(places: dict, name: str, lit: bool) -> str:
             f"{at(top + 2, left)}└{'─' * (width - 2)}┘\x1b[0m")
 
 
-def screen(title: str, kitty: bool, pad: dict) -> str:
-    places = layout(pad)
-    legend = "  ".join(f"{name}={KEY_FACES.get(key, key)}" for name, key in pad.items())
+def screen(title: str, kitty: bool, pad: dict, aliases: dict | None = None) -> str:
+    places = layout(pad, aliases)
     out = ["\x1b[H\x1b[2J\x1b[?25l", at(2, 3), f"\x1b[1mPLAYING  {title}\x1b[0m", at(4, 3),
            "Every key you press goes to the board over JTAG.  Press Ctrl+] to return to the console.",
            at(5, 3), "This terminal reports key releases." if kitty else
            "This terminal reports no key releases: a key counts as held while it repeats."]
     if pad:
-        out += [at(6, 3), f"Pad keys: {legend}   (click a button to press it)",
+        out += [at(6, 3), f"Keys: {legend(pad, aliases or {})}   (click a button to press it)",
                 at(PAD_TOP - 1, PAD_LEFT), "╭" + "─" * 56 + "╮"]
         out += [at(PAD_TOP + r, PAD_LEFT) + "│" + " " * 56 + "│" for r in range(0, 14)]
         out += [at(PAD_TOP + 14, PAD_LEFT), "╰" + "─" * 56 + "╯"]
@@ -114,15 +125,16 @@ def hit(pad: dict, col: int, row: int) -> str | None:
     return None
 
 
-def play(send, title: str, *, pad: dict | None = None, fd_in: int = 0, fd_out: int = 1,
-         clock=time.monotonic) -> int:
+def play(send, title: str, *, pad: dict | None = None, aliases: dict | None = None,
+         fd_in: int = 0, fd_out: int = 1, clock=time.monotonic) -> int:
     """Run play mode on the terminal until Ctrl+] (or end of input); `send(codes,
-    label)` delivers Set-2 bytes; `pad` maps pad buttons to key names. Returns the
+    label)` delivers Set-2 bytes; `pad` maps pad buttons to key names and `aliases`
+    laptop keys to the board keys they send. Returns the
     number of key events forwarded."""
     import termios
     import tty
-    pad = dict(pad or {})
-    places = layout(pad)
+    pad, aliases = dict(pad or {}), dict(aliases or {})
+    places = layout(pad, aliases)
     saved = termios.tcgetattr(fd_in) if os.isatty(fd_in) else None
     kitty, state = False, KeyState()
     keys, forwarded, clicked, lit = TerminalKeys(), 0, None, set()
@@ -144,7 +156,7 @@ def play(send, title: str, *, pad: dict | None = None, fd_in: int = 0, fd_out: i
         state = KeyState() if kitty else TimedKeys()
         if kitty:
             os.write(fd_out, f"\x1b[>{KITTY_FLAGS}u".encode())
-        os.write(fd_out, MOUSE_ON + screen(title, kitty, pad).encode())
+        os.write(fd_out, MOUSE_ON + screen(title, kitty, pad, aliases).encode())
         while True:
             data = b""
             if select.select([fd_in], [], [], TICK)[0]:
@@ -166,6 +178,8 @@ def play(send, title: str, *, pad: dict | None = None, fd_in: int = 0, fd_out: i
             for kind, key in keys.feed(MOUSE.sub(b"", data), now):
                 if kind == CTRL_RIGHT_BRACKET:
                     return forwarded
+                # Why: an alias stands for a board key the terminal may never report (Ctrl, Alt alone)
+                key = aliases.get(key, key)
                 codes = {"release": state.release, "tap": state.tap}.get(kind, state.press)(key, now)
                 if codes:
                     forwarded, last = forwarded + 1, f"{key} {kind}"

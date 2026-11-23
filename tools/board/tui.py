@@ -364,10 +364,11 @@ class BoardConsole(App):
         send = lambda codes, label: self.worker.submit(lambda: self.worker.send(codes, label))  # noqa: E731
         try:
             with self.suspend():
-                count = self.play_fn(send, title, pad=dict(self.board.pad))
+                count = self.play_fn(send, title, pad=dict(self.board.pad),
+                                     aliases=dict(self.board.aliases))
         except SuspendNotSupported:
             # Why: the headless test driver cannot hand the terminal over; play runs in place
-            count = self.play_fn(send, title, pad=dict(self.board.pad))
+            count = self.play_fn(send, title, pad=dict(self.board.pad), aliases=dict(self.board.aliases))
         self.log_line(f"play: {count} key events sent")
 
 
