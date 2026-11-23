@@ -54,6 +54,35 @@ def code_points(dat: Path) -> dict[str, tuple[int, int]]:
     return {kind: (hit, total) for kind, (hit, total) in sorted(totals.items())}
 
 
+def root_relative(path: str, root: Path) -> str:
+    """path as a path under root: the longest tail of it that names a file there, else path unchanged.
+
+    Why: Verilator records each source by the absolute path it resolved at build
+    time, which for a cached model is another checkout's (or a gone sandbox's).
+    """
+    parts = Path(path).parts
+    for start in range(1, len(parts)):
+        tail = Path(*parts[start:])
+        if (root / tail).is_file():
+            return tail.as_posix()
+    return path
+
+
+def relocate(dat: Path, out: Path, root: Path) -> None:
+    """Copy a coverage.dat to out with every source path ("f" field) made root-relative."""
+    cache: dict[str, str] = {}
+
+    def fix(match: re.Match) -> str:
+        old = match[1]
+        if old not in cache:
+            cache[old] = root_relative(old, root)
+        return "\x01f\x02" + cache[old]
+
+    field = re.compile("\x01f\x02([^\x01']*)")
+    out.write_text("".join(field.sub(fix, line) if line.startswith("C '") else line
+                           for line in dat.read_text(errors="replace").splitlines(keepends=True)))
+
+
 def functional_groups(path: Path) -> dict[str, tuple[int, int]]:
     """Bins covered and total per top-level covergroup of a functional database."""
     import yaml
@@ -79,9 +108,12 @@ def summarize(test_dir: Path, root: Path, expect_code: bool = False) -> list[str
             report = test_dir / "coverage"
             shutil.rmtree(report, ignore_errors=True)
             report.mkdir()
-            # Why: annotation reads the sources by the root-relative paths the model was built from.
+            relocated = report / CODE
+            relocate(dat, relocated, root)
+            # Why: annotation reads each source by its relocated, root-relative path, so
+            # it reads this checkout's files whichever checkout built the model.
             run = subprocess.run([tool, "--annotate", str(report / "annotated"), "--annotate-min", "1",
-                                  "--write-info", str(report / "coverage.info"), str(dat.absolute())],
+                                  "--write-info", str(report / "coverage.info"), str(relocated.absolute())],
                                  cwd=root, capture_output=True, text=True)
             if run.returncode:
                 lines.append(f"code report failed: {(run.stderr or run.stdout).strip()[-300:]}")

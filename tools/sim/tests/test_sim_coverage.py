@@ -42,6 +42,24 @@ class CodeCoverageTests(unittest.TestCase):
             self.assertIn("no coverage.dat", sim_coverage.summarize(Path(tmp), ROOT, expect_code=True)[0])
 
 
+class RelocateTests(unittest.TestCase):
+    def test_sources_from_another_checkout_become_root_relative(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "here"
+            (root / "src/demo").mkdir(parents=True)
+            (root / "src/demo/a.sv").write_text("module a; endmodule\n")
+            dat = Path(tmp) / "coverage.dat"
+            dat.write_text("# SystemC::Coverage-3\n" + point("line", "a", 1, 3).replace(
+                "\x01f\x02src/demo/a.sv", "\x01f\x02/gone/worktrees/issue-1/src/demo/a.sv"))
+            out = Path(tmp) / "relocated.dat"
+            sim_coverage.relocate(dat, out, root)
+            self.assertIn("\x01f\x02src/demo/a.sv\x01", out.read_text())
+            self.assertEqual(sim_coverage.code_points(out), {"line": (1, 1)})
+
+    def test_a_path_with_no_file_under_root_is_kept(self):
+        self.assertEqual(sim_coverage.root_relative("/elsewhere/x.sv", ROOT), "/elsewhere/x.sv")
+
+
 class FunctionalCoverageTests(unittest.TestCase):
     def test_summary_lists_top_level_groups_only(self):
         with tempfile.TemporaryDirectory() as tmp:

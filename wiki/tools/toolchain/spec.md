@@ -15,7 +15,7 @@ How the toolchain is built, against its [requirements](prd.md). Decisions: ADR 0
 
 | Tool | Version | Source and notes |
 |---|---|---|
-| Verilator | 5.052 | Built from the upstream tag; pinned in `cfg/toolchain.json`; cocotb needs 5.036 or newer; 5.054 is newer but unproven here |
+| Verilator | 5.052 | Built from the upstream tag; pinned in `cfg/toolchain.json` by tag and commit (`ea338be9…`, the source's checksum); cocotb needs 5.036 or newer; 5.054 is newer but unproven here |
 | cocotb | 2.1.0 | pip, pinned with the other simulation packages in `tools/sim/requirements.txt` |
 | cocotb-coverage | 2.0 | pip, pinned in `tools/sim/requirements.txt`: functional coverage (`CoverPoint`, `CoverCross`) for the cocotb testbenches; 2.0 is the release for cocotb 2.x (it requires `cocotb>=2.0`), proven here on cocotb 2.1.0 and Verilator 5.052 by `n2a_uart_wire`. Chosen over pyvsc (a constraint solver and covergroups not tied to cocotb, with a native solver dependency we do not need) and over an in-repo helper (cocotb-coverage is maintained and already the cocotb community's choice). Its `python-constraint` dependency is a source-only package that the Python rules build once. Reporting: [sim spec, Coverage](../sim/spec.md#coverage) |
 | Python | 3.12 or newer | |
@@ -63,7 +63,7 @@ The cloud session hook runs these steps when the check fails (about 45 s), befor
 
 ## Install (Verilator)
 
-On a GitHub-hosted runner, the `l0` CI job ([CI levels](../../bkm/flow.md#ci-levels)) builds Verilator from the pinned tag on Ubuntu 24.04 (`bison`, `flex`, `libfl-dev`, `help2man`, `zlib1g-dev`; `autoconf`, `./configure --prefix=~/verilator`, `make`, `make install`) and caches the install by the pinned tag, so only the first run after a pin change rebuilds it. The same steps install it on a Linux host. The job also installs `liblz4-dev` (FST waveform targets) and, for the nand2doom C-program targets, `gcc-riscv64-unknown-elf` and `picolibc-riscv64-unknown-elf` from Ubuntu's archive.
+On a GitHub-hosted runner, the `l0` CI job ([CI levels](../../bkm/flow.md#ci-levels)) builds Verilator from the pinned tag on Ubuntu 24.04 (`bison`, `flex`, `libfl-dev`, `help2man`, `zlib1g-dev`; `git clone --depth 1 --branch v5.052`, then `git rev-parse HEAD` must equal the pinned `commit` or the build stops; `autoconf`, `./configure --prefix=~/verilator`, `make`, `make install`) and caches the install by the pinned tag, so only the first run after a pin change rebuilds it. The same steps install it on a Linux host. The job also installs `liblz4-dev` (FST waveform targets) and, for the nand2doom C-program targets, `gcc-riscv64-unknown-elf` and `picolibc-riscv64-unknown-elf` from Ubuntu's archive.
 
 `python3 tools/toolchain/check.py --tool verilator` checks it: `verilator` from `VERILATOR`, `PATH` or `~/verilator/bin` (where Bazel's `@verilator` repository looks), its `--version` against the pin, and `verilator_coverage` beside it for [coverage reports](../sim/spec.md#coverage).
 
