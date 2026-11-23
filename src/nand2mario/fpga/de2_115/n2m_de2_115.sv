@@ -1,7 +1,7 @@
 `default_nettype none
 `include "src/common/rtl/pkg/macros.vh"
 
-// DE2-115 electrical adapter; wiki/src/nand2mario/fpga/de2_115/board-spec.md (DE2-115 profile).
+// DE2-115 electrical adapter; wiki/src/nand2mario/rtl/has.md#boards (DE2-115 profile).
 // The low x16 SDRAM has the existing controller geometry. Upper DQ pins
 // are unused inputs under the QSF policy; upper DQM stays masked.
 module n2m_de2_115 #(

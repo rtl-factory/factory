@@ -1,6 +1,6 @@
 // Board-level composition for the n2m_de2_115 board smoke: the real board
 // top with its pins, the owned SDRAM device model on the SDRAM pins and the
-// resolved DRAM_DQ bus between them (wiki/src/nand2mario/fpga/DV.md). The
+// resolved DRAM_DQ bus between them (wiki/src/nand2mario/rtl/has.md#verification-strategy). The
 // model is clocked by the inverse of the DRAM_CLK pin, i.e. the board's
 // system clock as the device's own clock relation defines it, so a wrong pin
 // phase reaches the model as a wrong capture edge and returns its poison word.

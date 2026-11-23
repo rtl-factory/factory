@@ -1,5 +1,5 @@
 // Intel MAX 10 M9K backend of the common one-clock single-port RAM contract
-// owned by wiki/src/common/memory/HAS.md. It instantiates `altsyncram` in
+// owned by wiki/src/common/rtl/memory/mas.md. It instantiates `altsyncram` in
 // SINGLE_PORT mode with port-A read-during-write OLD_DATA and an unregistered
 // output: one-edge registered read on every edge, optional full-word write,
 // old word on a same-address collision, no reset or initialization.
@@ -8,7 +8,7 @@
 // source list selects this file; Verilator product targets keep the portable
 // n2a_sync_ram.sv. Verilator lint of the wiring uses the DV-only port stub in
 // src/common/dv/memory/. Parameter rationale and the synthesis evidence
-// obligation are in wiki/src/common/memory/HAS.md.
+// obligation are in wiki/src/common/rtl/memory/mas.md.
 // The selection boundary needs one module name in two differently named
 // files, so the filename lint is waived for this file only.
 /* verilator lint_off DECLFILENAME */

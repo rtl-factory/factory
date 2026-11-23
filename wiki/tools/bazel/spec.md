@@ -59,7 +59,7 @@ A formal test runs `tools/fv/fv.py run <target>` with `FV_ROOT` set to its runfi
 
 `unit_tests()` (called in every project package, `//tools`, `//tools/sim` and `//tools/fv`) makes one test per `tests/` folder of its package, named after the folder's owner (`//src/nand2mario:scripts_board.unit`, `//tools:lint.unit`, `//tools/sim:sim.unit`): `tools/bazel/pytest_main.py` runs pytest on that folder with every project's and the tools' Python and the locked packages. Unit tests are tagged `L0`, `unit`, `no-sandbox` and `external`: they read the checkout (registries, wiki pages, programs), some write its `workdir/` or download pinned inputs, and the whole set takes seconds, so they always run rather than being cached. A new `tests/` folder in a package that calls `unit_tests()` becomes a test with no edit; a new package with tests must call it. The strict action PATH has no Verilator, so each unit test gets Bazel's `@verilator` and `pytest_main.py` puts it first on PATH (`UNIT_PATH_PREPEND`).
 
-`//tools:comment_lint` runs the comment lint as an L0 test, tagged `external` and `no-sandbox` because it lists the checkout's tracked files with git. It reads the base branch's baseline from `workdir/lint/base-baseline.json` when that file exists; the L0 job writes it from the pull request's base branch before `bazel test`.
+`//tools:comment_lint` runs the comment lint as an L0 test, tagged `external` and `no-sandbox` because it lists the checkout's tracked files with git. It reads the base branch's baseline from `workdir/lint/base-baseline.json` when that file exists; the L0 job writes it from the pull request's base branch before `bazel test`. `//tools:wiki_refs` runs the wiki reference check the same way, with the same tags.
 
 ## Wrapped targets
 

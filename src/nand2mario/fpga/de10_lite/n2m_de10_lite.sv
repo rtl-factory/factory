@@ -2,7 +2,7 @@
 `include "src/common/rtl/pkg/macros.vh"
 
 // nand2mario board top for the Terasic DE10-Lite (10M50DAF484C7G,
-// wiki/src/nand2mario/fpga/de10_lite/board-spec.md). A thin wrapper around the verified
+// wiki/src/nand2mario/rtl/has.md#boards). A thin wrapper around the verified
 // n2m_system in one 25 MHz domain:
 // 1. Clock: MAX10_CLK1_50 into n2a_de10_lite_clock (PLL divide by two).
 // 2. Reset: KEY0 (pressed = low) or a PLL that has not locked holds the

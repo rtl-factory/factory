@@ -1,6 +1,6 @@
 // Intel Virtual JTAG: manual instance 0, two-bit instruction register.
 // Board-only vendor wrapper (sld_virtual_jtag); simulation fixtures drive the
-// neutral scan ports of n2a_jtag_keyboard directly. See wiki/src/common/jtag.
+// neutral scan ports of n2a_jtag_keyboard directly. See https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/jtag/HAS.md.
 module n2a_jtag_virtual (
     output logic tck_o, tdi_o, capture_o, shift_o, update_o, update_ir_o,
     output logic [1:0] ir_o,

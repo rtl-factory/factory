@@ -1,7 +1,7 @@
 `include "src/common/rtl/pkg/macros.vh"
 
 // One held command/response mailbox between a host on Virtual JTAG and the
-// consumer's PS/2 byte stream (wiki/src/common/rtl/jtag/mas.md). The endpoint
+// consumer's PS/2 byte stream (https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/jtag/HAS.md). The endpoint
 // holds no byte FIFO: the consumer accepts each offered byte or refuses it.
 module n2a_jtag_keyboard (
     input logic clk_i, reset_i, tck_i,

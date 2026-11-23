@@ -2,7 +2,7 @@
 `include "src/common/rtl/pkg/macros.vh"
 
 // Silent DMG APU register block on the peripheral port
-// (wiki/src/nand2mario/rtl/audio/mas.md). Full register behaviour, no audio:
+// (wiki/src/nand2mario/rtl/has.md#block-diagram). Full register behaviour, no audio:
 // NR52 power control, channel status bits, the 512 Hz frame sequencer with
 // length counters and the channel-1 sweep overflow check, DAC-enable effects
 // and wave RAM. There is no waveform generator, envelope output, DAC or mixer.
