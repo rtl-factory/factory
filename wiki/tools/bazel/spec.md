@@ -39,7 +39,7 @@ Two cocotb targets share a model when their top, sources, parameters and public 
 
 ## Model action
 
-`verilator_model` runs `tools/sim/sim.py build-model --spec <spec> --out <dir>` in the sandbox, with only the target's sources, both projects' headers, the spec and Verilator as inputs, `SIM_ROOT=.` so the runner reads the sandbox rather than the checkout, and a fixed `PATH`. The runner builds the model as it always has (cocotb's Verilator flow, or `verilator --binary` for a native target) and deletes everything but the executable, so a cached model holds no object files. Each action reserves two CPUs; Bazel runs as many as fit.
+`verilator_model` runs `tools/sim/sim.py build-model --spec <spec> --out <dir>` in the sandbox, with only the target's sources, both projects' headers, the spec and Verilator as inputs, `SIM_ROOT=.` so the runner reads the sandbox rather than the checkout, a fixed `PATH`, and an empty `OBJCACHE`: a Verilator configured where `ccache` was on `PATH` names it in its `verilated.mk` (`OBJCACHE ?= ccache`), and the model build must not depend on it (`sim.py` sets the same default for builds outside Bazel). The runner builds the model as it always has (cocotb's Verilator flow, or `verilator --binary` for a native target) and deletes everything but the executable, so a cached model holds no object files. Each action reserves two CPUs; Bazel runs as many as fit.
 
 ## Test
 
