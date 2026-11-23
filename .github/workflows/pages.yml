@@ -19,8 +19,10 @@ concurrency:
 
 jobs:
   build:
-    # Why: a fork's code never runs on the self-hosted runner (wiki/bkm/flow.md, Runners).
-    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || fromJSON('["self-hosted","rtl-factory"]') }}
+    # Why: an approved fork run goes to a throwaway GitHub-hosted runner; the approval,
+    # not this expression, is what keeps a fork's code off the self-hosted one
+    # (wiki/bkm/flow.md, Runners).
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || fromJSON('["self-hosted","rtl-factory"]') }}
     steps:
       - uses: actions/checkout@v4
       # Why: a fresh venv per run, so the self-hosted runner's own Python packages never leak in.
