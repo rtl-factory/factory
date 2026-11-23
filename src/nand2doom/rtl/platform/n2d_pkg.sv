@@ -98,6 +98,9 @@ package n2d_pkg;
     // wiki/src/common/rtl/sdram/mas.md "project configurations"): burst eight,
     // open row and the row-XOR-bank map keep the line latency. The memory
     // controller and every bench fixture take the parameters from here.
+    // Why: compositions on the fast line model (n2d_perf_fast and the like)
+    // elaborate this package without the controller and read none of these.
+    /* verilator lint_off UNUSEDPARAM */
     localparam int unsigned N2D_SDRAM_BURST_BEATS           = 8;
     localparam bit          N2D_SDRAM_OPEN_ROW              = 1'b1;
     localparam bit          N2D_SDRAM_ROW_XOR_BANK          = 1'b1;
@@ -113,6 +116,7 @@ package n2d_pkg;
     localparam int unsigned N2D_SDRAM_REFRESH_DUE           = 163;
     localparam int unsigned N2D_SDRAM_REFRESH_DEADLINE      = 194;
     localparam bit          N2D_SDRAM_REFRESH_AGE_FROM_MODE = 1'b0;
+    /* verilator lint_on UNUSEDPARAM */
 
     // ---------------------------------------------------------------------
     // Host debug protocol constants (wiki/src/nand2doom/rtl/io/mas.md). Compositions that elaborate
