@@ -2,12 +2,12 @@
 `include "src/common/rtl/pkg/macros.vh"
 
 // Set-2 keyboard byte stream to Game Boy button levels. Each byte arrives
-// with a one-cycle valid; E0 marks the next code as extended and F0 marks
-// it as a release, exactly as a PS/2 keyboard sends them. A code the map
-// below names sets (make) or clears (break) its button; every other code is
-// consumed and ignored. The prefix state is cleared by the byte that
-// completes an event and by reset. Buttons are active-high in the joypad
-// order (wiki/src/nand2mario/rtl/joypad/mas.md#button-input):
+// with a one-cycle valid and is always taken; the common n2a_ps2_decoder
+// turns E0/F0 prefixes and codes into key events
+// (wiki/src/common/rtl/ps2/mas.md#decoder). An event the map below names sets
+// (make) or clears (break) its button; every other event is ignored. Buttons
+// are active-high in the joypad order
+// (wiki/src/nand2mario/rtl/joypad/mas.md#button-input):
 //   Right/Left/Up/Down: the extended arrow keys; A: X; B: Z;
 //   Select: Space; Start: Enter.
 // Board mapping policy lives in wiki/src/nand2mario/fpga/<board>/board-spec.md.
@@ -18,25 +18,40 @@ module n2m_scancode_buttons (
     input  logic [7:0] byte_i,
     output logic [7:0] buttons_o
 );
-    localparam logic [7:0] PREFIX_EXTENDED = 8'hE0;
-    localparam logic [7:0] PREFIX_RELEASE  = 8'hF0;
-    localparam logic [7:0] CODE_RIGHT  = 8'h74;  // extended
-    localparam logic [7:0] CODE_LEFT   = 8'h6B;  // extended
-    localparam logic [7:0] CODE_UP     = 8'h75;  // extended
-    localparam logic [7:0] CODE_DOWN   = 8'h72;  // extended
-    localparam logic [7:0] CODE_A      = 8'h22;  // X
-    localparam logic [7:0] CODE_B      = 8'h1A;  // Z
-    localparam logic [7:0] CODE_SELECT = 8'h29;  // Space
-    localparam logic [7:0] CODE_START  = 8'h5A;  // Enter
+    import n2a_ps2_pkg::*;
 
-    logic       extended_q, extended_d, release_q, release_d;
+    localparam logic [7:0] CODE_RIGHT  = 8'h74;
+    localparam logic [7:0] CODE_LEFT   = 8'h6B;
+    localparam logic [7:0] CODE_UP     = 8'h75;
+    localparam logic [7:0] CODE_DOWN   = 8'h72;
+    localparam logic [7:0] CODE_A      = 8'h22;
+    localparam logic [7:0] CODE_B      = 8'h1A;
+    localparam logic [7:0] CODE_SELECT = 8'h29;
+    localparam logic [7:0] CODE_START  = 8'h5A;
+
+    logic       byte_ready, event_valid;
+    t_ps2_event key_event;
     logic [7:0] buttons_q, buttons_d;
     logic [7:0] hit;
 
+    n2a_ps2_decoder u_decoder (
+        .clk_i         (clk_i),
+        .reset_i       (reset_i),
+        .byte_valid_i  (byte_valid_i),
+        .byte_i        (byte_i),
+        .byte_ready_o  (byte_ready),
+        .clear_i       (1'b0),
+        .event_valid_o (event_valid),
+        .event_o       (key_event),
+        .event_ready_i (1'b1)
+    );
+    // Why: event_ready_i is tied high, so every byte is ready.
+    `UNUSED_BITS(byte_ready_unused, byte_ready)
+
     always_comb begin
         hit = 8'h00;
-        if (extended_q) begin
-            case (byte_i)
+        if (key_event.extended) begin
+            case (key_event.code)
                 CODE_RIGHT: hit[0] = 1'b1;
                 CODE_LEFT:  hit[1] = 1'b1;
                 CODE_UP:    hit[2] = 1'b1;
@@ -44,7 +59,7 @@ module n2m_scancode_buttons (
                 default:    hit = 8'h00;
             endcase
         end else begin
-            case (byte_i)
+            case (key_event.code)
                 CODE_A:      hit[4] = 1'b1;
                 CODE_B:      hit[5] = 1'b1;
                 CODE_SELECT: hit[6] = 1'b1;
@@ -55,26 +70,9 @@ module n2m_scancode_buttons (
     end
 
     always_comb begin
-        extended_d = extended_q;
-        release_d = release_q;
         buttons_d = buttons_q;
-        if (byte_valid_i) begin
-            if (byte_i == PREFIX_EXTENDED) extended_d = 1'b1;
-            else if (byte_i == PREFIX_RELEASE) release_d = 1'b1;
-            else begin
-                extended_d = 1'b0;
-                release_d = 1'b0;
-                buttons_d = release_q ? (buttons_q & ~hit) : (buttons_q | hit);
-            end
-        end
+        if (event_valid) buttons_d = key_event.key_break ? (buttons_q & ~hit) : (buttons_q | hit);
     end
-    `DFF_RST(extended_q, extended_d, clk_i, reset_i)
-    `DFF_RST(release_q, release_d, clk_i, reset_i)
     `DFF_RST(buttons_q, buttons_d, clk_i, reset_i)
     assign buttons_o = buttons_q;
-
-    `ASSERT(byte_known, clk_i, reset_i, !byte_valid_i || !$isunknown(byte_i))
-    `ASSERT(event_clears_prefixes, clk_i, reset_i,
-        !(byte_valid_i && (byte_i != PREFIX_EXTENDED) && (byte_i != PREFIX_RELEASE)) ||
-        (!extended_d && !release_d))
 endmodule

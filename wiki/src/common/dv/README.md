@@ -5,4 +5,5 @@ The `dv` discipline of `common`: simulation models and benches shared by every p
 | Model | Document |
 | --- | --- |
 | SDRAM device model and controller | [DV plan](sdram/dv-plan.md) |
+| PS/2 receiver and Set-2 decoder | [DV plan](ps2/dv-plan.md) |
 | UART wire driver and receiver | [DV plan](uart/dv-plan.md) |
