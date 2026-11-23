@@ -1135,5 +1135,21 @@
       "max_cycles": 16,
       "level": "L0"
     }
+  },
+  "lint": {
+    "n2d_de10_lite": {
+      "libraries": [
+        "n2d_de10_lite",
+        "sld_virtual_jtag_stub",
+        "n2d_jtag_system_lint"
+      ]
+    },
+    "n2d_de2_115": {
+      "libraries": [
+        "n2d_de2_115",
+        "sld_virtual_jtag_stub",
+        "n2d_jtag_system_lint"
+      ]
+    }
   }
 }

@@ -635,5 +635,13 @@
       "max_cycles": 100000,
       "level": "L0"
     }
+  },
+  "lint": {
+    "n2a_jtag_virtual": {
+      "libraries": [
+        "n2a_jtag_virtual",
+        "sld_virtual_jtag_stub"
+      ]
+    }
   }
 }
