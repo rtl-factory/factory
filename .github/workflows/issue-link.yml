@@ -11,7 +11,8 @@ permissions:
 
 jobs:
   issue-link:
-    runs-on: ubuntu-latest
+    # Why: a fork's code never runs on the self-hosted runner (wiki/bkm/flow.md, Runners).
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || fromJSON('["self-hosted","rtl-factory"]') }}
     steps:
       - uses: actions/github-script@v7
         with:
