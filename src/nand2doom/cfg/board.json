@@ -6,6 +6,7 @@
   "pad": {"Up": "Up", "Down": "Down", "Left": "Left", "Right": "Right", "Fire": "Control_L",
           "Use": "space", "Run": "Shift_L", "Strafe": "Alt_L", "Enter": "Return", "Menu": "Escape",
           "Map": "Tab", "Yes": "y"},
+  "aliases": {"f": "Control_L", "d": "Alt_L", "r": "Shift_L"},
   "load": ["{python}", "src/nand2doom/scripts/host/n2d_play.py", "--board", "{board}",
            "--port", "{port}", "--manifest", "{program}", "--skip-program", "--controls", "none"],
   "boards": {

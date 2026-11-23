@@ -86,10 +86,12 @@ class Terminal:
 class PlayTests(unittest.TestCase):
     PAD = {"Up": "Up", "A": "x", "B": "z", "Start": "Return", "Select": "space"}
 
+    ALIASES = {}
+
     def run_play(self, kitty, script):
         term, sent, result = Terminal(kitty), [], {}
         thread = threading.Thread(target=lambda: result.update(count=play.play(
-            lambda codes, label: sent.append(bytes(codes)), "demo", pad=self.PAD,
+            lambda codes, label: sent.append(bytes(codes)), "demo", pad=self.PAD, aliases=self.ALIASES,
             fd_in=term.slave, fd_out=term.slave)), daemon=True)
         thread.start()
         term.pump(2, b"PLAYING")
@@ -123,6 +125,15 @@ class PlayTests(unittest.TestCase):
             (b"\x1b[57442u", 0.05), (b"\x1b[57442;5:3u", 0.05), (b"\x1b[93;5u", 0.3)])
         self.assertEqual(sent, bytes([0x29, 0xF0, 0x29, 0x14, 0xF0, 0x14]))
         self.assertIn("Fire:Ctrl".encode(), screen)
+
+    def test_an_alias_sends_its_board_key_and_labels_the_button(self):
+        self.PAD, self.ALIASES = {"Fire": "Control_L", "Use": "space"}, {"f": "Control_L"}
+        self.assertEqual(play.layout(self.PAD, self.ALIASES)["Fire"][3], "Fire:F")
+        sent, _, screen = self.run_play(True, [
+            (b"\x1b[102u", 0.05), (b"\x1b[102;1:3u", 0.05), (b"\x1b[57442u", 0.05), (b"\x1b[57442;5:3u", 0.05),
+            (b"f", 0.3), (b"\x1b[93;5u", 0.3)])
+        self.assertEqual(sent, bytes([0x14, 0xF0, 0x14]) * 3)
+        self.assertIn(b"Fire=Ctrl or F", screen)
 
     def test_kitty_terminal_sending_a_key_plainly_still_breaks_it(self):
         sent, _, _ = self.run_play(True, [(b"x", 0.3), (b"x", 0.3), (b"\x1b[93;5u", 0.3)])
@@ -199,7 +210,7 @@ class ConsoleAppTests(unittest.TestCase):
         from tools.board import tui
         plays = [] if plays is None else plays
         app = tui.BoardConsole({self.board.key: self.board}, (self.board, "selected"), port=port,
-                               actions=fake, play_fn=lambda send, title, pad=None: plays.append(title) or 0)
+                               actions=fake, play_fn=lambda send, title, pad=None, aliases=None: plays.append(title) or 0)
 
         async def run():
             async with app.run_test(size=(120, 40)) as pilot:
