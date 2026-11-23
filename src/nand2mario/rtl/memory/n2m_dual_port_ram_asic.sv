@@ -53,9 +53,9 @@ module n2m_dual_port_ram #(
     output logic [DATA_WIDTH-1:0]     read_data_b_o,
     output logic                      read_valid_b_o
 );
-    // Why: Quartus Lite rejects a localparam in the parameter port list, so
-    // the address ports above spell out this derivation from DEPTH.
-    localparam int unsigned ADDR_WIDTH = $clog2(DEPTH);
+    // Why: the address ports derive their width from DEPTH, matching the
+    // portable backend's interface; this reads it back from a port.
+    localparam int unsigned ADDR_WIDTH = $bits(address_a_i);
     // Smallest store mapped to one shared single-port SRAM.
     localparam int unsigned SRAM_MIN_BYTES = 8192;
     localparam bit SHARED_SRAM = !DUAL_CLOCK && (DATA_WIDTH == 8) && (DEPTH >= SRAM_MIN_BYTES);

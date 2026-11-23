@@ -27,8 +27,8 @@ module n2a_sync_ram #(
     output logic [((DATA_WIDTH < 1) ? 1 : DATA_WIDTH)-1:0]  read_data_o
 );
     // Why: Quartus Lite rejects a localparam in the parameter port list, so
-    // the address ports above spell out this derivation from DEPTH.
-    localparam int unsigned ADDR_WIDTH = (DEPTH < 2) ? 1 : $clog2(DEPTH);
+    // the address ports derive their width from DEPTH and this reads it back.
+    localparam int unsigned ADDR_WIDTH = $bits(address_i);
     localparam int unsigned IMPLEMENTATION_DATA_WIDTH =
         (DATA_WIDTH < 1) ? 1 : DATA_WIDTH;
     localparam bit DEPTH_IS_POWER_OF_TWO =
