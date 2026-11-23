@@ -6,7 +6,7 @@ One file per area. The list of every BKM section and when to follow it lives in 
 
 | Area | File | Holds |
 |---|---|---|
-| Workflow | [flow.md](flow.md) | the flow from issue to `main`, who may merge, epics, CI levels, building and checking with Bazel, GitHub settings |
+| Workflow | [flow.md](flow.md) | the flow from issue to `main`, who may merge, epics, CI levels, runners, building and checking with Bazel, GitHub settings |
 | | [issues.md](issues.md) | splitting and triaging issues, labels, the issue and pull request templates |
 | | [pull-requests.md](pull-requests.md) | writing a pull request and GitHub comments, getting it landable, landing, review |
 | | [first-mate.md](first-mate.md) | running the crew, the first mate on each agent platform, reporting to a captain |

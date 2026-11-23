@@ -58,11 +58,11 @@ Known host issues: a `setlocale` warning needs an `en_US.UTF-8` locale; on Arch,
 3. Do not add `~/oss-cad-suite/bin` to `PATH`: the suite carries its own Verilator, Python and cocotb, which would shadow the pinned ones. The [formal runner](../fv/spec.md) calls `~/oss-cad-suite/bin/sby` directly, and the suite's wrappers find their own tools.
 4. `python3 tools/toolchain/check.py --tool oss-cad-suite` checks the release stamp (`~/oss-cad-suite/VERSION`), the Yosys version, `sby`, `yosys-smtbmc`, `yosys-abc` and `yices-smt2`, and that the `slang` plugin loads.
 
-The cloud session hook runs these steps when the check fails (about 45 s), before the Quartus steps; a failure is logged and does not stop the Quartus install. The `l0` CI job runs steps 1 and 2 on every run.
+The cloud session hook runs these steps when the check fails (about 45 s), before the Quartus steps; a failure is logged and does not stop the Quartus install. The `l0` CI job runs steps 1 and 2 when the check fails: on every GitHub-hosted run, and on the self-hosted runner only after a pin change.
 
 ## Install (Verilator, CI)
 
-The `l0` CI job ([CI levels](../../bkm/flow.md#ci-levels)) builds Verilator from the pinned tag on Ubuntu 24.04 (`bison`, `flex`, `libfl-dev`, `help2man`, `zlib1g-dev`; `autoconf`, `./configure --prefix=~/verilator`, `make`, `make install`) and caches the install by the pinned tag, so only the first run after a pin change rebuilds it. The same steps install it on a Linux host. The job also installs `liblz4-dev` (FST waveform targets) and, for the nand2doom C-program targets, `gcc-riscv64-unknown-elf` and `picolibc-riscv64-unknown-elf` from Ubuntu's archive.
+On a GitHub-hosted runner, the `l0` CI job ([CI levels](../../bkm/flow.md#ci-levels)) builds Verilator from the pinned tag on Ubuntu 24.04 (`bison`, `flex`, `libfl-dev`, `help2man`, `zlib1g-dev`; `autoconf`, `./configure --prefix=~/verilator`, `make`, `make install`) and caches the install by the pinned tag, so only the first run after a pin change rebuilds it. The same steps install it on a Linux host. The job also installs `liblz4-dev` (FST waveform targets) and, for the nand2doom C-program targets, `gcc-riscv64-unknown-elf` and `picolibc-riscv64-unknown-elf` from Ubuntu's archive.
 
 The other tools' install steps are written by the build issue that installs them.
 

@@ -84,7 +84,7 @@ Resolving lists every library after the libraries it needs, each once, so packag
 
 ## Levels and CI
 
-`--config=l<N>` filters tests by tag to levels L0…LN (`.bazelrc`). The L0 job fetches the base branch's comment baseline, installs Verilator and the OSS CAD Suite, sets up Bazel with `bazel-contrib/setup-bazel` (which keeps Bazelisk and the repository cache), restores the disk cache from the GitHub Actions cache under a key per commit, falling back to the newest earlier one, and saves it again after the run, and runs `bazel test --config=ci --config=l0 //...`.
+`--config=l<N>` filters tests by tag to levels L0…LN (`.bazelrc`). The L0 job fetches the base branch's comment baseline and runs `bazel test --config=ci --config=l0 //...`. On the self-hosted runner ([Runners](../../bkm/flow.md#runners)) the toolchain, Bazel and the disk cache stay on the host between runs. On a GitHub-hosted runner (pull requests from forks) it first installs Verilator and the OSS CAD Suite, sets up Bazel with `bazel-contrib/setup-bazel` (which keeps Bazelisk and the repository cache), restores the disk cache from the GitHub Actions cache under a key per commit, falling back to the newest earlier one, saves it again after the run, and adds `--config=ci-hosted` to cap that cache at what the Actions cache holds.
 
 ## Hermeticity
 

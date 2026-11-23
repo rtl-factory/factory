@@ -3,6 +3,9 @@
 # simulation target and every L0 formal target (cached between runs), on
 # Verilator, cocotb and the OSS CAD Suite at the versions pinned in
 # cfg/toolchain.json, tools/sim/requirements_lock.txt and .bazelversion.
+# Runs on the factory's self-hosted runner, which has the toolchain installed;
+# pull requests from forks run on a GitHub-hosted runner, which installs it
+# (wiki/bkm/flow.md, Runners).
 name: l0
 
 on:
@@ -21,7 +24,10 @@ concurrency:
 
 jobs:
   l0:
-    runs-on: ubuntu-24.04
+    # Why: an approved fork run goes to a throwaway GitHub-hosted runner; the approval,
+    # not this expression, is what keeps a fork's code off the self-hosted one
+    # (wiki/bkm/flow.md, Runners).
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-24.04' || fromJSON('["self-hosted","rtl-factory"]') }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -38,11 +44,13 @@ jobs:
           fi
 
       - name: Read the Verilator pin
+        if: runner.environment == 'github-hosted'
         id: pin
         run: |
           python3 -I -c 'import json; v = json.load(open("cfg/toolchain.json"))["verilator"]; [print(k + "=" + v[k]) for k in ("version", "tag", "repository")]' >> "$GITHUB_OUTPUT"
 
       - name: Restore Verilator
+        if: runner.environment == 'github-hosted'
         id: cache
         uses: actions/cache@v4
         with:
@@ -50,7 +58,7 @@ jobs:
           key: verilator-${{ steps.pin.outputs.tag }}-${{ runner.os }}-ubuntu-24.04
 
       - name: Build Verilator
-        if: steps.cache.outputs.cache-hit != 'true'
+        if: runner.environment == 'github-hosted' && steps.cache.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq bison flex libfl-dev help2man zlib1g-dev
@@ -62,38 +70,49 @@ jobs:
           make install
 
       - name: Put Verilator on PATH
+        if: runner.environment == 'github-hosted'
         run: |
           echo "$HOME/verilator/bin" >> "$GITHUB_PATH"
           "$HOME/verilator/bin/verilator" --version
 
       - name: Install simulation host packages
+        if: runner.environment == 'github-hosted'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq liblz4-dev gcc-riscv64-unknown-elf picolibc-riscv64-unknown-elf
 
       - name: Install the OSS CAD Suite (formal tools)
+        # Why: the self-hosted runner keeps its install; reinstall only when it misses the pin.
         run: |
+          python3 tools/toolchain/check.py --tool oss-cad-suite && exit 0
           read -r url sum < <(python3 -I -c 'import json; v = json.load(open("cfg/toolchain.json"))["oss_cad_suite"]; print(v["url"], v["sha256"])')
           curl -fsSL --retry 4 -o "$RUNNER_TEMP/oss-cad-suite.tgz" "$url"
           echo "$sum  $RUNNER_TEMP/oss-cad-suite.tgz" | sha256sum -c -
-          mkdir -p "$HOME/oss-cad-suite"
-          tar -xzf "$RUNNER_TEMP/oss-cad-suite.tgz" -C "$HOME/oss-cad-suite" --strip-components=1
+          # Why: unpack beside the old install and swap only once it is complete.
+          mkdir -p "$RUNNER_TEMP/oss-cad-suite"
+          tar -xzf "$RUNNER_TEMP/oss-cad-suite.tgz" -C "$RUNNER_TEMP/oss-cad-suite" --strip-components=1
+          rm -rf "$HOME/oss-cad-suite"
+          mv "$RUNNER_TEMP/oss-cad-suite" "$HOME/oss-cad-suite"
           rm "$RUNNER_TEMP/oss-cad-suite.tgz"
           python3 tools/toolchain/check.py --tool oss-cad-suite
 
       - name: Allow Bazel's sandbox
+        if: runner.environment == 'github-hosted'
         # Why: Ubuntu 24.04 restricts the unprivileged user namespaces linux-sandbox uses.
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
-      - uses: bazel-contrib/setup-bazel@0.15.0
+      - if: runner.environment == 'github-hosted'
+        uses: bazel-contrib/setup-bazel@0.15.0
         with:
           bazelisk-cache: true
           repository-cache: true
 
       - name: Restore the Bazel disk cache
+        if: runner.environment == 'github-hosted'
         # Why: models and test results survive between runs, so a change reruns only
         # what it touches (wiki/tools/bazel/spec.md). Keyed by commit so every run
-        # saves its own and the next restores the newest.
+        # saves its own and the next restores the newest. The self-hosted runner
+        # keeps its disk cache on its own disk.
         uses: actions/cache@v4
         with:
           path: ~/.cache/bazel-disk
@@ -101,7 +120,9 @@ jobs:
           restore-keys: bazel-disk-l0-${{ runner.os }}-
 
       - name: L0 unit, simulation and formal tests
-        run: bazel test --config=ci --config=l0 //...
+        env:
+          HOSTED_CONFIG: ${{ runner.environment == 'github-hosted' && '--config=ci-hosted' || '' }}
+        run: bazel test --config=ci $HOSTED_CONFIG --config=l0 //...
 
       - name: Keep test logs and formal traces on failure
         if: failure()

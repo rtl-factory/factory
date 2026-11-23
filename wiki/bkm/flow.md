@@ -4,7 +4,7 @@ status: draft
 
 # Flow and CI
 
-The path every change takes from intent to `main`, the CI levels that gate it, how to build and check it with Bazel, and the GitHub settings that enforce it.
+The path every change takes from intent to `main`, the CI levels that gate it, the runners that run them, how to build and check it with Bazel, and the GitHub settings that enforce it.
 
 ## Flow
 
@@ -93,7 +93,45 @@ L1 to L4 have no job yet: until the L1 job exists, a pull request into `main` ru
 ### Open
 
 - Runtime budget per level is not yet set.
-- L1 to L4 have no CI job yet; a self-hosted runner is planned for them.
+- L1 to L4 have no CI job yet; they will run on the self-hosted runner ([Runners](#runners)).
+
+## Runners
+
+Where CI jobs run, and how to set up a host that runs the factory's checks locally or as the self-hosted runner.
+
+### Rules
+
+- Run every job on the self-hosted runner, `runs-on: [self-hosted, rtl-factory]`. Why: it keeps the toolchain, Bazel's output base and the disk cache between runs, so a job reruns only what changed and installs nothing.
+- Keep the repository's fork pull request approval at **Require approval for all external contributors**, and approve a fork's run only after reading every change it makes to `.github/`, `.bazelrc`, `MODULE.bazel`, `BUILD.bazel` files, `tools/` and any test or script it runs. Why: the repository is public, and on a `pull_request` event GitHub runs the workflow files of the pull request itself, so a fork can rewrite `runs-on` back to the self-hosted runner, which runs its code with the host user's files and credentials; the approval is the only lock.
+- Run a job that a pull request from a fork can trigger on a GitHub-hosted runner, with `runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-24.04' || fromJSON('["self-hosted","rtl-factory"]') }}`, and keep its tool installs behind `if: runner.environment == 'github-hosted'`. Why: an approved fork run then lands on a runner GitHub throws away; comparing the full name also catches a pull request whose fork was deleted.
+- Never use `pull_request_target` or `workflow_run` to run a fork's code. Why: both run with the base repository's secrets and would put that code on whichever runner the job names.
+- A step that needs a tool on the self-hosted runner checks it with `tools/toolchain/check.py` and installs only on a miss, unpacking beside the old install and swapping it in once complete; it never uses `sudo`. Why: the runner is a person's machine; a job must not change it beyond the runner user's home. A pull request that changes a pin swaps that install, and the next run on `main` swaps it back.
+- Put no secrets in the self-hosted runner's environment beyond what its user already has, and keep the runner registered to this repository only. Why: every job on it runs as that user.
+
+### Steps: set up a local host
+
+1. Install Verilator at the version pinned in `cfg/toolchain.json` (on Arch, `pacman -S verilator` when the package matches the pin; otherwise build the tag per [Toolchain: spec, Install (Verilator, CI)](../tools/toolchain/spec.md)), plus `lz4`.
+2. Install the OSS CAD Suite and, for board images, Quartus per [Toolchain: spec](../tools/toolchain/spec.md).
+3. Install Bazelisk as `bazel` on `PATH`: download `bazelisk-linux-amd64` from `bazelbuild/bazelisk` releases into `~/.local/bin/bazelisk` and link `~/.local/bin/bazel` to it. It downloads the Bazel pinned in `.bazelversion`.
+4. Install an RV32-capable GNU toolchain for the nand2doom C-program targets. On Ubuntu, `gcc-riscv64-unknown-elf` puts `riscv64-unknown-elf-gcc` in `/usr/bin`, where Bazel's fixed `PATH` finds it. Elsewhere, point the tests at it in `~/.bazelrc` with `test --test_env=N2D_RISCV_GCC=<path>`, and the same for `N2D_RISCV_OBJCOPY`, `N2D_RISCV_OBJDUMP` and `N2D_RISCV_READELF`; on Arch, `riscv64-elf-gcc` and `riscv64-elf-binutils` (installed, or unpacked under `~/opt`) pass L0. A wrapper that enters a container does not work inside Bazel's sandbox.
+5. Run `python3 tools/toolchain/check.py` until it prints READY, then `bazel test --config=l0 //...`.
+
+### Steps: install the self-hosted runner
+
+On a host set up per the steps above, as the user that owns the toolchain:
+
+1. Get a registration token (repo admin): `gh api -X POST repos/rtl-factory/factory/actions/runners/registration-token --jq .token`.
+2. Download the latest `actions-runner-linux-x64-<version>.tar.gz` from `actions/runner` releases and unpack it into `~/actions-runners/rtl-factory/`.
+3. Register it: `./config.sh --unattended --url https://github.com/rtl-factory/factory --token <token> --name <host> --labels rtl-factory --work _work`. Add `quartus` to the labels when Quartus passes the readiness check.
+4. Check that `~/actions-runners/rtl-factory/.path` holds the `PATH` the checks need (it is the shell's `PATH` at registration, including `~/.local/bin` for Bazelisk).
+5. Install it as a systemd user service that starts at boot without a login: write `~/.config/systemd/user/actions-runner-rtl-factory.service` with `WorkingDirectory=%h/actions-runners/rtl-factory`, `ExecStart=%h/actions-runners/rtl-factory/run.sh`, `KillMode=process`, `Restart=always` and `WantedBy=default.target`; run `loginctl enable-linger $USER` (once per host) and `systemctl --user enable --now actions-runner-rtl-factory`. Why a user service and not `svc.sh`: it needs no root, and the runner keeps the toolchain user's home.
+6. Check that the runner is online: `gh api repos/rtl-factory/factory/actions/runners --jq '.runners[] | {name, status}'`. Its log is `journalctl --user -u actions-runner-rtl-factory`.
+
+To remove a runner: `systemctl --user disable --now actions-runner-rtl-factory`, then `./config.sh remove --token <token>` with a token from `gh api -X POST repos/rtl-factory/factory/actions/runners/remove-token --jq .token`.
+
+### Exit criteria
+
+- The runner shows `online`; every workflow names `[self-hosted, rtl-factory]` or the fork expression above; the fork pull request approval is set to all external contributors.
 
 ## Build
 
@@ -149,6 +187,7 @@ The repository settings that enforce the flow. A repo admin applies them; agents
 3. **Labels.** Delete labels that `.github/labels.json` no longer lists (renamed `area:syn` → `area:fpga`: move issues to the new label first). Run the `label-sync` workflow once (Actions → label-sync → Run workflow). It reruns on every change to `.github/labels.json` merged into `main`.
 4. **Wiki site.** Settings → Pages → Build and deployment → Source: **GitHub Actions**. Then run the `pages` workflow once (Actions → pages → Run workflow); it reruns on every merge to `main` that touches the wiki. The site is at `https://rtl-factory.github.io/factory/`.
 5. **Dashboard.** Create a GitHub Project for the repo with views per [labels](issues.md#labels).
+6. **Actions.** Settings → Actions → General → Fork pull request workflows from outside collaborators: **Require approval for all external contributors**. Register the self-hosted runner per [Runners](#runners).
 
 `.github/CODEOWNERS` lists the repo admins so GitHub requests their review; their review is not required.
 

@@ -24,7 +24,8 @@ test:l4 --test_tag_filters=L0,L1,L2,L3,L4
 # CI: no progress spam, keep going so one run reports every failure.
 common:ci --color=no --curses=no --show_progress_rate_limit=30
 build:ci --keep_going
-# Why: the Actions cache holds 10 GB for the whole repository.
-build:ci --experimental_disk_cache_gc_max_size=3G
+# Why: the Actions cache holds 10 GB for the whole repository; GitHub-hosted runs
+# keep their disk cache there, the self-hosted runner keeps its own on disk.
+build:ci-hosted --experimental_disk_cache_gc_max_size=3G
 
 try-import %workspace%/user.bazelrc
