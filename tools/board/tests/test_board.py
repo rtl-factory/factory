@@ -137,8 +137,8 @@ class CheckChainTests(unittest.TestCase):
         def missing(argv, timeout):
             raise FileNotFoundError("jtagconfig")
 
-        cases = [(Recorder({"jtagconfig": (0, JTAGCONFIG)}), True, "matches nand2mario/de2_115", "press k"),
-                 (Recorder({"jtagconfig": (0, lite)}), False, "expected 020F70DD", "press b until the board is one"),
+        cases = [(Recorder({"jtagconfig": (0, JTAGCONFIG)}), True, "matches nand2mario/de2_115", "connect the keyboard"),
+                 (Recorder({"jtagconfig": (0, lite)}), False, "expected 020F70DD", "choose that board in the Board list"),
                  (Recorder({"jtagconfig": (0, "")}), False, "no JTAG cable", "plug in"),
                  (Recorder({"jtagconfig": (0, JTAGCONFIG + "2) USB-Blaster [1-2]\n")}), False, "cables:", "unplug"),
                  (Recorder({"jtagconfig": (1, "1) USB-Blaster [1-1]\n  Unable to lock chain - Insufficient port permissions\n")}),

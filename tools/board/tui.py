@@ -61,8 +61,7 @@ class Worker:
         if not codes:
             return
         if self.keyboard is None:
-            self.post("step", ("keyboard", "fail", f"not connected: {label} was dropped",
-                               "press Connect keyboard (the FPGA must be programmed first)"))
+            self.post("dropped", label)
             return
         try:
             accepted = self.keyboard.send(codes)
@@ -235,6 +234,12 @@ class BoardConsole(App):
             self.query_one("#board", Select).set_options(self.board_options(board.project))
             self.query_one("#board", Select).value = board.key
             self.choose(board)
+        elif kind == "dropped":
+            self.log_line(f"key dropped ({value}): keyboard not connected")
+            if self.steps["keyboard"].state != "fail":
+                # Why: a connect failure already on the step says more than "not connected"
+                self.set_step("keyboard", "fail", f"not connected: {value} was dropped",
+                              "press Connect keyboard (the FPGA must be programmed first)")
         elif kind == "sent":
             label, accepted, total, hexed = value
             self.last_key = f"{label}: the board took {accepted} of {total} bytes ({hexed})"

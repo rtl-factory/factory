@@ -101,10 +101,7 @@ def play(send, title: str, *, pad: dict | None = None, fd_in: int = 0, fd_out: i
     import tty
     pad = {name: key for name, key in (pad or {}).items() if name in LAYOUT}
     saved = termios.tcgetattr(fd_in) if os.isatty(fd_in) else None
-    if saved is not None:
-        tty.setraw(fd_in)
-    kitty = probe_kitty(fd_in, fd_out, clock=clock)
-    state: KeyState = KeyState() if kitty else TimedKeys()
+    kitty, state = False, KeyState()
     keys, forwarded, clicked, lit = TerminalKeys(), 0, None, set()
 
     def show(last: str):
@@ -118,6 +115,10 @@ def play(send, title: str, *, pad: dict | None = None, fd_in: int = 0, fd_out: i
         os.write(fd_out, "".join(out).encode())
 
     try:
+        if saved is not None:
+            tty.setraw(fd_in)
+        kitty = probe_kitty(fd_in, fd_out, clock=clock)
+        state = KeyState() if kitty else TimedKeys()
         if kitty:
             os.write(fd_out, f"\x1b[>{KITTY_FLAGS}u".encode())
         os.write(fd_out, MOUSE_ON + screen(title, kitty, pad).encode())
@@ -129,8 +130,8 @@ def play(send, title: str, *, pad: dict | None = None, fd_in: int = 0, fd_out: i
                     return forwarded
             now, last = clock(), None
             for code, col, row, kind in MOUSE.findall(data):
-                if int(code) & 3:
-                    continue
+                if int(code) & ~0x1C:
+                    continue   # Why: only a plain left button counts; the wheel (64, 65) never releases
                 if kind == b"M" and clicked is None:
                     clicked = hit(pad, int(col), int(row))
                     if clicked:

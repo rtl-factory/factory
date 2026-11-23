@@ -104,6 +104,7 @@ class PlayTests(unittest.TestCase):
         row, col = play.PAD_TOP + 2 + 1, play.PAD_LEFT + 45 + 2
         sent, count, screen = self.run_play(True, [
             (b"\x1b[120u", 0.05), (b"\x1b[120;1:3u", 0.05), (b"\x1b[1;1:1A", 0.05),
+            (f"\x1b[<64;{col};{row}M".encode(), 0.05),
             (f"\x1b[<0;{col};{row}M".encode(), 0.05), (f"\x1b[<0;{col};{row}m".encode(), 0.05),
             (b"\x1b[93;5u", 0.3)])
         self.assertEqual(sent, bytes([0x22, 0xF0, 0x22, 0xE0, 0x75, 0x22, 0xF0, 0x22, 0xE0, 0xF0, 0x75]))

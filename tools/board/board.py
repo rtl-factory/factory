@@ -157,7 +157,7 @@ def check_chain(boards: dict[str, Board], board: Board, quartus_bin=None, *,
             "install the udev rule tools/toolchain/51-fpga-boards.rules (wiki/tools/toolchain/spec.md#boards), then replug"
     if "Chain in use" in text:
         return False, "JTAG chain in use by another program", \
-            "close the other board console, Signal Tap or quartus_stp that holds the cable (this console's own keyboard counts: press k to reconnect)"
+            "close the other board console, Signal Tap or quartus_stp that holds the cable (a keyboard this console has connected counts too)"
     if rc and not chains:
         return False, f"jtagconfig exited {rc}: {text.strip()[:120]}", "check the USB-Blaster and the JTAG server (jtagd)"
     if not chains:
@@ -169,9 +169,9 @@ def check_chain(boards: dict[str, Board], board: Board, quartus_bin=None, *,
     if not ids:
         return False, f"{cable}: no device on the chain", "power the board on, and check the USB-Blaster cable"
     if ids == [board.idcode]:
-        return True, f"{cable}: {board.idcode}, matches {board.key}", "press k to connect the keyboard, then i to play"
+        return True, f"{cable}: {board.idcode}, matches {board.key}", "connect the keyboard, then play"
     others = sorted({b.name for b in boards.values() if b.idcode in ids})
-    hint = (f"the connected board is a {', '.join(others)}: press b until the board is one"
+    hint = (f"the connected board is a {', '.join(others)}: choose that board in the Board list"
             if others else "this chain holds no declared board: connect the right board")
     return False, f"{cable}: {', '.join(ids)}, expected {board.idcode} for {board.key}", hint
 
