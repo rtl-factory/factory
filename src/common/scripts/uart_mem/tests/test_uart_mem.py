@@ -23,8 +23,9 @@ class FakeEndpoint:
     """Device model written from the HAS tables, independent of the codec."""
 
     def __init__(self, windows=((0, 0x10000, 3), (0x20000, 0x1000, 7)), max_length=256,
-                 entry=0):
+                 entry=0, digest=False):
         self.windows, self.max_length, self.entry_addr = windows, max_length, entry
+        self.digest = digest
         self.memory = {}
         self.hold = False
         self.log = []
@@ -75,7 +76,8 @@ class FakeEndpoint:
             return b"", self.fail_command.pop(command)
         if command == 0x01:
             words = [0x4D41324E, PROJECT, (self.max_length << 16) | (len(self.windows) << 8)
-                     | (int(self.hold) << 1) | int(self.hold), self.entry_addr, 64]
+                     | (int(self.digest) << 2) | (int(self.hold) << 1) | int(self.hold),
+                     self.entry_addr, 64]
             for window in self.windows:
                 words += list(window)
             return b"".join(w.to_bytes(4, "little") for w in words), 0
@@ -87,6 +89,13 @@ class FakeEndpoint:
             return b"", 0
         if command == 0x04:
             return b"", 0 if self.hold and address == self.entry_addr else 5
+        if command == 0x12 and self.digest:
+            if length == 0 or length % 4 or address % 4:
+                return b"", 6 if length == 0 or length % 4 else 4
+            if not self._allowed(address, length, 2 if self.hold else 4):
+                return b"", 7 if not self.hold and self._allowed(address, length, 2) else 5
+            stored = bytes(self.memory.get(address + i, 0) for i in range(length))
+            return zlib.crc32(stored).to_bytes(4, "little"), 0
         if length == 0 or length % 4 or length > self.max_length:
             return b"", 6
         if command == 0x10:
@@ -334,6 +343,68 @@ class LoadTests(unittest.TestCase):
         with self.assertRaises(um.LoadError):
             um.load(client(fake), [um.Segment(0x30000, b"abcd")], 0)
         self.assertEqual([c for c, _, _ in fake.log], [0x01])
+
+    def test_digest_verifies_without_readback(self):
+        fake = FakeEndpoint(digest=True)
+        outcomes = um.load(client(fake), self.segments(), 0)
+        self.assertEqual(outcomes, [um.WRITTEN] * 3)
+        commands = [(c, a) for c, a, _ in fake.log]
+        self.assertNotIn(0x11, [c for c, a in commands if a != 0x8004],
+                         "only the tail word of the 7-byte segment is read")
+        entry = [c for c, _ in commands].index(0x04)
+        for segment in self.segments():
+            digests = [i for i, (c, a) in enumerate(commands) if c == 0x12 and a == segment.address]
+            self.assertTrue(digests and digests[-1] < entry)
+
+    def test_digest_ranges_are_split_at_the_limit(self):
+        fake = FakeEndpoint(windows=((0, 0x40000, 3),), max_length=4096, digest=True)
+        data = bytes(i & 0xFF for i in range(0x18000))
+        um.load(client(fake), [um.Segment(0, data)], 0)
+        digests = [(a, n) for c, a, n in fake.log if c == 0x12]
+        self.assertEqual(digests, [(0, 0xFFFC), (0xFFFC, 0x18000 - 0xFFFC)])
+
+    def test_unchanged_segments_are_skipped_but_the_entry_segment_is_written(self):
+        fake = FakeEndpoint(digest=True, entry=0x100)
+        for segment in self.segments():
+            for i, byte in enumerate(segment.data):
+                fake.memory[segment.address + i] = byte
+        outcomes = um.load(client(fake), self.segments(), 0x100, skip_unchanged=True)
+        self.assertEqual(outcomes, [um.WRITTEN, um.SKIPPED, um.SKIPPED])
+        writes = {a for c, a, _ in fake.log if c == 0x10}
+        self.assertEqual(writes, {0x0000, 0x0100, 0x0200}, "only the entry segment is written")
+        self.assertFalse(fake.hold)
+
+    def test_changed_segment_is_written_when_skipping(self):
+        fake = FakeEndpoint(digest=True)
+        segment = self.segments()[2]
+        for i, byte in enumerate(segment.data):
+            fake.memory[segment.address + i] = byte
+        fake.memory[segment.address + 9] ^= 1
+        outcomes = um.load(client(fake), [segment], 0, skip_unchanged=True)
+        self.assertEqual(outcomes, [um.WRITTEN])
+        self.assertEqual(fake.memory[segment.address + 9], segment.data[9])
+
+    def test_without_digest_nothing_is_skipped(self):
+        fake = FakeEndpoint()
+        for segment in self.segments():
+            for i, byte in enumerate(segment.data):
+                fake.memory[segment.address + i] = byte
+        outcomes = um.load(client(fake), self.segments(), 0, skip_unchanged=True)
+        self.assertEqual(outcomes, [um.WRITTEN] * 3)
+        self.assertNotIn(0x12, [c for c, _, _ in fake.log])
+
+    def test_digest_mismatch_after_write_leaves_cpu_held(self):
+        fake = FakeEndpoint(digest=True)
+        fake.corrupt = {0x20010}
+        with self.assertRaises(um.LoadError) as caught:
+            um.load(client(fake), self.segments(), 0)
+        self.assertEqual(caught.exception.segment, 2)
+        self.assertIn("digest", str(caught.exception))
+        commands = [c for c, _, _ in fake.log]
+        self.assertNotIn(0x11, [c for c, a, _ in fake.log if a != 0x8004])
+        self.assertNotIn(0x03, commands)
+        self.assertNotIn(0x04, commands)
+        self.assertTrue(fake.hold)
 
     def test_live_readback_needs_no_hold(self):
         fake = FakeEndpoint()

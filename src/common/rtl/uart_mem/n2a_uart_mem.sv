@@ -6,8 +6,8 @@
 // UART traffic. At a project frame boundary (down_idle_i) a request SOF is
 // claimed; the endpoint then owns the link until its response has left, and
 // every other byte passes through unchanged. Commands hold and release the
-// CPU, set the entry state, write memory while held and read memory while
-// held or running. The project map is data: WINDOWS lists base, size and
+// CPU, set the entry state, write memory while held and read memory, or its
+// CRC-32 digest, while held or running. The project map is data: WINDOWS lists base, size and
 // attributes, and the endpoint enforces it before any bus traffic. While the
 // CPU runs, accepted bus requests are at least LIVE_GAP_CYCLES apart.
 module n2a_uart_mem
@@ -106,6 +106,7 @@ module n2a_uart_mem
     logic [7:0]  ep_tx_byte;
     logic        ep_tx_valid, tx_fire, responding;
     logic        mem_accept, mem_timeout, read_issue, write_done;
+    logic        digesting, digest_done;
     logic [7:0]  rx_payload_byte;
     logic [31:0] base, size, attributes;
     logic [32:0] window_end;
@@ -151,9 +152,12 @@ module n2a_uart_mem
                 check_status = UART_MEM_ST_RANGE;
             else if (!hold_ack_i) check_status = UART_MEM_ST_NOT_HELD;
         end else if ((r_q.command == UART_MEM_CMD_WRITE) ||
-                     (r_q.command == UART_MEM_CMD_READ)) begin
+                     (r_q.command == UART_MEM_CMD_READ) ||
+                     (r_q.command == UART_MEM_CMD_DIGEST)) begin
+            // Why: a Digest answers four bytes whatever its range, so only the
+            // 16-bit field bounds it, not MAX_LENGTH.
             if ((r_q.length == 16'h0) || (r_q.length[1:0] != 2'b00) ||
-                (r_q.length > MAX_LENGTH_FIELD))
+                ((r_q.command != UART_MEM_CMD_DIGEST) && (r_q.length > MAX_LENGTH_FIELD)))
                 check_status = UART_MEM_ST_LENGTH;
             else if (r_q.address[1:0] != 2'b00) check_status = UART_MEM_ST_ALIGNMENT;
             else if (r_q.command == UART_MEM_CMD_WRITE) begin
@@ -176,7 +180,8 @@ module n2a_uart_mem
         case (ident_index)
             16'd0: ident_word = UART_MEM_MAGIC;
             16'd1: ident_word = PROJECT_ID;
-            16'd2: ident_word = {MAX_LENGTH_FIELD, 8'(WINDOW_COUNT), 6'b0, r_q.hold, hold_ack_i};
+            16'd2: ident_word = {MAX_LENGTH_FIELD, 8'(WINDOW_COUNT), 6'b0, r_q.hold, hold_ack_i} |
+                UART_MEM_CAP_DIGEST;
             16'd3: ident_word = ENTRY_ADDR;
             16'd4: ident_word = {15'b0, ENTRY_ANY, LIVE_GAP};
             default: begin
@@ -235,11 +240,17 @@ module n2a_uart_mem
     assign write_done = !r_q.req_valid && (!r_q.outstanding || r_q.orphan);
     assign rx_payload_byte = rx_byte_i;
     // Why: one request outstanding and at most two buffered words keep reads
-    // within cur/nxt; pacing keeps live reads LIVE_GAP_CYCLES apart.
-    assign read_issue = responding && (r_q.command == UART_MEM_CMD_READ) &&
-        !r_q.reject && !r_q.mem_failed && (r_q.issued < r_q.rsp_length) &&
-        !r_q.req_valid && !r_q.outstanding && !(r_q.cur_valid && r_q.nxt_valid) &&
-        (hold_ack_i || (pace_q >= LIVE_GAP));
+    // within cur/nxt; pacing keeps live reads LIVE_GAP_CYCLES apart. A Digest
+    // reads its range during EXEC, folding each word into crc32, and answers
+    // once every word is folded.
+    assign digesting = (r_q.phase == UART_MEM_EXEC) && (r_q.command == UART_MEM_CMD_DIGEST) &&
+        !r_q.reject;
+    assign digest_done = (r_q.mem_failed || (r_q.issued == r_q.length)) && write_done;
+    assign read_issue = !r_q.reject && !r_q.mem_failed && !r_q.req_valid && !r_q.outstanding &&
+        (hold_ack_i || (pace_q >= LIVE_GAP)) &&
+        ((responding && (r_q.command == UART_MEM_CMD_READ) && (r_q.issued < r_q.rsp_length) &&
+          !(r_q.cur_valid && r_q.nxt_valid)) ||
+         (digesting && (r_q.issued < r_q.length)));
 
     always_comb begin
         r_d = r_q;
@@ -280,6 +291,8 @@ module n2a_uart_mem
                 if (mem_rsp_error_i) begin
                     r_d.mem_failed = 1'b1;
                     if (r_q.status == UART_MEM_ST_OK) r_d.status = UART_MEM_ST_MEMORY;
+                end else if (digesting) begin
+                    if (!r_q.mem_failed) r_d.crc32 = uart_mem_crc32_word(r_q.crc32, mem_rsp_rdata_i);
                 end else if (!r_q.out_write && !r_q.mem_failed) begin
                     if (!r_q.cur_valid && !r_q.nxt_valid) begin
                         r_d.cur_word = mem_rsp_rdata_i;
@@ -430,6 +443,12 @@ module n2a_uart_mem
                         end
                         UART_MEM_CMD_WRITE: respond = write_done;
                         UART_MEM_CMD_READ: r_d.rsp_length = r_q.length;
+                        UART_MEM_CMD_DIGEST: begin
+                            respond = digest_done;
+                            r_d.rsp_length = 16'd4;
+                            r_d.cur_word = ~r_q.crc32;
+                            r_d.cur_valid = 1'b1;
+                        end
                         default: ;
                     endcase
                 end

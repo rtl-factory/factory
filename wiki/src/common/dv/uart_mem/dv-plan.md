@@ -2,7 +2,7 @@
 
 ## Scope
 
-`src/common/dv/uart_mem/` holds the endpoint's own contract bench (`test_uart_mem.py` on `n2a_uart_mem_fixture`, targets `n2a_uart_mem_contract` and `n2a_uart_mem_load_readback`) and `sim_host.py`, which runs the [host library](../../scripts/uart_mem/spec.md) itself inside a cocotb bench (#190). A project bench that loads a board top or system through the endpoint uses `sim_host.py`, so the load it checks is the one the board console sends, not a bench copy of it.
+`src/common/dv/uart_mem/` holds the endpoint's own contract bench (`test_uart_mem.py` on `n2a_uart_mem_fixture`, targets `n2a_uart_mem_contract`, `n2a_uart_mem_load_readback` and `n2a_uart_mem_digest`) and `sim_host.py`, which runs the [host library](../../scripts/uart_mem/spec.md) itself inside a cocotb bench (#190). A project bench that loads a board top or system through the endpoint uses `sim_host.py`, so the load it checks is the one the board console sends, not a bench copy of it.
 
 ## Simulated host
 
@@ -16,6 +16,10 @@
 
 | ID | Feature | Stimulus | Checker | Test | Level |
 |---|---|---|---|---|---|
-| H1 | nand2mario load and boot at the board rate | `uart_mem.load` of a cartridge header and a program at 0x0100 over garbage ROM, host at exactly 2 Mbaud, `n2m_system` at 12 1/2 clocks a bit (`UART_FRAC_NUM`/`UART_FRAC_DEN` 1/2) | identify returns project `n2m ` and entry 0x0100; the load (hold, write, read back, entry, release) succeeds; after the release the core retires exactly the program's instructions to its final HALT and its WRAM marker is stored; every received bit holds over its middle 60% (`sample_window_ps` 150 ns) | `n2m_system_uart_mem` | L0 |
+| H1 | nand2mario load and boot at the board rate | `uart_mem.load` of a cartridge header and a program at 0x0100 over garbage ROM, host at exactly 2 Mbaud, `n2m_system` at 12 1/2 clocks a bit (`UART_FRAC_NUM`/`UART_FRAC_DEN` 1/2) | identify returns project `n2m `, entry 0x0100 and the Digest capability; the load (hold, write, verify by Digest, entry, release) writes both segments; after the release the core retires exactly the program's instructions to its final HALT and its WRAM marker is stored; every received bit holds over its middle 60% (`sample_window_ps` 150 ns) | `n2m_system_uart_mem` | L0 |
+| E1 | Endpoint Digest, held | after a held write of 0x800 random bytes, Digests of 0x0+0x800 (twice the bench's maximum payload), 0x4+4 and 0x100+0x404 | the value equals zlib.crc32 of the written bytes; the endpoint fetched exactly the ascending words of the range, each equal to memory at its cycle | `n2a_uart_mem_digest` | L0 |
+| E2 | Endpoint Digest refusals and failures | length 0 and 6, address 2, a range crossing a window end, a range outside every window; a memory error; a stalled bus | statuses length, length, alignment, range, range with no payload and no memory access; memory and timeout with a zero value | `n2a_uart_mem_digest` | L0 |
+| E3 | Endpoint Digest, live | a Digest of the window the running CPU draws into, then of a held-only window | the value equals zlib.crc32 of the words fetched, at least 32 clocks apart, CPU stalls within one per 32 clocks; then not held | `n2a_uart_mem_digest` | L0 |
+| E4 | Board-top Digest | nand2doom DE10-Lite and DE2-115 tops: Digest of the program just written to SDRAM | equals zlib.crc32 of the program | `n2d_de10_lite_uart_mem`, `n2d_de2_115_uart_mem` | L1 |
 
 H1 was seen to fail with the integer period (`UART_FRAC_NUM` 0, 12 clocks a bit, 4% fast): "UART TX bit 7 unstable".
