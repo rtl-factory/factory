@@ -2,15 +2,17 @@
 
 module n2d_uart_debug
     import n2d_pkg::*;
+    import n2a_uart_pkg::*;
 #(
     // The bit period follows the system clock: CLOCK_HZ / BAUD clocks, with
-    // any remainder spread by the PHY's fractional accumulator (wiki/src/nand2doom/rtl/io/mas.md
-    // "Link rate"). CLKS_PER_BIT alone selects an integer divisor.
+    // any remainder spread by the PHY's fractional accumulator as a reduced
+    // fraction (wiki/src/common/rtl/uart/mas.md "Bit period"). CLKS_PER_BIT
+    // alone selects an integer divisor.
     parameter int unsigned CLOCK_HZ = N2D_SYSTEM_CLOCK_HZ,
     parameter int unsigned BAUD = N2D_UART_BAUD,
-    parameter int unsigned CLKS_PER_BIT = CLOCK_HZ / BAUD,
-    parameter int unsigned FRAC_NUM = CLOCK_HZ % BAUD,
-    parameter int unsigned FRAC_DEN = ((CLOCK_HZ % BAUD) == 0) ? 1 : BAUD,
+    parameter int unsigned CLKS_PER_BIT = n2a_uart_clks_per_bit(CLOCK_HZ, BAUD),
+    parameter int unsigned FRAC_NUM = n2a_uart_frac_num(CLOCK_HZ, BAUD),
+    parameter int unsigned FRAC_DEN = n2a_uart_frac_den(CLOCK_HZ, BAUD),
     parameter int unsigned INTERBYTE_TIMEOUT_CYCLES = 512,
     parameter int unsigned OP_TIMEOUT_CYCLES = 1024,
     parameter int unsigned HALT_TIMEOUT_CYCLES = OP_TIMEOUT_CYCLES,

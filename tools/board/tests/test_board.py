@@ -55,6 +55,13 @@ class ConfigTests(unittest.TestCase):
                     self.assertTrue((ROOT / board.load[1]).is_file(), board.load)
                     self.assertTrue(Path(board.sof).name.endswith(f"_{name}.sof"), board.sof)
 
+    def test_every_project_loads_through_the_common_loader(self):
+        # Ref: wiki/tools/board/spec.md "Board declarations": one loader for every project (#129).
+        for key, board in console.load_boards().items():
+            with self.subTest(board=key):
+                self.assertEqual("src/common/scripts/uart_mem/uart_mem_load.py", board.load[1])
+                self.assertIn("--project", board.load)
+
     def test_bad_configs_are_refused(self):
         for change in ({"schema": "x"}, {"load": []}, {"load": ["{nope}"]},
                        {"boards": {"b": {"idcode": "zz", "baud": 1, "sof": ""}}},
@@ -227,7 +234,7 @@ class LoadTests(unittest.TestCase):
         code, lines, _ = run(["load", "--project", "nand2doom", "--board", "de2_115"], popen=never)
         plan = json.loads("\n".join(lines))
         self.assertEqual(0, code)
-        self.assertIn("--skip-program", plan["command"])
+        self.assertIn("--skip-unchanged", plan["command"])
         with tempfile.NamedTemporaryFile() as image:
             self.assertIn("--port", run(["load", "--project", "nand2mario", "--board", "de2_115",
                                          "--program", image.name, "--yes"], popen=never)[2])

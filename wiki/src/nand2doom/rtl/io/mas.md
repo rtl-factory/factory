@@ -193,12 +193,13 @@ CRC32 is IEEE reflected `0xedb88320`, init and final XOR `0xffffffff`
 
 `n2d_uart_debug` derives the bit period from `CLOCK_HZ` (default
 `N2D_SYSTEM_CLOCK_HZ`, 25 MHz) and `BAUD` (default `N2D_UART_BAUD`, 1 Mbaud) as
-whole clocks plus a remainder fed to the common PHYs' fractional accumulator
+whole clocks plus a reduced remainder (`n2a_uart_pkg`, [bit period](../../../common/rtl/uart/mas.md#bit-period)) fed to the common PHYs' fractional accumulator
 ([fractional period](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/uart/HAS.md#fractional-period)), so the
 average rate is exact. `n2d_system` exposes `UART_BAUD` (default 1 Mbaud: the
 simulation fixtures). Both board tops select `N2D_UART_BOARD_BAUD`,
-**2 Mbaud** (12 1/2 clocks/bit), for the whole link: the factory board rate,
-the same on every board and project (issue #129).
+**2 Mbaud** (12 1/2 clocks/bit), for the whole link: the factory board rate
+`n2a_uart_pkg::N2A_UART_BOARD_BAUD`, the same on every board and project
+(issue #129).
 `src/nand2doom/cfg/uart.json` records `board_baudrates`; every host `--baud`
 accepts a board name.
 

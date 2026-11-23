@@ -345,6 +345,9 @@
       ]
     },
     "n2d_pkg": {
+      "deps": [
+        "n2a_uart_pkg"
+      ],
       "srcs": [
         "src/nand2doom/rtl/platform/n2d_pkg.sv"
       ]
@@ -529,6 +532,7 @@
       "deps": [
         "macros",
         "n2a_uart_mem",
+        "n2a_uart_pkg",
         "n2a_uart_rx",
         "n2a_uart_tx",
         "n2d_pkg",
