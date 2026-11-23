@@ -6,6 +6,7 @@ import io
 import json
 from pathlib import Path
 import tempfile
+import time
 import unittest
 
 from src.common.scripts.uart_mem import uart_mem_load as tool
@@ -63,6 +64,26 @@ class LoadScriptTests(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertTrue(fake.hold)
         self.assertNotIn(0x03, [c for c, _, _ in fake.log])
+
+    def test_serial_read_returns_what_is_waiting_without_the_deadline(self):
+        class Port:
+            def __init__(self):
+                self.waiting = bytearray(b"\x8a" * 11)
+
+            @property
+            def in_waiting(self):
+                return len(self.waiting)
+
+            def read(self, size):
+                data, self.waiting[:] = bytes(self.waiting[:size]), self.waiting[size:]
+                return data
+
+        transport = tool.SerialTransport.__new__(tool.SerialTransport)
+        transport.serial = Port()
+        start = time.monotonic()
+        data = transport.read(4096, start + 5.0)
+        self.assertEqual((data, time.monotonic() - start < 1.0), (b"\x8a" * 11, True))
+        self.assertEqual(transport.read(4096, time.monotonic() + 0.05), b"")
 
     def test_project_ids(self):
         self.assertEqual(tool.project_id("n2m "), 0x206D326E)

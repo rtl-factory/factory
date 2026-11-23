@@ -18,7 +18,7 @@ A request starts with `0xA8`, a response with `0x8A`; both carry the protocol ve
 
 | Part | Role |
 |---|---|
-| `Transport` | Any object with `write(data)` and `read(size, deadline) -> bytes` |
+| `Transport` | Any object with `write(data)` and `read(size, deadline) -> bytes`; `read` returns at most `size` bytes as soon as any have arrived, or nothing at the deadline, so a short response never waits out the command timeout |
 | `Client` | One endpoint session: sequence numbers, framing, deadlines (`timeout`, default 1 s per command), and the project-byte callback `on_project_bytes`. Any failure sets `poisoned`, and every later call raises |
 | `load(client, segments, entry, project_id)` | The load transaction below |
 | `read_window(client, address, length)` | One live read (a screen readback) while the CPU keeps running |
@@ -36,4 +36,4 @@ A request starts with `0xA8`, a response with `0x8A`; both carry the protocol ve
 
 ## Tests
 
-`python3 -m pytest src/common/scripts/uart_mem/tests` covers framing, identity, chunking, the load transaction (one hold, verify before entry, one release, failures leave the CPU held), readback and shared-UART project bytes; `test_uart_mem_load.py` covers the load script's plan, defaults, project check and held failure.
+`python3 -m pytest src/common/scripts/uart_mem/tests` covers framing, identity, chunking, the load transaction (one hold, verify before entry, one release, failures leave the CPU held), readback and shared-UART project bytes; `test_uart_mem_load.py` covers the load script's plan, defaults, project check, held failure, and that its serial transport returns a waiting response without sitting out the deadline.

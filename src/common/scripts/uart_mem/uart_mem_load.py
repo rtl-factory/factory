@@ -37,9 +37,11 @@ class SerialTransport:
         self.serial.flush()
 
     def read(self, size: int, deadline: float) -> bytes:
+        # Why: return once anything has arrived; waiting for `size` bytes made every
+        # short response sit out the whole command deadline.
         out = bytearray()
-        while len(out) < size and time.monotonic() < deadline:
-            out += self.serial.read(size - len(out))
+        while not out and time.monotonic() < deadline:
+            out += self.serial.read(max(1, min(size, self.serial.in_waiting)))
         return bytes(out)
 
     def close(self) -> None:

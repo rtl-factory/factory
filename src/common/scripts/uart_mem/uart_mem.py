@@ -4,8 +4,8 @@ The framing, commands and statuses are owned by
 the common UART memory block (its spec is not ported yet); the load transaction by
 wiki/src/common/scripts/uart_mem/spec.md. This module has no serial
 dependency: a transport is any object with ``write(data)`` and
-``read(size, deadline) -> bytes`` (returning what arrived before the
-monotonic deadline). Any failure poisons the client: no command is retried.
+``read(size, deadline) -> bytes`` (returning at most ``size`` bytes as soon
+as any have arrived, or nothing at the monotonic deadline). Any failure poisons the client: no command is retried.
 
 Project traffic sharing the UART may precede a response, 0x8a included;
 the client separates it by the expected header and the response CRC.
