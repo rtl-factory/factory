@@ -38,14 +38,18 @@ ENTRY = 0x0100
 MARKER, MARKER_ADDRESS = 0x5A, 0xC000
 # Ref: Pan Docs "The Cartridge Header": 0x147 type 0x00 (ROM only), 0x148 ROM size 32 KiB, 0x149 no RAM.
 HEADER = um.Segment(0x0144, bytes([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]))
+# Ref: Pan Docs "CPU Instruction Set": the SM83 opcodes the program uses.
+DI, XOR_A, LDH_N_A, LD_A_N, LD_NN_A, HALT, NOP = 0xF3, 0xAF, 0xE0, 0x3E, 0xEA, 0x76, 0x00
+IE_LOW = 0xFF
+# Why: IE is cleared first so nothing can wake the final HALT; two NOPs pad to whole words.
 PROGRAM = um.Segment(ENTRY, bytes([
-    0xF3,                                  # DI
-    0xAF,                                  # XOR A
-    0xE0, 0xFF,                            # LDH (IE),A: nothing can wake the HALT
-    0x3E, MARKER,                          # LD A,MARKER
-    0xEA, MARKER_ADDRESS & 0xFF, MARKER_ADDRESS >> 8,  # LD (MARKER_ADDRESS),A
-    0x76,                                  # HALT
-    0x00, 0x00,                            # whole-word padding
+    DI,
+    XOR_A,
+    LDH_N_A, IE_LOW,
+    LD_A_N, MARKER,
+    LD_NN_A, MARKER_ADDRESS & 0xFF, MARKER_ADDRESS >> 8,
+    HALT,
+    NOP, NOP,
 ]))
 PROGRAM_PCS = [0x0101, 0x0102, 0x0104, 0x0106, 0x0109, 0x010A]
 
