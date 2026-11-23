@@ -91,18 +91,28 @@ class Console:
         self.state: KeyState = KeyState()
         self.running, self.dirty = True, True
         self.select(first[0].key if first else self.keys[0])
+        # Why: a start-up board the chain did not confirm follows the first cable check that can
+        self.follow = first is None or "choose the board" in first[1]
         if first:
             self.note(first[1])
 
     def select(self, key: str):
         self.board = self.boards[key]
+        if self.worker.keyboard is None:
+            self.keyboard, self.keyboard_detail = "off", "not connected"
         self.sof = str(self.actions.resolve_path(self.board.sof))
         default = self.board.program_default
         self.program = str(self.actions.resolve_path(default)) if default else ""
 
     def note(self, text: str, error=False):
         for line in str(text).splitlines() or [""]:
-            self.log.append(("error: " if error else "") + line)
+            line = ("error: " if error else "") + line
+            last = self.log[-1] if self.log else ""
+            repeat = re.fullmatch(re.escape(line) + r"(?: \(x(\d+)\))?", last)
+            if repeat:
+                self.log[-1] = f"{line} (x{int(repeat[1] or 1) + 1})"
+            else:
+                self.log.append(line)
 
     def write(self, text: str):
         os.write(self.fd_out, text.encode())
@@ -205,6 +215,8 @@ class Console:
                     label = f"{key_name(key)} {kind}"
                     self.worker.submit(lambda c=codes, l=label: self.worker.send(c, l))
             return
+        # Why: arrow and function keys send escape sequences whose letters are no commands
+        data = re.sub(rb"\x1b(\[[0-?]*[ -/]*[@-~]|O.)", b"", data)
         for char in data.decode("utf-8", "replace"):
             self.on_char(char)
 
@@ -215,6 +227,7 @@ class Console:
                 if self.edit == "sof":
                     match = self.actions.board_for_sof(self.boards, Path(self.sof))
                     if match is not None and match.key != self.board.key:
+                        self.follow = False
                         sof = self.sof
                         self.select(match.key)
                         self.sof = sof
@@ -228,7 +241,7 @@ class Console:
             return
         action = {"c": self.do_check, "p": self.do_program, "l": self.do_load, "k": self.do_connect,
                   "t": self.do_test_key, "i": self.enter_play, "b": self.next_board, "q": self.quit,
-                  "\x03": self.quit}.get(char.lower())
+                  "\x03": self.quit}.get(char)
         if action:
             action()
         elif char in ("s", "f", "u"):
@@ -236,6 +249,7 @@ class Console:
             self.buffer = getattr(self, self.edit)
 
     def next_board(self):
+        self.follow = False
         self.worker.submit(self.worker.close_keyboard)
         self.select(self.keys[(self.keys.index(self.board.key) + 1) % len(self.keys)])
         self.do_check()
@@ -255,6 +269,17 @@ class Console:
             if kind == "cable":
                 self.cable = value
                 self.note(("cable ok: " if value[0] else "cable: ") + value[1])
+                if self.follow and value[0] is False:
+                    self.worker.submit(lambda: self.worker.post("detected", self.actions.detect_board(
+                        self.boards, self.quartus_bin)))
+            elif kind == "detected":
+                board, why = value
+                if self.follow and "choose the board" not in why:
+                    self.follow = False
+                    self.note(why)
+                    if board.key != self.board.key:
+                        self.select(board.key)
+                        self.do_check()
             elif kind == "keyboard":
                 self.keyboard, self.keyboard_detail = value
                 self.note(f"keyboard {value[0]}: {value[1]}", error=value[0] == "failed")

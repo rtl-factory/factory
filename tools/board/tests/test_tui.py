@@ -153,6 +153,33 @@ class ConsoleTests(unittest.TestCase):
         worker.send(b"\x22", "x press")
         self.assertEqual(sent, [("sent", ("x press", "dropped: keyboard not connected"))])
 
+    def test_command_mode_ignores_escape_sequences_and_repeats_collapse(self):
+        boards = {b.key: b for b in console.parse_config(CONFIG, "demo")}
+        fake = FakeBoard()
+        app = tui.Console(boards, None, fd_in=0, fd_out=1, actions=fake)
+        app.on_bytes(b"\x1b[C\x1b[1;5C\x1bOP\x1b[A", 0.0)
+        time.sleep(0.2)
+        self.assertEqual(fake.calls, [])
+        for _ in range(3):
+            app.note("cable: same")
+        self.assertEqual(list(app.log)[-1], "cable: same (x3)")
+
+    def test_an_unconfirmed_start_board_follows_the_chain_and_a_board_change_clears_the_keyboard(self):
+        demo = console.parse_config(CONFIG, "demo")[0]
+        other = console.parse_config({**CONFIG, "project": "other"}, "other")[0]
+        boards = {demo.key: demo, other.key: other}
+        fake = FakeBoard()
+        fake.detect_board = lambda boards, quartus_bin=None: (other, "USB-Blaster [1-1]: IDCODE 020F70DD is de2_115")
+        app = tui.Console(boards, (demo, "found 0 JTAG cable(s); opened on demo/de2_115; choose the board"),
+                          fd_in=0, fd_out=1, actions=fake)
+        app.keyboard, app.keyboard_detail = "failed", "expected 031050DD"
+        app.events.put(("cable", (False, "chain in use", "close it")))
+        deadline = time.monotonic() + 2
+        while app.board.key != "other/de2_115" and time.monotonic() < deadline:
+            app.tick(0.0)
+            time.sleep(0.02)
+        self.assertEqual((app.board.key, app.keyboard, app.follow), ("other/de2_115", "off", False))
+
     def test_hints_follow_the_cable_and_the_keyboard(self):
         boards = {b.key: b for b in console.parse_config(CONFIG, "demo")}
         app = tui.Console(boards, None, fd_in=0, fd_out=1, actions=FakeBoard())
