@@ -53,7 +53,8 @@ class Worker:
     def close_keyboard(self):
         if self.keyboard is not None:
             keyboard, self.keyboard = self.keyboard, None
-            self.post("keyboard", ("off", f"closed ({keyboard.close()})"))
+            keyboard.close()
+            self.post("keyboard", ("off", "not connected"))
 
     def send(self, codes: bytes, label: str = ""):
         if not codes:
@@ -93,6 +94,7 @@ class Console:
         self.select(first[0].key if first else self.keys[0])
         # Why: a start-up board the chain did not confirm follows the first cable check that can
         self.follow = first is None or "choose the board" in first[1]
+        self.chain_idcode = None if self.follow else self.board.idcode
         if first:
             self.note(first[1])
 
@@ -142,8 +144,8 @@ class Console:
                           "the keyboard is connected; press i to play")
             return
         self.cable = (None, "checking...", "running jtagconfig")
-        self.worker.submit(lambda: self.worker.post("cable", self.actions.check_chain(
-            self.boards, board, self.quartus_bin)))
+        self.worker.submit(lambda: self.worker.post("cable", (board, self.actions.check_chain(
+            self.boards, board, self.quartus_bin))))
 
     def do_program(self):
         board, sof = self.board, Path(self.sof)
@@ -169,7 +171,7 @@ class Console:
 
         def job():
             self.worker.close_keyboard()
-            self.worker.post("cable", self.actions.check_chain(self.boards, board, self.quartus_bin))
+            self.worker.post("cable", (board, self.actions.check_chain(self.boards, board, self.quartus_bin)))
             try:
                 cable, device = self.actions.jtag_device(board, quartus_bin=self.quartus_bin)
                 self.worker.keyboard = self.actions.Keyboard(cable, device, self.quartus_bin)
@@ -249,10 +251,17 @@ class Console:
             self.buffer = getattr(self, self.edit)
 
     def next_board(self):
+        """The next board on the cable's IDCODE once a check found it, else the next
+        of all; a connected keyboard reconnects to it."""
         self.follow = False
-        self.worker.submit(self.worker.close_keyboard)
-        self.select(self.keys[(self.keys.index(self.board.key) + 1) % len(self.keys)])
-        self.do_check()
+        connected = self.worker.keyboard is not None or self.keyboard in ("on", "connecting")
+        keys = [k for k in self.keys if self.boards[k].idcode == self.chain_idcode] or self.keys
+        at = keys.index(self.board.key) if self.board.key in keys else -1
+        self.select(keys[(at + 1) % len(keys)])
+        if connected:
+            self.do_connect()
+        else:
+            self.do_check()
 
     def quit(self):
         self.running = False
@@ -267,7 +276,11 @@ class Console:
             self.dirty = True
             kind, value = self.events.get()
             if kind == "cable":
-                self.cable = value
+                board, value = value
+                if value[0]:
+                    self.chain_idcode = board.idcode
+                if board is self.board:
+                    self.cable = value
                 self.note(("cable ok: " if value[0] else "cable: ") + value[1])
                 if self.follow and value[0] is False:
                     self.worker.submit(lambda: self.worker.post("detected", self.actions.detect_board(
@@ -275,14 +288,14 @@ class Console:
             elif kind == "detected":
                 board, why = value
                 if self.follow and "choose the board" not in why:
-                    self.follow = False
+                    self.follow, self.chain_idcode = False, board.idcode
                     self.note(why)
                     if board.key != self.board.key:
                         self.select(board.key)
                         self.do_check()
             elif kind == "keyboard":
                 self.keyboard, self.keyboard_detail = value
-                self.note(f"keyboard {value[0]}: {value[1]}", error=value[0] == "failed")
+                self.note(f"keyboard: {value[1]}", error=value[0] == "failed")
             elif kind == "sent":
                 label, result = value
                 self.last_key = f"{label} -> {result}"
@@ -297,18 +310,20 @@ class Console:
         kb_mark = {"on": "OK ", "failed": "!! ", "connecting": ".. ", "off": "-- "}[self.keyboard]
         mode = "PLAY: every key press and release goes to the board; Ctrl+] leaves" if self.mode == "play" \
             else "COMMAND: press a key below"
+        same = [k for k in self.keys if self.boards[k].idcode == self.chain_idcode]
         rows = [
             f" Board console    {mode}",
             "",
             " Setup",
-            f"   [b] Board     {self.board.key}  (IDCODE {self.board.idcode})",
+            f"   [b] Board     {self.board.key}  (IDCODE {self.board.idcode})"
+            + (f"   b cycles the {len(same)} boards on this cable" if len(same) > 1 else ""),
             f"   [s] SOF       {self.sof}  ({sof_built})         [p] program the FPGA",
             f"   [f] {self.board.program_label[:9]:<9} {self.program or '(none: press f)'}",
             f"   [u] UART      {self.port or '(none: press u)'} at {self.board.baud} baud   [l] load it",
             "",
             " JTAG keyboard",
             f"   {mark}[c] Cable     {finding}",
-            f"   {kb_mark}[k] Keyboard  {self.keyboard_detail}",
+            f"   {kb_mark}[k] {'Reconnect' if self.keyboard == 'on' else 'Connect  '} {self.keyboard_detail}",
             f"       [t] Test key  sends one Space; last: {self.last_key}  ({self.keys_sent} sent)",
             f"   Terminal      {'key releases (kitty protocol)' if self.kitty else 'presses only: held keys repeat'}",
             "",

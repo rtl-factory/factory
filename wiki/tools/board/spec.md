@@ -66,17 +66,17 @@ Every option is on the screen with its key, beside the value it acts on, so noth
 
 The cable check (`check_chain`, one bounded `jtagconfig` run, at start-up, on `c`, on a board change and before every keyboard connect) turns each state into a finding and a next step: `jtagconfig` missing (put Quartus on `PATH` or pass `--quartus-bin`), port permissions (install the [udev rule](../toolchain/spec.md#boards)), the chain in use by another program, no cable, several cables, no device (board off), a different board's IDCODE (press `b`), or a match. While this console's keyboard is connected it holds the chain, so the check reports that instead of running.
 
-The console opens on the board `--project`/`--board` name; without them, one bounded `jtagconfig` run selects the board whose IDCODE is alone on the one chain, and among projects on that board the one with the most recently built SOF. With no cable, several cables or devices, or an unknown IDCODE it opens on the first board. The log says which board was selected and why. The UART port comes from `--port`, or is the port when pyserial lists exactly one.
+The console opens on the board `--project`/`--board` name; without them, one bounded `jtagconfig` run selects the board whose IDCODE is alone on the one chain, and among projects on that board the one with the most recently built SOF. With no cable, several cables or devices, or an unknown IDCODE it opens on the first board. The log says which board was selected and why. A start-up board the chain did not confirm (the chain was busy, say) is replaced by the detected one after the first cable check that fails, until the user picks a board. Arrow and function keys pressed in command mode are ignored, and a log line repeated at once is counted (`(x3)`) instead of repeated. The UART port comes from `--port`, or is the port when pyserial lists exactly one.
 
 | Key | Action |
 |---|---|
 | `p` | Program the SOF into the board |
 | `l` | Load the program file over the UART port with the project's loader |
 | `c` | Check the cable again |
-| `k` | Connect the JTAG keyboard: check the cable, find the device by IDCODE and open the session |
+| `k` | Connect (or, when connected, reconnect) the JTAG keyboard: check the cable, find the device by IDCODE and open the session |
 | `t` | Test the keyboard: send one Space press and release (connecting first if needed) and show how many bytes the board accepted |
 | `i` | Play: connect the keyboard if it is not, then forward every key press and release to the board until Ctrl+]. Under the kitty protocol the console pushes flags 1, 2 and 8 on entry and pops them on leaving |
-| `b` | The next board; its SOF and program file are filled in, the keyboard is closed and the cable checked |
+| `b` | The next board whose IDCODE is the one the cable showed (every board until a check has matched one); its SOF and program file are filled in, and a connected keyboard reconnects to it, else the cable is checked |
 | `s`, `f`, `u` | Edit the SOF path, the program file or the UART port on the key line (Enter keeps, Esc cancels). A SOF whose file name is one board's default SOF selects that board |
 | `q`, Ctrl+C | Quit, closing the keyboard session |
 

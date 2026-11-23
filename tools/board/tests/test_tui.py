@@ -144,7 +144,7 @@ class ConsoleTests(unittest.TestCase):
         fake, app = self.drive(True, [(b"t", b"test Space"), (b"q", None)])
         self.assertEqual(b"".join(fake.sent), bytes([0x29, 0xF0, 0x29]))
         screen = "\n".join(app.lines(120, 40))
-        for text in ("[c] Cable", "matches demo/de2_115", "[k] Keyboard  connected", "(1 sent)", "Next: press i"):
+        for text in ("[c] Cable", "matches demo/de2_115", "[k] Reconnect connected", "(1 sent)", "Next: press i"):
             self.assertIn(text, screen)
 
     def test_keys_without_a_keyboard_are_reported(self):
@@ -173,12 +173,29 @@ class ConsoleTests(unittest.TestCase):
         app = tui.Console(boards, (demo, "found 0 JTAG cable(s); opened on demo/de2_115; choose the board"),
                           fd_in=0, fd_out=1, actions=fake)
         app.keyboard, app.keyboard_detail = "failed", "expected 031050DD"
-        app.events.put(("cable", (False, "chain in use", "close it")))
+        app.events.put(("cable", (demo, (False, "chain in use", "close it"))))
         deadline = time.monotonic() + 2
         while app.board.key != "other/de2_115" and time.monotonic() < deadline:
             app.tick(0.0)
             time.sleep(0.02)
         self.assertEqual((app.board.key, app.keyboard, app.follow), ("other/de2_115", "off", False))
+
+    def test_board_key_cycles_the_boards_on_the_cable_and_reconnects(self):
+        demo = console.parse_config(CONFIG, "demo")[0]
+        lite = {**CONFIG, "project": "lite",
+                "boards": {"de10_lite": {"idcode": "031050DD", "baud": 2000000, "sof": "x.sof"}}}
+        other = console.parse_config({**CONFIG, "project": "other"}, "other")[0]
+        boards = {b.key: b for b in [demo, other, *console.parse_config(lite, "lite")]}
+        fake = FakeBoard()
+        app = tui.Console(boards, (demo, "USB-Blaster [1-1]: IDCODE 020F70DD is de2_115"), fd_in=0, fd_out=1,
+                          actions=fake)
+        app.keyboard = "on"
+        app.on_char("b")
+        self.assertEqual(app.board.key, "other/de2_115")
+        app.on_char("b")
+        self.assertEqual(app.board.key, "demo/de2_115")
+        time.sleep(0.3)
+        self.assertIn(("connect", "other/de2_115"), fake.calls)
 
     def test_hints_follow_the_cable_and_the_keyboard(self):
         boards = {b.key: b for b in console.parse_config(CONFIG, "demo")}
