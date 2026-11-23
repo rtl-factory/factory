@@ -77,9 +77,11 @@ install_bazelisk() {
 # does not read .bazelrc) and Bazel at the registry's GitHub copy (~/.bazelrc).
 # Machine-only files, never the repository's .bazelrc; a setting already there
 # is kept.
-reachable() { curl -sS -o /dev/null -I --max-time 15 "$1" 2>/dev/null; }
+# A small file that exists on each host; -f counts a proxy's 403 as blocked.
+reachable() { curl -fsS -o /dev/null --max-time 15 "$1" 2>/dev/null; }
 set_mirror() {
-  if ! reachable https://releases.bazel.build/ && ! grep -q '^BAZELISK_BASE_URL=' "$HOME/.bazeliskrc" 2>/dev/null; then
+  local version; version="$(cat "$ROOT/.bazelversion")"
+  if ! reachable "https://releases.bazel.build/$version/release/bazel-$version-linux-x86_64.sha256" && ! grep -q '^BAZELISK_BASE_URL=' "$HOME/.bazeliskrc" 2>/dev/null; then
     log "releases.bazel.build unreachable: Bazel downloads from GitHub releases (~/.bazeliskrc)"
     echo "BAZELISK_BASE_URL=$(pin bazelisk mirror.bazelisk_base_url)" >> "$HOME/.bazeliskrc"
   fi
@@ -123,8 +125,8 @@ install_oss_cad_suite() {
   url="$(pin oss_cad_suite url)"; sum="$(pin oss_cad_suite sha256)"
   rm -rf "$cache"; mkdir -p "$cache"
   log "downloading OSS CAD Suite $(pin oss_cad_suite version)"
-  curl -fsSL --retry 4 -o "$cache/suite.tgz" "$url" || { log "OSS CAD Suite download failed"; return 1; }
-  echo "$sum  $cache/suite.tgz" | sha256sum -c --quiet - >&2 || { log "OSS CAD Suite checksum mismatch: not installing"; return 1; }
+  curl -fsSL --retry 4 -o "$cache/suite.tgz" "$url" || { rm -rf "$cache"; log "OSS CAD Suite download failed"; return 1; }
+  echo "$sum  $cache/suite.tgz" | sha256sum -c --quiet - >&2 || { rm -rf "$cache"; log "OSS CAD Suite checksum mismatch: not installing"; return 1; }
   rm -rf "$dir"; mkdir -p "$dir"
   tar -xzf "$cache/suite.tgz" -C "$dir" --strip-components=1 && rm -rf "$cache"
   ready --tool oss-cad-suite
@@ -203,9 +205,18 @@ PY
 # the Verilator build and the two downloads run side by side. Each runs as its
 # own job, so errexit holds inside it and one failure does not stop the others.
 install_packages || log "packages missing: the Verilator build or some L0 targets may fail"
-install_bazelisk || log "Bazelisk not installed: bazel commands will fail until it is"
-set_mirror
-fetch_bazel || log "Bazel $(cat "$ROOT/.bazelversion") not downloaded yet: the first bazel command will retry"
+if install_bazelisk; then
+  set_mirror
+  fetch_bazel || log "Bazel $(cat "$ROOT/.bazelversion") not downloaded yet: the first bazel command will retry"
+else
+  log "Bazelisk not installed: bazel commands will fail until it is"
+fi
+
+# Why: written before the long steps, so a hook that times out still leaves the
+# session with bazel (and Verilator, once built) on PATH.
+if [[ -n "${CLAUDE_ENV_FILE:-}" ]]; then
+  echo "export PATH=$BAZELISK_DIR:$VERILATOR_DIR/bin:\$PATH" >> "$CLAUDE_ENV_FILE"
+fi
 
 build_verilator & verilator_job=$!
 install_oss_cad_suite & suite_job=$!
@@ -214,7 +225,4 @@ wait "$verilator_job" || log "Verilator not installed: simulation targets will f
 wait "$suite_job" || log "OSS CAD Suite not installed: formal runs will fail until it is"
 wait "$quartus_job" || log "Quartus not installed: FPGA images will fail until it is"
 
-if [[ -n "${CLAUDE_ENV_FILE:-}" ]]; then
-  echo "export PATH=$BAZELISK_DIR:$VERILATOR_DIR/bin:\$PATH" >> "$CLAUDE_ENV_FILE"
-fi
 PATH="$BAZELISK_DIR:$VERILATOR_DIR/bin:$PATH" ready || true
