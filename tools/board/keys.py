@@ -59,18 +59,19 @@ class KeyState:
     """Press and release events in, Set-2 bytes out, one make and one break per
     held key. A release is only sent once `settle` seconds pass without a new
     press of that key, so a release then press at once (auto-repeat) is no
-    break; `flush(now)` sends those."""
+    break; `flush(now)` sends those. A tap (a key the terminal reports with no
+    release) holds the key until `quiet` seconds pass without another tap."""
 
-    def __init__(self, settle: float = 0.0):
-        self.settle = settle
+    def __init__(self, settle: float = 0.0, quiet: float = 0.15):
+        self.settle, self.quiet = settle, quiet
         self.held: set[str] = set()
-        self.pending: dict[str, float] = {}
+        self.break_due: dict[str, float] = {}
 
     def press(self, keysym: str, now: float) -> bytes:
         key = key_name(keysym)
         if key is None:
             return b""
-        if self.pending.pop(key, None) is not None or key in self.held:
+        if self.break_due.pop(key, None) is not None or key in self.held:
             return b""
         self.held.add(key)
         return make(key)
@@ -78,39 +79,39 @@ class KeyState:
     def release(self, keysym: str, now: float) -> bytes:
         key = key_name(keysym)
         if key in self.held:
-            self.pending[key] = now
+            self.break_due[key] = now + self.settle
         return b""
+
+    def tap(self, keysym: str, now: float) -> bytes:
+        key = key_name(keysym)
+        out = KeyState.press(self, keysym, now)
+        if key in self.held:
+            self.break_due[key] = now + self.quiet
+        return out
 
     def flush(self, now: float) -> bytes:
         out = bytearray()
-        for key, since in list(self.pending.items()):
-            if now - since >= self.settle:
-                del self.pending[key]
+        for key, due in list(self.break_due.items()):
+            if now >= due:
+                del self.break_due[key]
                 self.held.discard(key)
                 out += brk(key)
         return bytes(out)
 
     def release_all(self) -> bytes:
-        """Break every held key, as when the window loses focus."""
+        """Break every held key, as on leaving play."""
         out = b"".join(brk(key) for key in sorted(self.held))
         self.held.clear()
-        self.pending.clear()
+        self.break_due.clear()
         return out
 
 
 class TimedKeys(KeyState):
-    """For a terminal without key releases: a press or repeat holds the key, and
-    the key breaks once `quiet` seconds pass with no repeat of it."""
-
-    def __init__(self, quiet: float = 0.15):
-        super().__init__(settle=quiet)
+    """For a terminal without key releases: every press is a tap, so a key is
+    held while it repeats and breaks once `quiet` seconds pass with no repeat."""
 
     def press(self, keysym: str, now: float) -> bytes:
-        key = key_name(keysym)
-        out = super().press(keysym, now)
-        if key in self.held:
-            self.pending[key] = now
-        return out
+        return self.tap(keysym, now)
 
 
 CTRL_RIGHT_BRACKET = "leave"
@@ -139,9 +140,11 @@ def _char_key(char: str) -> str | None:
 
 
 class TerminalKeys:
-    """Terminal input bytes to ("press" | "repeat" | "release", key name) events,
-    from the kitty keyboard protocol (flags 1|2|8: every key as an escape code
-    with its event type) or from plain bytes, which carry presses only. Ctrl+]
+    """Terminal input bytes to ("press" | "repeat" | "release" | "tap", key name)
+    events, from the kitty keyboard protocol (flags 1|2|8: every key as an escape
+    code with its event type) or from plain bytes and SS3 sequences, which carry
+    no release and so are taps, even from a kitty terminal that sends some keys
+    plainly. Ctrl+]
     gives (CTRL_RIGHT_BRACKET, ""). A lone Escape is only told from the start of
     a sequence once `escape_wait` seconds pass with nothing after it."""
 
@@ -168,16 +171,16 @@ class TerminalKeys:
             return 1, (CTRL_RIGHT_BRACKET, "")
         if buf[0] != 0x1B:
             key = _LEGACY.get(buf[:1]) or (_char_key(chr(buf[0])) if buf[0] < 0x80 else None)
-            return 1, (("press", key) if key else None)
+            return 1, (("tap", key) if key else None)
         if len(buf) == 1:
-            return (1, ("press", "Escape")) if now - self.since >= self.escape_wait else (0, None)
+            return (1, ("tap", "Escape")) if now - self.since >= self.escape_wait else (0, None)
         if buf[1:2] == b"O":
             if len(buf) < 3:
                 return 0, None
             key = _FINALS.get(buf[2:3])
-            return 3, (("press", key) if key else None)
+            return 3, (("tap", key) if key else None)
         if buf[1:2] != b"[":
-            return 1, ("press", "Escape")
+            return 1, ("tap", "Escape")
         end = next((i for i in range(2, len(buf)) if 0x40 <= buf[i] <= 0x7E), None)
         if end is None:
             return 0, None

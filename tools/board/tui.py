@@ -1,34 +1,35 @@
-"""The board console in the terminal: setup (board, SOF, program file, UART
-port), the JTAG keyboard with its cable check, every option on screen with
-what to do next, and a log.
+"""The board console: a terminal app (Textual) that gets a program running on a
+board in four guided steps, cable, program, load and keyboard, then plays.
 
-Command keys act on the selected board; play mode forwards every key press and
-release to the board's JTAG keyboard until Ctrl+] leaves it. Releases come from
-the kitty keyboard protocol when the terminal answers its query; otherwise a
-key is held while it repeats. Board actions run on one worker thread so the
-screen never blocks, and programming closes the JTAG keyboard first because
-quartus_pgm needs the cable alone.
-Spec: wiki/tools/board/spec.md#terminal-ui.
+Project and board are drop-down lists, preset to the board the cable shows;
+each step has a light (grey to do, yellow running, green done, red failed)
+with what it found and, on a failure, what to do in plain words; one button
+always does the next step. Play hands the whole terminal to `play.py` until
+Ctrl+]. Board actions run in order on one worker thread, so the screen never
+blocks, and programming closes the JTAG keyboard first because quartus_pgm
+needs the cable alone.
+Spec: wiki/tools/board/spec.md#console.
 """
 from __future__ import annotations
 
-from collections import deque
-import os
+from dataclasses import dataclass
 from pathlib import Path
 import queue
-import re
-import select
 import threading
-import time
+
+from textual.app import App, ComposeResult, SuspendNotSupported
+from textual.containers import Horizontal
+from textual.widgets import Button, Footer, Header, Input, Label, RichLog, Select, Static
 
 from tools.board import board as console
-from tools.board.keys import CTRL_RIGHT_BRACKET, KeyState, TerminalKeys, TimedKeys, brk, key_name, make
+from tools.board.keys import brk, make
+from tools.board.play import play
 
-TICK = 0.01
-LOG_LINES = 200
-# Ref: kitty keyboard protocol progressive enhancement: disambiguate (1), report event types (2),
-# report all keys as escape codes (8).
-KITTY_FLAGS = 1 | 2 | 8
+STEPS = ("cable", "program", "load", "keyboard")
+TITLES = {"cable": "Cable", "program": "FPGA programmed", "load": "Program loaded", "keyboard": "Keyboard"}
+LIGHTS = {"todo": ("○", "grey50"), "busy": ("◐", "yellow"), "ok": ("●", "green"), "fail": ("●", "red")}
+NEXT = {"cable": "1. Check the cable", "program": "2. Program the FPGA", "load": "3. Load the program",
+        "keyboard": "4. Connect the keyboard", None: "5. Play"}
 
 
 class Worker:
@@ -44,8 +45,8 @@ class Worker:
             job = self.jobs.get()
             try:
                 job()
-            except Exception as exc:  # Why: any failure is reported in the log; the worker keeps serving
-                self.post("error", f"{type(exc).__name__}: {exc}")
+            except Exception as exc:  # Why: any failure is reported on screen; the worker keeps serving
+                self.post("log", f"error: {type(exc).__name__}: {exc}")
 
     def submit(self, job):
         self.jobs.put(job)
@@ -54,351 +55,319 @@ class Worker:
         if self.keyboard is not None:
             keyboard, self.keyboard = self.keyboard, None
             keyboard.close()
-            self.post("keyboard", ("off", "not connected"))
+            self.post("step", ("keyboard", "todo", "disconnected", ""))
 
     def send(self, codes: bytes, label: str = ""):
         if not codes:
             return
         if self.keyboard is None:
-            self.post("sent", (label, "dropped: keyboard not connected"))
+            self.post("step", ("keyboard", "fail", f"not connected: {label} was dropped",
+                               "press Connect keyboard (the FPGA must be programmed first)"))
             return
         try:
             accepted = self.keyboard.send(codes)
         except Exception as exc:
             self.close_keyboard()
-            self.post("keyboard", ("failed", f"key send failed: {exc}"))
-            raise RuntimeError(f"keyboard stopped: {exc}") from exc
+            self.post("step", ("keyboard", "fail", f"key send failed: {exc}",
+                               "press Connect keyboard again; if it keeps failing, program the FPGA again"))
+            raise
         accepted = len(codes) if accepted is None else accepted
-        self.post("sent", (label, f"board took {accepted}/{len(codes)} bytes ({codes.hex(' ')})"))
+        self.post("sent", (label, accepted, len(codes), codes.hex(" ")))
 
 
-class Console:
-    """The screen and its keys over one terminal (`fd_in`, `fd_out`)."""
+@dataclass
+class Step:
+    state: str = "todo"
+    detail: str = ""
+    fix: str = ""
 
-    def __init__(self, boards: dict, first, *, port="", quartus_bin=None, fd_in=0, fd_out=1,
-                 actions=console, clock=time.monotonic):
-        self.boards, self.keys = boards, sorted(boards)
-        self.fd_in, self.fd_out, self.actions, self.clock = fd_in, fd_out, actions, clock
-        self.quartus_bin, self.port = quartus_bin, port
-        self.events = queue.Queue()
-        self.worker = Worker(lambda kind, text: self.events.put((kind, text)))
-        self.log = deque(maxlen=LOG_LINES)
-        self.cable = (None, "not checked yet", "press c to check the cable")
-        self.keyboard, self.keyboard_detail = "off", "not connected"
-        self.last_key, self.keys_sent = "none yet", 0
-        self.mode, self.edit, self.buffer = "command", None, ""
-        self.kitty = False
-        self.input = TerminalKeys()
-        self.state: KeyState = KeyState()
-        self.running, self.dirty = True, True
-        self.select(first[0].key if first else self.keys[0])
-        # Why: a start-up board the chain did not confirm follows the first cable check that can
+
+def image_target(board) -> str:
+    return f"bazel build //src/{board.project}:{board.name}_image"
+
+
+class BoardConsole(App):
+    """The console app; `actions` is the board module (a fake in tests)."""
+
+    TITLE = "Board console"
+    CSS = """
+    .row { height: auto; padding: 0 1; }
+    .row Label { padding: 1 1 0 1; }
+    #project, #board { width: 30; }
+    #sof, #program { width: 1fr; }
+    #port { width: 22; }
+    #title { padding: 1 2 0 2; }
+    .step { height: auto; padding: 0 2; }
+    .fix { color: $error; padding: 0 6; height: auto; }
+    #next { margin: 1 2 0 2; width: auto; min-width: 36; }
+    #buttons Button { margin-right: 1; min-width: 10; }
+    #keyline { padding: 1 2; color: $text-muted; height: auto; }
+    #log { height: 12; border: round $primary; display: none; }
+    #log.shown { display: block; }
+    """
+    BINDINGS = [("n", "next_step", "Next step"), ("g", "play", "Play"), ("l", "toggle_log", "Log"),
+                ("q", "quit", "Quit")]
+
+    def __init__(self, boards: dict, first=None, *, port: str = "", quartus_bin=None, actions=console,
+                 play_fn=play):
+        super().__init__()
+        self.boards, self.actions, self.quartus_bin, self.play_fn = boards, actions, quartus_bin, play_fn
+        self.first = first
+        # Why: a start-up board the chain did not confirm follows the first check that finds the board
         self.follow = first is None or "choose the board" in first[1]
-        self.chain_idcode = None if self.follow else self.board.idcode
-        if first:
-            self.note(first[1])
+        self.board = first[0] if first else boards[sorted(boards)[0]]
+        self.port = port
+        self.steps = {name: Step() for name in STEPS}
+        self.last_key = "no key sent yet"
+        self.play_pending = False
+        self.results = queue.Queue()
+        self.worker = Worker(lambda kind, value: self.results.put((kind, value)))
 
-    def select(self, key: str):
-        self.board = self.boards[key]
-        if self.worker.keyboard is None:
-            self.keyboard, self.keyboard_detail = "off", "not connected"
-        self.sof = str(self.actions.resolve_path(self.board.sof))
+    def drain(self):
+        """Apply the worker's results on the app thread, in order."""
+        while not self.results.empty():
+            self.on_result(*self.results.get())
+
+    def compose(self) -> ComposeResult:
+        projects = sorted({b.project for b in self.boards.values()})
+        yield Header()
+        with Horizontal(classes="row"):
+            yield Label("Project")
+            yield Select([(p, p) for p in projects], value=self.board.project, allow_blank=False, id="project")
+            yield Label("Board")
+            yield Select(self.board_options(self.board.project), value=self.board.key, allow_blank=False,
+                         id="board")
+            yield Label("UART port")
+            yield Input(self.port, placeholder="/dev/ttyUSB0", id="port")
+        with Horizontal(classes="row"):
+            yield Label("FPGA image")
+            yield Input(str(self.actions.resolve_path(self.board.sof)), id="sof")
+        with Horizontal(classes="row"):
+            yield Label(self.board.program_label, id="program_label")
+            yield Input(self.default_program(), placeholder="path of the program file", id="program")
+        yield Static(id="title")
+        for name in STEPS:
+            yield Static(id=f"step_{name}", classes="step")
+            yield Static(id=f"fix_{name}", classes="fix")
+        yield Button("Next", id="next", variant="success")
+        with Horizontal(id="buttons", classes="row"):
+            yield Button("Check cable", id="do_cable")
+            yield Button("Program FPGA", id="do_program")
+            yield Button("Load program", id="do_load")
+            yield Button("Connect keyboard", id="do_keyboard")
+            yield Button("Test key", id="do_test")
+            yield Button("Play", id="do_play", variant="primary")
+            yield Button("Show log", id="do_log")
+        yield Static(id="keyline")
+        yield RichLog(id="log", wrap=True, markup=False)
+        yield Footer()
+
+    def on_mount(self):
+        self.set_interval(0.05, self.drain)
+        if self.first:
+            self.log_line(self.first[1])
+        self.refresh_steps()
+        self.do_cable()
+
+    def board_options(self, project: str):
+        return [(b.name, b.key) for b in sorted(self.boards.values(), key=lambda b: b.key)
+                if b.project == project]
+
+    def default_program(self) -> str:
         default = self.board.program_default
-        self.program = str(self.actions.resolve_path(default)) if default else ""
+        return str(self.actions.resolve_path(default)) if default else ""
 
-    def note(self, text: str, error=False):
-        for line in str(text).splitlines() or [""]:
-            line = ("error: " if error else "") + line
-            last = self.log[-1] if self.log else ""
-            repeat = re.fullmatch(re.escape(line) + r"(?: \(x(\d+)\))?", last)
-            if repeat:
-                self.log[-1] = f"{line} (x{int(repeat[1] or 1) + 1})"
-            else:
-                self.log.append(line)
+    def on_select_changed(self, event: Select.Changed):
+        if event.select.id == "project" and event.value != self.board.project:
+            options = self.board_options(event.value)
+            same = [key for _, key in options if self.boards[key].name == self.board.name]
+            board_select = self.query_one("#board", Select)
+            board_select.set_options(options)
+            board_select.value = same[0] if same else options[0][1]
+        elif event.select.id == "board" and event.value in self.boards and event.value != self.board.key:
+            self.choose(self.boards[event.value])
 
-    def write(self, text: str):
-        os.write(self.fd_out, text.encode())
+    def choose(self, board):
+        self.follow = False
+        self.board = board
+        self.query_one("#sof", Input).value = str(self.actions.resolve_path(board.sof))
+        self.query_one("#program", Input).value = self.default_program()
+        self.query_one("#program_label", Label).update(board.program_label)
+        self.worker.submit(self.worker.close_keyboard)
+        self.steps = {name: Step() for name in STEPS}
+        self.log_line(f"selected {board.key}")
+        self.do_cable()
 
-    def hint(self) -> str:
-        """What to do next, from the cable check and the keyboard state."""
-        ready, _, cable_hint = self.cable
-        if self.edit is not None:
-            return "type the new value; Enter keeps it, Esc cancels"
-        if self.keyboard == "failed":
-            return ("press c to check the cable" if ready is not True else cable_hint) \
-                + "; if the board was just powered or programmed, press p (program) and l (load) first"
-        if ready is False:
-            return cable_hint
-        if self.keyboard == "connecting":
-            return "connecting the keyboard (a few seconds)"
-        if self.keyboard == "on":
-            return ("in play: keys go to the board, Ctrl+] leaves" if self.mode == "play"
-                    else "press i to play; the game reads arrows, X=A, Z=B, Enter=Start, Space=Select")
-        return cable_hint if ready is None else "press k to connect the keyboard, or i to connect and play"
+    def set_step(self, name, state, detail="", fix=""):
+        self.steps[name] = Step(state, detail, fix)
+        self.refresh_steps()
 
-    def do_check(self):
+    def next_name(self) -> str | None:
+        return next((n for n in STEPS if self.steps[n].state != "ok"), None)
+
+    def refresh_steps(self):
+        self.query_one("#title", Static).update(
+            f"[b]Get {self.board.project} running on the {self.board.name.upper()}[/b]")
+        for number, name in enumerate(STEPS, 1):
+            step = self.steps[name]
+            mark, colour = LIGHTS[step.state]
+            self.query_one(f"#step_{name}", Static).update(
+                f"[{colour}]{mark}[/{colour}]  {number}. [b]{TITLES[name]}[/b]   {step.detail}")
+            fix = self.query_one(f"#fix_{name}", Static)
+            fix.update(f"→ {step.fix}" if step.fix else "")
+            fix.display = bool(step.fix)
+        self.query_one("#next", Button).label = f"Next: {NEXT[self.next_name()]}"
+        self.query_one("#keyline", Static).update(f"Last key: {self.last_key}")
+
+    def on_result(self, kind, value):
+        if kind == "step":
+            self.set_step(*value)
+            self.log_line(f"{TITLES[value[0]]}: {value[2]}")
+            if value[0] == "keyboard" and self.play_pending and value[1] != "busy":
+                self.play_pending = False
+                if value[1] == "ok":
+                    self.action_play()
+        elif kind == "select":
+            board, why = value
+            self.follow = False
+            self.log_line(why)
+            self.query_one("#project", Select).value = board.project
+            self.query_one("#board", Select).set_options(self.board_options(board.project))
+            self.query_one("#board", Select).value = board.key
+            self.choose(board)
+        elif kind == "sent":
+            label, accepted, total, hexed = value
+            self.last_key = f"{label}: the board took {accepted} of {total} bytes ({hexed})"
+            self.refresh_steps()
+        else:
+            self.log_line(value)
+
+    def log_line(self, text: str):
+        self.query_one("#log", RichLog).write(text)
+
+    def on_button_pressed(self, event: Button.Pressed):
+        {"next": self.action_next_step, "do_cable": self.do_cable, "do_program": self.do_program,
+         "do_load": self.do_load, "do_keyboard": self.do_keyboard, "do_test": self.do_test,
+         "do_play": self.action_play, "do_log": self.action_toggle_log}[event.button.id]()
+
+    def action_next_step(self):
+        {"cable": self.do_cable, "program": self.do_program, "load": self.do_load,
+         "keyboard": self.do_keyboard, None: self.action_play}[self.next_name()]()
+
+    def action_toggle_log(self):
+        log = self.query_one("#log", RichLog)
+        log.toggle_class("shown")
+        self.query_one("#do_log", Button).label = "Hide log" if log.has_class("shown") else "Show log"
+
+    def do_cable(self):
         board = self.board
-        if self.worker.keyboard is not None:
-            # Why: the open keyboard session holds the chain, so jtagconfig would only report it in use
-            self.cable = (True, f"in use by this console's keyboard ({self.keyboard_detail})",
-                          "the keyboard is connected; press i to play")
-            return
-        self.cable = (None, "checking...", "running jtagconfig")
-        self.worker.submit(lambda: self.worker.post("cable", (board, self.actions.check_chain(
-            self.boards, board, self.quartus_bin))))
+        self.set_step("cable", "busy", "checking with jtagconfig...")
+
+        def job():
+            if self.worker.keyboard is not None:
+                self.worker.post("step", ("cable", "ok", "in use by this console's keyboard", ""))
+                return
+            ready, finding, hint = self.actions.check_chain(self.boards, board, self.quartus_bin)
+            if not ready and self.follow:
+                found, why = self.actions.detect_board(self.boards, self.quartus_bin)
+                if "choose the board" not in why and found.key != board.key:
+                    self.worker.post("select", (found, why))
+                    return
+            self.worker.post("step", ("cable", "ok" if ready else "fail", finding, "" if ready else hint))
+        self.worker.submit(job)
 
     def do_program(self):
-        board, sof = self.board, Path(self.sof)
+        board, sof = self.board, Path(self.query_one("#sof", Input).value.strip())
+        if not sof.is_file():
+            self.set_step("program", "fail", f"no FPGA image at {sof}",
+                          f"build it first with: {image_target(board)}   then press Program FPGA")
+            return
+        self.set_step("program", "busy", "programming (about 10 s)...")
+        self.steps["load"] = self.steps["keyboard"] = Step()
 
         def job():
             self.worker.close_keyboard()
-            self.actions.program(board, sof, quartus_bin=self.quartus_bin,
-                                 out=lambda t: self.worker.post("log", t))
-            self.worker.post("log", "programmed: load the program, then connect the keyboard")
+            try:
+                cable = self.actions.program(board, sof, quartus_bin=self.quartus_bin,
+                                             out=lambda t: self.worker.post("log", t))
+            except Exception as exc:
+                self.worker.post("step", ("program", "fail", str(exc)[:200],
+                                   "make step 1 (Cable) green first, then press Program FPGA again"))
+                raise
+            self.worker.post("step", ("program", "ok", f"{sof.name} through {cable}", ""))
         self.worker.submit(job)
 
     def do_load(self):
-        board, program, port = self.board, Path(self.program), self.port
-        if not port:
-            self.note("loading needs the UART port: press u to set it", error=True)
-            return
-        self.worker.submit(lambda: self.actions.load(board, program, port,
-                                                     out=lambda t: self.worker.post("log", t)))
-
-    def do_connect(self):
         board = self.board
-        self.keyboard, self.keyboard_detail = "connecting", f"finding {board.idcode} on the cable..."
+        program = self.query_one("#program", Input).value.strip()
+        port = self.query_one("#port", Input).value.strip()
+        label = board.program_label.lower()
+        if not port:
+            ports = self.actions.serial_ports()
+            self.set_step("load", "fail", "no UART port chosen",
+                          "type the USB-serial cable's port in UART port"
+                          + (f" (found: {', '.join(ports)})" if ports else " (none found: plug the cable in)"))
+            return
+        if not program or not Path(program).is_file():
+            self.set_step("load", "fail", f"no {label} file" + (f" at {program}" if program else ""),
+                          f"type the path of the {label} in its box, then press Load program")
+            return
+        self.set_step("load", "busy", f"loading {Path(program).name} over {port}...")
+        self.steps["keyboard"] = Step()
+
+        def job():
+            try:
+                self.actions.load(board, Path(program), port, out=lambda t: self.worker.post("log", t))
+            except Exception as exc:
+                self.worker.post("step", ("load", "fail", str(exc)[:200],
+                                   "the board did not answer on the UART: program the FPGA (step 2), check the "
+                                   "USB-serial cable's TX/RX wires and the port, then press Load program"))
+                raise
+            self.worker.post("step", ("load", "ok", f"{Path(program).name} loaded and started", ""))
+        self.worker.submit(job)
+
+    def do_keyboard(self):
+        board = self.board
+        self.set_step("keyboard", "busy", "connecting over JTAG (a few seconds)...")
 
         def job():
             self.worker.close_keyboard()
-            self.worker.post("cable", (board, self.actions.check_chain(self.boards, board, self.quartus_bin)))
             try:
                 cable, device = self.actions.jtag_device(board, quartus_bin=self.quartus_bin)
                 self.worker.keyboard = self.actions.Keyboard(cable, device, self.quartus_bin)
             except Exception as exc:
-                self.worker.post("keyboard", ("failed", str(exc)))
+                self.worker.post("step", ("keyboard", "fail", str(exc)[:200],
+                                   "program the FPGA (step 2) and make step 1 green; close any other console "
+                                   "using the cable; then press Connect keyboard"))
                 raise
-            self.worker.post("keyboard", ("on", f"connected: {board.key} on {cable}"))
+            self.worker.post("step", ("keyboard", "ok", f"connected on {cable}: press Test key or Play", ""))
         self.worker.submit(job)
 
-    def do_test_key(self):
-        """One Space press and release, so the link is proven without playing."""
-        if self.worker.keyboard is None and self.keyboard != "connecting":
-            self.do_connect()
-        self.worker.submit(lambda: self.worker.send(make("space") + brk("space"), "test Space"))
+    def do_test(self):
+        if self.worker.keyboard is None and self.steps["keyboard"].state != "busy":
+            self.do_keyboard()
+        self.worker.submit(lambda: self.worker.send(make("space") + brk("space"), "Test key (Space)"))
 
-    def enter_play(self):
-        if self.worker.keyboard is None and self.keyboard != "connecting":
-            self.do_connect()
-        self.mode = "play"
-        self.state = KeyState() if self.kitty else TimedKeys()
-        if self.kitty:
-            self.write(f"\x1b[>{KITTY_FLAGS}u")
-        self.note("play: every key goes to the board; Ctrl+] leaves"
-                  + ("" if self.kitty else " (no key releases from this terminal: a key is held while it repeats)"))
-
-    def leave_play(self):
-        if self.kitty:
-            self.write("\x1b[<u")
-        codes = self.state.release_all()
-        self.worker.submit(lambda: self.worker.send(codes, "release held keys"))
-        self.mode = "command"
-        self.note("play: left")
-
-    def on_bytes(self, data: bytes, now: float):
-        if self.mode == "play":
-            for kind, key in self.input.feed(data, now):
-                if kind == CTRL_RIGHT_BRACKET:
-                    self.leave_play()
-                    self.input.buffer.clear()
-                    return
-                codes = self.state.release(key, now) if kind == "release" else self.state.press(key, now)
-                if codes:
-                    label = f"{key_name(key)} {kind}"
-                    self.worker.submit(lambda c=codes, l=label: self.worker.send(c, l))
+    def action_play(self):
+        if self.worker.keyboard is None:
+            self.play_pending = True
+            if self.steps["keyboard"].state != "busy":
+                self.do_keyboard()
+            self.notify("Connecting the keyboard first; play starts when it is connected")
             return
-        # Why: arrow and function keys send escape sequences whose letters are no commands
-        data = re.sub(rb"\x1b(\[[0-?]*[ -/]*[@-~]|O.)", b"", data)
-        for char in data.decode("utf-8", "replace"):
-            self.on_char(char)
-
-    def on_char(self, char: str):
-        if self.edit is not None:
-            if char in "\r\n":
-                setattr(self, self.edit, self.buffer.strip())
-                if self.edit == "sof":
-                    match = self.actions.board_for_sof(self.boards, Path(self.sof))
-                    if match is not None and match.key != self.board.key:
-                        self.follow = False
-                        sof = self.sof
-                        self.select(match.key)
-                        self.sof = sof
-                self.edit = None
-            elif char == "\x1b":
-                self.edit = None
-            elif char in "\x7f\x08":
-                self.buffer = self.buffer[:-1]
-            elif char.isprintable():
-                self.buffer += char
-            return
-        action = {"c": self.do_check, "p": self.do_program, "l": self.do_load, "k": self.do_connect,
-                  "t": self.do_test_key, "i": self.enter_play, "b": self.next_board, "q": self.quit,
-                  "\x03": self.quit}.get(char)
-        if action:
-            action()
-        elif char in ("s", "f", "u"):
-            self.edit = {"s": "sof", "f": "program", "u": "port"}[char]
-            self.buffer = getattr(self, self.edit)
-
-    def next_board(self):
-        """The next board on the cable's IDCODE once a check found it, else the next
-        of all; a connected keyboard reconnects to it."""
-        self.follow = False
-        connected = self.worker.keyboard is not None or self.keyboard in ("on", "connecting")
-        keys = [k for k in self.keys if self.boards[k].idcode == self.chain_idcode] or self.keys
-        at = keys.index(self.board.key) if self.board.key in keys else -1
-        self.select(keys[(at + 1) % len(keys)])
-        if connected:
-            self.do_connect()
-        else:
-            self.do_check()
-
-    def quit(self):
-        self.running = False
-
-    def tick(self, now: float):
-        codes = self.state.flush(now)
-        if codes:
-            self.worker.submit(lambda: self.worker.send(codes, "release (no repeat)"))
-        if self.mode == "play" and self.input.buffer:
-            self.on_bytes(b"", now)
-        while not self.events.empty():
-            self.dirty = True
-            kind, value = self.events.get()
-            if kind == "cable":
-                board, value = value
-                if value[0]:
-                    self.chain_idcode = board.idcode
-                if board is self.board:
-                    self.cable = value
-                self.note(("cable ok: " if value[0] else "cable: ") + value[1])
-                if self.follow and value[0] is False:
-                    self.worker.submit(lambda: self.worker.post("detected", self.actions.detect_board(
-                        self.boards, self.quartus_bin)))
-            elif kind == "detected":
-                board, why = value
-                if self.follow and "choose the board" not in why:
-                    self.follow, self.chain_idcode = False, board.idcode
-                    self.note(why)
-                    if board.key != self.board.key:
-                        self.select(board.key)
-                        self.do_check()
-            elif kind == "keyboard":
-                self.keyboard, self.keyboard_detail = value
-                self.note(f"keyboard: {value[1]}", error=value[0] == "failed")
-            elif kind == "sent":
-                label, result = value
-                self.last_key = f"{label} -> {result}"
-                self.keys_sent += result.startswith("board took")
-            else:
-                self.note(value, error=kind == "error")
-
-    def lines(self, width: int, height: int) -> list[str]:
-        sof_built = "built" if Path(self.sof).is_file() else "NOT BUILT"
-        ready, finding, _ = self.cable
-        mark = {True: "OK ", False: "!! ", None: ".. "}[ready]
-        kb_mark = {"on": "OK ", "failed": "!! ", "connecting": ".. ", "off": "-- "}[self.keyboard]
-        mode = "PLAY: every key press and release goes to the board; Ctrl+] leaves" if self.mode == "play" \
-            else "COMMAND: press a key below"
-        same = [k for k in self.keys if self.boards[k].idcode == self.chain_idcode]
-        rows = [
-            f" Board console    {mode}",
-            "",
-            " Setup",
-            f"   [b] Board     {self.board.key}  (IDCODE {self.board.idcode})"
-            + (f"   b cycles the {len(same)} boards on this cable" if len(same) > 1 else ""),
-            f"   [s] SOF       {self.sof}  ({sof_built})         [p] program the FPGA",
-            f"   [f] {self.board.program_label[:9]:<9} {self.program or '(none: press f)'}",
-            f"   [u] UART      {self.port or '(none: press u)'} at {self.board.baud} baud   [l] load it",
-            "",
-            " JTAG keyboard",
-            f"   {mark}[c] Cable     {finding}",
-            f"   {kb_mark}[k] {'Reconnect' if self.keyboard == 'on' else 'Connect  '} {self.keyboard_detail}",
-            f"       [t] Test key  sends one Space; last: {self.last_key}  ({self.keys_sent} sent)",
-            f"   Terminal      {'key releases (kitty protocol)' if self.kitty else 'presses only: held keys repeat'}",
-            "",
-            f" Next: {self.hint()}",
-        ]
-        if self.edit is not None:
-            rows.append(f" Edit {self.edit}: {self.buffer}_")
-        rows += [" [i] play   [q] quit", "-" * min(width, 100)]
-        room = max(0, height - len(rows))
-        rows += list(self.log)[-room:] if room else []
-        return [row[:width] for row in rows]
-
-    def render(self):
+        title = f"{self.board.project} on the {self.board.name.upper()}"
+        send = lambda codes, label: self.worker.submit(lambda: self.worker.send(codes, label))  # noqa: E731
         try:
-            width, height = os.get_terminal_size(self.fd_out)
-        except OSError:
-            width, height = 0, 0
-        width, height = width or 100, height or 40
-        self.write("\x1b[H\x1b[2J" + "\r\n".join(self.lines(width, height)))
-
-    def probe_kitty(self, seconds=0.5) -> tuple[bool, bytes]:
-        """Ask for the kitty keyboard flags, then primary attributes, which every
-        terminal answers; a flags reply before it means the protocol works.
-        Returns that and the bytes typed after the replies."""
-        self.write("\x1b[?u\x1b[c")
-        reply, deadline = b"", self.clock() + seconds
-        attributes = re.compile(rb"\x1b\[\?[0-9;]*c")
-        while self.clock() < deadline and not attributes.search(reply):
-            ready, _, _ = select.select([self.fd_in], [], [], TICK)
-            if ready:
-                reply += os.read(self.fd_in, 256)
-        found = attributes.search(reply)
-        head, rest = (reply[:found.start()], reply[found.end():]) if found else (reply, b"")
-        return re.search(rb"\x1b\[\?[0-9]*u", head) is not None, rest
-
-    def run(self) -> int:
-        import termios
-        import tty
-        saved = termios.tcgetattr(self.fd_in) if os.isatty(self.fd_in) else None
-        try:
-            if saved is not None:
-                tty.setraw(self.fd_in)
-            self.write("\x1b[?1049h\x1b[?25l")
-            self.kitty, typed = self.probe_kitty()
-            self.note("terminal: " + ("kitty keyboard protocol (key releases)" if self.kitty
-                                      else "no kitty keyboard protocol (presses only)"))
-            self.do_check()
-            self.on_bytes(typed, self.clock())
-            while self.running:
-                ready, _, _ = select.select([self.fd_in], [], [], TICK)
-                now = self.clock()
-                if ready:
-                    data = os.read(self.fd_in, 1024)
-                    if not data:
-                        break
-                    self.on_bytes(data, now)
-                    self.dirty = True
-                self.tick(now)
-                if self.dirty:
-                    self.render()
-                    self.dirty = False
-        finally:
-            if self.mode == "play":
-                self.leave_play()
-            self.worker.submit(self.worker.close_keyboard)
-            done = threading.Event()
-            self.worker.submit(done.set)
-            done.wait(5)
-            self.write("\x1b[?25h\x1b[?1049l")
-            if saved is not None:
-                termios.tcsetattr(self.fd_in, termios.TCSADRAIN, saved)
-        return 0
+            with self.suspend():
+                count = self.play_fn(send, title, pad=dict(self.board.pad))
+        except SuspendNotSupported:
+            # Why: the headless test driver cannot hand the terminal over; play runs in place
+            count = self.play_fn(send, title, pad=dict(self.board.pad))
+        self.log_line(f"play: {count} key events sent")
 
 
 def main(boards: dict, *, port: str = "", quartus_bin=None, first=None) -> int:
     if not boards:
         raise RuntimeError("no src/*/cfg/board.json found")
-    return Console(boards, first, port=port, quartus_bin=quartus_bin).run()
+    BoardConsole(boards, first, port=port, quartus_bin=quartus_bin).run()
+    return 0

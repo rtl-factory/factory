@@ -1,6 +1,6 @@
 # Board console: spec
 
-The board console is `tools/board/board.py`, with its terminal UI in `tui.py`, the key translation in `keys.py`, and the JTAG chain helpers in `jtag_chain.py` and `jtag_devices.tcl`. It needs Python 3.10+ and a terminal; nothing outside the standard library besides pyserial. Live use needs `jtagconfig`, `quartus_pgm` and `quartus_stp` on `PATH` or under `--quartus-bin`, and pyserial for the project loaders. [Requirements](prd.md).
+The board console is `tools/board/board.py`, with its terminal app in `tui.py` (Textual), play mode in `play.py`, the key translation in `keys.py`, and the JTAG chain helpers in `jtag_chain.py` and `jtag_devices.tcl`. It needs Python 3.10+, a terminal and Textual 8.2.8 (`sudo pacman -S python-textual` on Arch, `pip install textual==8.2.8` elsewhere; Bazel tests take it from the pinned lock in `tools/sim/requirements_lock.txt`). Live use needs `jtagconfig`, `quartus_pgm` and `quartus_stp` on `PATH` or under `--quartus-bin`, and pyserial for the project loaders. [Requirements](prd.md).
 
 It is a tool, not a script ([repository layout](../../bkm/layout.md#repository-layout)): it speaks no block's protocol itself. Keys go through the common JTAG keyboard host ([spec](../../src/common/scripts/jtag/spec.md)), loads go through the loader each project names, and the chain helpers know only Quartus and IDCODEs.
 
@@ -12,7 +12,10 @@ Each project declares its boards in `src/<project>/cfg/board.json`. The console 
 {
   "schema": "n2a-board/1",
   "project": "nand2mario",
-  "program": {"label": "Cartridge image", "patterns": ["*.gb", "*.bin"], "default": ""},
+  "program": {"label": "Cartridge image", "patterns": ["*.gb", "*.bin"],
+              "default": "src/nand2mario/sw/roms/private/super-mario-land-rev1.gb"},
+  "pad": {"Up": "Up", "Down": "Down", "Left": "Left", "Right": "Right", "A": "x", "B": "z",
+          "Select": "space", "Start": "Return"},
   "load": ["{python}", "src/common/scripts/uart_mem/uart_mem_load.py", "{program}",
            "--project", "n2m ", "--port", "{port}", "--baud", "{baud}", "--yes"],
   "boards": {
@@ -24,8 +27,9 @@ Each project declares its boards in `src/<project>/cfg/board.json`. The console 
 
 | Field | Meaning |
 |---|---|
-| `program.label`, `program.patterns` | What the program file is called in the window, and its file-picker patterns |
+| `program.label`, `program.patterns` | What the program file is called in the console, and its file patterns |
 | `program.default` | The program file when none is chosen; empty means the user must choose one |
+| `pad` | Optional. The project's controller: each pad button (`Up`, `Down`, `Left`, `Right`, `A`, `B`, `Select`, `Start`) and the key name it stands for; play draws the buttons it names. A key outside the key table is refused |
 | `load` | The loader command line, run from the repository root. The fields are `{python}` (this interpreter), `{root}`, `{program}`, `{port}`, `{baud}` and `{board}`; any other field is refused |
 | `boards.<board>.idcode` | The FPGA's JTAG IDCODE, eight hex digits |
 | `boards.<board>.baud` | The board UART rate of this project's image, 9600 to 12,000,000 |
@@ -54,40 +58,36 @@ nand2doom's `n2d_play.py` and `n2d_jtag_keyboard.py`, and nand2mario's `n2m_boar
 
 `keys.py` maps each physical key, by its X11 keysym name, to its PS/2 Set-2 make and break codes, so the program decides what a key means. The keys covered are the letters, digits and punctuation, Space, Enter, Tab, Escape, Backspace, both Shifts, both Ctrls, both Alts, Caps Lock, F1 to F12, the arrows, Home, End, Page Up, Page Down, Insert, Delete and keypad Enter (E0-prefixed where Set-2 says). A shifted character names the key it was typed on. Keys outside the table are dropped.
 
-`TerminalKeys` turns terminal input into press, repeat and release events. Under the kitty keyboard protocol (flags 1, 2 and 8: every key, modifiers included, as an escape code with its event type) a key's release is its own event. Plain terminal bytes carry presses only: printable characters, Enter, Tab, Backspace, the CSI and SS3 forms of the arrows, Home, End, F1 to F12 and the `~` keys, and a lone Escape once 50 ms pass with nothing after it. Ctrl+] (byte `0x1d`, or kitty `CSI 93;5u`) is the leave event, never a board key.
+`TerminalKeys` turns terminal input into press, repeat, release and tap events. Under the kitty keyboard protocol (flags 1, 2 and 8: every key, modifiers included, as an escape code with its event type) a key's release is its own event. Plain terminal bytes and SS3 sequences carry no release, so they are taps: printable characters, Enter, Tab, Backspace, SS3 F1 to F4, and a lone Escape once 50 ms pass with nothing after it. A kitty terminal can still send some keys plainly (one in front of foot sent X, Z and Space as bare characters while arrows and Enter came with releases), and those are taps too. Ctrl+] (byte `0x1d`, or kitty `CSI 93;5u`) is the leave event, never a board key.
 
-`KeyState` sends one make when a key goes down and ignores repeats while it is held, and one break on its release. `TimedKeys`, for a terminal without releases, holds a key while it repeats and breaks it 150 ms after its last press or repeat; a held key therefore breaks once during the terminal's initial repeat delay. Leaving play mode breaks every held key. The bytes go through one common JTAG keyboard session (`Session`, `send_all`), in order. A key with no session connected is reported in the log, not sent.
+`KeyState` sends one make when a key goes down and ignores repeats while it is held, and one break on its release. A tap makes the key and breaks it 150 ms after the last tap of it, so a key the terminal reports without a release is never left held. `TimedKeys`, for a terminal without the protocol, treats every press as a tap: a key is held while it repeats, and breaks once during the terminal's initial repeat delay. Leaving play breaks every held key. The bytes go through one common JTAG keyboard session (`Session`, `send_all`), in order.
 
-## Terminal UI
+## Console
 
-`board.py` with no command (or `tui`) takes over the terminal: raw mode, the alternate screen, restored on exit. It asks the terminal for the kitty keyboard flags followed by primary attributes, which every terminal answers; a flags reply first means the protocol is used, and the log's first lines say which. Bytes typed while it waits are kept as input.
+`board.py` with no command (or `tui`) opens the console, a Textual app. Its controls, top to bottom:
 
-Every option is on the screen with its key, beside the value it acts on, so nothing has to be remembered. Top to bottom: the mode (command or play); **Setup**: the board (`project/board`, IDCODE), the SOF (marked when not built), the project's program file, the UART port and rate; **JTAG keyboard**: the cable check, the keyboard state (not connected, connecting, connected on which cable, or failed with the reason), the last key sent with how many of its bytes the board accepted and the count sent, and whether the terminal reports key releases; **Next**: what to do now, from the cable check and the keyboard state; then the log: every command run and its output, and every error.
+1. **Project** and **Board** drop-down lists, and the **UART port**. The console opens on the board `--project`/`--board` name; without them, one bounded `jtagconfig` run selects the board whose IDCODE is alone on the one chain, and among projects on that board the one with the most recently built SOF. If that start-up choice was a fallback (the chain was busy, say), the first cable check that fails looks again and moves to the detected board. The UART port comes from `--port`, or is the USB serial adapter when there is exactly one; `serial_ports` lists only USB adapters, FTDI first, never built-in `ttyS` ports.
+2. **FPGA image** and the project's program file (its `program.label`), prefilled with the board's SOF and `program.default`.
+3. **Get <project> running on the <BOARD>**: four steps, each with a light (grey to do, yellow running, green done, red failed), what it found, and on a failure one plain line of what to do:
+   1. **Cable**: `check_chain` (one bounded `jtagconfig` run) turns each state into a finding and a fix: `jtagconfig` missing (put Quartus on `PATH` or pass `--quartus-bin`), port permissions (install the [udev rule](../toolchain/spec.md#boards)), the chain in use by another program, no cable, several cables, no device (board off), a different board's IDCODE, or a match. It runs at start-up and on every board change.
+   2. **FPGA programmed**: programs the SOF; a missing SOF names the `bazel build //src/<project>:<board>_image` command.
+   3. **Program loaded**: runs the project's loader over the UART port; a missing port lists the adapters found, and a loader failure points at programming and the UART wires.
+   4. **Keyboard**: opens the JTAG keyboard session on the device found by IDCODE.
+4. **Next**: one button (or `n`) that runs the first step not green, then Play.
+5. **Buttons** for every step, **Test key** (one Space press and release; the line under the buttons shows how many of its bytes the board accepted), **Play** (`g`) and **Show log** (`l`), which shows or hides every command run and its output.
 
-The cable check (`check_chain`, one bounded `jtagconfig` run, at start-up, on `c`, on a board change and before every keyboard connect) turns each state into a finding and a next step: `jtagconfig` missing (put Quartus on `PATH` or pass `--quartus-bin`), port permissions (install the [udev rule](../toolchain/spec.md#boards)), the chain in use by another program, no cable, several cables, no device (board off), a different board's IDCODE (press `b`), or a match. While this console's keyboard is connected it holds the chain, so the check reports that instead of running.
+Changing the board closes the keyboard, clears the steps and checks the cable. One worker thread runs the actions and key sends in order and returns results through a queue the app drains, so the screen never blocks. Programming closes the keyboard session first, because `quartus_pgm` needs the cable alone. A failed key send closes the session and turns the Keyboard step red.
 
-The console opens on the board `--project`/`--board` name; without them, one bounded `jtagconfig` run selects the board whose IDCODE is alone on the one chain, and among projects on that board the one with the most recently built SOF. With no cable, several cables or devices, or an unknown IDCODE it opens on the first board. The log says which board was selected and why. A start-up board the chain did not confirm (the chain was busy, say) is replaced by the detected one after the first cable check that fails, until the user picks a board. Arrow and function keys pressed in command mode are ignored, and a log line repeated at once is counted (`(x3)`) instead of repeated. The UART port comes from `--port`, or is the port when pyserial lists exactly one.
+## Play
 
-| Key | Action |
-|---|---|
-| `p` | Program the SOF into the board |
-| `l` | Load the program file over the UART port with the project's loader |
-| `c` | Check the cable again |
-| `k` | Connect (or, when connected, reconnect) the JTAG keyboard: check the cable, find the device by IDCODE and open the session |
-| `t` | Test the keyboard: send one Space press and release (connecting first if needed) and show how many bytes the board accepted |
-| `i` | Play: connect the keyboard if it is not, then forward every key press and release to the board until Ctrl+]. Under the kitty protocol the console pushes flags 1, 2 and 8 on entry and pops them on leaving |
-| `b` | The next board whose IDCODE is the one the cable showed (every board until a check has matched one); its SOF and program file are filled in, and a connected keyboard reconnects to it, else the cable is checked |
-| `s`, `f`, `u` | Edit the SOF path, the program file or the UART port on the key line (Enter keeps, Esc cancels). A SOF whose file name is one board's default SOF selects that board |
-| `q`, Ctrl+C | Quit, closing the keyboard session |
+Play connects the keyboard if needed, then hands the whole terminal to `play.py` until Ctrl+]. It asks the terminal for the kitty keyboard flags followed by primary attributes, which every terminal answers; a flags reply first means the protocol is used (flags 1, 2 and 8 pushed on entry, popped on leaving), and the screen says which. When the project declares a `pad`, play draws a generic handheld controller (D-pad, A, B, Select, Start): a button lights while its key is held, from the keyboard or from the mouse, and a left click on a button (xterm SGR mouse reporting) makes its key on the board until the button is released. Other keys are forwarded too. On leaving, every held key breaks and what the terminal still sends for 150 ms is discarded, so the console never reads play-mode escape codes.
 
-One worker thread runs the actions and the key sends in order, so the screen never blocks. Programming closes the keyboard session first, because `quartus_pgm` needs the cable alone. After programming, the user loads the program and connects the keyboard again. A failed key send closes the session and logs why.
-
-`tools/board/tests/test_tui.py` drives the console through a pseudo-terminal against a fake board, answering the protocol query as a kitty terminal and as a plain one.
+`tools/board/tests/test_tui.py` drives play through a pseudo-terminal (as a kitty and as a plain terminal, with keys and pad clicks) and the console with Textual's pilot against a fake board.
 
 ## Command line
 
 ```
-board.py [tui] [--project X] [--board B] [--port P]   the terminal console (default)
+board.py [tui] [--project X] [--board B] [--port P]   the console (default)
 board.py list                                projects, boards, built SOFs, default programs, serial ports
 board.py program --project X --board B [--sof S] [--cable C] [--yes]
 board.py load    --project X --board B [--program F] --port P [--yes]

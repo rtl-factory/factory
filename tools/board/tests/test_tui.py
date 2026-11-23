@@ -1,12 +1,14 @@
-"""Terminal console: terminal key parsing (kitty protocol and plain bytes), the
-timed keys of a terminal without releases, and the console driven through a
-pseudo-terminal against a fake board: program, load, and play forwarding
-make and break codes until Ctrl+] leaves."""
+"""Board console: terminal key parsing (kitty protocol and plain bytes), key
+state with taps, play mode through a pseudo-terminal (keys, mouse clicks on
+the pad, Ctrl+]), and the console app driven by Textual's pilot against a fake
+board: the four steps, their failures with a fix, and the next-step button."""
+import asyncio
 import os
 from pathlib import Path
 import pty
 import select
 import sys
+import tempfile
 import threading
 import time
 import unittest
@@ -15,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from tools.board import board as console  # noqa: E402
-from tools.board import keys, tui  # noqa: E402
+from tools.board import keys, play  # noqa: E402
 from tools.board.tests.test_board import CONFIG  # noqa: E402
 
 
@@ -33,21 +35,90 @@ class TerminalKeysTests(unittest.TestCase):
         self.assertEqual(t.feed(b"\x1d\x1b[93;5u\x1b[93;5:3u", 0.0),
                          [(keys.CTRL_RIGHT_BRACKET, ""), (keys.CTRL_RIGHT_BRACKET, "")])
 
-    def test_plain_bytes_are_presses_and_a_lone_escape_waits(self):
+    def test_plain_bytes_are_taps_and_a_lone_escape_waits(self):
         t = keys.TerminalKeys(escape_wait=0.05)
         self.assertEqual(t.feed(b"Xz\r\x1b[A\x1bOP{", 0.0),
-                         [("press", "x"), ("press", "z"), ("press", "Return"), ("press", "Up"),
-                          ("press", "F1"), ("press", "bracketleft")])
+                         [("tap", "x"), ("tap", "z"), ("tap", "Return"), ("press", "Up"),
+                          ("tap", "F1"), ("tap", "bracketleft")])
         self.assertEqual(t.feed(b"\x1b", 1.0), [])
-        self.assertEqual(t.feed(b"", 1.1), [("press", "Escape")])
+        self.assertEqual(t.feed(b"", 1.1), [("tap", "Escape")])
         self.assertEqual(t.feed(b"\x1b[", 2.0) + t.feed(b"B", 2.01), [("press", "Down")])
 
-    def test_timed_keys_hold_while_repeating_then_break(self):
-        state = keys.TimedKeys(quiet=0.15)
-        self.assertEqual(state.press("x", 0.0), bytes([0x22]))
-        self.assertEqual(state.press("x", 0.1) + state.flush(0.2), b"")
+    def test_a_tap_breaks_after_its_quiet_time_and_never_sticks(self):
+        state = keys.KeyState(quiet=0.15)
+        self.assertEqual(state.tap("x", 0.0), bytes([0x22]))
+        self.assertEqual(state.tap("x", 0.1) + state.flush(0.2), b"")
         self.assertEqual(state.flush(0.26), bytes([0xF0, 0x22]))
-        self.assertEqual(state.press("Up", 1.0) + state.release_all(), bytes([0xE0, 0x75, 0xE0, 0xF0, 0x75]))
+        self.assertEqual(state.tap("x", 1.0), bytes([0x22]), "a second tap makes the key again")
+        self.assertEqual(state.press("Up", 1.0) + state.release("Up", 1.01) + state.flush(1.01),
+                         bytes([0xE0, 0x75, 0xE0, 0xF0, 0x75]))
+
+    def test_timed_keys_treat_every_press_as_a_tap(self):
+        state = keys.TimedKeys(quiet=0.15)
+        self.assertEqual(state.press("x", 0.0) + state.flush(0.2), bytes([0x22, 0xF0, 0x22]))
+
+
+class Terminal:
+    """A pseudo-terminal that plays the user and answers the protocol query."""
+
+    def __init__(self, kitty: bool):
+        self.master, self.slave = pty.openpty()
+        self.kitty, self.screen = kitty, bytearray()
+
+    def pump(self, seconds: float, until: bytes | None = None):
+        deadline = time.monotonic() + seconds
+        while time.monotonic() < deadline and not (until and until in self.screen):
+            if select.select([self.master], [], [], 0.02)[0]:
+                self.screen += os.read(self.master, 65536)
+                if b"\x1b[c" in self.screen[-64:]:
+                    os.write(self.master, (b"\x1b[?0u" if self.kitty else b"") + b"\x1b[?62;22c")
+                    self.screen += b"<answered>"
+
+    def type(self, data: bytes, wait: float = 0.05):
+        os.write(self.master, data)
+        self.pump(wait)
+
+    def close(self):
+        os.close(self.master)
+        os.close(self.slave)
+
+
+class PlayTests(unittest.TestCase):
+    PAD = {"Up": "Up", "A": "x", "B": "z", "Start": "Return", "Select": "space"}
+
+    def run_play(self, kitty, script):
+        term, sent, result = Terminal(kitty), [], {}
+        thread = threading.Thread(target=lambda: result.update(count=play.play(
+            lambda codes, label: sent.append(bytes(codes)), "demo", pad=self.PAD,
+            fd_in=term.slave, fd_out=term.slave)), daemon=True)
+        thread.start()
+        term.pump(2, b"PLAYING")
+        for data, wait in script:
+            term.type(data, wait)
+        thread.join(3)
+        term.close()
+        self.assertFalse(thread.is_alive())
+        return b"".join(sent), result["count"], bytes(term.screen)
+
+    def test_kitty_keys_and_pad_clicks_make_and_break_and_light_the_pad(self):
+        row, col = play.PAD_TOP + 2 + 1, play.PAD_LEFT + 45 + 2
+        sent, count, screen = self.run_play(True, [
+            (b"\x1b[120u", 0.05), (b"\x1b[120;1:3u", 0.05), (b"\x1b[1;1:1A", 0.05),
+            (f"\x1b[<0;{col};{row}M".encode(), 0.05), (f"\x1b[<0;{col};{row}m".encode(), 0.05),
+            (b"\x1b[93;5u", 0.3)])
+        self.assertEqual(sent, bytes([0x22, 0xF0, 0x22, 0xE0, 0x75, 0x22, 0xF0, 0x22, 0xE0, 0xF0, 0x75]))
+        self.assertEqual(count, 3)
+        self.assertIn(b"\x1b[30;42m", screen, "a held button is drawn lit")
+        self.assertIn(b"A (click)", screen)
+
+    def test_kitty_terminal_sending_a_key_plainly_still_breaks_it(self):
+        sent, _, _ = self.run_play(True, [(b"x", 0.3), (b"x", 0.3), (b"\x1b[93;5u", 0.3)])
+        self.assertEqual(sent, bytes([0x22, 0xF0, 0x22]) * 2)
+
+    def test_plain_terminal_releases_after_the_repeats_stop(self):
+        sent, _, screen = self.run_play(False, [(b"z", 0.3), (b"\x1d", 0.3)])
+        self.assertEqual(sent, bytes([0x1A, 0xF0, 0x1A]))
+        self.assertIn(b"no key releases", screen)
 
 
 class FakeKeyboard:
@@ -56,29 +127,39 @@ class FakeKeyboard:
 
     def send(self, codes):
         self.sent.append(bytes(codes))
+        return len(codes)
 
     def close(self):
         return "closed"
 
 
 class FakeBoard:
-    """The console's board actions, recorded."""
+    """The console's board actions, recorded; `fail` names steps that raise."""
     resolve_path = staticmethod(console.resolve_path)
-    board_for_sof = staticmethod(console.board_for_sof)
 
-    def __init__(self):
-        self.calls, self.sent = [], []
+    def __init__(self, fail=()):
+        self.calls, self.sent, self.fail = [], [], set(fail)
 
-    def program(self, board, sof, quartus_bin=None, out=print):
-        self.calls.append(("program", board.key, sof.name))
-        out("programmed")
-
-    def load(self, board, program, port, out=print):
-        self.calls.append(("load", board.key, program.name, port))
+    def serial_ports(self):
+        return ["/dev/ttyUSB7"]
 
     def check_chain(self, boards, board, quartus_bin=None):
         self.calls.append(("check", board.key))
+        if "cable" in self.fail:
+            return False, "no JTAG cable found", "plug in the board's USB-Blaster"
         return True, f"USB-Blaster [1-1]: {board.idcode}, matches {board.key}", "press k"
+
+    def program(self, board, sof, quartus_bin=None, out=print):
+        self.calls.append(("program", board.key, sof.name))
+        if "program" in self.fail:
+            raise console.BoardError("quartus_pgm exited 1")
+        out("programmed")
+        return "USB-Blaster [1-1]"
+
+    def load(self, board, program, port, out=print):
+        self.calls.append(("load", board.key, program.name, port))
+        if "load" in self.fail:
+            raise console.BoardError("loader exited 1")
 
     def jtag_device(self, board, quartus_bin=None):
         self.calls.append(("connect", board.key))
@@ -88,122 +169,77 @@ class FakeBoard:
         return FakeKeyboard(self.sent)
 
 
-class ConsoleTests(unittest.TestCase):
-    def drive(self, kitty, script):
-        """Run the console on a pseudo-terminal; the test is the terminal."""
-        boards = {b.key: b for b in console.parse_config(CONFIG, "demo")}
-        board = next(iter(boards.values()))
-        master, slave = pty.openpty()
+class ConsoleAppTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        tmp = Path(self.tmp.name)
+        (tmp / "demo.sof").write_bytes(b"sof")
+        (tmp / "game.bin").write_bytes(b"game")
+        config = {**CONFIG, "program": {**CONFIG["program"], "default": str(tmp / "game.bin")},
+                  "boards": {"de2_115": {**CONFIG["boards"]["de2_115"], "sof": str(tmp / "demo.sof")}}}
+        self.board = console.parse_config(config, "demo")[0]
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def drive(self, fake, presses, port="/dev/ttyUSB7", plays=None):
+        from tools.board import tui
+        plays = [] if plays is None else plays
+        app = tui.BoardConsole({self.board.key: self.board}, (self.board, "selected"), port=port,
+                               actions=fake, play_fn=lambda send, title, pad=None: plays.append(title) or 0)
+
+        async def run():
+            async with app.run_test(size=(120, 40)) as pilot:
+                await pilot.pause(0.3)
+                for key in presses:
+                    await (pilot.click(key) if key.startswith("#") else pilot.press(key))
+                    await pilot.pause(0.3)
+        asyncio.run(run())
+        return app
+
+    def test_next_step_walks_cable_program_load_keyboard(self):
         fake = FakeBoard()
-        app = tui.Console(boards, (board, "selected demo/de2_115"), port="/dev/ttyFAKE",
-                          fd_in=slave, fd_out=slave, actions=fake)
-        thread = threading.Thread(target=app.run, daemon=True)
-        thread.start()
-        screen = bytearray()
+        app = self.drive(fake, ["n", "n", "n"])
+        self.assertEqual([c[0] for c in fake.calls], ["check", "program", "load", "connect"])
+        self.assertEqual({n: s.state for n, s in app.steps.items()},
+                         {"cable": "ok", "program": "ok", "load": "ok", "keyboard": "ok"})
+        self.assertIsNone(app.next_name())
 
-        def read_until(token, seconds=3.0):
-            deadline = time.monotonic() + seconds
-            while token not in screen and time.monotonic() < deadline:
-                if select.select([master], [], [], 0.02)[0]:
-                    screen.extend(os.read(master, 65536))
-            self.assertIn(token, screen)
+    def test_a_failed_step_is_red_with_a_fix_and_stays_next(self):
+        app = self.drive(FakeBoard(fail={"program"}), ["n"])
+        step = app.steps["program"]
+        self.assertEqual((step.state, app.next_name()), ("fail", "program"))
+        self.assertIn("quartus_pgm exited 1", step.detail)
+        self.assertIn("Cable", step.fix)
+        app = self.drive(FakeBoard(fail={"cable"}), [])
+        self.assertEqual(app.steps["cable"].fix, "plug in the board's USB-Blaster")
 
-        read_until(b"\x1b[c")
-        os.write(master, (b"\x1b[?0u" if kitty else b"") + b"\x1b[?62;22c")
-        for data, expect in script:
-            screen.clear()
-            os.write(master, data)
-            if expect:
-                read_until(expect)
-            time.sleep(0.25)
-        thread.join(5)
-        os.close(master)
-        os.close(slave)
-        self.assertFalse(thread.is_alive())
-        return fake, app
-
-    def test_program_load_and_kitty_play_send_make_and_break(self):
-        fake, app = self.drive(True, [
-            (b"p", b"programmed"), (b"l", None),
-            (b"i", b"PLAY"), (b"\x1b[120u", None), (b"\x1b[120;1:2u", None), (b"\x1b[120;1:3u", None),
-            (b"\x1b[1;1:1A", None), (b"\x1b[93;5u", b"play: left"), (b"q", None)])
-        self.assertEqual(fake.calls, [("check", "demo/de2_115"), ("program", "demo/de2_115", "demo.sof"),
-                                      ("load", "demo/de2_115", "", "/dev/ttyFAKE"),
-                                      ("check", "demo/de2_115"), ("connect", "demo/de2_115")])
-        self.assertEqual(app.last_key, "release held keys -> board took 3/3 bytes (e0 f0 75)")
-        self.assertEqual(b"".join(fake.sent), bytes([0x22, 0xF0, 0x22, 0xE0, 0x75, 0xE0, 0xF0, 0x75]))
-        self.assertTrue(app.kitty)
-
-    def test_plain_terminal_play_breaks_after_the_repeats_stop(self):
-        fake, app = self.drive(False, [(b"i", b"presses only"), (b"x", None), (b"\x1d", b"play: left"),
-                                       (b"q", None)])
-        self.assertFalse(app.kitty)
-        self.assertEqual(b"".join(fake.sent), bytes([0x22, 0xF0, 0x22]))
-
-    def test_test_key_and_the_screen_show_the_link(self):
-        fake, app = self.drive(True, [(b"t", b"test Space"), (b"q", None)])
-        self.assertEqual(b"".join(fake.sent), bytes([0x29, 0xF0, 0x29]))
-        screen = "\n".join(app.lines(120, 40))
-        for text in ("[c] Cable", "matches demo/de2_115", "[k] Reconnect connected", "(1 sent)", "Next: press i"):
-            self.assertIn(text, screen)
-
-    def test_keys_without_a_keyboard_are_reported(self):
-        sent = []
-        worker = tui.Worker(lambda kind, value: sent.append((kind, value)))
-        worker.send(b"\x22", "x press")
-        self.assertEqual(sent, [("sent", ("x press", "dropped: keyboard not connected"))])
-
-    def test_command_mode_ignores_escape_sequences_and_repeats_collapse(self):
-        boards = {b.key: b for b in console.parse_config(CONFIG, "demo")}
-        fake = FakeBoard()
-        app = tui.Console(boards, None, fd_in=0, fd_out=1, actions=fake)
-        app.on_bytes(b"\x1b[C\x1b[1;5C\x1bOP\x1b[A", 0.0)
-        time.sleep(0.2)
-        self.assertEqual(fake.calls, [])
-        for _ in range(3):
-            app.note("cable: same")
-        self.assertEqual(list(app.log)[-1], "cable: same (x3)")
-
-    def test_an_unconfirmed_start_board_follows_the_chain_and_a_board_change_clears_the_keyboard(self):
-        demo = console.parse_config(CONFIG, "demo")[0]
+    def test_an_unconfirmed_start_board_moves_to_the_board_on_the_cable(self):
+        from tools.board import tui
         other = console.parse_config({**CONFIG, "project": "other"}, "other")[0]
-        boards = {demo.key: demo, other.key: other}
-        fake = FakeBoard()
+        fake = FakeBoard(fail={"cable"})
         fake.detect_board = lambda boards, quartus_bin=None: (other, "USB-Blaster [1-1]: IDCODE 020F70DD is de2_115")
-        app = tui.Console(boards, (demo, "found 0 JTAG cable(s); opened on demo/de2_115; choose the board"),
-                          fd_in=0, fd_out=1, actions=fake)
-        app.keyboard, app.keyboard_detail = "failed", "expected 031050DD"
-        app.events.put(("cable", (demo, (False, "chain in use", "close it"))))
-        deadline = time.monotonic() + 2
-        while app.board.key != "other/de2_115" and time.monotonic() < deadline:
-            app.tick(0.0)
-            time.sleep(0.02)
-        self.assertEqual((app.board.key, app.keyboard, app.follow), ("other/de2_115", "off", False))
+        app = tui.BoardConsole({self.board.key: self.board, other.key: other},
+                               (self.board, "opened on demo/de2_115; choose the board"), actions=fake)
 
-    def test_board_key_cycles_the_boards_on_the_cable_and_reconnects(self):
-        demo = console.parse_config(CONFIG, "demo")[0]
-        lite = {**CONFIG, "project": "lite",
-                "boards": {"de10_lite": {"idcode": "031050DD", "baud": 2000000, "sof": "x.sof"}}}
-        other = console.parse_config({**CONFIG, "project": "other"}, "other")[0]
-        boards = {b.key: b for b in [demo, other, *console.parse_config(lite, "lite")]}
-        fake = FakeBoard()
-        app = tui.Console(boards, (demo, "USB-Blaster [1-1]: IDCODE 020F70DD is de2_115"), fd_in=0, fd_out=1,
-                          actions=fake)
-        app.keyboard = "on"
-        app.on_char("b")
-        self.assertEqual(app.board.key, "other/de2_115")
-        app.on_char("b")
-        self.assertEqual(app.board.key, "demo/de2_115")
-        time.sleep(0.3)
-        self.assertIn(("connect", "other/de2_115"), fake.calls)
+        async def run():
+            async with app.run_test(size=(120, 40)) as pilot:
+                await pilot.pause(0.6)
+        asyncio.run(run())
+        self.assertEqual((app.board.key, app.follow), ("other/de2_115", False))
 
-    def test_hints_follow_the_cable_and_the_keyboard(self):
-        boards = {b.key: b for b in console.parse_config(CONFIG, "demo")}
-        app = tui.Console(boards, None, fd_in=0, fd_out=1, actions=FakeBoard())
-        app.cable = (False, "no JTAG cable found", "plug in the board's USB-Blaster")
-        self.assertEqual(app.hint(), "plug in the board's USB-Blaster")
-        app.cable, app.keyboard = (True, "ok", "press k"), "failed"
-        self.assertIn("press p (program) and l (load)", app.hint())
+    def test_load_without_a_port_names_the_found_ports(self):
+        app = self.drive(FakeBoard(), ["n", "n"], port="")
+        self.assertEqual(app.steps["load"].state, "fail")
+        self.assertIn("/dev/ttyUSB7", app.steps["load"].fix)
+
+    def test_play_connects_first_and_the_test_key_reports_the_board_ack(self):
+        fake, plays = FakeBoard(), []
+        app = self.drive(fake, ["g", "#do_test"], plays=plays)
+        self.assertEqual(plays, ["demo on the DE2_115"])
+        self.assertIn(("connect", "demo/de2_115"), fake.calls)
+        self.assertEqual(fake.sent, [b"\x29\xf0\x29"])
+        self.assertEqual(app.last_key, "Test key (Space): the board took 3 of 3 bytes (29 f0 29)")
 
 
 if __name__ == "__main__":

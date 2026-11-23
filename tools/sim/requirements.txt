@@ -3,3 +3,5 @@
 cocotb==2.1.0
 pytest==9.1.1
 pillow==12.3.0
+# The board console's terminal app (wiki/tools/board/spec.md).
+textual==8.2.8

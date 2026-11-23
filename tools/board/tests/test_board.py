@@ -235,7 +235,9 @@ class LoadTests(unittest.TestCase):
             self.assertIn("loader exited 3", run(["load", "--project", "nand2mario", "--board", "de2_115",
                                                   "--program", image.name, "--port", "p", "--yes"],
                                                  popen=failing)[2])
-        self.assertIn("give --program", run(["load", "--project", "nand2mario", "--board", "de2_115"])[2])
+        self.assertIn("super-mario-land-rev1.gb",
+                      "\n".join(run(["load", "--project", "nand2mario", "--board", "de2_115"])[1]),
+                      "nand2mario's default cartridge is the tracked ROM")
 
 
 class ClosingDevice(Device):

@@ -1,5 +1,6 @@
 load("//tools/bazel:hdl.bzl", "unit_tests")
 load("@rules_python//python:py_library.bzl", "py_library")
+load("@pypi//:requirements.bzl", "requirement")
 load("@rules_python//python:py_test.bzl", "py_test")
 
 # The tools' Python that tests import (tools.board, ...); tools with their own
@@ -12,7 +13,8 @@ py_library(
     visibility = ["//visibility:public"],
 )
 
-unit_tests()
+# Why: the board console's app runs on Textual, so its tests import it.
+unit_tests(deps = [requirement("textual")])
 
 # The comment lint as an L0 test. CI writes the base branch's baseline to
 # workdir/lint/base-baseline.json first; without it the lint checks this tree only.

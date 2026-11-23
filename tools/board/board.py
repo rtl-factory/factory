@@ -29,6 +29,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from tools.board import jtag_chain  # noqa: E402
+from tools.board.keys import key_name  # noqa: E402
 
 SCHEMA = "n2a-board/1"
 PROGRAM_SECONDS = 180
@@ -51,6 +52,7 @@ class Board:
     program_patterns: tuple[str, ...]
     program_default: str
     load: tuple[str, ...]
+    pad: tuple[tuple[str, str], ...] = ()
 
     @property
     def key(self) -> str:
@@ -62,6 +64,9 @@ def parse_config(data: dict, source: str) -> list[Board]:
         raise BoardError(f"{source}: schema must be {SCHEMA}")
     try:
         program, load = data["program"], tuple(data["load"])
+        pad = tuple(data.get("pad", {}).items())
+        if any(key_name(key) is None for _, key in pad):
+            raise BoardError(f"{source}: every pad button must name a console key")
         if not load or not all(isinstance(part, str) for part in load):
             raise BoardError(f"{source}: load must be a nonempty list of strings")
         for part in load:
@@ -76,7 +81,7 @@ def parse_config(data: dict, source: str) -> list[Board]:
             if not 9600 <= baud <= 12_000_000:
                 raise BoardError(f"{source}: {name} baud {baud} outside 9600..12000000")
             boards.append(Board(data["project"], name, idcode, baud, board["sof"], program["label"],
-                                tuple(program["patterns"]), program.get("default", ""), load))
+                                tuple(program["patterns"]), program.get("default", ""), load, pad))
         return boards
     except (KeyError, TypeError, ValueError) as exc:
         raise BoardError(f"{source}: malformed board config: {exc!r}") from exc
@@ -176,13 +181,18 @@ def resolve_path(text: str, root: Path = ROOT) -> Path:
     return path if path.is_absolute() else root / path
 
 
+FTDI_VENDOR = 0x0403
+
+
 def serial_ports() -> list[str]:
-    """Serial devices pyserial sees, stable names first; empty without pyserial."""
+    """USB serial adapters pyserial sees, FTDI cables first; empty without
+    pyserial. Built-in ports (ttyS*) are never a board UART, so they are left out."""
     try:
         from serial.tools import list_ports
     except ImportError:
         return []
-    return sorted(p.device for p in list_ports.comports())
+    usb = [p for p in list_ports.comports() if p.vid is not None]
+    return [p.device for p in sorted(usb, key=lambda p: (p.vid != FTDI_VENDOR, p.device))]
 
 
 def program_plan(board: Board, sof: Path, cable: str | None, quartus_bin: str | None) -> dict:
