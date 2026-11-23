@@ -49,7 +49,7 @@ tWR is checked per bank, on a PRECHARGE of a bank that is open, from that bank's
 | ID | MAS section | Stimulus | Checker | Test | Level |
 |---|---|---|---|---|---|
 | C1 | Latency, row policy | 600 random reads and writes over three rows of every bank, 5% misaligned, random gaps | latency table by row state (taken from the command pins), byte shadow, error with no ACTIVATE on misaligned, close-page idle timing, at least 18 refreshes; the model checks every pin rule | `n2a_sdram_ctrl_line` (nand2doom configuration), `n2a_sdram_ctrl_word` (nand2mario configuration) | L0 |
-| C2 | nand2doom configuration | nand2doom's `sdram_pin_timing_contract` on the bare controller in nand2doom's configuration | that test's pin model, init order, latency and DQM checks; a read with byte enables answers without error | `n2d_sdram_controller` (nand2doom targets) | L0 |
+| C2 | nand2doom configuration | nand2doom's `sdram_pin_timing_contract` on the controller in nand2doom's configuration through `n2d_sdram_ctrl_fixture` | that test's pin model, init order, latency and DQM checks; a read with byte enables answers without error | `n2d_sdram_controller` (nand2doom targets) | L0 |
 | C3 | nand2mario configuration | nand2mario's `sdram_ctrl_contract` through `n2m_sdram_ctrl_fixture` | that test's init clock numbers, latencies, refresh cadence and shadow; `n2m_sdram_refresh_fail` shows the model's refresh deadline check fires | `n2m_sdram_ctrl`, `n2m_sdram_refresh_fail` (nand2mario targets) | L0 |
 
 In-RTL assertions: DQ is driven only in WRITE, ACTIVATE only to a closed bank, REFRESH only with every bank closed, close page leaves no bank open in IDLE, the refresh deadline holds, and a stalled request is stable.

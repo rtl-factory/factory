@@ -32,6 +32,10 @@ load("@rules_python//python:py_test.bzl", "py_test")
 LEVELS = ["L0", "L1", "L2", "L3", "L4"]
 PROJECTS = sorted(SIM_TARGETS.keys())
 
+# The packages every simulation test imports: cocotb, its functional-coverage library
+# and the coverage helper (tools/sim/sim_coverage.py).
+SIM_PYTHON = [requirement("cocotb"), requirement("cocotb-coverage"), "//tools/sim:sim_coverage"]
+
 # Why: a project's HDL is compiled from its sources; everything else in the tree
 # (Python, programs, images, configs) is what a test may read at run time.
 HDL_FILES = ["**/*.sv", "**/*.v", "**/*.svh", "**/*.vh"]
@@ -52,6 +56,8 @@ def _model_impl(ctx):
     args.add("--out", out.path)
     if ctx.attr.waves:
         args.add("--waves")
+    if ctx.attr.coverage:
+        args.add("--coverage")
     verilator_bin = ctx.files._verilator[0].dirname
     ctx.actions.run(
         executable = ctx.executable._sim,
@@ -74,6 +80,7 @@ verilator_model = rule(
     implementation = _model_impl,
     doc = "A target's Verilator model, built by tools/sim/sim.py build-model.",
     attrs = {
+        "coverage": attr.bool(doc = "Build with Verilator's --coverage."),
         "headers": attr.label_list(allow_files = True, doc = "Include files the sources may `include."),
         "spec": attr.label(allow_single_file = [".json"], mandatory = True),
         "srcs": attr.label_list(allow_files = True, mandatory = True),
@@ -183,6 +190,10 @@ def hdl_project(name):
                     "//tools/bazel:waves_on": True,
                     "//conditions:default": False,
                 }),
+                coverage = select({
+                    "//tools/bazel:coverage_on": True,
+                    "//conditions:default": False,
+                }),
             )
         model = ":" + models[key]
         py_test(
@@ -198,9 +209,12 @@ def hdl_project(name):
             ] + select({
                 "//tools/bazel:waves_on": ["--waves"],
                 "//conditions:default": [],
+            }) + select({
+                "//tools/bazel:coverage_on": ["--coverage"],
+                "//conditions:default": [],
             }),
-            data = [model, ":%s.spec" % target_name, "@verilator//:verilator"],
-            deps = python + [requirement("cocotb")],
+            data = [model, ":%s.spec" % target_name, "@verilator//:verilator", "@verilator//:verilator_coverage"],
+            deps = python + SIM_PYTHON,
             env = {
                 "SIM_PATH_PREPEND": "$(rootpaths @verilator//:verilator)",
                 "SIM_ROOT": ".",
@@ -240,11 +254,15 @@ def _wrapped_test(target_name, project, tags, timeout, python):
             "//tools/sim:all_files",
             "//tools/bazel:hdl_libraries.py",
             "@verilator//:verilator",
+            "@verilator//:verilator_coverage",
         ],
-        deps = python + [requirement("cocotb"), requirement("pillow")],
-        env = select({
-            "//tools/bazel:waves_on": {"SIM_PATH_PREPEND": "$(rootpaths @verilator//:verilator)", "SIM_WAVES": "1"},
-            "//conditions:default": {"SIM_PATH_PREPEND": "$(rootpaths @verilator//:verilator)"},
+        deps = python + SIM_PYTHON + [requirement("pillow")],
+        env = {"SIM_PATH_PREPEND": "$(rootpaths @verilator//:verilator)"} | select({
+            "//tools/bazel:waves_on": {"SIM_WAVES": "1"},
+            "//conditions:default": {},
+        }) | select({
+            "//tools/bazel:coverage_on": {"SIM_COVERAGE": "1"},
+            "//conditions:default": {},
         }),
         # Why: the wrapper builds its program and writes under the checkout's workdir/,
         # which a sandbox would forbid and a cache would not see, so it always reruns.
@@ -269,8 +287,7 @@ def unit_tests(deps = []):
             args = [native.package_name() + "/" + folder],
             data = native.glob([folder + "/**"]) + ["@verilator//:verilator"],
             env = {"UNIT_PATH_PREPEND": "$(rootpaths @verilator//:verilator)"},
-            deps = deps + ["//src/%s:python" % p for p in PROJECTS] + ["//tools:python"] + [
-                requirement("cocotb"),
+            deps = deps + ["//src/%s:python" % p for p in PROJECTS] + ["//tools:python"] + SIM_PYTHON + [
                 requirement("pillow"),
                 requirement("pytest"),
             ],

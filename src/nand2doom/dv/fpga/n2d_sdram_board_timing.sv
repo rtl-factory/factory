@@ -37,5 +37,5 @@ module n2d_sdram_board_timing (
     assign sdram_dq_i = dq;
     assign device_data_o = dq;
     logic idle_o;
-    n2a_sdram_ctrl #(.BURST_BEATS(8), .OPEN_ROW(1'b1), .ROW_XOR_BANK(1'b1), .INIT_WAIT_MIN(2)) u_controller (.*);
+    n2d_sdram_ctrl_fixture u_controller (.*);
 endmodule

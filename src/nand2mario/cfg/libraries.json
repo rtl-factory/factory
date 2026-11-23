@@ -490,7 +490,8 @@
       "deps": [
         "macros",
         "n2a_sdram_ctrl",
-        "n2m_cartridge_pkg"
+        "n2m_cartridge_pkg",
+        "n2m_sdram_backing_pkg"
       ],
       "srcs": [
         "src/nand2mario/rtl/storage/n2m_sdram_backing.sv"
@@ -506,10 +507,16 @@
         "src/nand2mario/dv/storage/n2m_sdram_backing_fixture.sv"
       ]
     },
+    "n2m_sdram_backing_pkg": {
+      "srcs": [
+        "src/nand2mario/rtl/storage/n2m_sdram_backing_pkg.sv"
+      ]
+    },
     "n2m_sdram_ctrl_fixture": {
       "deps": [
         "n2a_sdram_ctrl",
-        "n2a_sdram_model"
+        "n2a_sdram_model",
+        "n2m_sdram_backing_pkg"
       ],
       "srcs": [
         "src/nand2mario/dv/storage/n2m_sdram_ctrl_fixture.sv"

@@ -128,7 +128,7 @@ module n2d_halt_sdram #(
     logic controller_idle_unused;
     assign controller_idle_unused = controller_idle;
     /* verilator lint_on UNUSEDSIGNAL */
-    n2a_sdram_ctrl #(.BURST_BEATS(8), .OPEN_ROW(1'b1), .ROW_XOR_BANK(1'b1), .INIT_WAIT_MIN(2)) u_controller (
+    n2d_sdram_ctrl_fixture u_controller (
         .clk_i, .reset_i,
         .request_valid_i(line_valid_o && !stall_i && !reject),
         .request_ready_o(controller_ready),

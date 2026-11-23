@@ -318,20 +318,14 @@
     "n2d_sdram_controller": {
       "kind": "cocotb",
       "description": "The common SDRAM controller in the nand2doom configuration (25 MHz x16 SDRAM) against the nand2doom pin contract",
-      "top": "n2a_sdram_ctrl",
+      "top": "n2d_sdram_ctrl_fixture",
       "clock_hz": 25000000,
       "timeout_seconds": 30,
       "test_module": "src.nand2doom.dv.memory.test_n2d_sdram_controller",
       "testcase": "sdram_pin_timing_contract",
       "default_seed": 31,
       "max_cycles": 12000,
-      "level": "L0",
-      "parameters": {
-        "BURST_BEATS": 8,
-        "OPEN_ROW": 1,
-        "ROW_XOR_BANK": 1,
-        "INIT_WAIT_MIN": 2
-      }
+      "level": "L0"
     },
     "n2d_icache": {
       "kind": "cocotb",

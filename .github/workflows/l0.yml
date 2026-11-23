@@ -47,7 +47,7 @@ jobs:
         if: runner.environment == 'github-hosted'
         id: pin
         run: |
-          python3 -I -c 'import json; v = json.load(open("cfg/toolchain.json"))["verilator"]; [print(k + "=" + v[k]) for k in ("version", "tag", "repository")]' >> "$GITHUB_OUTPUT"
+          python3 -I -c 'import json; v = json.load(open("cfg/toolchain.json"))["verilator"]; [print(k + "=" + v[k]) for k in ("version", "tag", "commit", "repository")]' >> "$GITHUB_OUTPUT"
 
       - name: Restore Verilator
         if: runner.environment == 'github-hosted'
@@ -64,6 +64,8 @@ jobs:
           sudo apt-get install -y -qq bison flex libfl-dev help2man zlib1g-dev
           git clone --depth 1 --branch "${{ steps.pin.outputs.tag }}" "${{ steps.pin.outputs.repository }}" "$RUNNER_TEMP/verilator-src"
           cd "$RUNNER_TEMP/verilator-src"
+          # Why: a tag can be moved; the pinned commit is the checksum of the source.
+          test "$(git rev-parse HEAD)" = "${{ steps.pin.outputs.commit }}" || { echo "v${{ steps.pin.outputs.version }} is not commit ${{ steps.pin.outputs.commit }}"; exit 1; }
           autoconf
           ./configure --prefix="$HOME/verilator"
           make -j"$(nproc)"
