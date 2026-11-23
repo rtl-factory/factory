@@ -24,9 +24,9 @@ MAGIC = 0x4D41324E
 FIXED_IDENT_WORDS = 5
 
 IDENTIFY, HOLD, RELEASE, ENTRY, WRITE, READ, DIGEST = 0x01, 0x02, 0x03, 0x04, 0x10, 0x11, 0x12
-# Largest Digest range in bytes: the 16-bit length field, whole words.
+# Why: the 16-bit length field, in whole words, bounds a Digest range.
 DIGEST_MAX_LENGTH = 0xFFFC
-# Identify word 2 bit: the endpoint answers Digest.
+# Ref: wiki/src/common/scripts/uart_mem/spec.md "Commands": Identify word 2 bit 2.
 CAP_DIGEST = 0x4
 
 STATUS_NAMES = {
