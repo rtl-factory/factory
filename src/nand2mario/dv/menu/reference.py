@@ -1,4 +1,4 @@
-"""Independent menu frame reference: the layout rules of wiki/src/nand2mario/sw/HAS.md.
+"""Independent menu frame reference: the layout rules of wiki/src/nand2mario/rtl/has.md#top-level-behaviour.
 
 The frame is composed from the font's authoritative shade JSON and literal
 layout rules, never from the assembled ROM, its tilemap or DUT output. A

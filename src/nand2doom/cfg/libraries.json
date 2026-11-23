@@ -161,8 +161,8 @@
     },
     "n2d_halt_sdram": {
       "deps": [
-        "n2a_sdram_ctrl",
         "n2d_memory_arbiter",
+        "n2d_sdram_ctrl_fixture",
         "n2d_system"
       ],
       "srcs": [
@@ -252,10 +252,16 @@
       "deps": [
         "macros",
         "n2a_sdram_ctrl",
-        "n2d_memory_arbiter"
+        "n2d_memory_arbiter",
+        "n2d_memory_controller_pkg"
       ],
       "srcs": [
         "src/nand2doom/rtl/memory/n2d_memory_controller.sv"
+      ]
+    },
+    "n2d_memory_controller_pkg": {
+      "srcs": [
+        "src/nand2doom/rtl/memory/n2d_memory_controller_pkg.sv"
       ]
     },
     "n2d_memory_fast_preload_subsystem": {
@@ -440,10 +446,19 @@
     },
     "n2d_sdram_board_timing": {
       "deps": [
-        "n2a_sdram_ctrl"
+        "n2d_sdram_ctrl_fixture"
       ],
       "srcs": [
         "src/nand2doom/dv/fpga/n2d_sdram_board_timing.sv"
+      ]
+    },
+    "n2d_sdram_ctrl_fixture": {
+      "deps": [
+        "n2a_sdram_ctrl",
+        "n2d_memory_controller_pkg"
+      ],
+      "srcs": [
+        "src/nand2doom/dv/memory/n2d_sdram_ctrl_fixture.sv"
       ]
     },
     "n2d_sdram_fast_model": {

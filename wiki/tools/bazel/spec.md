@@ -39,16 +39,17 @@ Two cocotb targets share a model when their top, sources, parameters and public 
 
 ## Model action
 
-`verilator_model` runs `tools/sim/sim.py build-model --spec <spec> --out <dir>` in the sandbox, with only the target's sources, both projects' headers, the spec and Verilator as inputs, `SIM_ROOT=.` so the runner reads the sandbox rather than the checkout, and a fixed `PATH`. The runner builds the model as it always has (cocotb's Verilator flow, or `verilator --binary` for a native target) and deletes everything but the executable, so a cached model holds no object files. Each action reserves two CPUs; Bazel runs as many as fit.
+`verilator_model` runs `tools/sim/sim.py build-model --spec <spec> --out <dir>` in the sandbox, with only the target's sources, both projects' headers, the spec and Verilator as inputs, `SIM_ROOT=.` so the runner reads the sandbox rather than the checkout, a fixed `PATH`, and an empty `OBJCACHE`: a Verilator configured where `ccache` was on `PATH` names it in its `verilated.mk` (`OBJCACHE ?= ccache`), and the model build must not depend on it (`sim.py` sets the same default for builds outside Bazel). The runner builds the model as it always has (cocotb's Verilator flow, or `verilator --binary` for a native target) and deletes everything but the executable, so a cached model holds no object files. Each action reserves two CPUs; Bazel runs as many as fit.
 
 ## Test
 
-A test runs `sim.py run-model --spec <spec> --model <dir>` with every project's Python, the tools' Python (`//tools:python`) and the cocotb package: tests import across projects and tools, so each sees all of it, and any Python change reruns every test (but no model). The runner runs the target's test against the built model under the target's time budget and applies the same verdicts as `sim.py test`, including the expected fatal of a negative target. Logs, `results.xml` and waveforms go to the test's outputs (`bazel-testlogs/<package>/<target>/test.outputs/`); on failure the logs are also printed into `test.log`.
+A test runs `sim.py run-model --spec <spec> --model <dir>` with every project's Python, the tools' Python (`//tools:python`), cocotb, cocotb-coverage and the coverage helper (`//tools/sim:sim_coverage`): tests import across projects and tools, so each sees all of it, and any Python change reruns every test (but no model). The runner runs the target's test against the built model under the target's time budget and applies the same verdicts as `sim.py test`, including the expected fatal of a negative target. Logs, `results.xml`, waveforms and coverage go to the test's outputs (`bazel-testlogs/<package>/<target>/test.outputs/`); on failure the logs are also printed into `test.log`.
 
 The Bazel timeout is the shortest of short, moderate, long and eternal that is at least 30 s over the target's `timeout_seconds`, so the runner's own timeout fires first and names the target. A wrapped target is always `eternal`, and `.bazelrc` raises `eternal` to 10 hours, above the runner's longest budget for a wrapped target (`timeout_seconds` plus the 900 s compile allowance, times four: 9 hours for the game qualification).
 
 - Seed: `--test_env=SIM_SEED=<n>`; otherwise the target's `default_seed`.
 - Waveforms: `--//tools/bazel:waves` rebuilds the models with tracing and passes `--waves`.
+- Code coverage: `--//tools/bazel:coverage` rebuilds the models with Verilator's `--coverage` and passes `--coverage`; each test's coverage files and summary land in its outputs ([sim spec, Coverage](../sim/spec.md#coverage)). The coverage tools (`verilator_coverage` and its binary) are `@verilator//:verilator_coverage`, an input of tests only, so they never rebuild a model. Functional coverage needs no flag: a test that declares it always reports it.
 
 ## Formal test
 
@@ -58,11 +59,11 @@ A formal test runs `tools/fv/fv.py run <target>` with `FV_ROOT` set to its runfi
 
 `unit_tests()` (called in every project package, `//tools`, `//tools/sim` and `//tools/fv`) makes one test per `tests/` folder of its package, named after the folder's owner (`//src/nand2mario:scripts_board.unit`, `//tools:lint.unit`, `//tools/sim:sim.unit`): `tools/bazel/pytest_main.py` runs pytest on that folder with every project's and the tools' Python and the locked packages. Unit tests are tagged `L0`, `unit`, `no-sandbox` and `external`: they read the checkout (registries, wiki pages, programs), some write its `workdir/` or download pinned inputs, and the whole set takes seconds, so they always run rather than being cached. A new `tests/` folder in a package that calls `unit_tests()` becomes a test with no edit; a new package with tests must call it. The strict action PATH has no Verilator, so each unit test gets Bazel's `@verilator` and `pytest_main.py` puts it first on PATH (`UNIT_PATH_PREPEND`).
 
-`//tools:comment_lint` runs the comment lint as an L0 test, tagged `external` and `no-sandbox` because it lists the checkout's tracked files with git. It reads the base branch's baseline from `workdir/lint/base-baseline.json` when that file exists; the L0 job writes it from the pull request's base branch before `bazel test`.
+`//tools:comment_lint` runs the comment lint as an L0 test, tagged `external` and `no-sandbox` because it lists the checkout's tracked files with git. It reads the base branch's baseline from `workdir/lint/base-baseline.json` when that file exists; the L0 job writes it from the pull request's base branch before `bazel test`. `//tools:wiki_refs` runs the wiki reference check the same way, with the same tags.
 
 ## Wrapped targets
 
-A target with a `wrapper` prepares its program image before it runs, so its test runs `sim.py --workdir workdir/bazel/<target> test <target>` unchanged, tagged `external` (always run), `no-sandbox`, `no-cache` and `wrapped`: it builds its own model and writes under the checkout's `workdir/`, and always reruns. `--//tools/bazel:waves` reaches it as `SIM_WAVES=1`, so its waveform lands under `workdir/bazel/<target>/`. This holds until program builds become Bazel actions.
+A target with a `wrapper` prepares its program image before it runs, so its test runs `sim.py --workdir workdir/bazel/<target> test <target>` unchanged, tagged `external` (always run), `no-sandbox`, `no-cache` and `wrapped`: it builds its own model and writes under the checkout's `workdir/`, and always reruns. `--//tools/bazel:waves` reaches it as `SIM_WAVES=1` and `--//tools/bazel:coverage` as `SIM_COVERAGE=1`, so its waveform and coverage land under `workdir/bazel/<target>/`. This holds until program builds become Bazel actions.
 
 ## Libraries
 

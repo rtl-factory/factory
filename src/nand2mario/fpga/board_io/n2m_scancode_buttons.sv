@@ -7,10 +7,10 @@
 // (wiki/src/common/rtl/ps2/mas.md#decoder). An event the map below names sets
 // (make) or clears (break) its button; every other event is ignored. Buttons
 // are active-high in the joypad order
-// (wiki/src/nand2mario/rtl/joypad/mas.md#button-input):
+// (wiki/src/nand2mario/rtl/has.md#block-diagram):
 //   Right/Left/Up/Down: the extended arrow keys; A: X; B: Z;
 //   Select: Space; Start: Enter.
-// Board mapping policy lives in wiki/src/nand2mario/fpga/<board>/board-spec.md.
+// Board mapping policy lives in wiki/src/nand2mario/rtl/has.md#boards.
 module n2m_scancode_buttons (
     input  logic       clk_i,
     input  logic       reset_i,

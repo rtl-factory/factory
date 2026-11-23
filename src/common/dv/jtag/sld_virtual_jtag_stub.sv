@@ -1,6 +1,6 @@
 // Simulation stand-in for the Intel sld_virtual_jtag primitive as instantiated
 // by src/common/rtl/jtag/n2a_jtag_virtual.sv, so a board top elaborates with the
-// same common wrapper it synthesizes with (wiki/src/common/rtl/jtag/mas.md). It
+// same common wrapper it synthesizes with (https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/jtag/HAS.md). It
 // declares exactly the parameters and ports that wrapper uses. Its scan
 // outputs come from bench-owned variables that nothing in the design drives:
 // without a bench they hold their power-up zero, so TCK never toggles, every

@@ -29,25 +29,41 @@ Tests that check a registry read it through `sim.target_views(root)`: every targ
 
 ```
 python tools/sim/sim.py list
-python tools/sim/sim.py test <target>... [--seed N] [--waves]
+python tools/sim/sim.py test <target>... [--seed N] [--waves] [--coverage]
 python tools/sim/sim.py test --project nand2mario [--level L1]
 python tools/sim/sim.py test --all
 ```
 
 `--level L` alone runs every non-manual target at level `L` or below; with `--project` it narrows that project. `--workdir DIR` (default `workdir/sim/`, ignored by git) sets the scratch directory; keep it under the repository's `workdir/`, because wrappers refuse outputs anywhere else. A target runs in a child process under its time budget and writes `DIR/cocotb/<target>/{build,test}/` (wrapped targets: `DIR/wrapped/<target>/`). Verilator flags: `--timing --assert --Wall`, compiled from the repository root so ``` `include ``` paths are root-relative.
 
-Seeds: a wrapped target gets its seed and `--waves` through the `SIM_SEED` and `SIM_WAVES` environment variables, which the wrapper's own `test --direct` call reads, so the printed seed is the one the test used. `test` also reads them when `--seed` or `--waves` is absent, which is how Bazel's `--test_env=SIM_SEED=<n>` reaches a wrapped target. Native targets take no seed and ignore `--waves` (a `trace_fst` harness writes its own FST window when its script asks); their result line shows `seed=-`. A target that runs past its budget is stopped with its whole process group.
+Seeds: a wrapped target gets its seed, `--waves` and `--coverage` through the `SIM_SEED`, `SIM_WAVES` and `SIM_COVERAGE` environment variables, which the wrapper's own `test --direct` call reads, so the printed seed is the one the test used. `test` also reads them when `--seed` or `--waves` is absent, which is how Bazel's `--test_env=SIM_SEED=<n>` reaches a wrapped target. Native targets take no seed and ignore `--waves` (a `trace_fst` harness writes its own FST window when its script asks); their result line shows `seed=-`. A target that runs past its budget is stopped with its whole process group.
 
 ## Bazel commands
 
 Bazel ([spec](../bazel/spec.md)) runs every target through two commands that split a run into its cacheable halves; agents run targets through Bazel, not these.
 
 ```
-python tools/sim/sim.py build-model --spec <target>.spec.json --out <dir> [--waves]
-python tools/sim/sim.py run-model --spec <target>.spec.json --model <dir> [--seed N] [--waves]
+python tools/sim/sim.py build-model --spec <target>.spec.json --out <dir> [--waves] [--coverage]
+python tools/sim/sim.py run-model --spec <target>.spec.json --model <dir> [--seed N] [--waves] [--coverage]
 ```
 
-A spec file is `{"name": <target>, "target": <registry entry>}`. `build-model` builds the model into `<dir>` (log beside it as `<dir>.log`) and keeps only its executable. `run-model` tests the target against that model with the verdicts above, writing into `$TEST_UNDECLARED_OUTPUTS_DIR` (else `--workdir`); `SIM_SEED` and `SIM_WAVES` in the environment set the seed and waves when the flags are absent. `SIM_ROOT` replaces the repository root (Bazel sets it to the sandbox), and `SIM_PATH_PREPEND` names files or directories whose directories go first on `PATH` (Bazel's Verilator).
+A spec file is `{"name": <target>, "target": <registry entry>}`. `build-model` builds the model into `<dir>` (log beside it as `<dir>.log`) and keeps only its executable. `run-model` tests the target against that model with the verdicts above, writing into `$TEST_UNDECLARED_OUTPUTS_DIR` (else `--workdir`); `SIM_SEED`, `SIM_WAVES` and `SIM_COVERAGE` in the environment set the seed, waves and coverage when the flags are absent. `SIM_ROOT` replaces the repository root (Bazel sets it to the sandbox), and `SIM_PATH_PREPEND` names files or directories whose directories go first on `PATH` (Bazel's Verilator).
+
+## Coverage
+
+Every run reports what coverage its test folder (`DIR/cocotb/<target>/test/`, or the Bazel test's outputs) holds, on lines starting `coverage` under its result line, and writes the same lines to `coverage.txt` there. `tools/sim/sim_coverage.py` does both halves.
+
+- **Code coverage.** `--coverage` (Bazel: `--//tools/bazel:coverage`) builds the model with Verilator's `--coverage` (line, toggle, branch and expression points) and runs it with `+verilator+coverage+file+<test>/coverage.dat`, for cocotb and native targets alike. The runner counts the points hit per type from `coverage.dat` copies it to `coverage/coverage.dat` with every source path made relative to the repository root (Verilator records the absolute path it resolved at build time, which for a model from Bazel's cache is another checkout's), and runs `verilator_coverage` on that copy from the root to write `coverage/coverage.info` (lcov, for `genhtml` or an editor) and `coverage/annotated/` (each source with too-rarely-hit lines marked `%00`). The numbers cover every module in the model, the bench's fixture included, so a DV plan names which modules its number is about. A run asked for code coverage that leaves no `coverage.dat` says so.
+- **Functional coverage.** A cocotb test declares its coverage points with [cocotb-coverage](https://github.com/mciepluc/cocotb-coverage) (`CoverPoint`, `CoverCross`, with `ign_bins` for a bin the spec makes unreachable, cited in the plan) on a sampling function it calls once each checked behaviour passed, and calls `write_functional()` from `tools.sim.sim_coverage` at its end. That saves the database as `functional_coverage.yml` in the folder `SIM_COVERAGE_DIR` names (the runner sets it to the test folder) and logs every bin; the runner reports each top-level covergroup's bins hit over bins. Name groups `<block>.<feature>.<point>`, so a block is one top-level group. It needs no flag: it costs nothing a test does not already do.
+
+The sample target `n2a_uart_wire` shows both: `bazel test //src/common:n2a_uart_wire --//tools/bazel:coverage` prints
+
+```
+    coverage code: branch 96.4% (54/56), expr 80.0% (24/30), line 94.1% (32/34), toggle 96.4% (318/330)
+    coverage functional: uart_wire 100.0% (33/33)
+```
+
+and its holes are explained in its [DV plan](../../src/common/dv/uart/dv-plan.md#coverage).
 
 ## Origin
 

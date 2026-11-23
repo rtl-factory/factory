@@ -6,7 +6,7 @@
     python3 src/nand2mario/scripts/board/frame_snapshot.py decode DUMP [--manifest JSON] [--png PATH] [--vga-png PATH]
     python3 src/nand2mario/scripts/board/frame_snapshot.py gif DUMP... --durations-ms MS... --out PATH [--vga] [--manifests JSON...]
 
-A snapshot record (wiki/src/nand2mario/rtl/video/mas.md, frame snapshot) is the
+A snapshot record (wiki/src/nand2mario/scripts/board/spec.md#frame-snapshot) is the
 displayed 160x144 frame read back from the frame store: an eight-byte header
 (magic "NM", version 1, on-screen flag and bank, 32-bit frame ID) and four
 two-bit DMG shades per byte. `capture` pins, reads and releases it through

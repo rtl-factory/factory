@@ -1,8 +1,9 @@
-; Original on-board game menu for the loader profile. Contract:
-; wiki/src/sw/menu/SPEC.md; hardware registers from
-; wiki/src/rtl/cartridge/MAS_loader_profile.md. The low 16 KiB holds this
-; code, the font, the grey plate art and the boot splash badge; the upper
-; 16 KiB is the banked window into SDRAM.
+; Original on-board game menu for the loader profile. Contract (nand2mario,
+; not ported yet): https://github.com/amichai-bd/nand2mario/blob/510be34b49f5bc666ad828260ed0e193546736dd/wiki/src/sw/menu/SPEC.md;
+; hardware registers from
+; https://github.com/amichai-bd/nand2mario/blob/510be34b49f5bc666ad828260ed0e193546736dd/wiki/src/rtl/cartridge/MAS_loader_profile.md.
+; The low 16 KiB holds this code, the font, the grey plate art and the boot
+; splash badge; the upper 16 KiB is the banked window into SDRAM.
 ; Loader profile registers (CPU addresses fixed by the contract; the
 ; generated table owns the status and result values).
 LOADER_BANK EQU 8192

@@ -1,6 +1,6 @@
 """Contract test for the common write-through single-port RAM (n2a_sync_ram_wt).
 
-The oracle is the common memory HAS write-through cycle contract, not a
+The oracle is the write-through cycle contract of wiki/src/common/rtl/memory/mas.md, not a
 backend: every rising edge returns the word at the address one edge later; a
 write edge stores the full word and returns the NEW word (write-through);
 write_enable low leaves storage unchanged. Widths come from the public ports,
