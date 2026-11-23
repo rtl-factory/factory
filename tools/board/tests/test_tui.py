@@ -112,6 +112,18 @@ class PlayTests(unittest.TestCase):
         self.assertIn(b"\x1b[30;42m", screen, "a held button is drawn lit")
         self.assertIn(b"A (click)", screen)
 
+    def test_action_buttons_sit_on_a_grid_and_click_like_the_pad(self):
+        self.PAD = {"Up": "Up", "Fire": "Control_L", "Use": "space"}
+        places = play.layout(self.PAD)
+        row, col, width, face = places["Use"]
+        self.assertEqual((face, places["Up"]), ("Use:Spc", play.LAYOUT["Up"]))
+        click = (play.PAD_TOP + row + 1, play.PAD_LEFT + col + 1)
+        sent, _, screen = self.run_play(True, [
+            (f"\x1b[<0;{click[1]};{click[0]}M".encode(), 0.05), (f"\x1b[<0;{click[1]};{click[0]}m".encode(), 0.05),
+            (b"\x1b[57442u", 0.05), (b"\x1b[57442;5:3u", 0.05), (b"\x1b[93;5u", 0.3)])
+        self.assertEqual(sent, bytes([0x29, 0xF0, 0x29, 0x14, 0xF0, 0x14]))
+        self.assertIn("Fire:Ctrl".encode(), screen)
+
     def test_kitty_terminal_sending_a_key_plainly_still_breaks_it(self):
         sent, _, _ = self.run_play(True, [(b"x", 0.3), (b"x", 0.3), (b"\x1b[93;5u", 0.3)])
         self.assertEqual(sent, bytes([0x22, 0xF0, 0x22]) * 2)

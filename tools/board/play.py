@@ -31,6 +31,27 @@ PAD_TOP, PAD_LEFT = 9, 5
 LAYOUT = {"Up": (1, 9, 7, "▲"), "Left": (4, 2, 7, "◀"), "Right": (4, 16, 7, "▶"), "Down": (7, 9, 7, "▼"),
           "B": (5, 36, 7, "B"), "A": (2, 45, 7, "A"), "Select": (10, 15, 10, "SELECT"),
           "Start": (10, 27, 9, "START")}
+# Why: any other pad button is an action key, placed in order on a grid right of the D-pad.
+GRID_COLUMN, GRID_WIDTH, GRID_COLUMNS = 27, 14, 2
+
+
+def layout(pad: dict) -> dict:
+    """Each pad button's (row, column, width, face): the handheld's named places,
+    then every other button on the action grid, labelled with its key."""
+    places, slot = {}, 0
+    for name, key in pad.items():
+        if name in LAYOUT:
+            places[name] = LAYOUT[name]
+            continue
+        row, column = divmod(slot, GRID_COLUMNS)
+        places[name] = (1 + 3 * row, GRID_COLUMN + GRID_WIDTH * column, GRID_WIDTH - 1,
+                        f"{name}:{KEY_FACES.get(key, key)}"[:GRID_WIDTH - 3])
+        slot += 1
+    return places
+
+
+KEY_FACES = {"Control_L": "Ctrl", "Control_R": "Ctrl", "Shift_L": "Shift", "Shift_R": "Shift",
+             "Alt_L": "Alt", "Alt_R": "Alt", "space": "Spc", "Return": "Ent", "Escape": "Esc", "Tab": "Tab"}
 
 
 def probe_kitty(fd_in: int, fd_out: int, seconds: float = 0.5, clock=time.monotonic) -> bool:
@@ -59,8 +80,8 @@ def at(row: int, col: int) -> str:
     return f"\x1b[{row};{col}H"
 
 
-def button(name: str, lit: bool) -> str:
-    row, col, width, face = LAYOUT[name]
+def button(places: dict, name: str, lit: bool) -> str:
+    row, col, width, face = places[name]
     top, left = PAD_TOP + row, PAD_LEFT + col
     colour = "\x1b[30;42m" if lit else "\x1b[0m"
     inner = face.center(width - 2)
@@ -69,7 +90,8 @@ def button(name: str, lit: bool) -> str:
 
 
 def screen(title: str, kitty: bool, pad: dict) -> str:
-    legend = "  ".join(f"{name}={key}" for name, key in pad.items())
+    places = layout(pad)
+    legend = "  ".join(f"{name}={KEY_FACES.get(key, key)}" for name, key in pad.items())
     out = ["\x1b[H\x1b[2J\x1b[?25l", at(2, 3), f"\x1b[1mPLAYING  {title}\x1b[0m", at(4, 3),
            "Every key you press goes to the board over JTAG.  Press Ctrl+] to return to the console.",
            at(5, 3), "This terminal reports key releases." if kitty else
@@ -79,15 +101,15 @@ def screen(title: str, kitty: bool, pad: dict) -> str:
                 at(PAD_TOP - 1, PAD_LEFT), "╭" + "─" * 56 + "╮"]
         out += [at(PAD_TOP + r, PAD_LEFT) + "│" + " " * 56 + "│" for r in range(0, 14)]
         out += [at(PAD_TOP + 14, PAD_LEFT), "╰" + "─" * 56 + "╯"]
-        out += [button(name, False) for name in LAYOUT if name in pad]
+        out += [button(places, name, False) for name in places]
     return "".join(out)
 
 
 def hit(pad: dict, col: int, row: int) -> str | None:
     """The pad button under a click at 1-based (`col`, `row`)."""
-    for name, (r, c, width, _) in LAYOUT.items():
+    for name, (r, c, width, _) in layout(pad).items():
         top, left = PAD_TOP + r, PAD_LEFT + c
-        if name in pad and top <= row < top + 3 and left <= col < left + width:
+        if top <= row < top + 3 and left <= col < left + width:
             return name
     return None
 
@@ -99,7 +121,8 @@ def play(send, title: str, *, pad: dict | None = None, fd_in: int = 0, fd_out: i
     number of key events forwarded."""
     import termios
     import tty
-    pad = {name: key for name, key in (pad or {}).items() if name in LAYOUT}
+    pad = dict(pad or {})
+    places = layout(pad)
     saved = termios.tcgetattr(fd_in) if os.isatty(fd_in) else None
     kitty, state = False, KeyState()
     keys, forwarded, clicked, lit = TerminalKeys(), 0, None, set()
@@ -111,7 +134,7 @@ def play(send, title: str, *, pad: dict | None = None, fd_in: int = 0, fd_out: i
             on = key_name(key) in held
             if on != (name in lit):
                 lit.symmetric_difference_update({name})
-                out.append(button(name, on))
+                out.append(button(places, name, on))
         os.write(fd_out, "".join(out).encode())
 
     try:

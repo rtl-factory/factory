@@ -29,7 +29,7 @@ Each project declares its boards in `src/<project>/cfg/board.json`. The console 
 |---|---|
 | `program.label`, `program.patterns` | What the program file is called in the console, and its file patterns |
 | `program.default` | The program file when none is chosen; empty means the user must choose one |
-| `pad` | Optional. The project's controller: each pad button (`Up`, `Down`, `Left`, `Right`, `A`, `B`, `Select`, `Start`) and the key name it stands for; play draws the buttons it names. A key outside the key table is refused |
+| `pad` | Optional. The project's controller: each pad button and the key name it stands for. `Up`, `Down`, `Left`, `Right` form the D-pad, `A`, `B`, `Select`, `Start` take a handheld's places, and every other button is an action key on a two-column grid, labelled with its name and key (nand2doom: Fire Ctrl, Use Space, Run Shift, Strafe Alt, Enter, Menu Esc, Map Tab, Yes y, from its key map). A key outside the key table is refused |
 | `load` | The loader command line, run from the repository root. The fields are `{python}` (this interpreter), `{root}`, `{program}`, `{port}`, `{baud}` and `{board}`; any other field is refused |
 | `boards.<board>.idcode` | The FPGA's JTAG IDCODE, eight hex digits |
 | `boards.<board>.baud` | The board UART rate of this project's image, 9600 to 12,000,000 |
@@ -80,7 +80,7 @@ Changing the board closes the keyboard, clears the steps and checks the cable. O
 
 ## Play
 
-Play connects the keyboard if needed, then hands the whole terminal to `play.py` until Ctrl+]. It asks the terminal for the kitty keyboard flags followed by primary attributes, which every terminal answers; a flags reply first means the protocol is used (flags 1, 2 and 8 pushed on entry, popped on leaving), and the screen says which. When the project declares a `pad`, play draws a generic handheld controller (D-pad, A, B, Select, Start): a button lights while its key is held, from the keyboard or from the mouse, and a left click on a button (xterm SGR mouse reporting) makes its key on the board until the button is released. Other keys are forwarded too. On leaving, every held key breaks and what the terminal still sends for 150 ms is discarded, so the console never reads play-mode escape codes.
+Play connects the keyboard if needed, then hands the whole terminal to `play.py` until Ctrl+]. It asks the terminal for the kitty keyboard flags followed by primary attributes, which every terminal answers; a flags reply first means the protocol is used (flags 1, 2 and 8 pushed on entry, popped on leaving), and the screen says which. When the project declares a `pad`, play draws it as a generic controller (the D-pad, a handheld's A, B, Select and Start, and a grid of action keys): a button lights while its key is held, from the keyboard or from the mouse, and a left click on a button (xterm SGR mouse reporting) makes its key on the board until the button is released. Other keys are forwarded too. On leaving, every held key breaks and what the terminal still sends for 150 ms is discarded, so the console never reads play-mode escape codes.
 
 `tools/board/tests/test_tui.py` drives play through a pseudo-terminal (as a kitty and as a plain terminal, with keys and pad clicks) and the console with Textual's pilot against a fake board.
 
