@@ -1,6 +1,7 @@
 load("//tools/bazel:hdl.bzl", "unit_tests")
 load("@pypi//:requirements.bzl", "requirement")
 load("@rules_python//python:py_binary.bzl", "py_binary")
+load("@rules_python//python:py_library.bzl", "py_library")
 
 exports_files(
     ["sim.py"],
@@ -13,6 +14,19 @@ py_binary(
     srcs = ["sim.py"],
     visibility = ["//visibility:public"],
     deps = [requirement("cocotb")],
+)
+
+# Coverage for simulation tests: the testbench writes functional coverage with it,
+# the runner summarizes code and functional coverage (tools.sim.sim_coverage).
+py_library(
+    name = "sim_coverage",
+    srcs = ["sim_coverage.py"],
+    imports = ["../.."],
+    visibility = ["//visibility:public"],
+    deps = [
+        requirement("cocotb-coverage"),
+        requirement("pyyaml"),
+    ],
 )
 
 filegroup(

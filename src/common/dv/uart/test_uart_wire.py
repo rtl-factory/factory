@@ -5,7 +5,7 @@ low stop bit is a framing error at the receiver, every bit the helper drives
 starts on its exact edge or picosecond, the helper samples each received bit
 at its centre (and, with a window, either side), and a bad frame on tx makes
 the helper raise. Runs in clock mode (rising and falling drive) and in time
-mode."""
+mode. Functional coverage (the plan's Coverage section) is written at the end."""
 import math
 import random
 
@@ -13,8 +13,10 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge, Timer, with_timeout
 from cocotb.utils import get_sim_time
+from cocotb_coverage.coverage import CoverCross, CoverPoint
 
 from src.common.dv.uart.uart_wire import UartWire, frame_bits
+from tools.sim.sim_coverage import write_functional
 
 PERIOD_NS = 40
 CLOCKS_PER_BIT = 12.5
@@ -42,6 +44,34 @@ def wires(dut):
             UartWire(rx=dut.rx_i, tx=dut.tx_o, clock=dut.clk_i, clocks_per_bit=CLOCKS_PER_BIT,
                      drive_edge="falling"),
             UartWire(rx=dut.rx_i, tx=dut.tx_o, bit_ps=BIT_PS, sample_window_ps=WINDOW_PS))
+
+
+def form(wire):
+    return "time" if wire.bit_ps is not None else wire.drive_edge
+
+
+@CoverPoint("uart_wire.transfer.form", xf=lambda form, direction: form, bins=["rising", "falling", "time"])
+@CoverPoint("uart_wire.transfer.direction", xf=lambda form, direction: direction, bins=["send", "receive"])
+@CoverCross("uart_wire.transfer.form_x_direction",
+            items=["uart_wire.transfer.form", "uart_wire.transfer.direction"])
+def sample_transfer(form, direction):
+    """One checked loopback burst (W1, W2)."""
+
+
+@CoverPoint("uart_wire.byte.ones", xf=lambda value: bin(value).count("1"), bins=list(range(9)))
+def sample_byte(value):
+    """One checked byte, by how many of its data bits are high."""
+
+
+@CoverPoint("uart_wire.bad_frame.form", xf=lambda form, outcome: form, bins=["clock", "time"])
+@CoverPoint("uart_wire.bad_frame.outcome", xf=lambda form, outcome: outcome,
+            bins=["stop bit", "all ones", "start bit", "unstable"])
+# Why: the sample window, and so an "unstable" frame, exists in the time form only.
+@CoverCross("uart_wire.bad_frame.form_x_outcome",
+            items=["uart_wire.bad_frame.form", "uart_wire.bad_frame.outcome"],
+            ign_bins=[("clock", "unstable")])
+def sample_bad_frame(form, outcome):
+    """One bad frame the helper handled as the plan says (W6)."""
 
 
 async def collect_rx(dut, sink, errors):
@@ -79,10 +109,16 @@ async def loopback(dut):
         await wire.send(data)
         await ClockCycles(dut.clk_i, 20)
         assert bytes(received) == data, "helper to receiver"
+        sample_transfer(form(wire), "send")
+        for value in data:
+            sample_byte(value)
         out = bytes(rng.getrandbits(8) for _ in range(40))
         receiving = cocotb.start_soon(wire.receive(len(out)))
         await transmit(dut, out)
         assert await with_timeout(receiving, 50, "us") == out, "transmitter to helper"
+        sample_transfer(form(wire), "receive")
+        for value in out:
+            sample_byte(value)
     assert not errors, "framing error on good frames"
 
 
@@ -218,6 +254,8 @@ async def rejects_bad_frames(dut):
             assert isinstance(got, str) and expect in got, f"expected '{expect}', got {got!r}"
         else:
             assert got == expect, f"helper read {got!r}, expected {expect:#04x}"
+        sample_bad_frame("time" if wire.bit_ps is not None else "clock",
+                         expect if isinstance(expect, str) else "all ones")
     dut.force_i.value = 0
 
 
@@ -229,6 +267,7 @@ async def uart_wire_contract(dut):
     await framing_error(dut)
     await sample_points(dut)
     await rejects_bad_frames(dut)
+    write_functional(dut._log)
 
 
 async def framing_error(dut):

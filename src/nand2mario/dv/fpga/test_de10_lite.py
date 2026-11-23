@@ -38,7 +38,7 @@ HEARTBEAT_BIT = 20                           # Why: must match the target's HEAR
 HEADER_TYPE = 0x147
 BAUD = 2_000_000                             # Why: must match the target's UART_CLKS_PER_BIT + UART_FRAC_NUM/UART_FRAC_DEN (12 1/2 clocks, the 2 Mbaud board rate).
 BIT_NS = 10**9 // BAUD
-SDRAM_INITIALIZED_CLOCK = 5036
+SDRAM_INITIALIZED_CLOCK = 5036  # Ref: wiki/src/common/rtl/sdram/mas.md#initialization-and-refresh-timeline
 # Why: the bit order follows the joypad block's button order.
 RIGHT, LEFT, UP, DOWN, A, B, SELECT, START = (1 << i for i in range(8))
 LED_LOCKED, LED_RESET, LED_HALTED, LED_STOPPED, LED_LOCKUP, LED_FAULT = (1 << i for i in range(6))

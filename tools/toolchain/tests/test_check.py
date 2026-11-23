@@ -1,4 +1,4 @@
-"""Readiness check: passes only on the pinned tools (Quartus with both families, OSS CAD Suite, Verilator, Bazelisk)."""
+"""Readiness check: passes only on the pinned Verilator, Bazelisk, OSS CAD Suite release and Quartus with both families."""
 import json
 from pathlib import Path
 import sys
@@ -90,58 +90,58 @@ def test_tool_selection():
     assert [r["tool"] for r in results] == ["quartus"]
 
 
-CONFIG = json.loads((check.DEFAULT_CONFIG).read_text())
-VERILATOR = CONFIG["verilator"]
+VERILATOR = json.loads((check.DEFAULT_CONFIG).read_text())["verilator"]
 
 
-def verilator_runner(version=f'Verilator {VERILATOR["version"]} 2025-11-02 rev v{VERILATOR["version"]}\n'):
+def verilator_runner(version=f'Verilator {VERILATOR["version"]} 2026-09-05 rev v{VERILATOR["version"]}\n'):
     return lambda _command: (0, version)
 
 
-def test_verilator_pass_on_pin(monkeypatch):
+def on_path(name):
+    return "/opt/verilator/bin/verilator" if name == "verilator" else None
+
+
+def test_verilator_pass_on_pinned_version(monkeypatch):
     monkeypatch.delenv("VERILATOR", raising=False)
-    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=lambda _n: "/usr/bin/verilator")
-    assert r["status"] == "PASS" and r["path"] == "/usr/bin/verilator"
+    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=on_path, is_file=lambda _p: True)
+    assert r["status"] == "PASS" and r["found"] == VERILATOR["version"]
 
 
 def test_verilator_fail_on_other_version(monkeypatch):
     monkeypatch.delenv("VERILATOR", raising=False)
-    r = check.check_verilator(VERILATOR, runner=verilator_runner("Verilator 5.020 2024-01-01\n"),
-                              which=lambda _n: "/usr/bin/verilator")
-    assert r["status"] == "FAIL" and "5.020" in r["found"] and r["fix"]
+    r = check.check_verilator(VERILATOR, runner=verilator_runner("Verilator 5.030 2024-10-27\n"),
+                              which=on_path, is_file=lambda _p: True)
+    assert r["status"] == "FAIL" and r["found"] == "5.030" and VERILATOR["tag"] in r["fix"]
+
+
+def test_verilator_fail_without_coverage_tool(monkeypatch):
+    monkeypatch.delenv("VERILATOR", raising=False)
+    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=on_path, is_file=lambda _p: False)
+    assert r["status"] == "FAIL" and "verilator_coverage" in r["found"]
 
 
 def test_verilator_fail_on_baked_in_ccache(monkeypatch):
     monkeypatch.delenv("VERILATOR", raising=False)
-    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=lambda _n: "/usr/bin/verilator",
+    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=on_path, is_file=lambda _p: True,
                               read=lambda _p: "VERILATOR_ROOT ?= x\nOBJCACHE ?= ccache\n")
     assert r["status"] == "FAIL" and "ccache" in r["found"]
 
 
 def test_verilator_pass_on_empty_objcache(monkeypatch):
     monkeypatch.delenv("VERILATOR", raising=False)
-    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=lambda _n: "/usr/bin/verilator",
+    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=on_path, is_file=lambda _p: True,
                               read=lambda _p: "OBJCACHE ?= \nCXX ?= g++\n")
     assert r["status"] == "PASS"
 
 
-def test_verilator_falls_back_to_install_dir(monkeypatch, tmp_path):
-    monkeypatch.delenv("VERILATOR", raising=False)
-    (tmp_path / "bin").mkdir()
-    (tmp_path / "bin" / "verilator").write_text("")
-    r = check.check_verilator(dict(VERILATOR, install_dir=str(tmp_path)), runner=verilator_runner(),
-                              which=lambda _n: None)
-    assert r["status"] == "PASS" and r["path"] == str(tmp_path / "bin" / "verilator")
-
-
 def test_verilator_fail_when_missing(monkeypatch, tmp_path):
     monkeypatch.delenv("VERILATOR", raising=False)
-    r = check.check_verilator(dict(VERILATOR, install_dir=str(tmp_path)), runner=verilator_runner(),
-                              which=lambda _n: None)
-    assert r["status"] == "FAIL" and "not found" in r["found"]
+    monkeypatch.setenv("HOME", str(tmp_path))
+    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=lambda _n: None)
+    assert r["status"] == "FAIL" and r["fix"]
 
 
-BAZELISK = CONFIG["bazelisk"]
+BAZELISK = json.loads((check.DEFAULT_CONFIG).read_text())["bazelisk"]
 
 
 def pinned_bazelisk(tmp_path):

@@ -31,7 +31,8 @@ home() { local p; p="$(pin "$@")"; echo "${p/#\~/$HOME}"; }
 ready() { python3 -I "$ROOT/tools/toolchain/check.py" --config "$CONFIG" "$@" >&2; }
 
 BAZELISK_DIR="$(home bazelisk install_dir)"
-VERILATOR_DIR="$(home verilator install_dir)"
+# Where Bazel's @verilator looks after VERILATOR and PATH (tools/bazel/extensions.bzl).
+VERILATOR_DIR="$HOME/verilator"
 
 # Ubuntu packages for the Verilator build, FST waveforms and the nand2doom C
 # programs. They need root: installed only as root or through passwordless
@@ -91,8 +92,8 @@ set_mirror() {
 # Download the pinned Bazel now, so the first bazel command does not.
 fetch_bazel() { ( cd "$ROOT" && PATH="$BAZELISK_DIR:$PATH" bazel --version >&2 ); }
 
-# Verilator: built from the pinned tag into its install directory (about 5 to 8 min
-# on 4 cores). PATH gets <install_dir>/bin first, so Bazel's @verilator uses it.
+# Verilator: built from the pinned tag and commit into ~/verilator (about 5 to 8 min
+# on 4 cores). PATH gets ~/verilator/bin first, so Bazel's @verilator uses it.
 build_verilator() {
   local exe="$VERILATOR_DIR/bin/verilator" src="$CACHE/verilator-build"
   VERILATOR="$exe" ready --tool verilator && return 0
@@ -100,6 +101,9 @@ build_verilator() {
   rm -rf "$src"; mkdir -p "$src"
   git -c advice.detachedHead=false clone -q --depth 1 --branch "$(pin verilator tag)" "$(pin verilator repository)" "$src/verilator" >&2 \
     || { log "Verilator clone failed"; return 1; }
+  # Why: a tag can be moved; the pinned commit is the checksum of the source.
+  [[ "$(git -C "$src/verilator" rev-parse HEAD)" == "$(pin verilator commit)" ]] \
+    || { log "Verilator $(pin verilator tag) is not commit $(pin verilator commit): not building"; return 1; }
   # Why: configure bakes a ccache found on PATH into verilated.mk, and Bazel's
   # sandboxed model builds then fail without it; the empty cached answer stops that.
   ( cd "$src/verilator" && autoconf && ac_cv_prog_OBJCACHE= ./configure --prefix="$VERILATOR_DIR" \

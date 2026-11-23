@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Host side of the nand2mario UART cartridge loader protocol.
 
-Frames the loader protocol (wiki/src/nand2mario/rtl/uart/mas.md): SYNC, command,
+Frames the loader protocol (wiki/src/nand2mario/scripts/board/spec.md#loader-protocol): SYNC, command,
 24-bit address, length-1, payload (WRITE), CRC-16/CCITT-FALSE; and the
 response SYNC, status, command, address, length-1, payload (READ), CRC. The
 pure functions here are shared by the simulation benches; `Session` drives

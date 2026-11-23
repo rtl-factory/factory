@@ -28,7 +28,7 @@ IMAGE_BYTES, BANKS = 1 << 17, 8
 INSTRUCTION_BOUND = 1500
 UART_CLKS_PER_BIT = 8                 # Why: must match the registry's parameter for this target.
 BYTE_CLOCKS = 10 * UART_CLKS_PER_BIT
-SDRAM_INITIALIZED_CLOCK = 5036
+SDRAM_INITIALIZED_CLOCK = 5036  # Ref: wiki/src/common/rtl/sdram/mas.md#initialization-and-refresh-timeline
 VERIFY_EVERY = 16
 
 

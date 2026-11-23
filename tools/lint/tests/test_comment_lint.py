@@ -118,7 +118,7 @@ def test_scope_skips_third_party_and_other_suffixes():
     assert comment_lint.scanned("tools/sim/sim.py")
     assert not comment_lint.scanned("src/p/sw/third_party/x.py")
     assert not comment_lint.scanned("src/p/sw/main.c")
-    assert not comment_lint.scanned("wiki/x.py")
+    assert not comment_lint.scanned("wiki" + "/x.py")
 
 
 def test_portless_module_ends_its_header(tmp_path):

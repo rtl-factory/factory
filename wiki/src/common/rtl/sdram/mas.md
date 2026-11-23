@@ -23,7 +23,7 @@
 
 The defaults are legal for the IS42S16320D-7 at 25 MHz (40 ns clock: tRFC 63 ns needs one idle clock after REFRESH, tWR 14 ns plus the precharge needs one after the last close-page write beat). Elaboration fails when the init refresh wait or, in close page, `WAIT_WR` is zero.
 
-The project configurations, as every bench, harness and project top passes them:
+The project configurations. Each project defines its set once, as package constants (nand2doom: `N2D_SDRAM_*` in `n2d_memory_controller_pkg`; nand2mario: `SDRAM_*` in `n2m_sdram_backing_pkg`), and its product instance and every bench fixture read them, so a unit bench tests the product's values:
 
 | Project | `BURST_BEATS` | `OPEN_ROW` | `ROW_XOR_BANK` | `POWERUP_CLOCKS` | `INIT_REFRESHES` | `INIT_WAIT_MIN` | RCD/RP/RFC/WR/MRD | DUE/DEADLINE | `REFRESH_AGE_FROM_MODE` |
 |---|---|---|---|---|---|---|---|---|---|
@@ -63,6 +63,28 @@ Latency counts clocks after the accepting edge, up to and including the clock in
 | Misaligned request | 1, with error | 1, with error | with the response |
 
 The nand2doom memory MAS counts edges from acceptance to the registered response, which is one less than this table.
+
+### Initialization and refresh timeline
+
+The clock numbers the nand2mario configuration guarantees, which its benches pin. Clock 0 starts at the first rising edge after `reset_i` falls; a command or output at clock N is on the pins in the clock that starts at edge N.
+
+| Event | Clock |
+|---|---|
+| PRECHARGE ALL, the first command (`POWERUP_CLOCKS` 5001 NOP clocks before it) | 5000 |
+| The eight init REFRESHes, one every four clocks (`WAIT_RFC` 3) | 5003 + 4k, k = 0 to 7 |
+| MODE REGISTER SET | 5035 |
+| `init_done_o` high | 5036 |
+| `idle_o` high, `request_ready_o` high | 5038 |
+
+| Refresh fact | Clocks |
+|---|---|
+| Refresh due (`REFRESH_DUE`) | 160 |
+| Gap between two REFRESH commands with no traffic | 162 |
+| Gap between two REFRESH commands under traffic | at most 195 (`REFRESH_DEADLINE`) |
+| `request_ready_o` low for each refresh | 5 |
+| Clocks a request presented in IDLE waits to be accepted | 0, or 5 when a refresh comes first |
+
+`n2m_sdram_ctrl` (`src/nand2mario/dv/storage/test_sdram_ctrl.py`) checks every number here; the SDRAM system test and the DE10-Lite board smoke wait for clock 5036 before they expect the core out of reset. A change to the nand2mario parameters that moves one of them changes this table and those benches together.
 
 ### Reset and errors
 

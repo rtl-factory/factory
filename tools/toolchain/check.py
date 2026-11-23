@@ -23,8 +23,8 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = ROOT / "cfg" / "toolchain.json"
 SPEC = "wiki/tools/toolchain/spec.md (Install, Quartus)"
 FORMAL_SPEC = "wiki/tools/toolchain/spec.md (Install, OSS CAD Suite)"
-VERILATOR_SPEC = "wiki/tools/toolchain/spec.md (Install (Verilator, CI))"
-BAZEL_SPEC = "wiki/tools/toolchain/spec.md (Install (Bazelisk))"
+SIM_SPEC = "wiki/tools/toolchain/spec.md (Install, Verilator)"
+BAZEL_SPEC = "wiki/tools/toolchain/spec.md (Install, Bazelisk)"
 HOOK = "rerun .claude/hooks/session-start.sh in a cloud session"
 
 
@@ -73,6 +73,43 @@ def check_quartus(pin: dict, *, runner=run, which=shutil.which) -> dict:
     return dict(result, status="PASS", found=f'{found} with {", ".join(pin["families"])}')
 
 
+def find_verilator(which=shutil.which) -> str | None:
+    """verilator from VERILATOR, PATH, then ~/verilator/bin: where Bazel looks (tools/bazel/extensions.bzl)."""
+    if os.environ.get("VERILATOR"):
+        return which(os.environ["VERILATOR"])
+    found = which("verilator")
+    if found:
+        return found
+    candidate = Path("~/verilator/bin/verilator").expanduser()
+    return str(candidate) if candidate.is_file() else None
+
+
+def check_verilator(pin: dict, *, runner=run, which=shutil.which, is_file=os.path.isfile, read=None) -> dict:
+    """The pinned Verilator, with verilator_coverage beside it for coverage reports
+    and no compiler cache baked into its verilated.mk."""
+    result = {"tool": "verilator", "want": pin["version"]}
+    fix = f'build Verilator {pin["tag"]} into ~/verilator per {SIM_SPEC}, or {HOOK}'
+    executable = find_verilator(which)
+    if not executable:
+        return dict(result, status="FAIL", found="verilator not found", fix=fix)
+    result["path"] = executable
+    status, text = runner([executable, "--version"])
+    match = re.search(r"Verilator\s+(\S+)", text)
+    found = match.group(1) if match else "unknown"
+    if status != 0 or found != pin["version"]:
+        return dict(result, status="FAIL", found=found, fix=fix)
+    if not is_file(str(Path(executable).resolve().parent / "verilator_coverage")):
+        return dict(result, status="FAIL", found=f"{found}; missing verilator_coverage", fix=fix)
+    # Why: configure bakes a ccache found on PATH into verilated.mk (OBJCACHE ?= ccache);
+    # a build where it is missing then fails.
+    makefile = Path(executable).resolve().parent.parent / "share" / "verilator" / "include" / "verilated.mk"
+    cache = re.search(r"^OBJCACHE\s*\?=[ \t]*(\S*)", (read or read_stamp)(makefile) or "", re.M)
+    if cache and cache.group(1):
+        return dict(result, status="FAIL", found=f"{found}; {makefile} needs {cache.group(1)}",
+                    fix=f"rebuild with ac_cv_prog_OBJCACHE= ./configure per {SIM_SPEC}, or {HOOK}")
+    return dict(result, status="PASS", found=found)
+
+
 def read_stamp(path: Path) -> str | None:
     try:
         return path.read_text().strip()
@@ -106,40 +143,6 @@ def check_oss_cad_suite(pin: dict, *, runner=run, is_file=os.path.isfile, read=r
         if status != 0:
             return dict(result, status="FAIL", found=f"Yosys {found}; plugin {plugin} does not load", fix=fix)
     return dict(result, status="PASS", found=f'{pin["version"]} (Yosys {found}, {", ".join(pin["plugins"])})')
-
-
-def find_verilator(pin: dict, which=shutil.which) -> str | None:
-    """verilator from VERILATOR, PATH, then the pinned install directory: the
-    order @verilator in tools/bazel/extensions.bzl uses, so both see one binary."""
-    if os.environ.get("VERILATOR"):
-        return which(os.environ["VERILATOR"])
-    found = which("verilator")
-    if found:
-        return found
-    candidate = Path(pin["install_dir"]).expanduser() / "bin" / "verilator"
-    return str(candidate) if candidate.is_file() else None
-
-
-def check_verilator(pin: dict, *, runner=run, which=shutil.which, read=read_stamp) -> dict:
-    result = {"tool": "verilator", "want": pin["version"]}
-    fix = f'build Verilator {pin["tag"]} into {pin["install_dir"]} per {VERILATOR_SPEC}, or {HOOK}'
-    executable = find_verilator(pin, which)
-    if not executable:
-        return dict(result, status="FAIL", found="verilator not found", fix=fix)
-    result["path"] = executable
-    status, text = runner([executable, "--version"])
-    match = re.search(r"Verilator\s+(\S+)", text)
-    found = match.group(1) if match else "unknown"
-    if status != 0 or found != pin["version"]:
-        return dict(result, status="FAIL", found=f"{found} at {executable}", fix=fix)
-    # Why: Bazel builds models in a sandbox where a compiler cache baked in at
-    # build time (OBJCACHE ?= ccache) is missing, so every model build fails.
-    makefile = Path(os.path.realpath(executable)).parent.parent / "share" / "verilator" / "include" / "verilated.mk"
-    cache = re.search(r"^OBJCACHE\s*\?=[ \t]*(\S*)", read(makefile) or "", re.M)
-    if cache and cache.group(1):
-        return dict(result, status="FAIL", found=f"{found} at {executable}; {makefile} needs {cache.group(1)}",
-                    fix=f"rebuild with ac_cv_prog_OBJCACHE= ./configure per {VERILATOR_SPEC}, or empty OBJCACHE there")
-    return dict(result, status="PASS", found=f"{found} at {executable}")
 
 
 def sha256(path: str) -> str | None:

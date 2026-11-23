@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Prebuilt Mooneye Test Suite (MIT, Joonas Javanainen) pinned for the n2m acceptance conformance run (wiki/src/nand2mario/conformance/DV.md). Binaries are fetched into workdir only and never committed.",
+  "description": "Prebuilt Mooneye Test Suite (MIT, Joonas Javanainen) pinned for the n2m acceptance conformance run (wiki/src/nand2mario/scripts/regression/spec.md#mooneye). Binaries are fetched into workdir only and never committed.",
   "release": {
     "name": "mts-20260714-0944-31510e1",
     "commit": "31510e12eea6286d36eea060a6adde755e1067aa",

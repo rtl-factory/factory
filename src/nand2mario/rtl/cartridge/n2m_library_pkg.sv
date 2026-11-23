@@ -1,6 +1,6 @@
 `default_nettype none
 // Owner-authored loader ABI adapted from nand2mario 510be34b. The source
-// record and native byte-port timing are in wiki/src/nand2mario/sw/HAS.md.
+// record and native byte-port timing are in wiki/src/nand2mario/rtl/has.md#top-level-behaviour.
 package n2m_library_pkg;
     /* verilator lint_off UNUSEDPARAM */
     localparam logic [7:0] PROFILE_DIRECT = 8'd1;

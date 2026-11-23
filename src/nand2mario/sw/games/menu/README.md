@@ -11,6 +11,6 @@ Run from the repository root:
 python3 src/nand2mario/scripts/sw_build/sw_games.py build menu --output workdir/games
 ```
 
-The menu/library contract (in nand2anything, not ported yet; it will be
-`wiki/src/nand2mario/sw/games/menu/spec.md`) owns execution and verification. The import manifest records every included
+The menu/library contract (the [menu spec](https://github.com/amichai-bd/nand2mario/blob/510be34b49f5bc666ad828260ed0e193546736dd/wiki/src/sw/menu/SPEC.md) in
+nand2mario, not ported yet) owns execution and verification. The import manifest records every included
 file. Unused donor design studies and their renderers are not runtime assets.

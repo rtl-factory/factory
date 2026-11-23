@@ -1,5 +1,5 @@
 // Exact board-top composition diagnostics of the common JTAG keyboard
-// endpoint (wiki/src/nand2mario/fpga/DV.md). Listed by every target that
+// endpoint (wiki/src/nand2mario/rtl/has.md#verification-strategy). Listed by every target that
 // elaborates n2m_de10_lite. Each endpoint reset synchronizer (system clock
 // and TCK) asserts asynchronously and releases in its own domain: bit0
 // shifts into bit1 and bit1 drives the local asynchronous reset with

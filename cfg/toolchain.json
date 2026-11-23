@@ -3,8 +3,8 @@
   "verilator": {
     "version": "5.052",
     "tag": "v5.052",
-    "repository": "https://github.com/verilator/verilator",
-    "install_dir": "~/verilator"
+    "commit": "ea338be98e1e838d3518809ce8899f85a009963c",
+    "repository": "https://github.com/verilator/verilator"
   },
   "bazelisk": {
     "version": "1.25.0",
