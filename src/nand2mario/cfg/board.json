@@ -1,7 +1,10 @@
 {
   "schema": "n2a-board/1",
   "project": "nand2mario",
-  "program": {"label": "Cartridge image", "patterns": ["*.gb", "*.bin"], "default": ""},
+  "program": {"label": "Cartridge image", "patterns": ["*.gb", "*.bin"],
+              "default": "src/nand2mario/sw/roms/private/super-mario-land-rev1.gb"},
+  "pad": {"Up": "Up", "Down": "Down", "Left": "Left", "Right": "Right", "A": "x", "B": "z",
+          "Select": "space", "Start": "Return"},
   "load": ["{python}", "src/common/scripts/uart_mem/uart_mem_load.py", "{program}",
            "--project", "n2m ", "--port", "{port}", "--baud", "{baud}", "--yes"],
   "boards": {

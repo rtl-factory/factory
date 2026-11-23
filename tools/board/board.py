@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Board console: pick a SOF, program the FPGA, load a program, type on the board.
 
-    python3 tools/board/board.py                       # the window
+    python3 tools/board/board.py                       # the terminal console
     python3 tools/board/board.py list
     python3 tools/board/board.py program --project nand2mario --board de10_lite [--sof PATH] --yes
     python3 tools/board/board.py load --project nand2doom --board de2_115 --port /dev/ttyUSB0 --yes
@@ -29,6 +29,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from tools.board import jtag_chain  # noqa: E402
+from tools.board.keys import key_name  # noqa: E402
 
 SCHEMA = "n2a-board/1"
 PROGRAM_SECONDS = 180
@@ -51,6 +52,7 @@ class Board:
     program_patterns: tuple[str, ...]
     program_default: str
     load: tuple[str, ...]
+    pad: tuple[tuple[str, str], ...] = ()
 
     @property
     def key(self) -> str:
@@ -62,6 +64,9 @@ def parse_config(data: dict, source: str) -> list[Board]:
         raise BoardError(f"{source}: schema must be {SCHEMA}")
     try:
         program, load = data["program"], tuple(data["load"])
+        pad = tuple(data.get("pad", {}).items())
+        if any(key_name(key) is None for _, key in pad):
+            raise BoardError(f"{source}: every pad button must name a console key")
         if not load or not all(isinstance(part, str) for part in load):
             raise BoardError(f"{source}: load must be a nonempty list of strings")
         for part in load:
@@ -76,7 +81,7 @@ def parse_config(data: dict, source: str) -> list[Board]:
             if not 9600 <= baud <= 12_000_000:
                 raise BoardError(f"{source}: {name} baud {baud} outside 9600..12000000")
             boards.append(Board(data["project"], name, idcode, baud, board["sof"], program["label"],
-                                tuple(program["patterns"]), program.get("default", ""), load))
+                                tuple(program["patterns"]), program.get("default", ""), load, pad))
         return boards
     except (KeyError, TypeError, ValueError) as exc:
         raise BoardError(f"{source}: malformed board config: {exc!r}") from exc
@@ -108,7 +113,7 @@ def board_for_sof(boards: dict[str, Board], sof: Path) -> Board | None:
 
 def detect_board(boards: dict[str, Board], quartus_bin=None, *, runner=jtag_chain.run_tool,
                  root: Path = ROOT) -> tuple[Board, str]:
-    """The window's first board and why: the one whose IDCODE is alone on the one
+    """The console's first board and why: the one whose IDCODE is alone on the one
     JTAG chain, the newest built SOF winning among projects on that board; else
     the first board. Never raises: a failed listing only explains the fallback."""
     first = boards[sorted(boards)[0]]
@@ -136,18 +141,58 @@ def detect_board(boards: dict[str, Board], quartus_bin=None, *, runner=jtag_chai
     return board, f"{cable}: IDCODE {idcode} is {board.name}; selected {board.key}"
 
 
+def check_chain(boards: dict[str, Board], board: Board, quartus_bin=None, *,
+                runner=jtag_chain.run_tool) -> tuple[bool, str, str]:
+    """(ready, what one `jtagconfig` run found, what to do next) for `board`'s
+    JTAG keyboard. Never raises: every failure becomes a finding and a hint."""
+    try:
+        rc, text = runner([jtag_chain.tool_path(quartus_bin, "jtagconfig")], jtag_chain.LIST_TIMEOUT)
+    except FileNotFoundError:
+        return False, "jtagconfig not found", "put Quartus's bin directory on PATH, or pass --quartus-bin"
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return False, f"jtagconfig failed: {exc}", "check the JTAG server (jtagd) and the USB-Blaster"
+    chains = jtag_chain.parse_jtagconfig(text)
+    if "Insufficient port permissions" in text:
+        return False, "USB-Blaster found but not accessible (insufficient port permissions)", \
+            "install the udev rule tools/toolchain/51-fpga-boards.rules (wiki/tools/toolchain/spec.md#boards), then replug"
+    if "Chain in use" in text:
+        return False, "JTAG chain in use by another program", \
+            "close the other board console, Signal Tap or quartus_stp that holds the cable (a keyboard this console has connected counts too)"
+    if rc and not chains:
+        return False, f"jtagconfig exited {rc}: {text.strip()[:120]}", "check the USB-Blaster and the JTAG server (jtagd)"
+    if not chains:
+        return False, "no JTAG cable found", "plug in the board's USB-Blaster (the USB port by the power switch) and power the board"
+    if len(chains) > 1:
+        return False, "cables: " + ", ".join(c for c, _ in chains), "unplug every USB-Blaster but the board's"
+    cable, devices = chains[0]
+    ids = [d for d, _ in devices]
+    if not ids:
+        return False, f"{cable}: no device on the chain", "power the board on, and check the USB-Blaster cable"
+    if ids == [board.idcode]:
+        return True, f"{cable}: {board.idcode}, matches {board.key}", "connect the keyboard, then play"
+    others = sorted({b.name for b in boards.values() if b.idcode in ids})
+    hint = (f"the connected board is a {', '.join(others)}: choose that board in the Board list"
+            if others else "this chain holds no declared board: connect the right board")
+    return False, f"{cable}: {', '.join(ids)}, expected {board.idcode} for {board.key}", hint
+
+
 def resolve_path(text: str, root: Path = ROOT) -> Path:
     path = Path(text).expanduser()
     return path if path.is_absolute() else root / path
 
 
+FTDI_VENDOR = 0x0403
+
+
 def serial_ports() -> list[str]:
-    """Serial devices pyserial sees, stable names first; empty without pyserial."""
+    """USB serial adapters pyserial sees, FTDI cables first; empty without
+    pyserial. Built-in ports (ttyS*) are never a board UART, so they are left out."""
     try:
         from serial.tools import list_ports
     except ImportError:
         return []
-    return sorted(p.device for p in list_ports.comports())
+    usb = [p for p in list_ports.comports() if p.vid is not None]
+    return [p.device for p in sorted(usb, key=lambda p: (p.vid != FTDI_VENDOR, p.device))]
 
 
 def program_plan(board: Board, sof: Path, cable: str | None, quartus_bin: str | None) -> dict:
@@ -260,7 +305,7 @@ def parser() -> argparse.ArgumentParser:
     k.add_argument("text")
     k.add_argument("--device", help="exact quartus_stp device name (default: found by IDCODE)")
     commands.append(k)
-    w = sub.add_parser("gui", help="open the window (the default)")
+    w = sub.add_parser("tui", help="open the terminal console (the default)")
     w.add_argument("--port", help="prefill the serial port")
     commands.append(w)
     for command in commands:
@@ -288,13 +333,16 @@ def run_list(boards, out=print) -> int:
 
 
 def main(argv=None, *, runner=jtag_chain.run_tool, popen=subprocess.Popen, jtag=None, out=print) -> int:
+    argv = sys.argv[1:] if argv is None else list(argv)
+    if argv and argv[0].startswith("-") and argv[0] not in ("-h", "--help"):
+        argv = ["tui", *argv]   # Why: the console is the default command, flags and all
     args = parser().parse_args(argv)
     try:
         boards = load_boards()
         if args.action == "list":
             return run_list(boards, out)
-        if args.action in (None, "gui"):
-            from tools.board import gui
+        if args.action in (None, "tui"):
+            from tools.board import tui
             quartus_bin = getattr(args, "quartus_bin", None)
             project, name = getattr(args, "project", None), getattr(args, "board", None)
             if project or name:
@@ -304,7 +352,7 @@ def main(argv=None, *, runner=jtag_chain.run_tool, popen=subprocess.Popen, jtag=
                 first = detect_board(boards, quartus_bin, runner=runner)
             ports = serial_ports()
             port = getattr(args, "port", None) or (ports[0] if len(ports) == 1 else "")
-            return gui.main(boards, port=port, quartus_bin=quartus_bin, first=first)
+            return tui.main(boards, port=port, quartus_bin=quartus_bin, first=first)
         board = pick(boards, args.project, args.board)
         if args.action == "program":
             sof = resolve_path(args.sof or board.sof)
