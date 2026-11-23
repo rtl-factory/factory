@@ -2,6 +2,7 @@
 (plans without --yes, exact commands with it), and the key translation."""
 from contextlib import redirect_stderr
 import io
+import os
 import json
 from pathlib import Path
 import sys
@@ -69,6 +70,62 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual("nand2doom/de10_lite",
                          console.board_for_sof(boards, Path("/any/n2d_de10_lite.sof")).key)
         self.assertIsNone(console.board_for_sof(boards, Path("/any/other.sof")))
+
+
+class WindowBoardTests(unittest.TestCase):
+    def boards(self, root):
+        two = {**CONFIG, "project": "other",
+               "boards": {"de2_115": {"idcode": "020F70DD", "baud": 2000000, "sof": "workdir/y/other.sof"},
+                          "de10_lite": {"idcode": "031050DD", "baud": 2000000, "sof": "workdir/y/lite.sof"}}}
+        return {b.key: b for b in console.parse_config(CONFIG, "demo") + console.parse_config(two, "other")}
+
+    def test_the_connected_idcode_selects_its_board_newest_sof_first(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, boards = Path(tmp), self.boards(Path(tmp))
+            jtagconfig = Recorder({"jtagconfig": (0, JTAGCONFIG)})
+            board, why = console.detect_board(boards, runner=jtagconfig, root=root)
+            self.assertEqual(("demo/de2_115", 1), (board.key, len(jtagconfig.calls)))
+            self.assertIn("IDCODE 020F70DD", why)
+            for path, stamp in (("workdir/x/demo.sof", 100), ("workdir/y/other.sof", 200)):
+                (root / path).parent.mkdir(parents=True, exist_ok=True)
+                (root / path).write_bytes(b"sof")
+                os.utime(root / path, (stamp, stamp))
+            board, _ = console.detect_board(boards, runner=jtagconfig, root=root)
+            self.assertEqual("other/de2_115", board.key)
+            lite = Recorder({"jtagconfig": (0, "1) USB-Blaster [1-1]\n  031050DD   10M50DA\n")})
+            self.assertEqual("other/de10_lite", console.detect_board(boards, runner=lite, root=root)[0].key)
+
+    def test_no_cable_two_cables_or_unknown_device_fall_back_to_the_first_board(self):
+        boards = self.boards(ROOT)
+        two = JTAGCONFIG + "2) USB-Blaster [1-2]\n  031050DD   10M50DA\n"
+        unknown = "1) USB-Blaster [1-1]\n  12345678   other\n"
+
+        def missing(argv, timeout):
+            raise FileNotFoundError("jtagconfig")
+
+        shared = JTAGCONFIG.rstrip("\n") + "\n  031050DD   10M50DA\n"
+        for runner in (Recorder({"jtagconfig": (0, "")}), Recorder({"jtagconfig": (0, two)}),
+                       Recorder({"jtagconfig": (0, shared)}),
+                       Recorder({"jtagconfig": (1, "")}), Recorder({"jtagconfig": (0, unknown)}), missing):
+            with self.subTest(runner=runner):
+                board, why = console.detect_board(boards, runner=runner)
+                self.assertEqual("demo/de2_115", board.key)
+                self.assertIn("opened on demo/de2_115; choose the board", why)
+
+    def test_window_flags_pick_and_one_serial_port_is_prefilled(self):
+        from tools.board import gui
+        opened = []
+        real_main, real_ports = gui.main, console.serial_ports
+        gui.main = lambda boards, **kwargs: opened.append(kwargs) or 0
+        console.serial_ports = lambda: ["/dev/ttyUSB0"]
+        try:
+            self.assertEqual(0, run(["gui", "--project", "nand2mario", "--board", "de2_115"])[0])
+            console.serial_ports = lambda: ["/dev/ttyUSB0", "/dev/ttyUSB1"]
+            self.assertEqual(0, run([], runner=Recorder({"jtagconfig": (0, JTAGCONFIG)}))[0])
+        finally:
+            gui.main, console.serial_ports = real_main, real_ports
+        self.assertEqual((opened[0]["first"][0].key, opened[0]["port"]), ("nand2mario/de2_115", "/dev/ttyUSB0"))
+        self.assertEqual((opened[1]["first"][0].idcode, opened[1]["port"]), ("020F70DD", ""))
 
 
 class ProgramTests(unittest.TestCase):

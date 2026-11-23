@@ -106,6 +106,36 @@ def board_for_sof(boards: dict[str, Board], sof: Path) -> Board | None:
     return matches[0] if len(matches) == 1 else None
 
 
+def detect_board(boards: dict[str, Board], quartus_bin=None, *, runner=jtag_chain.run_tool,
+                 root: Path = ROOT) -> tuple[Board, str]:
+    """The window's first board and why: the one whose IDCODE is alone on the one
+    JTAG chain, the newest built SOF winning among projects on that board; else
+    the first board. Never raises: a failed listing only explains the fallback."""
+    first = boards[sorted(boards)[0]]
+    fallback = f"opened on {first.key}; choose the board"
+    try:
+        rc, text = runner([jtag_chain.tool_path(quartus_bin, "jtagconfig")], jtag_chain.LIST_TIMEOUT)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return first, f"jtagconfig failed ({exc}); {fallback}"
+    if rc:
+        return first, f"jtagconfig exited {rc}: {text.strip()[:200]}; {fallback}"
+    chains = jtag_chain.parse_jtagconfig(text)
+    if len(chains) != 1 or len(chains[0][1]) != 1:
+        found = "; ".join(f"{c}: {', '.join(d for d, _ in devs) or 'no device'}" for c, devs in chains)
+        return first, f"expected one JTAG cable with one device, found {found or 'no cable'}; {fallback}"
+    cable, [(idcode, _)] = chains[0]
+    matches = [b for b in boards.values() if b.idcode == idcode]
+    if not matches:
+        return first, f"{cable}: no board has IDCODE {idcode}; {fallback}"
+
+    def built(board):
+        sof = resolve_path(board.sof, root)
+        return sof.stat().st_mtime if sof.is_file() else -1.0
+
+    board = max(sorted(matches, key=lambda b: b.key), key=built)
+    return board, f"{cable}: IDCODE {idcode} is {board.name}; selected {board.key}"
+
+
 def resolve_path(text: str, root: Path = ROOT) -> Path:
     path = Path(text).expanduser()
     return path if path.is_absolute() else root / path
@@ -265,8 +295,16 @@ def main(argv=None, *, runner=jtag_chain.run_tool, popen=subprocess.Popen, jtag=
             return run_list(boards, out)
         if args.action in (None, "gui"):
             from tools.board import gui
-            return gui.main(boards, port=getattr(args, "port", None) or "",
-                            quartus_bin=getattr(args, "quartus_bin", None))
+            quartus_bin = getattr(args, "quartus_bin", None)
+            project, name = getattr(args, "project", None), getattr(args, "board", None)
+            if project or name:
+                board = pick(boards, project, name)
+                first = (board, f"selected {board.key}")
+            else:
+                first = detect_board(boards, quartus_bin, runner=runner)
+            ports = serial_ports()
+            port = getattr(args, "port", None) or (ports[0] if len(ports) == 1 else "")
+            return gui.main(boards, port=port, quartus_bin=quartus_bin, first=first)
         board = pick(boards, args.project, args.board)
         if args.action == "program":
             sof = resolve_path(args.sof or board.sof)
