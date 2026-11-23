@@ -30,6 +30,24 @@ Received bits are sampled at each bit's centre. A start bit that is not low or a
 
 Each checker was seen to fail: with the start-bit assert removed, the window assert removed, the window samples dropped, 12 instead of 12.5 clocks per bit on send or on receive, or the time-form sample moved to 0.3 of a bit, `n2a_uart_wire` fails.
 
+## Coverage
+
+`test_uart_wire.py` samples functional coverage after each check passes and writes it at the end ([sim spec, Coverage](../../../../tools/sim/spec.md#coverage)):
+
+| Point | Bins | Feature |
+|---|---|---|
+| `uart_wire.transfer.form` × `direction` | rising, falling and time forms × send and receive: 6 | W1, W2 |
+| `uart_wire.byte.ones` | data bits high in a checked byte, 0 to 8: 9 | W1, W2 |
+| `uart_wire.bad_frame.form` × `outcome` | clock and time forms × stop bit, all ones, start bit, unstable: 7 | W6 |
+
+The clock-form "unstable" bin is ignored: the sample window, and so an unstable frame, exists in the time form only (Scope). At seed 5 all 33 bins are hit.
+
+Code coverage (`--//tools/bazel:coverage`) at seed 5 is line 94.1% (32/34), branch 96.4% (54/56), expression 80.0% (24/30) and toggle 96.4% (318/330), over the fixture and the common PHY it loops; every hole is in the PHY:
+
+- Lines (2): the `default:` arms of the receiver's and transmitter's state `case`. Every value of the state enum has its own arm, so they are unreachable by design.
+- Toggle (12), branches (2) and two expression terms: the fractional bit-rate accumulator at this fixture's 1/2 fraction. `frac_acc[1]` and `frac_sum[2]` never leave 0, and in the receiver's start state and the transmitter's start bit the accumulator's carry goes one way only. Other fractions reach them; the PHY's own tests in each project own that coverage, since this bench checks the helper, not the PHY.
+- Expression (4 more): the `$isunknown` assertion terms on the receiver's synchronised input and the transmitter's `byte_valid_i` and `byte_i`, which a bench that never drives X cannot make true, and the receiver's check that a byte is never both valid and a framing error, which holds.
+
 ## Status
 
 The nand2doom and nand2mario benches that had their own bit drivers now use the helper. Their targets pass unchanged.

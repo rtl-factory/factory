@@ -1,6 +1,8 @@
 # Python packages for the simulation runner and the L0 CI job (wiki/tools/sim/spec.md).
 # Change a pin only through an issue.
 cocotb==2.1.0
+# Functional coverage for cocotb testbenches (wiki/tools/toolchain/spec.md).
+cocotb-coverage==2.0
 pytest==9.1.1
 pillow==12.3.0
 # The board console's terminal app (wiki/tools/board/spec.md).

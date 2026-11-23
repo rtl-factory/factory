@@ -43,12 +43,13 @@ Two cocotb targets share a model when their top, sources, parameters and public 
 
 ## Test
 
-A test runs `sim.py run-model --spec <spec> --model <dir>` with every project's Python, the tools' Python (`//tools:python`) and the cocotb package: tests import across projects and tools, so each sees all of it, and any Python change reruns every test (but no model). The runner runs the target's test against the built model under the target's time budget and applies the same verdicts as `sim.py test`, including the expected fatal of a negative target. Logs, `results.xml` and waveforms go to the test's outputs (`bazel-testlogs/<package>/<target>/test.outputs/`); on failure the logs are also printed into `test.log`.
+A test runs `sim.py run-model --spec <spec> --model <dir>` with every project's Python, the tools' Python (`//tools:python`), cocotb, cocotb-coverage and the coverage helper (`//tools/sim:sim_coverage`): tests import across projects and tools, so each sees all of it, and any Python change reruns every test (but no model). The runner runs the target's test against the built model under the target's time budget and applies the same verdicts as `sim.py test`, including the expected fatal of a negative target. Logs, `results.xml`, waveforms and coverage go to the test's outputs (`bazel-testlogs/<package>/<target>/test.outputs/`); on failure the logs are also printed into `test.log`.
 
 The Bazel timeout is the shortest of short, moderate, long and eternal that is at least 30 s over the target's `timeout_seconds`, so the runner's own timeout fires first and names the target. A wrapped target is always `eternal`, and `.bazelrc` raises `eternal` to 10 hours, above the runner's longest budget for a wrapped target (`timeout_seconds` plus the 900 s compile allowance, times four: 9 hours for the game qualification).
 
 - Seed: `--test_env=SIM_SEED=<n>`; otherwise the target's `default_seed`.
 - Waveforms: `--//tools/bazel:waves` rebuilds the models with tracing and passes `--waves`.
+- Code coverage: `--//tools/bazel:coverage` rebuilds the models with Verilator's `--coverage` and passes `--coverage`; each test's coverage files and summary land in its outputs ([sim spec, Coverage](../sim/spec.md#coverage)). The coverage tools (`verilator_coverage` and its binary) are `@verilator//:verilator_coverage`, an input of tests only, so they never rebuild a model. Functional coverage needs no flag: a test that declares it always reports it.
 
 ## Formal test
 
@@ -62,7 +63,7 @@ A formal test runs `tools/fv/fv.py run <target>` with `FV_ROOT` set to its runfi
 
 ## Wrapped targets
 
-A target with a `wrapper` prepares its program image before it runs, so its test runs `sim.py --workdir workdir/bazel/<target> test <target>` unchanged, tagged `external` (always run), `no-sandbox`, `no-cache` and `wrapped`: it builds its own model and writes under the checkout's `workdir/`, and always reruns. `--//tools/bazel:waves` reaches it as `SIM_WAVES=1`, so its waveform lands under `workdir/bazel/<target>/`. This holds until program builds become Bazel actions.
+A target with a `wrapper` prepares its program image before it runs, so its test runs `sim.py --workdir workdir/bazel/<target> test <target>` unchanged, tagged `external` (always run), `no-sandbox`, `no-cache` and `wrapped`: it builds its own model and writes under the checkout's `workdir/`, and always reruns. `--//tools/bazel:waves` reaches it as `SIM_WAVES=1` and `--//tools/bazel:coverage` as `SIM_COVERAGE=1`, so its waveform and coverage land under `workdir/bazel/<target>/`. This holds until program builds become Bazel actions.
 
 ## Libraries
 
