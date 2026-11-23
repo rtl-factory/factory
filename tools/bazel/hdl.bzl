@@ -15,8 +15,9 @@ and every formal target of its src/<project>/fv/<block>/<target>.sby into a test
 
 unit_tests() makes one L0 test per tests/ folder of a package: pytest on that folder.
 
-quartus_image() makes a board image target: the project's Quartus script run as a
-local action, with its SOF, gate evidence and reports as outputs.
+quartus_image() makes a board image target: the Quartus build tool (tools/quartus/) run
+on the project's manifest as a local action, with its SOF, gate evidence and reports
+as outputs.
 
 A wrapped target (one whose wrapper prepares a program image first) runs through
 the runner's own test command instead, without a sandbox and never cached,
@@ -302,7 +303,7 @@ def unit_tests(deps = []):
 def _quartus_image_impl(ctx):
     out = ctx.actions.declare_directory(ctx.label.name)
     args = ctx.actions.args()
-    args.add("--script", ctx.file.script)
+    args.add("--script", ctx.file._tool)
     args.add("--project", ctx.attr.project)
     args.add("--out", out.path)
     args.add("--")
@@ -310,10 +311,10 @@ def _quartus_image_impl(ctx):
     ctx.actions.run(
         executable = ctx.executable._runner,
         arguments = [args],
-        inputs = depset(ctx.files.srcs + [ctx.file.script, ctx.file._toolchain]),
+        inputs = depset(ctx.files.srcs + ctx.files._tool_files + [ctx.file._tool, ctx.file._toolchain]),
         outputs = [out],
-        # Why: Quartus is a licensed, per-host install outside Bazel, and the scripts
-        # build in the checkout's workdir/; QUARTUS_SH comes from --action_env (or the pin).
+        # Why: Quartus is a licensed, per-host install outside Bazel, and the tool
+        # builds in the checkout's workdir/; QUARTUS_SH comes from --action_env (or the pin).
         execution_requirements = {"local": "1", "no-remote": "1", "no-sandbox": "1"},
         use_default_shell_env = True,
         mnemonic = "Quartus",
@@ -324,30 +325,36 @@ def _quartus_image_impl(ctx):
 _quartus_image = rule(
     implementation = _quartus_image_impl,
     attrs = {
-        "args": attr.string_list(doc = "Arguments of the build script."),
+        "args": attr.string_list(doc = "Arguments of the Quartus build tool: the manifest, board and profile."),
         "project": attr.string(mandatory = True, doc = "The Quartus project: workdir/quartus/<project>/."),
-        "script": attr.label(allow_single_file = [".py"], mandatory = True),
         "srcs": attr.label_list(allow_files = True, doc = "Every file the build reads."),
         "_runner": attr.label(default = "//tools/bazel:quartus_image", executable = True, cfg = "exec"),
+        "_tool": attr.label(default = "//tools:quartus/quartus.py", allow_single_file = True),
+        "_tool_files": attr.label(default = "//tools:quartus_files"),
         "_toolchain": attr.label(default = "//cfg:toolchain.json", allow_single_file = True),
     },
 )
 
-def quartus_image(name, script, project, args = []):
+def quartus_image(name, project, manifest, board = None, profile = None):
     """A board image, built with `bazel build`; never part of //... (needs Quartus).
 
     Args:
       name: the target, by convention <board>_image.
-      script: the project's Quartus build script.
-      project: the Quartus project name the script builds.
-      args: the script's arguments that select the board and profile.
+      project: the Quartus project name the manifest resolves to.
+      manifest: the project manifest, relative to the checkout.
+      board: a board override of the manifest, when the image is not the manifest's own board.
+      profile: a profile that extends the manifest.
     """
+    args = ["--manifest", manifest]
+    if board:
+        args += ["--board", board]
+    if profile:
+        args += ["--profile", profile]
     _quartus_image(
         name = name,
-        script = script,
         project = project,
         args = args,
-        # Why: the script resolves its manifest's libraries from every project's list.
+        # Why: the tool resolves the manifest's libraries from every project's list.
         srcs = [":all_files", "//src/common:all_files", "//tools/bazel:hdl_libraries.py"] +
                ["//src/%s:cfg/libraries.json" % p for p in PROJECTS],
         tags = ["manual", "quartus"],

@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "board": "de2_115",
   "project": "n2m_de2_115_library",
   "parameters": {
     "CART_LIBRARY": 1
@@ -14,16 +14,48 @@
       "mode": "Simple Dual Port"
     }
   ],
-  "reviewed_warnings": [
-    "Warning \\(14284\\): Synthesized away the following node\\(s\\):",
-    "Warning \\(14285\\): Synthesized away the following RAM node\\(s\\):",
-    "Warning \\(14320\\): Synthesized away node \"n2m_system:u_system\\|n2m_library:g_library\\.u_library\\|n2m_cartridge_backing:u_active\\|n2m_dual_port_ram:u_ram\\|altsyncram:memory_rtl_0\\|(?P<ram_type>altsyncram_[A-Za-z0-9]+):auto_generated\\|ram_block1a0\" File: [^\\r\\n]+/db/(?P=ram_type)\\.tdf Line: [0-9]+",
-    "Warning \\(14320\\): Synthesized away node \"n2m_system:u_system\\|n2m_library:g_library\\.u_library\\|n2m_cartridge_backing:u_active\\|n2m_dual_port_ram:u_ram\\|altsyncram:memory_rtl_0\\|(?P<ram_type>altsyncram_[A-Za-z0-9]+):auto_generated\\|ram_block1a1\" File: [^\\r\\n]+/db/(?P=ram_type)\\.tdf Line: [0-9]+",
-    "Warning \\(14320\\): Synthesized away node \"n2m_system:u_system\\|n2m_library:g_library\\.u_library\\|n2m_cartridge_backing:u_active\\|n2m_dual_port_ram:u_ram\\|altsyncram:memory_rtl_0\\|(?P<ram_type>altsyncram_[A-Za-z0-9]+):auto_generated\\|ram_block1a2\" File: [^\\r\\n]+/db/(?P=ram_type)\\.tdf Line: [0-9]+",
-    "Warning \\(14320\\): Synthesized away node \"n2m_system:u_system\\|n2m_library:g_library\\.u_library\\|n2m_cartridge_backing:u_active\\|n2m_dual_port_ram:u_ram\\|altsyncram:memory_rtl_0\\|(?P<ram_type>altsyncram_[A-Za-z0-9]+):auto_generated\\|ram_block1a3\" File: [^\\r\\n]+/db/(?P=ram_type)\\.tdf Line: [0-9]+",
-    "Warning \\(14320\\): Synthesized away node \"n2m_system:u_system\\|n2m_library:g_library\\.u_library\\|n2m_cartridge_backing:u_active\\|n2m_dual_port_ram:u_ram\\|altsyncram:memory_rtl_0\\|(?P<ram_type>altsyncram_[A-Za-z0-9]+):auto_generated\\|ram_block1a4\" File: [^\\r\\n]+/db/(?P=ram_type)\\.tdf Line: [0-9]+",
-    "Warning \\(14320\\): Synthesized away node \"n2m_system:u_system\\|n2m_library:g_library\\.u_library\\|n2m_cartridge_backing:u_active\\|n2m_dual_port_ram:u_ram\\|altsyncram:memory_rtl_0\\|(?P<ram_type>altsyncram_[A-Za-z0-9]+):auto_generated\\|ram_block1a5\" File: [^\\r\\n]+/db/(?P=ram_type)\\.tdf Line: [0-9]+",
-    "Warning \\(14320\\): Synthesized away node \"n2m_system:u_system\\|n2m_library:g_library\\.u_library\\|n2m_cartridge_backing:u_active\\|n2m_dual_port_ram:u_ram\\|altsyncram:memory_rtl_0\\|(?P<ram_type>altsyncram_[A-Za-z0-9]+):auto_generated\\|ram_block1a6\" File: [^\\r\\n]+/db/(?P=ram_type)\\.tdf Line: [0-9]+",
-    "Warning \\(14320\\): Synthesized away node \"n2m_system:u_system\\|n2m_library:g_library\\.u_library\\|n2m_cartridge_backing:u_active\\|n2m_dual_port_ram:u_ram\\|altsyncram:memory_rtl_0\\|(?P<ram_type>altsyncram_[A-Za-z0-9]+):auto_generated\\|ram_block1a7\" File: [^\\r\\n]+/db/(?P=ram_type)\\.tdf Line: [0-9]+"
-  ]
+  "reviewed_warnings": {
+    "patterns": [
+      {
+        "pattern": "Warning \\(14284\\): Synthesized away the following node\\(s\\):",
+        "count": 1
+      },
+      {
+        "pattern": "Warning \\(14285\\): Synthesized away the following RAM node\\(s\\):",
+        "count": 1
+      },
+      {
+        "pattern": "Warning \\(14320\\): Synthesized away node \"n2m_system:u_system\\|n2m_library:g_library\\.u_library\\|n2m_cartridge_backing:u_active\\|n2m_dual_port_ram:u_ram\\|altsyncram:memory_rtl_0\\|(?P<ram_type>altsyncram_[A-Za-z0-9]+):auto_generated\\|ram_block1a0\" File: [^\\r\\n]+/db/(?P=ram_type)\\.tdf Line: [0-9]+",
+        "count": 1
+      },
+      {
+        "pattern": "Warning \\(14320\\): Synthesized away node \"n2m_system:u_system\\|n2m_library:g_library\\.u_library\\|n2m_cartridge_backing:u_active\\|n2m_dual_port_ram:u_ram\\|altsyncram:memory_rtl_0\\|(?P<ram_type>altsyncram_[A-Za-z0-9]+):auto_generated\\|ram_block1a1\" File: [^\\r\\n]+/db/(?P=ram_type)\\.tdf Line: [0-9]+",
+        "count": 1
+      },
+      {
+        "pattern": "Warning \\(14320\\): Synthesized away node \"n2m_system:u_system\\|n2m_library:g_library\\.u_library\\|n2m_cartridge_backing:u_active\\|n2m_dual_port_ram:u_ram\\|altsyncram:memory_rtl_0\\|(?P<ram_type>altsyncram_[A-Za-z0-9]+):auto_generated\\|ram_block1a2\" File: [^\\r\\n]+/db/(?P=ram_type)\\.tdf Line: [0-9]+",
+        "count": 1
+      },
+      {
+        "pattern": "Warning \\(14320\\): Synthesized away node \"n2m_system:u_system\\|n2m_library:g_library\\.u_library\\|n2m_cartridge_backing:u_active\\|n2m_dual_port_ram:u_ram\\|altsyncram:memory_rtl_0\\|(?P<ram_type>altsyncram_[A-Za-z0-9]+):auto_generated\\|ram_block1a3\" File: [^\\r\\n]+/db/(?P=ram_type)\\.tdf Line: [0-9]+",
+        "count": 1
+      },
+      {
+        "pattern": "Warning \\(14320\\): Synthesized away node \"n2m_system:u_system\\|n2m_library:g_library\\.u_library\\|n2m_cartridge_backing:u_active\\|n2m_dual_port_ram:u_ram\\|altsyncram:memory_rtl_0\\|(?P<ram_type>altsyncram_[A-Za-z0-9]+):auto_generated\\|ram_block1a4\" File: [^\\r\\n]+/db/(?P=ram_type)\\.tdf Line: [0-9]+",
+        "count": 1
+      },
+      {
+        "pattern": "Warning \\(14320\\): Synthesized away node \"n2m_system:u_system\\|n2m_library:g_library\\.u_library\\|n2m_cartridge_backing:u_active\\|n2m_dual_port_ram:u_ram\\|altsyncram:memory_rtl_0\\|(?P<ram_type>altsyncram_[A-Za-z0-9]+):auto_generated\\|ram_block1a5\" File: [^\\r\\n]+/db/(?P=ram_type)\\.tdf Line: [0-9]+",
+        "count": 1
+      },
+      {
+        "pattern": "Warning \\(14320\\): Synthesized away node \"n2m_system:u_system\\|n2m_library:g_library\\.u_library\\|n2m_cartridge_backing:u_active\\|n2m_dual_port_ram:u_ram\\|altsyncram:memory_rtl_0\\|(?P<ram_type>altsyncram_[A-Za-z0-9]+):auto_generated\\|ram_block1a6\" File: [^\\r\\n]+/db/(?P=ram_type)\\.tdf Line: [0-9]+",
+        "count": 1
+      },
+      {
+        "pattern": "Warning \\(14320\\): Synthesized away node \"n2m_system:u_system\\|n2m_library:g_library\\.u_library\\|n2m_cartridge_backing:u_active\\|n2m_dual_port_ram:u_ram\\|altsyncram:memory_rtl_0\\|(?P<ram_type>altsyncram_[A-Za-z0-9]+):auto_generated\\|ram_block1a7\" File: [^\\r\\n]+/db/(?P=ram_type)\\.tdf Line: [0-9]+",
+        "count": 1
+      }
+    ]
+  }
 }

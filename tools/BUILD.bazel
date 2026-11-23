@@ -13,6 +13,15 @@ py_library(
     visibility = ["//visibility:public"],
 )
 
+# The Quartus build tool, as the board image action runs it (hdl.bzl quartus_image).
+exports_files(["quartus/quartus.py"], visibility = ["//visibility:public"])
+
+filegroup(
+    name = "quartus_files",
+    srcs = glob(["quartus/*.py"]),
+    visibility = ["//visibility:public"],
+)
+
 # Why: the board console's app runs on Textual, so its tests import it.
 unit_tests(deps = [requirement("textual")])
 
