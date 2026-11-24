@@ -1,5 +1,6 @@
 from pathlib import Path
 import contextlib
+import errno
 import functools
 import io
 import json
@@ -451,20 +452,33 @@ class N2dDoomToolTests(unittest.TestCase):
             inside = Path(temporary) / "software/doom"
             self.assertEqual(inside.resolve(), n2d_doom._confined_output(self.root, inside))
 
-    def test_a_read_only_download_cache_is_not_filled(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            source = Path(temporary) / "source.bin"
-            source.write_bytes(b"nand2doom\n")
-            # Why: a cache below a file cannot be created, even by root, like the
-            # checkout's cache inside Bazel's read-only sandbox.
-            blocker = Path(temporary) / "blocker"
-            blocker.write_bytes(b"")
-            cache = blocker / "cache"
-            destination = Path(temporary) / "out/source.bin"
+    def _fetch_with_cache_error(self, code: int) -> tuple[Path, Path]:
+        temporary = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, temporary)
+        source = temporary / "source.bin"
+        source.write_bytes(b"nand2doom\n")
+        cache = temporary / "cache"
+        destination = temporary / "out/source.bin"
+        with mock.patch.object(n2d_doom.shutil, "copyfile", side_effect=OSError(code, "cache")):
             n2d_doom._download(source.as_uri(), destination,
                                "f599639a6bfa1989af748f66d7f61f8708add23b8aa574098670c791f2e5abf4", cache)
-            self.assertEqual(b"nand2doom\n", destination.read_bytes())
-            self.assertFalse(cache.exists())
+        return destination, cache
+
+    def test_a_read_only_download_cache_is_not_filled(self) -> None:
+        destination, cache = self._fetch_with_cache_error(errno.EROFS)
+        self.assertEqual(b"nand2doom\n", destination.read_bytes())
+        self.assertEqual([], list(cache.iterdir()))
+
+    def test_other_download_cache_errors_still_fail(self) -> None:
+        with self.assertRaises(OSError):
+            self._fetch_with_cache_error(errno.ENOSPC)
+
+    def test_doom_binutils_follow_the_named_compiler(self) -> None:
+        source = (REPO_ROOT / "src/nand2doom/scripts/sw_build/n2d_doom.py").read_text()
+        # Why: a riscv64-elf host has no riscv64-unknown-elf-* tool, so every lookup goes
+        # through the shared resolver (#221).
+        self.assertNotIn("which(\"riscv64-unknown-elf", source)
+        self.assertNotIn("with_name(\"riscv64-unknown-elf", source)
 
     def test_output_rejects_existing_symlink_component(self) -> None:
         with tempfile.TemporaryDirectory(dir=self.root / "workdir") as temporary:

@@ -71,13 +71,15 @@ def _scratch_roots(root: Path) -> list[Path]:
     return [workdir] + bazel
 
 
-def scratch_path(relative: str, root: Path | None = None) -> Path:
-    """Where a test or build writes relative: the Bazel test's undeclared outputs when
-    one is running, else the repository workdir.
+def scratch_path(relative: str, root: Path | None = None, *, keep: bool = True) -> Path:
+    """Where a test or build writes relative: under bazel test, the undeclared outputs
+    for evidence to keep (keep=True) or the test's temporary folder for build trees;
+    otherwise the repository workdir.
 
-    Why: Bazel's sandbox mounts the checkout read-only (wiki/bkm/flow.md, Build).
+    Why: Bazel's sandbox mounts the checkout read-only (wiki/bkm/flow.md, Build), and
+    undeclared outputs are kept in bazel-testlogs and the disk cache.
     """
-    outputs = os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR")
+    outputs = os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR" if keep else "TEST_TMPDIR")
     if outputs:
         return Path(outputs) / relative
     return (root or repository_root()) / "workdir" / relative

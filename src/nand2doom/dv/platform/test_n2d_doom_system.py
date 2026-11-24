@@ -231,7 +231,7 @@ async def _run_doom_contract(dut, evidence, artifact) -> None:
     # and NetUpdate. The production profile (-O2, engine LTO) inlines them, so
     # this gate builds the production variant with the -Os, no-LTO engine
     # profile, as render verification does, into its own output (#100).
-    output = scratch_path("software/n2d_doom_gameplay", REPO_ROOT)
+    output = scratch_path("software/n2d_doom_gameplay", REPO_ROOT, keep=False)
     manifest = build_doom(output, REPO_ROOT, None, engine_opt="Os", engine_lto=False)
     assert json.loads((output / "manifest.json").read_text()) == manifest
     gameplay = GameplayTrace(elf_symbols(output / "n2d_doom.elf"))

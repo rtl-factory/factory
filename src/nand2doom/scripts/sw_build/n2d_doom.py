@@ -7,6 +7,7 @@ Spec: wiki/src/nand2doom/scripts/sw_build/spec.md#doom-build.
 from __future__ import annotations
 
 import argparse
+import errno
 import hashlib
 import io
 import json
@@ -208,13 +209,18 @@ def _download(url: str, destination: Path, expected: str, cache: Path | None = N
         if _sha256(temporary) != expected:
             raise RuntimeError(f"digest mismatch for {url}")
         if not local.exists() and local != destination:
+            vendored = None
             try:
                 cache.mkdir(parents=True, exist_ok=True)
                 vendored = _temporary_beside(local)
                 shutil.copyfile(temporary, vendored)
                 vendored.replace(local)
-            except OSError:
-                pass  # Why: under bazel test the checkout's cache is read-only; the fetch still counts.
+            except OSError as error:
+                if vendored is not None:
+                    vendored.unlink(missing_ok=True)
+                # Why: under bazel test the checkout's cache is read-only; the fetch still counts.
+                if error.errno not in (errno.EROFS, errno.EACCES):
+                    raise
         temporary.replace(destination)
     finally:
         temporary.unlink(missing_ok=True)
@@ -1149,7 +1155,7 @@ def build(output: Path, repository: Path,
     image = output / "n2d_doom.bin"
     _run([objcopy, "-O", "binary", str(elf), str(image)])
     symbols = subprocess.run(
-        [str(Path(objcopy).with_name("riscv64-unknown-elf-nm")),
+        [n2d_image._tool("N2D_RISCV_NM", "riscv64-unknown-elf-nm"),
          "-S", "--defined-only", str(elf)],
         check=True, capture_output=True, text=True, timeout=30).stdout
     capture_symbols = {}

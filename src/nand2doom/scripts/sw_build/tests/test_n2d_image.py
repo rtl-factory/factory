@@ -78,8 +78,13 @@ class N2dImageToolTests(unittest.TestCase):
     def test_scratch_path_is_the_bazel_outputs_under_a_test(self) -> None:
         with mock.patch.dict(os.environ, {"TEST_UNDECLARED_OUTPUTS_DIR": "/t/out"}):
             self.assertEqual(Path("/t/out/software/x"), n2d_image.scratch_path("software/x", REPO_ROOT))
+        with mock.patch.dict(os.environ, {"TEST_UNDECLARED_OUTPUTS_DIR": "/t/out", "TEST_TMPDIR": "/t/tmp"}):
+            self.assertEqual(Path("/t/tmp/software/x"),
+                             n2d_image.scratch_path("software/x", REPO_ROOT, keep=False))
         with mock.patch.dict(os.environ, {}, clear=True):
             self.assertEqual(REPO_ROOT / "workdir/software/x", n2d_image.scratch_path("software/x", REPO_ROOT))
+            self.assertEqual(REPO_ROOT / "workdir/software/x",
+                             n2d_image.scratch_path("software/x", REPO_ROOT, keep=False))
 
     def test_clean_cross_output_builds_are_identical(self) -> None:
         output_a = self.root / "workdir/image-a"

@@ -124,7 +124,7 @@ async def _observe_trap_cycles(dut, state) -> None:
 
 
 def _build_validation_image() -> tuple[dict[str, object], bytes]:
-    output = scratch_path("software/n2d_validation", REPO_ROOT)
+    output = scratch_path("software/n2d_validation", REPO_ROOT, keep=False)
     manifest = build_image(output, REPO_ROOT)
     recorded = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
     assert recorded == manifest
