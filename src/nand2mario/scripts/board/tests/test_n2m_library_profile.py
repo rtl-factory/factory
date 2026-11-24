@@ -22,14 +22,14 @@ def removed_ram_warnings():
     return headers + [
         'Warning (14320): Synthesized away node "n2m_system:u_system|n2m_library:g_library.u_library|'
         'n2m_cartridge_backing:u_active|n2a_sync_ram_enabled:u_ram|n2a_sync_ram:u_ram|altsyncram:u_ram|'
-        f'altsyncram_4g71:auto_generated|ram_block1a{i}" File: /mock/db/altsyncram_4g71.tdf Line: {36 + 21*i}'
+        f'altsyncram_4g71:auto_generated|q_a[{i}]" File: /mock/db/altsyncram_4g71.tdf Line: {36 + 21*i}'
         for i in range(8)]
 
 
 def invalid_ram_warning_sets():
     good = removed_ram_warnings()
     yield 'missing node', good[:-1]
-    yield 'extra node', good + [good[-1].replace('ram_block1a7', 'ram_block1a8')]
+    yield 'extra node', good + [good[-1].replace('q_a[7]', 'q_a[8]')]
     yield 'duplicate node', good + [good[-1]]
     yield 'duplicate hides missing node', good[:-1] + [good[-2]]
     yield 'missing header', good[1:]
