@@ -18,6 +18,9 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
 
+from src.nand2doom.dv.core.rv32_asm import (
+    MTVEC, X0, X5, X6, X7, addi, assemble, csrw, j, lui, lw, sb, sw,
+)
 from src.nand2doom.dv.io.test_n2d_uart_debug import _exchange
 from src.nand2doom.scripts.host.n2d_uart_debug_host import (
     CMD_RESET_PC, CMD_RESUME, ST_OK, request,
@@ -26,47 +29,31 @@ from src.nand2doom.scripts.host.n2d_uart_debug_host import (
 CLOCK_PERIOD_NS = 40
 FRAME_CYCLES = 800 * 525
 CAUSE_STORE_ACCESS = 7
-MTVEC = 0x305
+FRONT_VIEW, VIDEO_CONTROL = 0x1002_0000, 0x2000_1000
 
-
-def _lui(rd: int, upper: int) -> int:
-    return (upper << 12) | (rd << 7) | 0x37
-
-
-def _i(opcode: int, rd: int, funct3: int, rs1: int, imm: int) -> int:
-    return ((imm & 0xfff) << 20) | (rs1 << 15) | (funct3 << 12) | (rd << 7) | opcode
-
-
-def _s(funct3: int, rs2: int, rs1: int, imm: int) -> int:
-    return (((imm >> 5) & 0x7f) << 25) | (rs2 << 20) | (rs1 << 15) | (funct3 << 12) | \
-        ((imm & 0x1f) << 7) | 0x23
-
-
-def _csrw(csr: int, rs1: int) -> int:
-    return (csr << 20) | (rs1 << 15) | (1 << 12) | 0x73
-
-
-PROGRAM = (
-    # Why: each faulting store's mtvec points at the next step, so its handler is
-    # the following code: the front-view store at 16 traps to 20, the lane-less
-    # byte store to 0x2000_1009 at 36 traps to 40, and the swap plus palette
-    # commit at 48 falls into the loop at 52.
-    _lui(5, 0x10020),             # 0:  x5 = front view
-    _i(0x13, 6, 0, 0, 20),        # 4:  x6 = 20
-    _csrw(MTVEC, 6),              # 8:  mtvec = 20
-    _i(0x03, 7, 2, 5, 0),         # 12: lw x7, 0(x5): front read, no trap
-    _s(2, 0, 5, 0),               # 16: sw x0, 0(x5): store access fault
-    _lui(5, 0x20001),             # 20: x5 = video control
-    _i(0x13, 6, 0, 0, 40),        # 24: x6 = 40
-    _csrw(MTVEC, 6),              # 28: mtvec = 40
-    _i(0x13, 7, 0, 0, 3),         # 32: x7 = 3
-    _s(0, 7, 5, 9),               # 36: sb x7, 9(x5): no lane 0, access fault
-    _i(0x13, 6, 0, 0, 52),        # 40: x6 = 52
-    _csrw(MTVEC, 6),              # 44: mtvec = 52
-    _s(2, 7, 5, 8),               # 48: sw x7, 8(x5): swap + palette commit
-    0x0000006f,                   # 52: jal x0, 0
-)
-EXPECTED_TRAPS = [(16, CAUSE_STORE_ACCESS, 0x1002_0000), (36, CAUSE_STORE_ACCESS, 0x2000_1009)]
+# Why: each faulting store's mtvec points at the next step, so its handler is
+# the following code: the front-view store at 16 traps to 20, the lane-less
+# byte store to video control +9 (no byte lane 0) at 36 traps to 40, and the
+# word store of 3 to video control +8 (swap plus palette commit) at 48 falls
+# into the loop at 52. The front-view load at 12 must not trap.
+PROGRAM = tuple(assemble([
+    lui(X5, FRONT_VIEW >> 12),
+    addi(X6, X0, 20),
+    csrw(MTVEC, X6),
+    lw(X7, 0, X5),
+    sw(X0, 0, X5),
+    lui(X5, VIDEO_CONTROL >> 12),
+    addi(X6, X0, 40),
+    csrw(MTVEC, X6),
+    addi(X7, X0, 3),
+    sb(X7, 9, X5),
+    addi(X6, X0, 52),
+    csrw(MTVEC, X6),
+    sw(X7, 8, X5),
+    "park:",
+    j("park"),
+]))
+EXPECTED_TRAPS = [(16, CAUSE_STORE_ACCESS, FRONT_VIEW), (36, CAUSE_STORE_ACCESS, VIDEO_CONTROL + 9)]
 
 
 async def _observe(dut, state: dict) -> None:

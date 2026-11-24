@@ -15,20 +15,16 @@ from .observation import read_observation
 from .c_signature import compile_c_program, compile_signature_program
 from .core_runner import PortTiming, RunResult, btb_entries, run_program, word as _word
 from . import pipeline_cases
-from .rv32im_model import (
-    MASK32,
-    c_like_signature_program,
-    encode_b,
-    encode_csr,
-    encode_i,
-    encode_j,
-    encode_r,
-    encode_s,
-    encode_u,
-    load_immediate,
-    m_result,
-    u32,
+from .rv32_asm import (
+    EBREAK, ECALL, MCAUSE, MCOUNTINHIBIT, MCYCLE, MEPC, MHPMCOUNTER3, MHPMCOUNTER3H,
+    MHPMCOUNTER4, MHPMCOUNTER5, MHPMCOUNTER6, MHPMEVENT3, MHPMEVENT4, MHPMEVENT5,
+    MHPMEVENT6, MINSTRET, MINSTRETH, MISA, MRET, MSCRATCH, MSTATUS, MTVAL, MTVEC, NOP, RET,
+    X0, X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12, X13, X14, X15, X16, X17, add,
+    addi, assemble, auipc, beq, bge, bne, bnez, call, csrr, csrrci, csrrw, csrw, divu,
+    encode_b, encode_csr, encode_i, encode_r, encode_s, j, jal, jalr, lh, li, lui, lw, mul,
+    sw,
 )
+from .rv32im_model import MASK32, c_like_signature_program, m_result, u32
 
 CLOCK_HZ = 25_000_000
 CLOCK_PERIOD_NS = 40
@@ -66,9 +62,9 @@ async def _run(
 
 
 def _target_program(left: int, right: int, instruction: int) -> tuple[list[int], int]:
-    words = load_immediate(1, left) + load_immediate(2, right)
+    words = li(X1, left) + li(X2, right)
     target_pc = len(words) * 4
-    words += [instruction, 0x0010_0073]
+    words += [instruction, EBREAK]
     return words, target_pc
 
 
@@ -131,9 +127,9 @@ async def _check_integer_operations(dut) -> None:
         (7, 0x0F0, 0xA5A5, 0x00A0),
     ]
     for funct3, imm, left, expected in immediate_cases:
-        words = load_immediate(1, left)
+        words = li(X1, left)
         pc = len(words) * 4
-        words += [encode_i(imm, 1, funct3, 3), 0x0010_0073]
+        words += [encode_i(imm, 1, funct3, 3), EBREAK]
         observed = (await _run(dut, words, stop_pc=pc, max_cycles=40)).observations[-1]
         assert observed.rd_write_data == expected
     for shift, expected_sll, expected_srl, expected_sra in (
@@ -141,26 +137,26 @@ async def _check_integer_operations(dut) -> None:
         (31, 0x8000_0000, 1, MASK32),
     ):
         for funct3, high, expected in ((1, 0, expected_sll), (5, 0, expected_srl), (5, 0x20, expected_sra)):
-            words = load_immediate(1, 0x8000_0001)
+            words = li(X1, 0x8000_0001)
             pc = len(words) * 4
-            words += [encode_i((high << 5) | shift, 1, funct3, 3), 0x0010_0073]
+            words += [encode_i((high << 5) | shift, 1, funct3, 3), EBREAK]
             observed = (await _run(dut, words, stop_pc=pc, max_cycles=40)).observations[-1]
             assert observed.rd_write_data == expected
 
 
 async def _check_control_memory_system(dut) -> None:
     cases = [
-        ([encode_u(0xABCDE000, 3, 0x37)], 0xABCDE000, 4),
-        ([encode_u(0x12345000, 3, 0x17)], 0x12345000, 4),
-        ([encode_j(8, 3)], 4, 8),
+        ([lui(X3, 0xABCDE)], 0xABCDE000, 4),
+        ([auipc(X3, 0x12345)], 0x12345000, 4),
+        ([jal(X3, 8)], 4, 8),
     ]
     for words, expected_rd, expected_next in cases:
         observed = (await _run(dut, words, stop_pc=0, max_cycles=16)).observations[-1]
         assert observed.rd_write_data == expected_rd and observed.next_pc == expected_next
 
-    words = load_immediate(1, 16)
+    words = li(X1, 16)
     pc = len(words) * 4
-    words += [encode_i(0, 1, 0, 3, 0x67)]
+    words += [jalr(X3, 0, X1)]
     observed = (await _run(dut, words, stop_pc=pc, max_cycles=32)).observations[-1]
     assert observed.rd_write_data == pc + 4 and observed.next_pc == 16
 
@@ -172,11 +168,11 @@ async def _check_control_memory_system(dut) -> None:
         words, pc = _target_program(left, right, encode_b(8, 2, 1, funct3))
         observed = (await _run(dut, words, stop_pc=pc, max_cycles=48)).observations[-1]
         assert observed.next_pc == pc + 8
-    words, pc = _target_program(5, 5, encode_b(8, 2, 1, 1))
+    words, pc = _target_program(5, 5, bne(X1, X2, 8))
     observed = (await _run(dut, words, stop_pc=pc, max_cycles=48)).observations[-1]
     assert observed.next_pc == pc + 4
 
-    observed = (await _run(dut, [encode_i(1, 0, 0, 0)], stop_pc=0)).observations[-1]
+    observed = (await _run(dut, [addi(X0, X0, 1)], stop_pc=0)).observations[-1]
     assert observed.rd_write == 0 and observed.rd_address == 0
 
     initial = bytes((0x01, 0x7F, 0xFF, 0x80))
@@ -188,7 +184,7 @@ async def _check_control_memory_system(dut) -> None:
         assert observed.memory_read_mask in (1, 2, 4, 8, 3, 12, 15)
 
     for funct3, offset, value, expected_mask in ((0, 3, 0xAA, 8), (1, 2, 0xBEEF, 12), (2, 0, 0x12345678, 15)):
-        words = load_immediate(1, value)
+        words = li(X1, value)
         pc = len(words) * 4
         words += [encode_s(offset, 1, 0, funct3)]
         result = await _run(dut, words, stop_pc=pc, max_cycles=40)
@@ -205,37 +201,37 @@ async def _check_control_memory_system(dut) -> None:
     assert not observed.trap and observed.next_pc == 4
     for funct3 in (1, 2, 3, 5, 6, 7):
         operand = 1 if funct3 < 5 else 7
-        words = ([encode_i(7, 0, 0, 1)] if funct3 < 5 else []) + [encode_csr(0x340, operand, funct3, 3)]
+        words = ([addi(X1, X0, 7)] if funct3 < 5 else []) + [encode_csr(MSCRATCH, operand, funct3, X3)]
         pc = (len(words) - 1) * 4
         observed = (await _run(dut, words, stop_pc=pc, max_cycles=32)).observations[-1]
         assert not observed.trap and observed.rd_write == 1
-    words = load_immediate(1, 16) + [encode_csr(0x341, 1, 1, 0), 0x3020_0073]
+    words = li(X1, 16) + [csrw(MEPC, X1), MRET]
     pc = (len(words) - 1) * 4
     observed = (await _run(dut, words, stop_pc=pc, max_cycles=40)).observations[-1]
     assert not observed.trap and observed.next_pc == 16
 
-    for instruction, cause, tval in ((0x0000_0073, 11, 0), (0x0010_0073, 3, 0), (0, 2, 0)):
+    for instruction, cause, tval in ((ECALL, 11, 0), (EBREAK, 3, 0), (0, 2, 0)):
         observed = (await _run(dut, [instruction], stop_trap=True)).observations[-1]
         assert observed.trap and observed.cause == cause and observed.trap_value == tval
     for instruction, cause, tval in (
-        (encode_i(1, 0, 1, 3, 0x03), 4, 1),
-        (encode_s(2, 1, 0, 2), 6, 2),
-        (encode_j(2, 0), 0, 2),
+        (lh(X3, 1, X0), 4, 1),
+        (sw(X1, 2, X0), 6, 2),
+        (j(2), 0, 2),
     ):
         observed = (await _run(dut, [instruction], stop_trap=True)).observations[-1]
         assert observed.trap and observed.cause == cause and observed.trap_value == tval
 
     observed = (
-        await _run(dut, [encode_i(0, 0, 2, 3, 0x03)], stop_trap=True, data_error_address=0)
+        await _run(dut, [lw(X3, 0, X0)], stop_trap=True, data_error_address=0)
     ).observations[-1]
     assert observed.cause == 5 and observed.trap_value == 0 and not observed.rd_write
-    store_words = load_immediate(1, 0x1234) + [encode_s(0, 1, 0, 2)]
+    store_words = li(X1, 0x1234) + [sw(X1, 0, X0)]
     observed = (
         await _run(dut, store_words, stop_trap=True, data_error_address=0, max_cycles=40)
     ).observations[-1]
     assert observed.cause == 7 and observed.trap_value == 0 and not observed.memory_valid
     observed = (
-        await _run(dut, [encode_i(0, 0, 0, 0)], stop_trap=True, instruction_error_address=0)
+        await _run(dut, [NOP], stop_trap=True, instruction_error_address=0)
     ).observations[-1]
     assert observed.cause == 1 and observed.trap_value == 0 and observed.instruction == 0
 
@@ -245,7 +241,7 @@ async def _check_generated_signature(dut) -> None:
     assert result.observations[-1].cause == 3
     assert _word(result.memory, 0) == 127
     assert any(item.memory_write and item.memory_write_data == 127 for item in result.observations)
-    assert sum(item.instruction == encode_r(1, 1, 2, 0, 2) for item in result.observations) == 5
+    assert sum(item.instruction == mul(X2, X2, X1) for item in result.observations) == 5
 
 
 _C_IMAGE: tuple | None = None
@@ -275,26 +271,25 @@ async def _check_compiled_c_signature(dut) -> None:
 
 
 async def _check_csr_trap_state(dut) -> None:
-    nop = encode_i(0, 0, 0, 0)
-    words = [nop] * 16
+    words = [NOP] * 16
     # Why: the handler reads the trap state the ECALL leaves before anything
     # can change it: mtvec = 32, mstatus = 8 (MIE=1; MPP is WARL and reads M),
     # then ECALL. The handler at word 8 reads mstatus, mepc, mcause and mtval
     # and returns past the ECALL, where word 5 reads mstatus after MRET.
-    words[0] = encode_i(32, 0, 0, 1)
-    words[1] = encode_csr(0x305, 1, 1, 0)  # mtvec = 32
-    words[2] = encode_i(8, 0, 0, 1)
-    words[3] = encode_csr(0x300, 1, 1, 0)  # request MIE=1, MPP WARL->M
-    words[4] = 0x0000_0073               # ECALL
-    words[5] = encode_csr(0x300, 0, 2, 9)   # state after MRET
-    words[6] = 0x0010_0073
-    words[8] = encode_csr(0x300, 0, 2, 5)  # trap mstatus
-    words[9] = encode_csr(0x341, 0, 2, 6)  # mepc
-    words[10] = encode_csr(0x342, 0, 2, 7)  # mcause
-    words[11] = encode_csr(0x343, 0, 2, 8)  # mtval
-    words[12] = encode_i(4, 6, 0, 6)
-    words[13] = encode_csr(0x341, 6, 1, 0)
-    words[14] = 0x3020_0073
+    words[0] = addi(X1, X0, 32)
+    words[1] = csrw(MTVEC, X1)
+    words[2] = addi(X1, X0, 8)
+    words[3] = csrw(MSTATUS, X1)
+    words[4] = ECALL
+    words[5] = csrr(X9, MSTATUS)
+    words[6] = EBREAK
+    words[8] = csrr(X5, MSTATUS)
+    words[9] = csrr(X6, MEPC)
+    words[10] = csrr(X7, MCAUSE)
+    words[11] = csrr(X8, MTVAL)
+    words[12] = addi(X6, X6, 4)
+    words[13] = csrw(MEPC, X6)
+    words[14] = MRET
     result = await _run(dut, words, stop_cause=3, max_cycles=192)
     assert [item.order for item in result.observations] == list(
         range(len(result.observations))
@@ -319,30 +314,30 @@ async def _check_csr_trap_state(dut) -> None:
     )
     for funct3, operand, expected in csr_cases:
         program = [
-            encode_i(0x0F, 0, 0, 1),
-            encode_csr(0x340, 1, 1, 0),
+            addi(X1, X0, 0x0F),
+            csrw(MSCRATCH, X1),
         ]
         if funct3 < 5:
-            program += load_immediate(2, operand)
+            program += li(X2, operand)
             csr_operand = 2
         else:
             csr_operand = operand
         target_pc = len(program) * 4
         program += [
-            encode_csr(0x340, csr_operand, funct3, 3),
-            encode_csr(0x340, 0, 2, 4),
+            encode_csr(MSCRATCH, csr_operand, funct3, X3),
+            csrr(X4, MSCRATCH),
         ]
         result = await _run(dut, program, stop_pc=target_pc + 4, max_cycles=64)
         assert result.observations[-2].rd_write_data == 0x0F
         assert result.observations[-1].rd_write_data == expected
 
     # Ref: Zicsr: CSRRS/CSRRCI with a zero operand read without writing the CSR.
-    for instruction in (encode_csr(0x340, 0, 2, 3), encode_csr(0x340, 0, 7, 3)):
+    for instruction in (csrr(X3, MSCRATCH), csrrci(X3, MSCRATCH, 0)):
         program = [
-            encode_i(0x55, 0, 0, 1),
-            encode_csr(0x340, 1, 1, 0),
+            addi(X1, X0, 0x55),
+            csrw(MSCRATCH, X1),
             instruction,
-            encode_csr(0x340, 0, 2, 4),
+            csrr(X4, MSCRATCH),
         ]
         result = await _run(dut, program, stop_pc=12, max_cycles=48)
         assert result.observations[-2].rd_write_data == 0x55
@@ -351,22 +346,22 @@ async def _check_csr_trap_state(dut) -> None:
     # Ref: privileged spec: with only M-mode, MPP is WARL and reads M even when
     # software requests an unsupported mode.
     program = [
-        encode_i(0, 0, 0, 1),
-        encode_csr(0x300, 1, 1, 0),
-        encode_csr(0x300, 0, 2, 3),
+        addi(X1, X0, 0),
+        csrw(MSTATUS, X1),
+        csrr(X3, MSTATUS),
     ]
     result = await _run(dut, program, stop_pc=8, max_cycles=40)
     assert result.observations[-1].rd_write_data == 0x1800
 
-    for instruction in (encode_csr(0x301, 1, 1, 0), encode_csr(0x777, 0, 2, 3)):
+    for instruction in (csrw(MISA, X1), csrr(X3, 0x777)):
         observed = (await _run(dut, [instruction], stop_trap=True)).observations[-1]
         assert observed.cause == 2 and observed.trap_value == instruction
 
     counters = [
-        encode_csr(0xB02, 0, 2, 3),
-        encode_csr(0xB02, 0, 2, 4),
-        encode_csr(0xB00, 0, 2, 5),
-        encode_csr(0xB00, 0, 2, 6),
+        csrr(X3, MINSTRET),
+        csrr(X4, MINSTRET),
+        csrr(X5, MCYCLE),
+        csrr(X6, MCYCLE),
     ]
     result = await _run(dut, counters, stop_pc=12, max_cycles=48)
     assert result.observations[0].rd_write_data == 0
@@ -377,16 +372,16 @@ async def _check_csr_trap_state(dut) -> None:
     # resets to zero, but CSRRS/CSRRC with x1 must still reject a write to
     # read-only MISA.
     for funct3 in (2, 3):
-        instruction = encode_csr(0x301, 1, funct3, 3)
+        instruction = encode_csr(MISA, X1, funct3, X3)
         observed = (await _run(dut, [instruction], stop_trap=True)).observations[-1]
         assert observed.cause == 2 and observed.trap_value == instruction
 
     # Why: a MINSTRET write must override its own increment, even for a
     # read/modify/write whose nonzero source register contains zero, so both
     # halves are written with every CSR operation.
-    for address in (0xB02, 0xB82):
+    for address in (MINSTRET, MINSTRETH):
         for funct3 in (1, 2, 3):
-            program = [encode_csr(address, 1, funct3, 3), encode_csr(0xB02, 0, 2, 4)]
+            program = [encode_csr(address, 1, funct3, 3), csrr(X4, MINSTRET)]
             result = await _run(dut, program, stop_pc=4, max_cycles=32)
             assert result.observations[0].rd_write_data == 0
             assert result.observations[1].rd_write_data == 0
@@ -400,7 +395,7 @@ def _pmon_program(steps: list[tuple[list[int], int | None]]) -> tuple[list[int],
         words += instructions
         if value is not None:
             expected[(len(words) - 1) * 4] = value
-    return words + [0x0010_0073], expected
+    return words + [EBREAK], expected
 
 
 def _check_pmon_results(result: RunResult, expected: dict[int, int]) -> None:
@@ -412,26 +407,24 @@ def _check_pmon_results(result: RunResult, expected: dict[int, int]) -> None:
 
 
 async def _check_pmon(dut) -> None:
-    nop = encode_i(0, 0, 0, 0)
-    csrrw, csrrs = 1, 2
 
     def read(csr: int, rd: int = 3) -> list[int]:
-        return [encode_csr(csr, 0, csrrs, rd)]
+        return [csrr(rd, csr)]
 
     def write(csr: int, value: int) -> list[int]:
-        return load_immediate(1, value) + [encode_csr(csr, 1, csrrw, 0)]
+        return li(X1, value) + [csrw(csr, X1)]
 
     # Ref: core MAS "Performance monitor": unsupported selector IDs read back 0
     # (NONE) and mcountinhibit has the writable mask 0x7d.
-    steps = [(write(0x320, MASK32), None), (read(0x320), 0x7D),
-             (write(0x320, 0), None), (read(0x320), 0)]
+    steps = [(write(MCOUNTINHIBIT, MASK32), None), (read(MCOUNTINHIBIT), 0x7D),
+             (write(MCOUNTINHIBIT, 0), None), (read(MCOUNTINHIBIT), 0)]
     for value, legal in ((2, 2), (7, 0), (11, 0), (35, 0), (64, 64), (69, 69),
                          (70, 0), (75, 0), (76, 76), (77, 77), (78, 78), (79, 79),
                          (80, 80), (82, 82), (83, 83), (86, 86), (91, 91), (92, 92), (93, 93), (94, 94), (95, 95), (96, 96), (97, 97), (98, 0), (130, 0),
                          (0x8000_0002, 0)):
-        steps += [(write(0x323, value), None), (read(0x323), legal)]
+        steps += [(write(MHPMEVENT3, value), None), (read(MHPMEVENT3), legal)]
     for index in range(4):
-        steps += [(write(0x323 + index, 64 + index), None), (read(0x323 + index), 64 + index)]
+        steps += [(write(MHPMEVENT3 + index, 64 + index), None), (read(MHPMEVENT3 + index), 64 + index)]
     words, expected = _pmon_program(steps)
     _check_pmon_results(await _run(dut, words, stop_trap=True, max_cycles=600), expected)
 
@@ -444,31 +437,31 @@ async def _check_pmon(dut) -> None:
     # reads 1; 56 writes high = 5 and keeps low; the inhibit writer at 72 is
     # counted, the nop at 76 is not, and neither is the resume writer at 84.
     words = [
-        encode_i(2, 0, 0, 1),                 # 0
-        encode_csr(0x323, 1, csrrw, 0),       # 4  select INSTRET
-        nop,                                  # 8   count 1
-        nop,                                  # 12  count 2
-        encode_csr(0xB03, 0, csrrs, 3),       # 16  reads 2
-        encode_csr(0xB03, 0, csrrs, 4),       # 20  reads 3
-        encode_csr(0xB03, 0, csrrw, 5),       # 24  reads 4, writes 0
-        encode_csr(0xB03, 0, csrrs, 6),       # 28  reads 0
-        encode_i(-1, 0, 0, 7),                # 32
-        encode_csr(0xB03, 7, csrrw, 0),       # 36  low = 0xffffffff
-        encode_csr(0xB83, 0, csrrs, 8),       # 40  reads high 0, then carries
-        encode_csr(0xB83, 0, csrrs, 9),       # 44  reads high 1
-        encode_csr(0xB03, 0, csrrs, 10),      # 48  reads low 1
-        encode_i(5, 0, 0, 11),                # 52  low 3 after this retires
-        encode_csr(0xB83, 11, csrrw, 0),      # 56  high = 5, low kept
-        encode_csr(0xB83, 0, csrrs, 12),      # 60  reads 5
-        encode_csr(0xB03, 0, csrrs, 13),      # 64  reads 4
-        encode_i(8, 0, 0, 14),                # 68  low 5
-        encode_csr(0x320, 14, csrrw, 0),      # 72  inhibit HPM3; counted (old)
-        nop,                                  # 76  not counted
-        encode_csr(0xB03, 0, csrrs, 15),      # 80  reads 7
-        encode_csr(0x320, 0, csrrw, 0),       # 84  resume; not counted (old)
-        encode_csr(0xB03, 0, csrrs, 16),      # 88  reads 7
-        encode_csr(0xB03, 0, csrrs, 17),      # 92  reads 8
-        0x0010_0073,
+        addi(X1, X0, 2),
+        csrw(MHPMEVENT3, X1),
+        NOP,
+        NOP,
+        csrr(X3, MHPMCOUNTER3),
+        csrr(X4, MHPMCOUNTER3),
+        csrrw(X5, MHPMCOUNTER3, X0),
+        csrr(X6, MHPMCOUNTER3),
+        addi(X7, X0, -1),
+        csrw(MHPMCOUNTER3, X7),
+        csrr(X8, MHPMCOUNTER3H),
+        csrr(X9, MHPMCOUNTER3H),
+        csrr(X10, MHPMCOUNTER3),
+        addi(X11, X0, 5),
+        csrw(MHPMCOUNTER3H, X11),
+        csrr(X12, MHPMCOUNTER3H),
+        csrr(X13, MHPMCOUNTER3),
+        addi(X14, X0, 8),
+        csrw(MCOUNTINHIBIT, X14),
+        NOP,
+        csrr(X15, MHPMCOUNTER3),
+        csrw(MCOUNTINHIBIT, X0),
+        csrr(X16, MHPMCOUNTER3),
+        csrr(X17, MHPMCOUNTER3),
+        EBREAK,
     ]
     expected = {16: 2, 20: 3, 24: 4, 28: 0, 40: 0, 44: 1, 48: 1, 60: 5, 64: 4,
                 80: 7, 88: 7, 92: 8}
@@ -477,23 +470,23 @@ async def _check_pmon(dut) -> None:
     # Ref: core MAS "Performance monitor": CY/IR inhibit stop mcycle and
     # minstret; the stopping writer retires under the old (counting) controls.
     words = [
-        encode_i(5, 0, 0, 1),
-        encode_csr(0x320, 1, csrrw, 0),
-        encode_csr(0xB00, 0, csrrs, 3),
-        encode_csr(0xB02, 0, csrrs, 4),
-        nop,
-        encode_csr(0xB00, 0, csrrs, 5),
-        encode_csr(0xB02, 0, csrrs, 6),
-        0x0010_0073,
+        addi(X1, X0, 5),
+        csrw(MCOUNTINHIBIT, X1),
+        csrr(X3, MCYCLE),
+        csrr(X4, MINSTRET),
+        NOP,
+        csrr(X5, MCYCLE),
+        csrr(X6, MINSTRET),
+        EBREAK,
     ]
     result = await _run(dut, words, stop_trap=True, max_cycles=128)
     by_pc = {item.pc: item.rd_write_data for item in result.observations}
     assert by_pc[12] == 2 and by_pc[24] == 2
     assert by_pc[20] == by_pc[8]
 
-    steps = [(write(0x324, 1), None)]
-    steps += [(read(0xB00, 3), None), (read(0xB04, 4), None), ([nop, nop], None),
-              (read(0xB00, 5), None), (read(0xB04, 6), None)]
+    steps = [(write(MHPMEVENT4, 1), None)]
+    steps += [(read(MCYCLE, 3), None), (read(MHPMCOUNTER4, 4), None), ([NOP, NOP], None),
+              (read(MCYCLE, 5), None), (read(MHPMCOUNTER4, 6), None)]
     words, _ = _pmon_program(steps)
     result = await _run(dut, words, stop_trap=True, max_cycles=128,
                         instruction_latency=2)
@@ -503,24 +496,24 @@ async def _check_pmon(dut) -> None:
     # Ref: core MAS "Performance monitor" event IDs: 3 IFETCH_WAIT, 4 DATA_HOLD,
     # 6 MULDIV_HOLD, 9 BRANCH_REDIRECT.
     words, _ = _pmon_program([
-        (write(0x323, 3), None),                # IFETCH_WAIT
-        (write(0x324, 4), None),                # DATA_HOLD
-        (write(0x325, 6), None),                # MULDIV_HOLD
-        (write(0x326, 9), None),                # BRANCH_REDIRECT
+        (write(MHPMEVENT3, 3), None),
+        (write(MHPMEVENT4, 4), None),
+        (write(MHPMEVENT5, 6), None),
+        (write(MHPMEVENT6, 9), None),
     ])
     words = words[:-1]
     words += [
-        encode_u(0x8000_1000, 5, 0x37),       # lui x5, 0x80001
-        encode_i(0, 0, 2, 2, opcode=0x03),    # lw x2, 0(x0)
-        encode_r(1, 1, 5, 5, 3),              # divu x3, x5, x1 (x1 = 9)
-        encode_b(8, 0, 0, 0),                 # beq x0, x0, +8
-        nop,                                  # skipped
-        encode_j(4, 0),                       # jal x0, +4
-        encode_csr(0xB03, 0, csrrs, 10),
-        encode_csr(0xB04, 0, csrrs, 11),
-        encode_csr(0xB05, 0, csrrs, 12),
-        encode_csr(0xB06, 0, csrrs, 13),
-        0x0010_0073,
+        lui(X5, 0x80001),
+        lw(X2, 0, X0),
+        divu(X3, X5, X1),
+        beq(X0, X0, 8),
+        NOP,
+        j(4),
+        csrr(X10, MHPMCOUNTER3),
+        csrr(X11, MHPMCOUNTER4),
+        csrr(X12, MHPMCOUNTER5),
+        csrr(X13, MHPMCOUNTER6),
+        EBREAK,
     ]
     result = await _run(dut, words, stop_trap=True, max_cycles=600,
                         instruction_latency=3, data_latency=4)
@@ -538,9 +531,9 @@ async def _check_pmon(dut) -> None:
     # input vector; unsupported IDs are neither selectable nor visible on the
     # registered pmon_events_o vector.
     for event in (12, 94, 95, 96, 97):
-        words, _ = _pmon_program([(write(0x325, event), None), (write(0x326, 70), None),
-                                  ([nop] * 80, None), (read(0xB05, 3), None),
-                                  (read(0x326, 4), None), (read(0xB06, 5), None)])
+        words, _ = _pmon_program([(write(MHPMEVENT5, event), None), (write(MHPMEVENT6, 70), None),
+                                  ([NOP] * 80, None), (read(MHPMCOUNTER5, 3), None),
+                                  (read(MHPMEVENT6, 4), None), (read(MHPMCOUNTER6, 5), None)])
         pulses = {cycle: (1 << event) | (1 << 70) for cycle in range(40, 50)}
         pulses.update({cycle: 1 << 70 for cycle in range(50, 54)})
         result = await _run(dut, words, stop_trap=True, max_cycles=256,
@@ -554,33 +547,32 @@ async def _check_pmon(dut) -> None:
 async def _check_pmon_pipeline_events(dut) -> None:
     """Load-use, MUL-use, serialization and redirect events with one-cycle
     responses; each hazard below costs exactly one bubble."""
-    csrrw, csrrs = 1, 2
 
     def write(csr: int, value: int) -> list[int]:
-        return load_immediate(1, value) + [encode_csr(csr, 1, csrrw, 0)]
+        return li(X1, value) + [csrw(csr, X1)]
 
-    words = (write(0x323, 5) + write(0x324, 69) + write(0x325, 68) + write(0x326, 9))
+    words = (write(MHPMEVENT3, 5) + write(MHPMEVENT4, 69) + write(MHPMEVENT5, 68) + write(MHPMEVENT6, 9))
     words += [
         # Why: one load-use and one MUL-use stall, the same two hazards at distance
         # 2 (no stall) and one taken branch, so LOAD_USE_HOLD (5), MUL_USE_HOLD (69)
         # and BRANCH_REDIRECT (9) each read exactly 1.
-        encode_i(0, 0, 2, 2, opcode=0x03),    # lw x2
-        encode_r(0, 2, 2, 0, 3),              # add x3, x2, x2: load-use
-        encode_r(1, 3, 3, 0, 4),              # mul x4, x3, x3
-        encode_r(0, 4, 4, 0, 5),              # add x5, x4, x4: MUL-use
-        encode_i(0, 0, 2, 6, opcode=0x03),    # lw x6
-        encode_i(0, 0, 0, 0),
-        encode_r(0, 6, 6, 0, 7),              # distance 2: no stall
-        encode_r(1, 7, 7, 0, 8),              # mul x8
-        encode_i(1, 0, 0, 9),
-        encode_r(0, 8, 8, 0, 10),             # distance 2: no stall
-        encode_b(8, 0, 0, 0),                 # taken
-        encode_i(0, 0, 0, 0),
-        encode_csr(0xB03, 0, csrrs, 11),
-        encode_csr(0xB04, 0, csrrs, 12),
-        encode_csr(0xB06, 0, csrrs, 13),
-        encode_csr(0xB05, 0, csrrs, 14),
-        0x0010_0073,
+        lw(X2, 0, X0),
+        add(X3, X2, X2),
+        mul(X4, X3, X3),
+        add(X5, X4, X4),
+        lw(X6, 0, X0),
+        NOP,
+        add(X7, X6, X6),
+        mul(X8, X7, X7),
+        addi(X9, X0, 1),
+        add(X10, X8, X8),
+        beq(X0, X0, 8),
+        NOP,
+        csrr(X11, MHPMCOUNTER3),
+        csrr(X12, MHPMCOUNTER4),
+        csrr(X13, MHPMCOUNTER6),
+        csrr(X14, MHPMCOUNTER5),
+        EBREAK,
     ]
     initial = (7).to_bytes(4, "little")
     result = await _run(dut, words, stop_trap=True, max_cycles=400, initial_memory=initial)
@@ -596,10 +588,9 @@ async def _count_run(dut, body: list[int], events: tuple[int, int, int, int],
     """Run ``body`` behind selector writes for four events (the same number
     of instructions for every selection, so the timing is identical) and
     return the four counter reads (x11..x14) the body ends with, and the run."""
-    csrrw = 1
     words: list[int] = []
     for index, event in enumerate(events):
-        words += load_immediate(1, event) + [encode_csr(0x323 + index, 1, csrrw, 0)]
+        words += li(X1, event) + [csrw(MHPMEVENT3 + index, X1)]
     result = await _run(dut, words + body, stop_cause=3, max_cycles=600,
                         instruction_latency=latency, **kwargs)
     reads = {item.rd_address: item.rd_write_data for item in result.observations if item.rd_write}
@@ -614,8 +605,7 @@ async def _count_events(dut, body: list[int], events: tuple[int, int, int, int],
 
 
 def _read_counters() -> list[int]:
-    csrrs = 2
-    return [encode_csr(0xB03 + index, 0, csrrs, 11 + index) for index in range(4)] + [pipeline_cases.EBREAK]
+    return [csrr(X11 + index, MHPMCOUNTER3 + index) for index in range(4)] + [EBREAK]
 
 
 async def _check_prediction_counts(dut, name: str, body: list[int],
@@ -652,17 +642,19 @@ async def _check_pmon_prediction_events(dut) -> None:
     fetch BTB, which the read-first table does not show yet, so only the
     third iteration is predicted at fetch (and falls through); under
     three-cycle responses the second already is."""
-    nop = encode_i(0, 0, 0, 0)
-    body = [
-        encode_i(3, 0, 0, 2),                 # x2 = 3
-        encode_i(-1, 2, 0, 2),                # loop: x2 -= 1
-        encode_b(-4, 0, 2, 1),                # bne x2, x0, loop: taken twice
-        encode_b(8, 0, 0, 0),                 # beq x0, x0, +8: forward taken, not predicted
-        nop,                                  # skipped
-        encode_j(8, 0),                       # jal +8: predicted, taken
-        nop,                                  # skipped
-        encode_b(-8, 0, 2, 1),                # bne x2, x0, -8: predicted, never taken
-    ] + _read_counters()
+    body = assemble([
+        addi(X2, X0, 3),
+        "loop:",
+        addi(X2, X2, -1),
+        bnez(X2, "loop"),
+        beq(X0, X0, "jump"),
+        NOP,
+        "jump:",
+        j("last"),
+        NOP,
+        "last:",
+        bnez(X2, "jump"),
+    ]) + _read_counters()
     # Why: the expected counts follow from the program: predicted are three
     # loop branches, the JAL and the last branch; wrong are the forward branch,
     # the loop exit and the last branch.
@@ -676,16 +668,16 @@ async def _check_pmon_fetch_btb_events(dut) -> None:
     """Back-to-back taken JALs and a loop branch, trained on the first of
     three iterations and predicted at fetch (no refill clock) on the
     others; the loop exit is the only mispredict."""
-    nop = encode_i(0, 0, 0, 0)
-    body = [
-        encode_i(3, 0, 0, 2),                 # x2 = 3
-        encode_j(4, 0),                       # loop: jal x0, +4
-        encode_j(4, 0),                       # jal x0, +4
-        encode_i(-1, 2, 0, 2),                # x2 -= 1
-        nop,
-        nop,
-        encode_b(-20, 0, 2, 1),               # bne x2, x0, loop
-    ] + _read_counters()
+    body = assemble([
+        addi(X2, X0, 3),
+        "loop:",
+        j(4),
+        j(4),
+        addi(X2, X2, -1),
+        NOP,
+        NOP,
+        bnez(X2, "loop"),
+    ]) + _read_counters()
     # Why: the expected counts follow from the program: iteration one has three
     # static predictions (one refill clock each); iterations two and three have
     # six JALs and two branches predicted at fetch, the last branch falling
@@ -702,17 +694,18 @@ async def _check_pmon_counter_btb_events(dut) -> None:
     (trained) on the first, predicted taken at fetch on the next three, so
     the third and fourth mispredict while each decrements the counter, and
     not predicted on the fifth, which is correct."""
-    nop = encode_i(0, 0, 0, 0)
-    body = [
-        encode_i(5, 0, 0, 2),                 # x2 = 5
-        encode_i(4, 0, 0, 3),                 # x3 = 4
-        encode_b(8, 3, 2, 5),                 # loop: bge x2, x3, +8 (taken while x2 >= 4)
-        nop,                                  # skipped when taken
-        encode_i(-1, 2, 0, 2),                # x2 -= 1
-        nop,
-        nop,
-        encode_b(-20, 0, 2, 1),               # bne x2, x0, loop
-    ] + _read_counters()
+    body = assemble([
+        addi(X2, X0, 5),
+        addi(X3, X0, 4),
+        "loop:",
+        bge(X2, X3, "count"),
+        NOP,
+        "count:",
+        addi(X2, X2, -1),
+        NOP,
+        NOP,
+        bnez(X2, "loop"),
+    ]) + _read_counters()
     # Why: the expected counts follow from the program: predicted are the
     # forward branch on iterations 2..4 (fetch) and the loop branch on all five
     # (static once, then fetch); wrong are the forward branch's first iteration
@@ -739,8 +732,7 @@ async def _check_pmon_stale_btb_events(dut) -> None:
     alias spans within it: up to 256 entries (the n2d_rv32im_core_btb256
     target). Larger tables check stale rejection in the alias class of
     :func:`_check_btb_index_tag_boundaries`."""
-    nop = encode_i(0, 0, 0, 0)
-    selectors = 4 * 2  # Why: four load_immediate + csrrw pairs precede the body, so body word indices start here
+    selectors = 4 * 2  # Why: four li + csrw pairs precede the body, so body word indices start here
     main, second, b_word, report = selectors, 0x30, 0x40, 0x50
     entries = btb_entries(dut)
     if entries > 256:
@@ -750,23 +742,23 @@ async def _check_pmon_stale_btb_events(dut) -> None:
     span = pipeline_cases.btb_alias_span(entries) // 4
     aliases = [b_word + k * span for k in (1, 2, 3)]
     layout: dict[int, list[int]] = {
-        main: [encode_j(4 * (b_word - main), 9),            # three calls to B
-               encode_j(4 * (b_word - main - 1), 9),
-               encode_j(4 * (b_word - main - 2), 9),
-               encode_j(4 * (aliases[0] - main - 3), 0)],
-        second: [encode_j(4 * (b_word - second), 9),        # a fourth call to B
-                 encode_j(4 * (aliases[2] - second - 1), 0)],
-        b_word: [encode_b(8, 0, 0, 0),                      # B: beq x0, x0, +8
-                 nop,
-                 encode_i(0, 9, 0, 0, 0x67)],               # jalr x0, 0(x9)
+        main: [jal(X9, 4 * (b_word - main)),
+               jal(X9, 4 * (b_word - main - 1)),
+               jal(X9, 4 * (b_word - main - 2)),
+               j(4 * (aliases[0] - main - 3))],
+        second: [jal(X9, 4 * (b_word - second)),
+                 j(4 * (aliases[2] - second - 1))],
+        b_word: [beq(X0, X0, 8),
+                 NOP,
+                 jalr(X0, 0, X9)],
         report: _read_counters(),
-        aliases[0]: [encode_i(5, 3, 0, 3),                  # non-transfer alias
-                     encode_j(4 * (aliases[1] - aliases[0] - 1), 0)],
-        aliases[1]: [encode_b(8, 0, 0, 1),                  # bne x0, x0, +8: never taken
-                     encode_j(4 * (second - aliases[1] - 1), 0)],
-        aliases[2]: [encode_j(4 * (report - aliases[2]), 0)],  # JAL alias
+        aliases[0]: [addi(X3, X3, 5),
+                     j(4 * (aliases[1] - aliases[0] - 1))],
+        aliases[1]: [bne(X0, X0, 8),
+                     j(4 * (second - aliases[1] - 1))],
+        aliases[2]: [j(4 * (report - aliases[2]))],
     }
-    body = [nop] * (aliases[2] + 1 - selectors)
+    body = [NOP] * (aliases[2] + 1 - selectors)
     for word_index, words in layout.items():
         body[word_index - selectors: word_index - selectors + len(words)] = words
     # Why: the expected counts follow from the layout: predicted taken are 9
@@ -786,22 +778,20 @@ async def _check_pmon_trap_refill_events(dut) -> None:
     """An ECALL and its MRET are late redirects: two IFETCH_REDIRECT_REFILL
     (85) clocks each, never a mispredict; the only transfer, a JAL, is
     predicted statically once."""
-    csrrw, csrrs = 1, 2
-    nop = encode_i(0, 0, 0, 0)
     selectors = 4 * 2
     # Why: li x5 is padded to two words so the handler address is fixed at
     # word selectors + 5; the handler advances mepc past the ECALL and returns
     # to the JAL, which jumps to the counter reads.
-    li_handler = load_immediate(5, 4 * (selectors + 5))
-    body = li_handler + [nop] * (2 - len(li_handler)) + [
-        encode_csr(0x305, 5, csrrw, 0),       # mtvec = handler
-        0x0000_0073,                          # ecall
-        encode_j(4 * 5, 0),                   # after MRET: jump to the reads
-        encode_csr(0x341, 0, csrrs, 6),       # handler: x6 = mepc
-        encode_i(4, 6, 0, 6),                 # x6 += 4
-        encode_csr(0x341, 6, csrrw, 0),       # mepc = x6
-        0x3020_0073,                          # mret
-        nop,
+    li_handler = li(X5, 4 * (selectors + 5))
+    body = li_handler + [NOP] * (2 - len(li_handler)) + [
+        csrw(MTVEC, X5),
+        ECALL,
+        j(4 * 5),
+        csrr(X6, MEPC),
+        addi(X6, X6, 4),
+        csrw(MEPC, X6),
+        MRET,
+        NOP,
     ] + _read_counters()
     await _check_prediction_counts(dut, "trap_refill", body, (1, 0, 1), {
         1: (1, 0, 4, 0, 0),
@@ -815,14 +805,17 @@ async def _check_pmon_return_events(dut) -> None:
     calls and loop branches are predicted at fetch. Each return is fetched
     on the edge its call pushes the stack, so it is predicted statically
     (one refill clock). The loop exit is the only mispredict."""
-    body = [
-        encode_i(4, 0, 0, 2),                 # x2 = 4
-        encode_j(16, 1),                      # loop: jal ra, leaf
-        encode_i(-1, 2, 0, 2),                # x2 -= 1
-        encode_b(-8, 0, 2, 1),                # bne x2, x0, loop: exits by mispredict
-        encode_j(8, 0),                       # jal x0, +8
-        pipeline_cases.RET,                   # leaf: ret
-    ] + _read_counters()
+    body = assemble([
+        addi(X2, X0, 4),
+        "loop:",
+        call("leaf"),
+        addi(X2, X2, -1),
+        bnez(X2, "loop"),
+        j("done"),
+        "leaf:",
+        RET,
+        "done:",
+    ]) + _read_counters()
     # Why: the expected counts follow from the program: 4 calls + 4 returns + 4
     # loop branches + 1 jump are predicted; the last loop branch falls through;
     # every transfer but that one is taken.
@@ -839,18 +832,24 @@ async def _check_pmon_btb_events(dut) -> None:
     train the fetch BTB; later iterations predict both, and the loop branch,
     at fetch. Returns follow their call's push too closely to be predicted
     at fetch and are predicted from the stack in Q101H."""
-    body = [
-        encode_i(4, 0, 0, 2),                 # 0: x2 = 4
-        encode_u(0, 7, 0x17),                 # 1: x7 = pc of word 1
-        encode_i(4 * 9 - 4 - 4, 7, 0, 7),     # 2: x7 = leaf (word 9) - 4
-        encode_b(8, 0, 0, 0),                 # 3: loop: beq x0, x0, +8
-        encode_i(0, 0, 0, 0),                 # 4: skipped
-        encode_i(4, 7, 0, 1, 0x67),           # 5: jalr ra, 4(x7) (pushes)
-        encode_i(-1, 2, 0, 2),                # 6: x2 -= 1
-        encode_b(-16, 0, 2, 1),               # 7: bne x2, x0, loop: exits by mispredict
-        encode_j(8, 0),                       # 8: jal x0, +8
-        pipeline_cases.RET,                   # 9: leaf: ret
-    ] + _read_counters()
+    # Why: x7 = leaf - 4 (word 9 is the leaf, the AUIPC is word 1), so the
+    # call's JALR offset 4 reaches the leaf.
+    body = assemble([
+        addi(X2, X0, 4),
+        auipc(X7, 0),
+        addi(X7, X7, 4 * 9 - 4 - 4),
+        "loop:",
+        beq(X0, X0, "call"),
+        NOP,
+        "call:",
+        jalr(X1, 4, X7),
+        addi(X2, X2, -1),
+        bnez(X2, "loop"),
+        j("done"),
+        "leaf:",
+        RET,
+        "done:",
+    ]) + _read_counters()
     # Why: the expected counts follow from the program: predicted are 4
     # returns, 4 loop branches, 3 + 3 fetch-predicted forward branches and
     # calls and 1 jump; the two first-iteration transfers and the loop exit
@@ -865,7 +864,7 @@ async def _check_pmon_btb_events(dut) -> None:
 # from core MAS "Performance monitor": FETCH_PREDICT_TAKEN 92,
 # FETCH_PREDICT_STALE 93, BRANCH_PREDICT_TAKEN 78, BRANCH_MISPREDICT 79.
 _BTB_SITE_EVENTS = (92, 93, 78, 79)
-_BTB_SELECTOR_WORDS = 4 * 2  # Why: four load_immediate + csrrw pairs precede the body, so site indices are offset by them
+_BTB_SELECTOR_WORDS = 4 * 2  # Why: four li + csrw pairs precede the body, so site indices are offset by them
 
 
 def _btb_site_program(calls: list[int], sites: list[int]) -> list[int]:
@@ -873,19 +872,19 @@ def _btb_site_program(calls: list[int], sites: list[int]) -> list[int]:
     JALR ra and reading the counters. Each site is an always-taken forward
     branch (BEQ x0, x0, +8; not statically predicted), a skipped poison
     word and a return predicted from the stack."""
-    poison = encode_s(0x5FC, 1, 0, 2)
+    poison = sw(X1, 0x5FC, X0)
     main: list[int] = []
     for address in calls:
-        load = load_immediate(5, address)
-        main += load + [encode_i(0, 0, 0, 0)] * (2 - len(load))
-        main.append(encode_i(0, 5, 0, 1, 0x67))      # jalr ra, 0(x5)
+        load = li(X5, address)
+        main += load + [NOP] * (2 - len(load))
+        main.append(jalr(X1, 0, X5))
     main += _read_counters()
     end = max(sites) + 12
     assert 4 * (_BTB_SELECTOR_WORDS + len(main)) <= min(sites)
-    body = main + [encode_i(0, 0, 0, 0)] * ((end - 4 * _BTB_SELECTOR_WORDS) // 4 - len(main))
+    body = main + [NOP] * ((end - 4 * _BTB_SELECTOR_WORDS) // 4 - len(main))
     for site in sites:
         index = site // 4 - _BTB_SELECTOR_WORDS
-        body[index: index + 3] = [encode_b(8, 0, 0, 0), poison, pipeline_cases.RET]
+        body[index: index + 3] = [beq(X0, X0, 8), poison, RET]
     return body
 
 
@@ -965,11 +964,12 @@ async def _check_btb_reset_sweep(dut) -> None:
     # so the trained entries of the swept run are still in the table while the
     # run that starts at reset executes it.
     start = entries - 3 - _BTB_SELECTOR_WORDS
-    loop = [encode_j(4 * start, 0)] + [encode_i(0, 0, 0, 0)] * (start - 1) + [
-        encode_i(8, 0, 0, 2),                 # x2 = 8
-        encode_i(-1, 2, 0, 2),                # loop: x2 -= 1
-        encode_b(-4, 0, 2, 1),                # bne x2, x0, loop
-    ] + _read_counters()
+    loop = [j(4 * start)] + [NOP] * (start - 1) + assemble([
+        addi(X2, X0, 8),
+        "loop:",
+        addi(X2, X2, -1),
+        bnez(X2, "loop"),
+    ]) + _read_counters()
     swept, _ = await _count_run(dut, loop, _BTB_SITE_EVENTS)
     assert swept[0] > 0, swept
     during, result = await _count_run(dut, loop, _BTB_SITE_EVENTS, settle_cycles=0)
@@ -1022,10 +1022,10 @@ async def _check_pmon_accessor(dut) -> None:
 
 async def _check_variable_latency_halt_drain(dut) -> None:
     words = (
-        encode_i(0x55, 0, 0, 1),
-        encode_s(0, 1, 0, 2),
-        encode_i(1, 0, 0, 2),
-        0x0010_0073,
+        addi(X1, X0, 0x55),
+        sw(X1, 0, X0),
+        addi(X2, X0, 1),
+        EBREAK,
     )
     result = await _run(
         dut,

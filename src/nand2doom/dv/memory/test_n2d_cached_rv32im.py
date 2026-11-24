@@ -7,24 +7,24 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import FallingEdge, ReadOnly, RisingEdge
 
-from src.nand2doom.dv.core.rv32im_model import encode_b, encode_i, encode_r, encode_s
+from src.nand2doom.dv.core.rv32_asm import EBREAK, X0, X1, X2, X3, X4, X5, X6, addi, bne, lw, mul, sw
 
 from .cache_model import read_line, read_word, write_line
 
 
 def _program() -> tuple[int, ...]:
     return (
-        encode_i(0x80, 0, 0, 5),
-        encode_i(5, 0, 0, 1),
-        encode_i(1, 0, 0, 2),
-        encode_r(1, 1, 2, 0, 2),
-        encode_i(-1, 1, 0, 1),
-        encode_b(-8, 0, 1, 1),
-        encode_i(7, 2, 0, 3),
-        encode_s(0, 3, 5, 2),
-        encode_i(0, 5, 2, 4, 0x03),
-        encode_i(0, 5, 2, 6, 0x03),
-        0x0010_0073,
+        addi(X5, X0, 0x80),
+        addi(X1, X0, 5),
+        addi(X2, X0, 1),
+        mul(X2, X2, X1),
+        addi(X1, X1, -1),
+        bne(X1, X0, -8),
+        addi(X3, X2, 7),
+        sw(X3, 0, X5),
+        lw(X4, 0, X5),
+        lw(X6, 0, X5),
+        EBREAK,
     )
 
 

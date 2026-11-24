@@ -20,7 +20,15 @@
       "mode": "Simple Dual Port"
     },
     {
-      "name": "n2m_dual_port_ram:u_vram|altsyncram:memory_rtl_0|",
+      "name": "n2a_tdp_ram_enabled:u_vram|n2a_tdp_ram:u_ram|altsyncram:u_ram|",
+      "count": 1,
+      "depth": 8192,
+      "width": 8,
+      "m9ks_each": 8,
+      "mode": "True Dual Port"
+    },
+    {
+      "name": "n2a_sync_ram_enabled:u_wram|n2a_sync_ram:u_ram|altsyncram:u_ram|",
       "count": 1,
       "depth": 8192,
       "width": 8,
@@ -28,31 +36,15 @@
       "mode": "Single Port"
     },
     {
-      "name": "n2m_dual_port_ram:u_vram|altsyncram:memory_rtl_1|",
-      "count": 1,
-      "depth": 8192,
-      "width": 8,
-      "m9ks_each": 8,
-      "mode": "Simple Dual Port"
-    },
-    {
-      "name": "n2m_dual_port_ram:u_wram|altsyncram:memory_rtl_0|",
-      "count": 1,
-      "depth": 8192,
-      "width": 8,
-      "m9ks_each": 8,
-      "mode": "Single Port"
-    },
-    {
-      "name": "n2m_dual_port_ram:u_oam|altsyncram:memory_rtl_0|",
+      "name": "n2a_tdp_ram_enabled:u_oam|n2a_tdp_ram:u_ram|altsyncram:u_ram|",
       "count": 1,
       "depth": 256,
       "width": 8,
       "m9ks_each": 1,
-      "mode": "Single Port"
+      "mode": "True Dual Port"
     },
     {
-      "name": "n2m_dual_port_ram:u_hram|altsyncram:memory_rtl_0|",
+      "name": "n2a_sync_ram_enabled:u_hram|n2a_sync_ram:u_ram|altsyncram:u_ram|",
       "count": 1,
       "depth": 128,
       "width": 8,
@@ -60,7 +52,7 @@
       "mode": "Single Port"
     },
     {
-      "name": "n2m_uart_loader:u_loader|n2m_dual_port_ram:u_buffer|altsyncram:memory_rtl_0|",
+      "name": "n2m_uart_loader:u_loader|n2a_sync_ram_enabled:u_buffer|n2a_sync_ram:u_ram|altsyncram:u_ram|",
       "count": 1,
       "depth": 256,
       "width": 8,

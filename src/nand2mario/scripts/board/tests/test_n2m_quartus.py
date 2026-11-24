@@ -45,8 +45,8 @@ def removed_ram_warnings() -> list:
                "Warning (14285): Synthesized away the following RAM node(s):"]
     return headers + [
         'Warning (14320): Synthesized away node "n2m_system:u_system|n2m_library:g_library.u_library|'
-        "n2m_cartridge_backing:u_active|n2m_dual_port_ram:u_ram|altsyncram:memory_rtl_0|"
-        f'altsyncram_4g71:auto_generated|ram_block1a{i}" File: /mock/db/altsyncram_4g71.tdf Line: {36 + 21 * i}'
+        "n2m_cartridge_backing:u_active|n2a_sync_ram_enabled:u_ram|n2a_sync_ram:u_ram|altsyncram:u_ram|"
+        f'altsyncram_4g71:auto_generated|q_a[{i}]" File: /mock/db/altsyncram_4g71.tdf Line: {36 + 21 * i}'
         for i in range(8)]
 
 
@@ -89,7 +89,9 @@ class N2mQuartusTests(unittest.TestCase):
         for image, config in self.configs.items():
             with self.subTest(image):
                 simulation = [s for s in simulation_sources(f'n2m_{config["board"]}') if "/dv/" not in s]
-                self.assertEqual([s.replace("_intel.sv", "_portable.sv") for s in config["sources"]], simulation)
+                # Why: n2a_sync_ram's portable file has no suffix.
+                self.assertEqual([s.replace("n2a_sync_ram_intel.sv", "n2a_sync_ram.sv").replace("_intel.sv", "_portable.sv")
+                                  for s in config["sources"]], simulation)
                 self.assertTrue(any(s.endswith("_intel.sv") for s in config["sources"]))
                 self.assertIn("src/common/rtl/jtag/n2a_jtag_virtual.sv", config["sources"])
 
@@ -129,7 +131,7 @@ class N2mQuartusTests(unittest.TestCase):
         self.assertEqual(library["ram_requirements"][:-1], ordinary["ram_requirements"])
         active = library["ram_requirements"][-1]
         self.assertEqual((active["count"], active["depth"], active["width"], active["m9ks_each"], active["mode"]),
-                         (1, 65536, 8, 64, "Simple Dual Port"))
+                         (1, 65536, 8, 64, "True Dual Port"))
         source = (ROOT / "src/nand2mario/fpga/de2_115/n2m_de2_115.sv").read_text()
         self.assertIn("parameter int unsigned CART_LIBRARY = 0", source)
 

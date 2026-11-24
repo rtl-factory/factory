@@ -3,7 +3,7 @@
 
 // Game Boy memory responder for the compact CPU bus: decodes every request,
 // serves VRAM, WRAM (with its echo), OAM, HRAM and the IE register from
-// inferred synchronous stores, answers the unusable window with open-bus
+// the common synchronous RAMs, answers the unusable window with open-bus
 // $FF, forwards $FF00-$FF7F to the peripheral port and ROM/cartridge RAM
 // ($0000-$7FFF, $A000-$BFFF) to the cartridge port. A request is accepted on
 // the first edge it is sampled valid and copied into a held register, so no
@@ -147,98 +147,79 @@ module n2m_memory (
     assign oam_store_address = dma_oam_write_i ? dma_oam_address_i : oam_offset;
     assign oam_store_data = dma_oam_write_i ? dma_oam_data_i : write_data;
 
-    // Why: port A is the CPU side and the VRAM and OAM port Bs are the PPU read
-    // ports; the other port Bs have no reader yet, so their outputs are left
-    // unconnected.
-    /* verilator lint_off PINCONNECTEMPTY */
-    n2m_dual_port_ram #(
+    // Why: VRAM and OAM are true-dual-port stores: port A is the CPU side and
+    // port B the PPU's read port. WRAM and HRAM have one owner, so they are
+    // single-port stores. The VRAM boot clear writes through port A while
+    // the system reset holds, so it releases that port's reset.
+    n2a_tdp_ram_enabled #(
         .DATA_WIDTH (8),
-        .DEPTH      (VRAM_BYTES),
-        .DUAL_CLOCK (1'b0)
+        .DEPTH      (VRAM_BYTES)
     ) u_vram (
-        .clk_a_i         (clk_i),
-        .reset_a_i       (reset_i && !vram_clear_i),
-        .read_a_i        (vram_read && !vram_clear_i),
-        .write_a_i       (vram_write || vram_clear_i),
-        .address_a_i     (vram_clear_i ? vram_clear_address_i : vram_offset),
-        .write_data_a_i  (vram_clear_i ? 8'h00 : write_data),
-        .byte_enable_a_i (1'b1),
-        .read_data_a_o   (vram_data),
-        .read_valid_a_o  (vram_valid),
-        .clk_b_i         (clk_i),
-        .reset_b_i       (reset_i),
-        .read_b_i        (ppu_vram_read_i),
-        .address_b_i     (ppu_vram_address_i),
-        .read_data_b_o   (ppu_vram_data_o),
-        .read_valid_b_o  (ppu_vram_valid_o)
+        .clk_i            (clk_i),
+        .a_reset_i        (reset_i && !vram_clear_i),
+        .a_read_enable_i  (vram_read && !vram_clear_i),
+        .a_write_enable_i (vram_write || vram_clear_i),
+        .a_address_i      (vram_clear_i ? vram_clear_address_i : vram_offset),
+        .a_write_data_i   (vram_clear_i ? 8'h00 : write_data),
+        .a_read_data_o    (vram_data),
+        .a_read_valid_o   (vram_valid),
+        .b_reset_i        (reset_i),
+        .b_read_enable_i  (ppu_vram_read_i),
+        .b_write_enable_i (1'b0),
+        .b_address_i      (ppu_vram_address_i),
+        .b_write_data_i   (8'h00),
+        .b_read_data_o    (ppu_vram_data_o),
+        .b_read_valid_o   (ppu_vram_valid_o)
     );
 
-    n2m_dual_port_ram #(
+    n2a_sync_ram_enabled #(
         .DATA_WIDTH (8),
-        .DEPTH      (WRAM_BYTES),
-        .DUAL_CLOCK (1'b0)
+        .DEPTH      (WRAM_BYTES)
     ) u_wram (
-        .clk_a_i         (clk_i),
-        .reset_a_i       (reset_i),
-        .read_a_i        (wram_read),
-        .write_a_i       (wram_write),
-        .address_a_i     (wram_offset),
-        .write_data_a_i  (write_data),
-        .byte_enable_a_i (1'b1),
-        .read_data_a_o   (wram_data),
-        .read_valid_a_o  (wram_valid),
-        .clk_b_i         (clk_i),
-        .reset_b_i       (reset_i),
-        .read_b_i        (1'b0),
-        .address_b_i     ('0),
-        .read_data_b_o   (),
-        .read_valid_b_o  ()
+        .clk_i          (clk_i),
+        .reset_i        (reset_i),
+        .read_enable_i  (wram_read),
+        .write_enable_i (wram_write),
+        .address_i      (wram_offset),
+        .write_data_i   (write_data),
+        .read_data_o    (wram_data),
+        .read_valid_o   (wram_valid)
     );
 
-    n2m_dual_port_ram #(
+    n2a_tdp_ram_enabled #(
         .DATA_WIDTH (8),
-        .DEPTH      (OAM_STORE_DEPTH),
-        .DUAL_CLOCK (1'b0)
+        .DEPTH      (OAM_STORE_DEPTH)
     ) u_oam (
-        .clk_a_i         (clk_i),
-        .reset_a_i       (reset_i),
-        .read_a_i        (oam_read),
-        .write_a_i       (oam_store_write),
-        .address_a_i     (oam_store_address),
-        .write_data_a_i  (oam_store_data),
-        .byte_enable_a_i (1'b1),
-        .read_data_a_o   (oam_data),
-        .read_valid_a_o  (oam_valid),
-        .clk_b_i         (clk_i),
-        .reset_b_i       (reset_i),
-        .read_b_i        (ppu_oam_read_i),
-        .address_b_i     (ppu_oam_address_i),
-        .read_data_b_o   (ppu_oam_data_o),
-        .read_valid_b_o  (ppu_oam_valid_o)
+        .clk_i            (clk_i),
+        .a_reset_i        (reset_i),
+        .a_read_enable_i  (oam_read),
+        .a_write_enable_i (oam_store_write),
+        .a_address_i      (oam_store_address),
+        .a_write_data_i   (oam_store_data),
+        .a_read_data_o    (oam_data),
+        .a_read_valid_o   (oam_valid),
+        .b_reset_i        (reset_i),
+        .b_read_enable_i  (ppu_oam_read_i),
+        .b_write_enable_i (1'b0),
+        .b_address_i      (ppu_oam_address_i),
+        .b_write_data_i   (8'h00),
+        .b_read_data_o    (ppu_oam_data_o),
+        .b_read_valid_o   (ppu_oam_valid_o)
     );
 
-    n2m_dual_port_ram #(
+    n2a_sync_ram_enabled #(
         .DATA_WIDTH (8),
-        .DEPTH      (HRAM_STORE_DEPTH),
-        .DUAL_CLOCK (1'b0)
+        .DEPTH      (HRAM_STORE_DEPTH)
     ) u_hram (
-        .clk_a_i         (clk_i),
-        .reset_a_i       (reset_i),
-        .read_a_i        (hram_read),
-        .write_a_i       (hram_write),
-        .address_a_i     (hram_offset),
-        .write_data_a_i  (write_data),
-        .byte_enable_a_i (1'b1),
-        .read_data_a_o   (hram_data),
-        .read_valid_a_o  (hram_valid),
-        .clk_b_i         (clk_i),
-        .reset_b_i       (reset_i),
-        .read_b_i        (1'b0),
-        .address_b_i     ('0),
-        .read_data_b_o   (),
-        .read_valid_b_o  ()
+        .clk_i          (clk_i),
+        .reset_i        (reset_i),
+        .read_enable_i  (hram_read),
+        .write_enable_i (hram_write),
+        .address_i      (hram_offset),
+        .write_data_i   (write_data),
+        .read_data_o    (hram_data),
+        .read_valid_o   (hram_valid)
     );
-    /* verilator lint_on PINCONNECTEMPTY */
 
     // Ref: Pan Docs "IE ($FFFF)": all eight bits read back; the CPU consumes the
     // five interrupt sources. Reset clears it (DMG post-boot value).

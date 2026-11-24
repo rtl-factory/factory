@@ -14,7 +14,7 @@ A Game Boy-compatible system (LR35902 CPU, memory map, cartridge mapper, timer, 
 | Block | Code | What it does |
 |---|---|---|
 | core | `rtl/core/` | The LR35902 CPU (`n2m_cpu.sv`) with its control, execute, bus, retirement and STOP-policy blocks, the ALU, and the timebase that makes the 25 MHz clock enables; `n2m_interfaces_pkg.sv` publishes the system-domain CPU bus and retirement records |
-| memory | `rtl/memory/` | The Game Boy memory map (`n2m_memory_pkg.sv`, `n2m_memory_decode.sv`, `n2m_memory.sv`) and the byte-enabled dual-port RAM it stores in |
+| memory | `rtl/memory/` | The Game Boy memory map (`n2m_memory_pkg.sv`, `n2m_memory_decode.sv`, `n2m_memory.sv`) stored in the common RAMs with read requests ([common memory MAS](../../common/rtl/memory/mas.md)): VRAM and OAM in `n2a_tdp_ram_enabled` (CPU on port A, the PPU on port B), WRAM and HRAM in `n2a_sync_ram_enabled` |
 | cartridge | `rtl/cartridge/` | The header-selected ROM-only/MBC1 mapper on the memory map's cartridge port, its on-chip backing store, and the optional game library |
 | timer, interrupts, joypad, serial | `rtl/timer/`, `rtl/interrupts/`, `rtl/joypad/`, `rtl/serial/` | The DIV/TIMA/TMA/TAC, IF, P1 and SB/SC registers on the memory map's peripheral port |
 | video | `rtl/video/` | The PPU (registers, timing, window, objects, background, mix) and the display tier that stores complete frames and scans them out 3x scaled on 640x480 VGA through the common raster timing and RAM; also the frame snapshot |

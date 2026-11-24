@@ -13,37 +13,30 @@ import random
 import cocotb
 
 from .core_runner import HaltPlan, PortTiming, RunResult, run_program, word
-from .rv32im_model import (
-    encode_b,
-    encode_csr,
-    encode_i,
-    encode_j,
-    encode_r,
-    encode_s,
-    encode_u,
-    load_immediate,
-    m_result,
+from .rv32_asm import (
+    EBREAK, ECALL, MCAUSE, MCYCLE, MEPC, MINSTRET, MRET, MSCRATCH, MTVEC, NOP, RA, RET, SP,
+    X0, X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12, X13, X14, X15, X16, X17, X18,
+    X19, X20, X21, X22, X23, X24, X25, add, addi, andi, assemble, beq, blt, bne, bnez, call,
+    csrr, csrrw, csrw, div, divu, encode_b, encode_csr, encode_i, encode_r, encode_s,
+    encode_u, j, jal, jalr, la, lbu, lh, li, lui, lw, mul, mulh, mulhu, rem, remu, sb, srai,
+    sub, sw,
 )
-
-NOP = encode_i(0, 0, 0, 0)
-EBREAK = 0x0010_0073
-ECALL = 0x0000_0073
-MRET = 0x3020_0073
+from .rv32im_model import m_result
 
 # Why: the handler sits at words 1..4 (mtvec = 4) and returns to mepc + 4,
 # so a trapping instruction is skipped, not retried.
 HANDLER = (
-    encode_csr(0x341, 0, 2, 9),  # x9 = mepc
-    encode_i(4, 9, 0, 9),
-    encode_csr(0x341, 9, 1, 0),  # mepc = x9
+    csrr(X9, MEPC),
+    addi(X9, X9, 4),
+    csrw(MEPC, X9),
     MRET,
 )
 
 
 def with_handler(body: list[int]) -> list[int]:
     """Word 0 skips the handler; the body starts by setting mtvec = 4."""
-    prologue = [encode_j(4 * (1 + len(HANDLER)), 0), *HANDLER]
-    setup = [encode_i(4, 0, 0, 9), encode_csr(0x305, 9, 1, 0)]
+    prologue = [j(4 * (1 + len(HANDLER))), *HANDLER]
+    setup = [addi(X9, X0, 4), csrw(MTVEC, X9)]
     return prologue + setup + body + [EBREAK]
 
 
@@ -57,38 +50,39 @@ def _random_timing(rng: random.Random) -> tuple[PortTiming, PortTiming]:
 def _producers() -> dict[str, list[int]]:
     """Each producer writes x5 from x1/x2 (x1=0x40, x2=7, x3=data base)."""
     return {
-        "alu": [encode_r(0, 2, 1, 0, 5)],
-        "lui": [encode_u(0x0000_4000, 5, 0x37)],
-        "load": [encode_i(0, 3, 2, 5, 0x03)],
-        "load_byte": [encode_i(1, 3, 4, 5, 0x03)],
-        "mul": [encode_r(1, 2, 1, 0, 5)],
-        "mulh": [encode_r(1, 1, 1, 3, 5)],
-        "div": [encode_r(1, 2, 1, 4, 5)],
-        "csr": [encode_csr(0x340, 0, 2, 5)],
-        "jal_link": [encode_j(4, 5)],
+        "alu": [add(X5, X1, X2)],
+        "lui": [lui(X5, 0x4)],
+        "load": [lw(X5, 0, X3)],
+        "load_byte": [lbu(X5, 1, X3)],
+        "mul": [mul(X5, X1, X2)],
+        "mulhu": [mulhu(X5, X1, X1)],
+        "div": [div(X5, X1, X2)],
+        "csr": [csrr(X5, MSCRATCH)],
+        "jal_link": [jal(X5, 4)],
     }
 
 
 def _consumers() -> dict[str, list[int]]:
-    """Each consumer reads x5 at the instruction distance being swept."""
+    """Each consumer reads x5 at the instruction distance being swept; the
+    address consumer is a byte store, so it is never misaligned."""
     return {
-        "alu_rs1": [encode_i(3, 5, 0, 6)],
-        "alu_rs2": [encode_r(0x20, 5, 1, 0, 6)],
-        "store_data": [encode_s(8, 5, 3, 2)],
-        "store_address": [encode_s(0, 2, 5, 0)],  # SB: never misaligned
-        "branch": [encode_b(8, 5, 1, 1), encode_i(1, 0, 0, 6)],
-        "mul_operand": [encode_r(1, 5, 2, 0, 6)],
-        "csr_operand": [encode_csr(0x340, 5, 1, 6)],
+        "alu_rs1": [addi(X6, X5, 3)],
+        "alu_rs2": [sub(X6, X1, X5)],
+        "store_data": [sw(X5, 8, X3)],
+        "store_address": [sb(X2, 0, X5)],
+        "branch": [bne(X1, X5, 8), addi(X6, X0, 1)],
+        "mul_operand": [mul(X6, X2, X5)],
+        "csr_operand": [csrrw(X6, MSCRATCH, X5)],
     }
 
 
 async def check_raw_distances(dut, rng: random.Random) -> None:
     initial = bytes(range(0x00, 0x80))
     base = [
-        *load_immediate(1, 0x40),
-        encode_i(7, 0, 0, 2),
-        encode_i(0x20, 0, 0, 3),
-        encode_csr(0x340, 1, 1, 0),  # mscratch = 0x40
+        *li(X1, 0x40),
+        addi(X2, X0, 7),
+        addi(X3, X0, 0x20),
+        csrw(MSCRATCH, X1),
     ]
     count = 0
     for producer_name, producer in _producers().items():
@@ -109,19 +103,19 @@ async def check_raw_distances(dut, rng: random.Random) -> None:
 
 async def check_divide_under_hold(dut, rng: random.Random) -> None:
     program = [
-        *load_immediate(1, -1000),
-        encode_i(7, 0, 0, 2),
-        encode_i(0x40, 0, 0, 3),
+        *li(X1, -1000),
+        addi(X2, X0, 7),
+        addi(X3, X0, 0x40),
         # Why: the divide issues behind a store under a long data hold with an
         # independent load behind it, so the REM must wait on both the divider
         # and the load; a missed interlock shows up in the REM or its immediate
         # consumer.
-        encode_s(0, 1, 3, 2),             # store under a long data hold
-        encode_r(1, 2, 1, 4, 4),          # DIV x4 = x1 / x2
-        encode_i(0, 3, 2, 5, 0x03),       # independent load behind the divide
-        encode_r(1, 4, 5, 6, 6),          # REM depends on both
-        encode_r(0, 6, 4, 0, 7),          # immediate consumer of the REM
-        encode_s(4, 7, 3, 2),
+        sw(X1, 0, X3),
+        div(X4, X1, X2),
+        lw(X5, 0, X3),
+        rem(X6, X5, X4),
+        add(X7, X4, X6),
+        sw(X7, 4, X3),
     ]
     for seed in range(4):
         await run_program(
@@ -145,15 +139,15 @@ async def check_multiply_under_memory_hold(dut, rng: random.Random) -> None:
     address = 0x80
     count = 0
     for store in (False, True):
-        memory = encode_s(address, 1, 0, 2) if store else encode_i(address, 0, 2, 6, 0x03)
+        memory = sw(X1, address, X0) if store else lw(X6, address, X0)
         body = [
-            *load_immediate(1, left), *load_immediate(2, right),
-            encode_r(1, 2, 1, 0, 5),       # MUL x5: retained older product
-            memory,                       # immediate delayed/faulting memory
-            encode_i(3, 5, 0, 11),         # dependent ALU consumes x5
-            encode_r(1, 2, 5, 0, 7),       # dependent MUL consumes x5
-            encode_r(0, 11, 7, 0, 8),      # dependent ALU consumes both
-            encode_s(0x4C, 8, 0, 2),
+            *li(X1, left), *li(X2, right),
+            mul(X5, X1, X2),
+            memory,
+            addi(X11, X5, 3),
+            mul(X7, X5, X2),
+            add(X8, X7, X11),
+            sw(X8, 0x4C, X0),
         ]
         for fault in (False, True):
             for latency in (1, 2, 3, 8, 17, 31):
@@ -199,18 +193,18 @@ def m_corner_pairs(rng: random.Random, random_pairs: int = 48) -> list[tuple[int
 def m_vector_program(pairs) -> list[int]:
     """Each pair: x1, x2 operands; all eight ops into x3..x10; dependents.
 
-    The MUL result feeds the next MUL at distance one (MUL-to-MUL and
-    MUL-use), and a store consumes the last remainder.
+    A MUL of two results feeds a MULH at distance one (MUL-to-MUL), an ADD
+    consumes that MULH at once (MUL-use), and a store takes the sum.
     """
     words: list[int] = []
     for left, right in pairs:
-        words += load_immediate(1, left) + load_immediate(2, right)
+        words += li(X1, left) + li(X2, right)
         for offset, funct3 in enumerate(_M_ORDER):
             words.append(encode_r(1, 2, 1, funct3, 3 + offset))
-        words.append(encode_r(1, 4, 3, 0, 11))   # MUL x11 = x3 * x4, MULH just before
-        words.append(encode_r(1, 11, 11, 1, 12))  # MULH x12 = x11 * x11, back to back
-        words.append(encode_r(0, 12, 10, 0, 13))  # ADD consumes the MULH immediately
-        words.append(encode_s(0x40, 13, 0, 2))
+        words.append(mul(X11, X3, X4))
+        words.append(mulh(X12, X11, X11))
+        words.append(add(X13, X10, X12))
+        words.append(sw(X13, 0x40, X0))
     return words + [EBREAK]
 
 
@@ -232,33 +226,34 @@ async def check_divide_pairs(dut, rng: random.Random) -> None:
     an independent instruction, after a multiply, and after an operand is
     rewritten with the same value. A changed operand value, a signedness
     change, or an intervening divide with other operands must recompute.
+    Divide by zero and the signed overflow (-2^31 / -1) close the program.
     """
     body = [
-        *load_immediate(1, -100_003),
-        encode_i(77, 0, 0, 2),
-        encode_r(1, 2, 1, 4, 3),         # DIV x3
-        encode_r(1, 2, 1, 6, 4),         # REM x4, same operands, adjacent
-        encode_r(1, 2, 1, 5, 5),         # DIVU: signedness changes
-        encode_i(1, 0, 0, 9),            # independent ALU work
-        encode_r(1, 2, 1, 7, 6),         # REMU after one instruction
-        encode_r(1, 2, 1, 4, 7),         # DIV
-        encode_i(1, 2, 0, 2),            # x2 changes
-        encode_r(1, 2, 1, 6, 8),         # REM must recompute
-        encode_i(0, 2, 0, 2),            # x2 rewritten with its own value
-        encode_r(1, 2, 1, 6, 10),        # REM: same operands again
-        encode_r(1, 2, 2, 4, 11),        # DIV x2/x2: other operands
-        encode_r(1, 2, 1, 0, 12),        # MUL between
-        encode_r(1, 2, 1, 4, 13),        # DIV x1/x2
-        encode_r(1, 2, 1, 6, 14),        # REM x1/x2
-        encode_r(0, 14, 13, 0, 15),      # immediate consumer of both
-        encode_i(0, 0, 0, 2),            # divide by zero
-        encode_r(1, 2, 1, 4, 16),
-        encode_r(1, 2, 1, 6, 17),        # remainder of divide by zero
-        *load_immediate(1, 0x8000_0000),
-        encode_i(-1, 0, 0, 2),
-        encode_r(1, 2, 1, 4, 18),        # signed overflow
-        encode_r(1, 2, 1, 6, 19),
-        encode_s(0x40, 19, 0, 2),
+        *li(X1, -100_003),
+        addi(X2, X0, 77),
+        div(X3, X1, X2),
+        rem(X4, X1, X2),
+        divu(X5, X1, X2),
+        addi(X9, X0, 1),
+        remu(X6, X1, X2),
+        div(X7, X1, X2),
+        addi(X2, X2, 1),
+        rem(X8, X1, X2),
+        addi(X2, X2, 0),
+        rem(X10, X1, X2),
+        div(X11, X2, X2),
+        mul(X12, X1, X2),
+        div(X13, X1, X2),
+        rem(X14, X1, X2),
+        add(X15, X13, X14),
+        addi(X2, X0, 0),
+        div(X16, X1, X2),
+        rem(X17, X1, X2),
+        *li(X1, 0x8000_0000),
+        addi(X2, X0, -1),
+        div(X18, X1, X2),
+        rem(X19, X1, X2),
+        sw(X19, 0x40, X0),
     ]
     for seed in range(3):
         instruction, data = _random_timing(random.Random(rng.getrandbits(32) ^ seed))
@@ -277,13 +272,13 @@ async def check_divide_killed_by_older_trap(dut, rng: random.Random) -> None:
     """
     error_address = 0x80
     body = [
-        *load_immediate(1, 0x7654_3210),
-        encode_i(13, 0, 0, 2),
-        encode_i(error_address, 0, 2, 5, 0x03),  # faulting load
-        encode_r(1, 2, 1, 5, 6),                 # DIVU issues under the load hold
-        encode_r(1, 2, 1, 7, 7),                 # REMU over the same operands
-        encode_r(0, 7, 6, 0, 8),
-        encode_s(0x40, 8, 0, 2),
+        *li(X1, 0x7654_3210),
+        addi(X2, X0, 13),
+        lw(X5, error_address, X0),
+        divu(X6, X1, X2),
+        remu(X7, X1, X2),
+        add(X8, X6, X7),
+        sw(X8, 0x40, X0),
     ]
     for latency in range(1, 40, 3):
         await run_program(
@@ -294,20 +289,20 @@ async def check_divide_killed_by_older_trap(dut, rng: random.Random) -> None:
 
 
 async def check_flush_suppresses_younger_store(dut, rng: random.Random) -> None:
-    poison = [encode_s(0x40, 1, 0, 2), encode_s(0x44, 1, 0, 2), encode_s(0x48, 1, 0, 2)]
+    poison = [sw(X1, 0x40, X0), sw(X1, 0x44, X0), sw(X1, 0x48, X0)]
     transfers = {
-        "beq_taken": encode_b(16, 0, 0, 0),
-        "bne_taken": encode_b(16, 2, 0, 1),
-        "jal": encode_j(16, 0),
-        "jalr": encode_i(0, 3, 0, 0, 0x67),
+        "beq_taken": beq(X0, X0, 16),
+        "bne_taken": bne(X0, X2, 16),
+        "jal": j(16),
+        "jalr": jalr(X0, 0, X3),
     }
     for name, transfer in transfers.items():
-        prefix = [*load_immediate(1, 0x5555_AAAA), encode_i(1, 0, 0, 2)]
+        prefix = [*li(X1, 0x5555_AAAA), addi(X2, X0, 1)]
         target = 4 * (len(prefix) + 2 + 4)
-        prefix.append(encode_i(target, 0, 0, 3))
-        program = prefix + [transfer] + poison + [encode_i(9, 0, 0, 4)]
+        prefix.append(addi(X3, X0, target))
+        program = prefix + [transfer] + poison + [addi(X4, X0, 9)]
         assert len(program) * 4 == target, name
-        program += [encode_s(0x4C, 1, 0, 2), EBREAK]
+        program += [sw(X1, 0x4C, X0), EBREAK]
         for timing_seed in range(3):
             instruction, data = _random_timing(random.Random(rng.getrandbits(32) ^ timing_seed))
             result = await run_program(
@@ -319,7 +314,7 @@ async def check_flush_suppresses_younger_store(dut, rng: random.Random) -> None:
             assert word(result.memory, 0x4C) == 0x5555_AAAA
     # Why: control case, so a flush that also squashed the not-taken path's
     # younger store would fail here.
-    program = [*load_immediate(1, 0x1234_5678), encode_b(8, 0, 1, 0), encode_s(0x40, 1, 0, 2), EBREAK]
+    program = [*li(X1, 0x1234_5678), beq(X1, X0, 8), sw(X1, 0x40, X0), EBREAK]
     result = await run_program(dut, program, stop_cause=3, max_cycles=100)
     assert word(result.memory, 0x40) == 0x1234_5678
 
@@ -331,19 +326,19 @@ async def check_system_serialization(dut, rng: random.Random) -> None:
         # store in flight forces SYSTEM serialization and exact minstret counting,
         # including a minstret write. The model takes mcycle from the DUT, and the
         # ECALL handler returns past it before mcause and mepc are read.
-        encode_i(0, 0, 2, 1, 0x03),      # long-latency load
-        encode_csr(0x340, 1, 1, 2),      # CSRRW consumes it immediately
-        encode_csr(0xB02, 0, 2, 3),      # exact minstret after the load and CSR
-        encode_r(1, 1, 1, 0, 4),         # MUL in flight
-        encode_csr(0xB02, 0, 2, 5),      # minstret behind a multiply
-        encode_s(8, 1, 0, 2),            # store in flight
-        encode_csr(0x340, 0, 2, 6),      # CSR read behind a store
-        encode_csr(0xB02, 6, 1, 0),      # minstret write overrides its own count
-        encode_csr(0xB02, 0, 2, 7),
-        encode_csr(0xB00, 0, 2, 8),      # mcycle: value taken from the DUT
-        ECALL,                            # handler returns past it
-        encode_csr(0x342, 0, 2, 10),     # mcause of the ECALL
-        encode_csr(0x341, 0, 2, 11),     # mepc returned past by the handler
+        lw(X1, 0, X0),
+        csrrw(X2, MSCRATCH, X1),
+        csrr(X3, MINSTRET),
+        mul(X4, X1, X1),
+        csrr(X5, MINSTRET),
+        sw(X1, 8, X0),
+        csrr(X6, MSCRATCH),
+        csrw(MINSTRET, X6),
+        csrr(X7, MINSTRET),
+        csrr(X8, MCYCLE),
+        ECALL,
+        csrr(X10, MCAUSE),
+        csrr(X11, MEPC),
     ]
     for seed in range(3):
         instruction, data = _random_timing(random.Random(rng.getrandbits(32) ^ seed))
@@ -357,17 +352,17 @@ async def check_data_error_precedes_younger_work(dut, rng: random.Random) -> Non
     error_address = 0x80
     youngers = {
         "ecall": [ECALL],
-        "store": [encode_s(0x40, 1, 0, 2)],
-        "csr_write": [encode_csr(0x340, 1, 1, 0)],
+        "store": [sw(X1, 0x40, X0)],
+        "csr_write": [csrw(MSCRATCH, X1)],
         "illegal": [0x0000_0000],
-        "misaligned_load": [encode_i(2, 0, 2, 6, 0x03)],
-        "branch": [encode_b(8, 0, 0, 0), encode_s(0x44, 1, 0, 2)],
+        "misaligned_load": [lw(X6, 2, X0)],
+        "branch": [beq(X0, X0, 8), sw(X1, 0x44, X0)],
     }
     for kind in ("load", "store"):
-        access = (encode_i(error_address, 0, 2, 5, 0x03) if kind == "load"
-                  else encode_s(error_address, 1, 0, 2))
+        access = (lw(X5, error_address, X0) if kind == "load"
+                  else sw(X1, error_address, X0))
         for name, younger in youngers.items():
-            body = [*load_immediate(1, 0x7777_1111), access, *younger, encode_csr(0x340, 0, 2, 12)]
+            body = [*li(X1, 0x7777_1111), access, *younger, csrr(X12, MSCRATCH)]
             for seed in range(2):
                 instruction, data = _random_timing(random.Random(rng.getrandbits(32) ^ seed))
                 result = await run_program(
@@ -381,31 +376,31 @@ async def check_data_error_precedes_younger_work(dut, rng: random.Random) -> Non
 
 def _halt_program() -> list[int]:
     return with_handler([
-        *load_immediate(1, -77),
-        encode_i(9, 0, 0, 2),
-        encode_i(0x40, 0, 0, 3),
-        encode_s(0, 1, 3, 2),
-        encode_i(0, 3, 2, 4, 0x03),
-        encode_r(1, 2, 4, 0, 5),
+        *li(X1, -77),
+        addi(X2, X0, 9),
+        addi(X3, X0, 0x40),
+        sw(X1, 0, X3),
+        lw(X4, 0, X3),
+        mul(X5, X4, X2),
         # Why: a halt only exposes a drain defect for work in flight at that moment,
         # so the program holds every kind: a divide, a forward taken branch (not
         # predicted) over a squashed store, a predicted backward loop that exits by
         # mispredict, a predicted never-taken backward branch, a misaligned-load
         # trap and return, and a JAL.
-        encode_r(1, 2, 1, 4, 6),          # divide
-        encode_b(8, 2, 1, 1),             # taken, forward: not predicted
-        encode_s(4, 1, 3, 2),             # squashed
-        encode_i(2, 0, 0, 10),            # x10 = 2
-        encode_i(-1, 10, 0, 10),          # loop: x10 -= 1
-        encode_b(-4, 0, 10, 1),           # backward, predicted taken; exits by mispredict
-        encode_b(-12, 0, 10, 1),          # backward, predicted taken, never taken
-        encode_r(0, 6, 5, 0, 7),
-        encode_csr(0x340, 7, 1, 0),
-        encode_i(1, 0, 2, 8, 0x03),       # misaligned load trap and return
-        encode_s(8, 7, 3, 2),
-        encode_j(8, 1),
+        div(X6, X1, X2),
+        bne(X1, X2, 8),
+        sw(X1, 4, X3),
+        addi(X10, X0, 2),
+        addi(X10, X10, -1),
+        bne(X10, X0, -4),
+        bne(X10, X0, -12),
+        add(X7, X5, X6),
+        csrw(MSCRATCH, X7),
+        lw(X8, 1, X0),
+        sw(X7, 8, X3),
+        jal(X1, 8),
         NOP,
-        encode_i(1, 7, 0, 7),
+        addi(X7, X7, 1),
     ])
 
 
@@ -449,12 +444,12 @@ async def check_reset_pc(dut, rng: random.Random) -> None:
     # so each pass bumps mscratch until it reaches 3; the passes differ and the
     # model must follow them exactly.
     program = with_handler([
-        encode_csr(0x340, 0, 2, 1),
-        encode_i(1, 1, 0, 1),
-        encode_csr(0x340, 1, 1, 0),
-        encode_i(3, 0, 0, 2),
-        encode_b(8, 1, 2, 4),             # stop looping once mscratch >= 3
-        encode_j(-20, 0),
+        csrr(X1, MSCRATCH),
+        addi(X1, X1, 1),
+        csrw(MSCRATCH, X1),
+        addi(X2, X0, 3),
+        blt(X2, X1, 8),
+        j(-20),
     ])
     for offset in (2, 9, 17, 30):
         result = await run_program(
@@ -472,8 +467,8 @@ async def check_divide_halt_and_reset(dut, rng: random.Random) -> None:
     for funct3 in range(4, 8):
         # Why: x1 = 0x80001000, x2 = 5 is a 29- or 30-iteration early-out divide, so
         # the halt sweep and the reset land inside it.
-        program = [encode_u(0x8000_1000, 1, 0x37), encode_i(5, 0, 0, 2), encode_r(1, 2, 1, funct3, 3),
-                   encode_i(1, 3, 0, 4), EBREAK]
+        program = [lui(X1, 0x80001), addi(X2, X0, 5), encode_r(1, 2, 1, funct3, 3),
+                   addi(X4, X3, 1), EBREAK]
         acknowledged = 0
         for offset in range(0, 48, 2):
             result = await run_program(
@@ -569,7 +564,7 @@ async def check_reset_and_halt_ports(dut) -> None:
     await tick()
     dut.instruction_request_ready_i.value = 0
     dut.halt_request_i.value = 1
-    dut.instruction_response_data_i.value = encode_i(1, 0, 0, 1)
+    dut.instruction_response_data_i.value = addi(X1, X0, 1)
     dut.instruction_response_valid_i.value = 1
     retired = await wait_ack(16)
     if retired:
@@ -598,8 +593,8 @@ async def check_reset_and_halt_ports(dut) -> None:
 
 def _countdown_loop(count: int, body: list[int]) -> list[int]:
     """x10 = count; loop: body; x10 -= 1; bne x10, x0, loop (backward)."""
-    loop = body + [encode_i(-1, 10, 0, 10)]
-    return [encode_i(count, 0, 0, 10), *loop, encode_b(-4 * len(loop), 0, 10, 1)]
+    loop = body + [addi(X10, X10, -1)]
+    return [addi(X10, X0, count), *loop, bne(X10, X0, -4 * len(loop))]
 
 
 async def check_static_prediction(dut, rng: random.Random) -> None:
@@ -612,12 +607,12 @@ async def check_static_prediction(dut, rng: random.Random) -> None:
     # mispredict recovery, and the per-iteration stores make a lost or doubled
     # iteration visible in memory.
     loop_store = _countdown_loop(5, [
-        encode_i(0, 3, 2, 4, 0x03),       # lw x4, 0(x3)
-        encode_r(0, 10, 4, 0, 4),         # x4 += x10
-        encode_s(0, 4, 3, 2),             # sw x4, 0(x3)
+        lw(X4, 0, X3),
+        add(X4, X4, X10),
+        sw(X4, 0, X3),
     ])
-    program = [encode_i(0x40, 0, 0, 3), *loop_store, encode_i(1, 0, 0, 5),
-               encode_s(4, 5, 3, 2), EBREAK]
+    program = [addi(X3, X0, 0x40), *loop_store, addi(X5, X0, 1),
+               sw(X5, 4, X3), EBREAK]
     for seed in range(3):
         instruction, data = _random_timing(random.Random(rng.getrandbits(32) ^ seed))
         result = await run_program(dut, program, stop_cause=3, max_cycles=600,
@@ -639,11 +634,11 @@ async def check_static_prediction(dut, rng: random.Random) -> None:
     # of stores is fetched speculatively; the check fails if any of them reaches
     # memory or the fall-through store does not. The block is reached only
     # through a forward JAL (predicted, taken).
-    prefix = [*load_immediate(1, 0x5555_AAAA), encode_i(1, 0, 0, 2)]
-    poison = [encode_s(0x40, 1, 0, 2), encode_s(0x44, 1, 0, 2), encode_s(0x48, 1, 0, 2)]
-    program = prefix + [encode_j(4 * (len(poison) + 1), 0)] + poison
-    program += [encode_b(-4 * len(poison), 0, 2, 0),     # beq x2, x0: never taken
-                encode_s(0x4C, 1, 0, 2), EBREAK]
+    prefix = [*li(X1, 0x5555_AAAA), addi(X2, X0, 1)]
+    poison = [sw(X1, 0x40, X0), sw(X1, 0x44, X0), sw(X1, 0x48, X0)]
+    program = prefix + [j(4 * (len(poison) + 1))] + poison
+    program += [beq(X2, X0, -4 * len(poison)),
+                sw(X1, 0x4C, X0), EBREAK]
     for seed in range(3):
         instruction, data = _random_timing(random.Random(rng.getrandbits(32) ^ seed))
         result = await run_program(dut, program, stop_cause=3, max_cycles=300,
@@ -653,26 +648,28 @@ async def check_static_prediction(dut, rng: random.Random) -> None:
         assert word(result.memory, 0x4C) == 0x5555_AAAA
 
     # Why: one program checks link forwarding behind a backward JAL (predicted
-    # taken, always taken), an unpredicted forward taken branch and a predicted
-    # loop whose body is a forward not-taken branch. Words after the base: 1
-    # forward JAL to 5; 2 target of the backward JAL; 3 x6 = link; 4 forward JAL
-    # to 8; 5 backward JAL to 2; 6, 7 skipped; 8 forward taken bne over 9; then
-    # the loop, whose beq skips its store once (x10 == 1).
-    program = with_handler([
-        encode_i(0x40, 0, 0, 3),
-        encode_j(16, 0),                  # 1: forward JAL to 5
-        encode_i(1, 0, 0, 4),             # 2: target of the backward JAL
-        encode_i(0, 1, 0, 6),             # 3: x6 = link
-        encode_j(16, 0),                  # 4: forward JAL to 8
-        encode_j(-12, 1),                 # 5: backward JAL to 2 (link x1 = pc + 4)
-        encode_s(0, 1, 3, 2),             # 6: skipped
-        encode_s(4, 1, 3, 2),             # 7: skipped
-        encode_b(8, 0, 4, 1),             # 8: bne x4, x0, +8: forward taken
-        encode_s(8, 1, 3, 2),             # 9: skipped
-        *_countdown_loop(3, [encode_b(8, 10, 4, 0),  # beq x4, x10: taken once (x10 == 1)
-                             encode_s(12, 10, 3, 2)]),  # sw x10, 12(x3): skipped once
-        encode_s(16, 6, 3, 2),
-    ])
+    # taken, always taken), an unpredicted forward taken branch over a store and
+    # a predicted loop whose body is a forward branch, taken once (x10 == 1) to
+    # skip its store. The stores to 0x40..0x48 are never executed.
+    program = with_handler(assemble([
+        addi(X3, X0, 0x40),
+        j("backward_jal"),
+        "link_target:",
+        addi(X4, X0, 1),
+        addi(X6, X1, 0),
+        j("forward_bne"),
+        "backward_jal:",
+        jal(X1, "link_target"),
+        sw(X1, 0, X3),
+        sw(X1, 4, X3),
+        "forward_bne:",
+        bne(X4, X0, "countdown"),
+        sw(X1, 8, X3),
+        "countdown:",
+        *_countdown_loop(3, [beq(X4, X10, 8),
+                             sw(X10, 12, X3)]),
+        sw(X6, 16, X3),
+    ]))
     for seed in range(3):
         instruction, data = _random_timing(random.Random(rng.getrandbits(32) ^ seed))
         result = await run_program(dut, program, stop_cause=3, max_cycles=400,
@@ -686,11 +683,11 @@ async def check_static_prediction(dut, rng: random.Random) -> None:
     # sequentially and traps in Q102H (cause 0, mtval = target); the handler
     # resumes past both so each trap is counted.
     program = with_handler([
-        encode_i(0x40, 0, 0, 3),
-        encode_b(-2, 0, 0, 0),            # beq x0, x0, -2: misaligned target
-        encode_j(-6, 0),                  # misaligned backward JAL
-        encode_i(1, 0, 0, 5),
-        encode_s(0, 5, 3, 2),
+        addi(X3, X0, 0x40),
+        beq(X0, X0, -2),
+        j(-6),
+        addi(X5, X0, 1),
+        sw(X5, 0, X3),
     ])
     result = await run_program(dut, program, stop_cause=3, max_cycles=300)
     traps = [item for item in result.observations if item.trap and item.cause == 0]
@@ -700,19 +697,21 @@ async def check_static_prediction(dut, rng: random.Random) -> None:
     # Why: a fetch error on a predicted target must trap only when that path is
     # architectural: taken, the faulting instruction traps with cause 1 after the
     # branch retires; not taken, the stale error response is dropped and nothing
-    # traps. Word F, the 0 after the forward JAL, is the fetch-error target; the
-    # handler returns to the x5 += 1 after it, and the bne back to F is taken
-    # once.
-    body = [
-        encode_i(0x40, 0, 0, 3),
-        encode_i(2, 0, 0, 2),
-        encode_j(8, 0),                   # over the faulting word
-        0,                                # fetch-error target (word F)
-        encode_i(1, 5, 0, 5),             # x5 += 1 (also the handler's return point)
-        encode_b(-8, 0, 5, 0),            # beq x5, x0, F: never taken
-        encode_b(-12, 2, 5, 1),           # bne x5, x2, F: taken once, then falls through
-        encode_s(0, 5, 3, 2),
-    ]
+    # traps. The word at "fault", jumped over, is the fetch-error target; the
+    # handler returns to "resume" after it, the beq back to it is never taken
+    # and the bne back to it is taken once.
+    body = assemble([
+        addi(X3, X0, 0x40),
+        addi(X2, X0, 2),
+        j("resume"),
+        "fault:",
+        0,
+        "resume:",
+        addi(X5, X5, 1),
+        beq(X5, X0, "fault"),
+        bne(X5, X2, "fault"),
+        sw(X5, 0, X3),
+    ])
     program = with_handler(body)
     fault_word = 1 + len(HANDLER) + 2 + 3
     assert program[fault_word] == 0
@@ -737,59 +736,12 @@ async def check_static_prediction(dut, rng: random.Random) -> None:
     cocotb.log.info("predicted loop: %d iterations in %d clocks", iterations, span)
 
 
-RA, SP = 1, 2
-RET = encode_i(0, RA, 0, 0, 0x67)  # jalr x0, 0(ra)
-assert RET == 0x0000_8067
-
-
-def assemble(lines: list, base: int = 0) -> list[int]:
-    """Two-pass label assembler: a str ending in ':' defines a label; a
-    callable(pc, labels) returns one instruction word; an int is a word."""
-    labels: dict[str, int] = {}
-    pc = base
-    for item in lines:
-        if isinstance(item, str):
-            labels[item[:-1]] = pc
-        else:
-            pc += 4
-    words = []
-    pc = base
-    for item in lines:
-        if isinstance(item, str):
-            continue
-        words.append(item(pc, labels) if callable(item) else item)
-        pc += 4
-    return words
-
-
-def call(label: str, rd: int = RA):
-    return lambda pc, labels: encode_j(labels[label] - pc, rd)
-
-
-def jump(label: str):
-    return call(label, 0)
-
-
-def bne(rs1: int, rs2: int, label: str):
-    return lambda pc, labels: encode_b(labels[label] - pc, rs2, rs1, 1)
-
-
-def beq(rs1: int, rs2: int, label: str):
-    return lambda pc, labels: encode_b(labels[label] - pc, rs2, rs1, 0)
-
-
-def link_to(rd: int, label: str) -> list:
-    """rd = address of label (AUIPC + ADDI, both relative to the AUIPC)."""
-    return [lambda pc, labels: encode_u(0, rd, 0x17),
-            lambda pc, labels: encode_i(labels[label] - (pc - 4), rd, 0, rd)]
-
-
 def push_ra() -> list[int]:
-    return [encode_i(-4, SP, 0, SP), encode_s(0, RA, SP, 2)]
+    return [addi(SP, SP, -4), sw(RA, 0, SP)]
 
 
 def pop_ra() -> list[int]:
-    return [encode_i(0, SP, 2, RA, 0x03), encode_i(4, SP, 0, SP)]
+    return [lw(RA, 0, SP), addi(SP, SP, 4)]
 
 
 def return_program() -> list[int]:
@@ -798,69 +750,69 @@ def return_program() -> list[int]:
     return shows in memory as well as in the model-checked stream.
 
     0x600.. markers, 0x680 recursion result, stack below 0x800."""
-    poison = [encode_s(0x5FC, RA, 0, 2)] * 3  # sw ra, 0x5fc(x0): must never retire
+    poison = [sw(RA, 0x5FC, X0)] * 3
     lines = [
-        jump("main"), *HANDLER,
+        j("main"), *HANDLER,
         "main:",
-        encode_i(4, 0, 0, 9), encode_csr(0x305, 9, 1, 0),   # mtvec = 4
-        encode_i(0x7FC, 0, 0, SP), encode_i(4, SP, 0, SP),  # sp = 0x800
-        encode_i(0x600, 0, 0, 3),
+        addi(X9, X0, 4), csrw(MTVEC, X9),
+        addi(SP, X0, 0x7FC), addi(SP, SP, 4),
+        addi(X3, X0, 0x600),
         # Ref: core MAS "Return-address stack": with an empty stack a return is
         # not predicted, so it is fetched sequentially.
-        *link_to(RA, "after_empty"), RET, *poison,
+        *la(RA, "after_empty"), RET, *poison,
         "after_empty:",
-        encode_s(0, RA, 3, 2),                               # 0x600 = after_empty
+        sw(RA, 0, X3),
         # Why: nesting main -> outer -> middle -> leaf makes each return pop the
         # entry its own call pushed; a wrong pop order skips or doubles a marker.
         call("outer"),
-        encode_i(1, 0, 0, 5), encode_s(4, 5, 3, 2),          # 0x604 = 1
+        addi(X5, X0, 1), sw(X5, 4, X3),
         # Ref: core MAS "Return-address stack": a push when full overwrites the
         # oldest entry, so twelve-deep recursion, deeper than the stack,
         # mispredicts the outer returns.
-        encode_i(12, 0, 0, 10), encode_i(0, 0, 0, 11),
+        addi(X10, X0, 12), addi(X11, X0, 0),
         call("recurse"),
-        encode_s(0x80, 11, 3, 2),                            # 0x680 = 12 + 11 + .. + 1
+        sw(X11, 0x80, X3),
         # Why: the callee replaces its return address, so the stacked target
         # (call + 4) is wrong and the poison behind the call is fetched only
         # speculatively.
         call("redirect_callee"), *poison,
         "redirected:",
-        encode_i(2, 0, 0, 5), encode_s(8, 5, 3, 2),          # 0x608 = 2
+        addi(X5, X0, 2), sw(X5, 8, X3),
         # Ref: core MAS "Return-address stack": a Q103H trap clears the count,
         # so the trap discards the predicted return behind its load and the
         # handler resumes at the return with a cleared stack.
         call("trap_callee"),
-        encode_i(3, 0, 0, 5), encode_s(12, 5, 3, 2),         # 0x60c = 3
+        addi(X5, X0, 3), sw(X5, 12, X3),
         # Why: a predicted return to a misaligned address must still trap
         # (cause 0) in Q102H; the handler resumes after it and the callee
         # returns again.
         call("misaligned_callee"),
-        encode_i(4, 0, 0, 5), encode_s(16, 5, 3, 2),         # 0x610 = 4
+        addi(X5, X0, 4), sw(X5, 16, X3),
         # Why: a call whose callee is a bare return, in a loop, pushes and pops
         # on adjacent slots, the tightest stack update timing.
-        encode_i(6, 0, 0, 10),
+        addi(X10, X0, 6),
         "spin:",
         call("leaf"),
-        encode_i(-1, 10, 0, 10),
-        bne(10, 0, "spin"),
-        encode_s(20, 6, 3, 2),                               # 0x614 = leaf count
+        addi(X10, X10, -1),
+        bne(X10, X0, "spin"),
+        sw(X6, 20, X3),
         EBREAK,
         "outer:", *push_ra(), call("middle"), *pop_ra(), RET, *poison,
         "middle:", *push_ra(), call("leaf"), *pop_ra(), RET, *poison,
-        "leaf:", encode_i(1, 6, 0, 6), RET, *poison,
+        "leaf:", addi(X6, X6, 1), RET, *poison,
         "recurse:",
-        encode_r(0, 10, 11, 0, 11),                          # x11 += x10
-        encode_i(-1, 10, 0, 10),
-        beq(10, 0, "recurse_done"),
+        add(X11, X11, X10),
+        addi(X10, X10, -1),
+        beq(X10, X0, "recurse_done"),
         *push_ra(), call("recurse"), *pop_ra(),
         "recurse_done:", RET, *poison,
-        "redirect_callee:", *link_to(RA, "redirected"), RET, *poison,
+        "redirect_callee:", *la(RA, "redirected"), RET, *poison,
         "trap_callee:",
-        encode_i(0, 0, 2, 7, 0x03),                          # lw x7, 0(x0): data error
+        lw(X7, 0, X0),
         RET, *poison,
         "misaligned_callee:",
-        encode_i(2, RA, 0, RA), RET,                         # target ra + 2: cause 0
-        encode_i(-2, RA, 0, RA), RET, *poison,
+        addi(RA, RA, 2), RET,
+        addi(RA, RA, -2), RET, *poison,
     ]
     return assemble(lines)
 
@@ -928,38 +880,43 @@ def btb_alias_program(stride: int = MIB) -> list[int]:
     target (rejected in Q101H). Every wrong prediction must recover without
     retiring the predicted path. x6 accumulates one marker per executed block; 0x600
     receives it. Poison stores (0x5fc) sit on every wrong predicted path."""
-    poison = encode_s(0x5FC, RA, 0, 2)
+    poison = sw(RA, 0x5FC, X0)
     ret = RET
 
     def call_abs(address: int) -> list[int]:
-        return [*load_immediate(5, address), encode_i(0, 5, 0, RA, 0x67)]
+        return [*li(X5, address), jalr(RA, 0, X5)]
 
+    # Why: two calls train ALIAS_BRANCH (taken to +12); its first alias is not
+    # taken; two calls retrain it; its second alias is taken to +8, after which
+    # the entry holds the +8 target for the last ALIAS_BRANCH call. Two calls
+    # train ALIAS_JUMP to t1, its first alias jumps to t2 instead, and its
+    # second alias is no transfer at all.
     main = assemble([
-        encode_i(0x7FC, 0, 0, SP),
-        encode_i(0, 0, 0, 6),
-        *link_to(8, "t1"),
-        *call_abs(ALIAS_BRANCH), *call_abs(ALIAS_BRANCH),        # train: taken to +12
-        *call_abs(ALIAS_BRANCH + stride),                        # alias, not taken
-        *call_abs(ALIAS_BRANCH), *call_abs(ALIAS_BRANCH),        # retrain
-        *call_abs(ALIAS_BRANCH + 2 * stride),                    # alias, taken to +8
-        *call_abs(ALIAS_BRANCH),                                 # entry now holds +8 target
-        *call_abs(ALIAS_JUMP), *call_abs(ALIAS_JUMP),            # train: jump to t1
-        *link_to(8, "t2"),
-        *call_abs(ALIAS_JUMP + stride),                          # alias jump to t2
-        *call_abs(ALIAS_JUMP + 2 * stride),                      # alias non-transfer
-        encode_s(0x600, 6, 0, 2),
+        addi(SP, X0, 0x7FC),
+        addi(X6, X0, 0),
+        *la(X8, "t1"),
+        *call_abs(ALIAS_BRANCH), *call_abs(ALIAS_BRANCH),
+        *call_abs(ALIAS_BRANCH + stride),
+        *call_abs(ALIAS_BRANCH), *call_abs(ALIAS_BRANCH),
+        *call_abs(ALIAS_BRANCH + 2 * stride),
+        *call_abs(ALIAS_BRANCH),
+        *call_abs(ALIAS_JUMP), *call_abs(ALIAS_JUMP),
+        *la(X8, "t2"),
+        *call_abs(ALIAS_JUMP + stride),
+        *call_abs(ALIAS_JUMP + 2 * stride),
+        sw(X6, 0x600, X0),
         EBREAK,
-        "t1:", encode_i(16, 6, 0, 6), ret, poison,
-        "t2:", encode_i(256, 6, 0, 6), ret, poison,
+        "t1:", addi(X6, X6, 16), ret, poison,
+        "t2:", addi(X6, X6, 256), ret, poison,
     ])
     assert 4 * len(main) <= ALIAS_BRANCH
     blocks = {
-        ALIAS_BRANCH: [encode_b(12, 0, 0, 0), poison, poison, encode_i(1024, 6, 0, 6), ret],
-        ALIAS_BRANCH + stride: [encode_b(12, 0, 0, 1), encode_i(1, 6, 0, 6), ret, poison],
-        ALIAS_BRANCH + 2 * stride: [encode_b(8, 0, 0, 0), poison, encode_i(4, 6, 0, 6), ret],
-        ALIAS_JUMP: [encode_i(0, 8, 0, 0, 0x67), poison],
-        ALIAS_JUMP + stride: [encode_i(0, 8, 0, 0, 0x67), poison],
-        ALIAS_JUMP + 2 * stride: [encode_i(2, 6, 0, 6), ret, poison],
+        ALIAS_BRANCH: [beq(X0, X0, 12), poison, poison, addi(X6, X6, 1024), ret],
+        ALIAS_BRANCH + stride: [bne(X0, X0, 12), addi(X6, X6, 1), ret, poison],
+        ALIAS_BRANCH + 2 * stride: [beq(X0, X0, 8), poison, addi(X6, X6, 4), ret],
+        ALIAS_JUMP: [jalr(X0, 0, X8), poison],
+        ALIAS_JUMP + stride: [jalr(X0, 0, X8), poison],
+        ALIAS_JUMP + 2 * stride: [addi(X6, X6, 2), ret, poison],
     }
     words = main + [NOP] * ((ALIAS_JUMP + 2 * stride) // 4 + 8 - len(main))
     for address, block in blocks.items():
@@ -1007,8 +964,8 @@ def random_program(rng: random.Random, length: int = 160) -> tuple[list[int], se
     body: list[int] = []
     loop_counts: list[int] = []
     for register in regs:
-        body += load_immediate(register, rng.getrandbits(32))
-    body += load_immediate(8, DATA_BASE)
+        body += li(register, rng.getrandbits(32))
+    body += li(X8, DATA_BASE)
     while len(body) < length:
         kind = rng.choices(
             ("alu", "alui", "lui", "load", "store", "mul", "div", "branch", "jal",
@@ -1046,19 +1003,19 @@ def random_program(rng: random.Random, length: int = 160) -> tuple[list[int], se
             skip = rng.randint(1, 3)
             body.append(encode_b(4 * (skip + 1), rs2, rs1, rng.choice((0, 1, 4, 5, 6, 7))))
         elif kind == "jal":
-            body.append(encode_j(4 * rng.randint(1, 3), rd))
+            body.append(jal(rd, 4 * rng.randint(1, 3)))
         elif kind == "csr":
             body.append(rng.choice((
                 encode_csr(0x340, rs1, rng.choice((1, 2, 3)), rd),
                 encode_csr(0x340, rng.randrange(32), rng.choice((5, 6, 7)), rd),
-                encode_csr(0xB02, 0, 2, rd),
-                encode_csr(0xB00, 0, 2, rd),
+                csrr(rd, MINSTRET),
+                csrr(rd, MCYCLE),
             )))
         elif kind == "misaligned":
             body.append(rng.choice((
-                encode_i(1, 8, 2, rd, 0x03),
-                encode_s(2, rs2, 8, 2),
-                encode_i(3, 8, 1, rd, 0x03),
+                lw(rd, 1, X8),
+                sw(rs2, 2, X8),
+                lh(rd, 3, X8),
             )))
         elif kind == "ecall":
             body.append(ECALL)
@@ -1070,15 +1027,15 @@ def random_program(rng: random.Random, length: int = 160) -> tuple[list[int], se
             iterations = rng.randint(1, 3)
             inner = [encode_r(0, rs2, rs1, rng.choice((0, 4, 6, 7)), rd)
                      for _ in range(rng.randint(0, 2))]
-            body.append(encode_i(iterations, 0, 0, 10))
+            body.append(addi(X10, X0, iterations))
             body += inner
             loop_counts += [len(body), len(body) + 1]
-            body += [encode_i(-1, 10, 0, 10), encode_i(3, 10, 7, 10)]
-            body.append(encode_b(-4 * (len(inner) + 2), 0, 10, 1))
+            body += [addi(X10, X10, -1), andi(X10, X10, 3)]
+            body.append(bne(X10, X0, -4 * (len(inner) + 2)))
         elif kind == "backward_not_taken":
             # Why: x10 is zero outside a loop, so this backward branch is always
             # predicted taken and never taken.
-            body.append(encode_b(-4 * rng.randint(1, min(8, len(body))), 0, 10, 1))
+            body.append(bne(X10, X0, -4 * rng.randint(1, min(8, len(body)))))
         else:
             body.append(0xFFFF_FFFF)
     program = with_handler(body + [NOP] * 4)
@@ -1113,46 +1070,48 @@ def kernel_program() -> list[int]:
     """A column-draw loop and a dot product, the shapes of Doom's hot loops.
 
     Column draw (64 pixels): texel = src[(frac >> 16) & 127]; dest = cmap[texel];
-    frac += step. Dot product (32 words): sum += a[i] * b[i]. Registers x10 and
+    frac += step. Dot product (32 words): total += a[i] * b[i]. Registers x10 and
     up; data lives in the 4 KiB model memory.
     """
+    count, frac, src, cmap, dest, texel, pixel, step = X10, X11, X12, X13, X14, X15, X16, X17
+    a, b, total, left, right, product = X20, X21, X22, X23, X24, X25
     column = [
-        encode_i(16, 11, 5, 15) | (0x20 << 25),  # srai x15, x11(frac), 16
-        encode_i(127, 15, 7, 15),                # andi x15, x15, 127
-        encode_r(0, 15, 12, 0, 15),              # add x15, x12(src), x15
-        encode_i(0, 15, 4, 16, 0x03),            # lbu x16, 0(x15)
-        encode_r(0, 16, 13, 0, 16),              # add x16, x13(cmap), x16
-        encode_i(0, 16, 4, 16, 0x03),            # lbu x16, 0(x16)
-        encode_s(0, 16, 14, 0),                  # sb x16, 0(x14 dest)
-        encode_i(4, 14, 0, 14),                  # dest += 4
-        encode_r(0, 17, 11, 0, 11),              # frac += step
-        encode_i(-1, 10, 0, 10),                 # count -= 1
+        srai(texel, frac, 16),
+        andi(texel, texel, 127),
+        add(texel, src, texel),
+        lbu(pixel, 0, texel),
+        add(pixel, cmap, pixel),
+        lbu(pixel, 0, pixel),
+        sb(pixel, 0, dest),
+        addi(dest, dest, 4),
+        add(frac, frac, step),
+        addi(count, count, -1),
     ]
-    column.append(encode_b(-4 * len(column), 0, 10, 1))  # bnez count, loop
+    column.append(bnez(count, -4 * len(column)))
     dot = [
-        encode_i(0, 20, 2, 23, 0x03),            # lw x23, 0(x20)
-        encode_i(0, 21, 2, 24, 0x03),            # lw x24, 0(x21)
-        encode_r(1, 24, 23, 0, 25),              # mul x25, x23, x24
-        encode_r(0, 25, 22, 0, 22),              # sum += x25
-        encode_i(4, 20, 0, 20),
-        encode_i(4, 21, 0, 21),
-        encode_i(-1, 10, 0, 10),
+        lw(left, 0, a),
+        lw(right, 0, b),
+        mul(product, left, right),
+        add(total, total, product),
+        addi(a, a, 4),
+        addi(b, b, 4),
+        addi(count, count, -1),
     ]
-    dot.append(encode_b(-4 * len(dot), 0, 10, 1))
+    dot.append(bnez(count, -4 * len(dot)))
     return [
-        encode_i(64, 0, 0, 10),
-        *load_immediate(11, 0x0003_8000),        # frac
-        encode_i(0x100, 0, 0, 12),               # src texture column
-        encode_i(0x200, 0, 0, 13),               # colormap
-        encode_i(0x400, 0, 0, 14),               # dest
-        *load_immediate(17, 0x0001_9000),        # step
+        addi(count, X0, 64),
+        *li(frac, 0x0003_8000),
+        addi(src, X0, 0x100),
+        addi(cmap, X0, 0x200),
+        addi(dest, X0, 0x400),
+        *li(step, 0x0001_9000),
         *column,
-        encode_i(32, 0, 0, 10),
-        encode_i(0x600, 0, 0, 20),
-        encode_i(0x700, 0, 0, 21),
-        encode_i(0, 0, 0, 22),
+        addi(count, X0, 32),
+        addi(a, X0, 0x600),
+        addi(b, X0, 0x700),
+        addi(total, X0, 0),
         *dot,
-        encode_s(0x7FC, 22, 0, 2),
+        sw(total, 0x7FC, X0),
         EBREAK,
     ]
 
