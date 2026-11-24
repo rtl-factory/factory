@@ -10,6 +10,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge
 
+from src.common.dv.driven_inputs import DrivenInputs
 from src.common.dv.uart.uart_wire import UartWire
 import src.nand2doom.scripts.host.n2d_uart_debug_host as wire
 
@@ -118,25 +119,25 @@ async def stream_load_contract(dut):
         return bytes(line(a)[a & 0xF] for a in range(address, address + length))
 
     async def line_model():
+        pins = DrivenInputs(dut, line_response_valid_i=0, line_response_error_i=0)
         pending = None
         delay = 0
         while True:
             await RisingEdge(dut.clk_i)
             control["cycles"] += 1
             assert control["cycles"] <= MAX_CYCLES, "cycle bound exceeded"
-            dut.line_response_valid_i.value = 0
-            dut.line_response_error_i.value = 0
+            pins.drive(line_response_valid_i=0, line_response_error_i=0)
             if pending is not None:
                 if delay:
                     delay -= 1
                     continue
                 write, address, data, enables = pending
-                dut.line_response_valid_i.value = 1
+                pins.drive(line_response_valid_i=1)
                 dut.line_response_data_i.value = int.from_bytes(line(address), "little")
                 if write:
                     control["publications"] += 1
                     if control["publications"] == control["fail_after"]:
-                        dut.line_response_error_i.value = 1
+                        pins.drive(line_response_error_i=1)
                         control["fail_after"] = -1
                     else:
                         target = line(address)

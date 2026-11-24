@@ -6,6 +6,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge
 
+from src.common.dv.driven_inputs import DrivenInputs
 from src.common.dv.uart.uart_wire import UartWire
 from src.nand2doom.scripts.host.n2d_uart_debug_host import (
     CMD_HALT,
@@ -82,30 +83,23 @@ async def _memory_model(
     controls: dict[str, object],
     stats: dict[str, int],
 ) -> None:
-    # Why: this runs every clock of every UART test, and per-edge handle lookups and
-    # rewrites of unchanged inputs were most of a bulk test's wall time (#230); handles
-    # are bound once and an input is written only when its value changes.
+    # Why: this runs every clock of every UART test, so handles are bound once and
+    # inputs written only on a change (#230).
     clock = dut.clk_i
-    req_ready, rsp_valid = dut.mem_req_ready_i, dut.mem_rsp_valid_i
-    rsp_rdata, rsp_error = dut.mem_rsp_rdata_i, dut.mem_rsp_error_i
-    txn_done, txn_error = dut.mem_txn_done_i, dut.mem_txn_error_i
+    pins = DrivenInputs(dut, mem_req_ready_i=1, mem_rsp_valid_i=0, mem_rsp_error_i=0,
+                        mem_txn_done_i=0, mem_txn_error_i=0, mem_rsp_rdata_i=0)
     txn_begin, txn_abort, txn_commit = dut.mem_txn_begin_o, dut.mem_txn_abort_o, dut.mem_txn_commit_o
     req_valid, req_write = dut.mem_req_valid_o, dut.mem_req_write_o
     req_addr, req_wdata, req_wstrb = dut.mem_req_addr_o, dut.mem_req_wdata_o, dut.mem_req_wstrb_o
     staged: dict[int, tuple[int, int]] = {}
     pending: tuple[bool, int, int, int] | None = None
-    inputs = [req_ready, rsp_valid, rsp_error, txn_done, txn_error]
-    driven = [1, 0, 0, 0, 0]
-    for handle, value in zip(inputs, driven):
-        handle.value = value
-    rsp_rdata.value = 0
     edge = RisingEdge(clock)
 
     while True:
         await edge
         # Why: writes land after this edge, so the handshake uses the ready the
         # DUT saw at this edge, the value driven on the previous one.
-        ready_at_edge = driven[0]
+        ready_at_edge = pins["mem_req_ready_i"]
         ready = int(controls["ready"])
         valid = error = done = 0
 
@@ -143,7 +137,7 @@ async def _memory_model(
                 staged[address] = (data, strobes)
                 stats["staged"] += 1
             else:
-                rsp_rdata.value = memory.get(address, 0)
+                pins.drive(mem_rsp_rdata_i=memory.get(address, 0))
             pending = None
         elif ready_at_edge and pending is None and int(req_valid.value):
             pending = (
@@ -153,10 +147,8 @@ async def _memory_model(
                 int(req_wstrb.value),
             )
 
-        for index, value in enumerate((ready, valid, error, done, 0)):
-            if driven[index] != value:
-                inputs[index].value = value
-                driven[index] = value
+        pins.drive(mem_req_ready_i=ready, mem_rsp_valid_i=valid, mem_rsp_error_i=error,
+                   mem_txn_done_i=done, mem_txn_error_i=0)
 
 
 @cocotb.test()

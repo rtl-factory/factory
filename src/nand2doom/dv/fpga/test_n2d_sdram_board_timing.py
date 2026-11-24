@@ -6,6 +6,8 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, FallingEdge, Timer
 
+from src.common.dv.driven_inputs import DrivenInputs
+
 from src.nand2doom.dv.memory.sdram_pin_model import SdramPinModel, WRITE
 
 POISON = 0xDEAD
@@ -27,6 +29,7 @@ async def board_capture_window(dut):
     cocotb.start_soon(Clock(dut.clk_i, 40, unit="ns").start())
 
     async def device():
+        pins = DrivenInputs(dut, device_drive_i=1)
         edge = 0
         while True:
             await RisingEdge(dut.device_clk_o)
@@ -34,7 +37,7 @@ async def board_capture_window(dut):
             cmd = tuple(int(getattr(dut, name).value) for name in
                         ("sdram_ras_n_o", "sdram_cas_n_o", "sdram_we_n_o"))
             writing = cmd == WRITE or model.write_burst is not None
-            dut.device_drive_i.value = int(not writing)
+            pins.drive(device_drive_i=int(not writing))
             # Why: wait 1 ns after releasing device drive so the public DQ bus
             # resolves before it is read.
             await Timer(1, unit="ns")
