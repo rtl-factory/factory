@@ -69,25 +69,25 @@ DE2-115 SDC (`src/nand2doom/fpga/de2_115/n2d_de2_115.sdc`) differs as follows:
 
 ## Budget
 
-Last passing build in the factory (Quartus Prime Lite 25.1std, `bazel build //src/nand2doom:de2_115_image`, issue #135, common PS/2 receiver and Set-2 decoder): the full report gate passed.
+Last passing build in the factory (Quartus Prime Lite 25.1std.0 Build 1129, `bazel build //src/nand2doom:de2_115_image`, issue #191, `uart_mem` Digest command): the full report gate passed.
 
 | Resource or check | Result |
 |---|---|
-| Logic elements | 29,090 of 114,480 (25%) |
+| Logic elements | 29,396 of 114,480 (26%) |
 | M9K blocks | 320 of 432 |
 | PLLs | 1 of 4 |
-| Worst setup slack, any clock and corner | 6.331 ns |
-| Minimum slack, any clock, check and corner | 0.115 ns (hold) |
+| Worst setup slack, any clock and corner | 5.594 ns |
+| Minimum slack, any clock, check and corner | 0.131 ns (hold) |
 
 System clock (25 MHz PLL output) slack per corner, in ns:
 
 | Corner | Setup | Hold |
 |---|---|---|
-| Slow 1200mV 85C | 6.616 | 0.304 |
-| Slow 1200mV 0C | 7.172 | 0.316 |
-| Fast 1200mV 0C | 9.026 | 0.115 |
+| Slow 1200mV 85C | 7.135 | 0.336 |
+| Slow 1200mV 0C | 7.614 | 0.336 |
+| Fast 1200mV 0C | 9.325 | 0.131 |
 
-Worst SDRAM margins: read setup 6.616, read hold 22.842, write setup 6.331, write hold 20.415 ns. 88 reviewed warning occurrences, 84 of them constant outputs (unused LEDs and digits). The previous gate (#155) had 29,184 logic elements and system clock setup 7.463 / 7.943 / 9.531 ns.
+Worst SDRAM margins: read setup 7.135, read hold 22.661, write setup 5.594, write hold 20.057 ns. 88 reviewed warning occurrences, 84 of them constant outputs (unused LEDs and digits). SOF sha256 `f6c98a2c840e05bdc678227d13e06e04fdff9c26881498554e97852fef04b0d6`. The previous gate (#135, common PS/2 receiver) had 29,090 logic elements, minimum slack 0.115 ns and system clock setup 6.616 / 7.172 / 9.026 ns; the Digest datapath costs about 306 logic elements.
 
 The earlier nand2anything fits of this board are in the
 [DE10-Lite fitted results](../de10_lite/board-spec.md#fitted-results) and

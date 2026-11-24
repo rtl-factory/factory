@@ -6,11 +6,12 @@ How the host works, against its [requirements](prd.md). Code in `src/common/scri
 
 | Command | Code | Effect |
 |---|---|---|
-| identify | `0x01` | Returns the project id, endpoint version and window map, so the host can refuse a mismatched image |
+| identify | `0x01` | Returns the project id, endpoint version, window map and capabilities (word 2 bit 2: Digest), so the host can refuse a mismatched image |
 | hold / release | `0x02` / `0x03` | Holds the CPU (in reset or a maintained halt) or releases it; memory and scanout keep running |
 | entry | `0x04` | Sets the entry state while held |
 | write | `0x10` | Writes a block of memory; loading uses it while the CPU is held |
 | read | `0x11` | Reads a block of memory, held or live, by arbitrating for bus cycles |
+| digest | `0x12` | Returns the CRC-32 (zlib's, 4 bytes little-endian) of an aligned range of 4 to 65,532 bytes, read under the read rules (window, held or live, pacing); unlike read it is not bounded by the maximum payload |
 
 A request starts with `0xA8`, a response with `0x8A`; both carry the protocol version (`0x01`), a sequence number and a CRC-8 over the header, and a payload carries a CRC-32. A response status other than `0x00` names the failure (version, command, checksum, alignment, range, length, not held, timeout, memory, overrun) and raises `StatusError`.
 
@@ -27,7 +28,7 @@ A request starts with `0xA8`, a response with `0x8A`; both carry the protocol ve
 
 1. Identify, and check the project id. Check every segment (word-aligned, not empty, inside a writable window) before anything is sent.
 2. Hold the CPU once.
-3. Write each segment, then read it back and compare. A failure here raises `LoadError` and sends no entry or release, so the CPU stays held.
+3. Write each segment, then verify it: by Digest when the endpoint advertises it (one 4-byte answer per 65,532 bytes, so a load costs one pass over the wire, not two), else by reading it back. With `skip_unchanged`, a segment that does not hold the entry and whose stored digest already matches is not written (`load` returns `skipped` or `written` for each segment). A failure here raises `LoadError` and sends no entry or release, so the CPU stays held.
 4. After every segment has verified, set the entry state, then release the CPU once. If the entry or release reply is lost, the CPU state is unknown and must be inspected.
 
 ## Load script
@@ -36,4 +37,4 @@ A request starts with `0xA8`, a response with `0x8A`; both carry the protocol ve
 
 ## Tests
 
-`python3 -m pytest src/common/scripts/uart_mem/tests` covers framing, identity, chunking, the load transaction (one hold, verify before entry, one release, failures leave the CPU held), readback and shared-UART project bytes; `test_uart_mem_load.py` covers the load script's plan, defaults, project check, held failure, and that its serial transport returns a waiting response without sitting out the deadline.
+`python3 -m pytest src/common/scripts/uart_mem/tests` covers framing, identity, chunking, the load transaction (one hold, verify before entry, one release, failures leave the CPU held), Digest verify and its 65,532-byte split, unchanged-segment skip (never the entry segment; nothing skipped without Digest), readback and shared-UART project bytes; `test_uart_mem_load.py` covers the load script's plan, defaults, project check, held failure, and that its serial transport returns a waiting response without sitting out the deadline. In simulation, benches run this library itself through `src/common/dv/uart_mem/sim_host.py` ([DV plan](../../dv/uart_mem/dv-plan.md)); `n2m_system_uart_mem` (L0) loads and boots nand2mario with `load` at the 2 Mbaud board rate.
