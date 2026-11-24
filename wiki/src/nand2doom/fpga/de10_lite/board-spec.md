@@ -209,24 +209,24 @@ The DE2-115 SDC differences are in the [DE2-115 board spec](../de2_115/board-spe
 
 ## Budget
 
-Last passing build in the factory (Quartus Prime Lite 25.1std, `python3 src/nand2doom/scripts/board/quartus.py --board de10_lite`, issues #141 and #142, common SDRAM controller): the full report gate passed with 4 reviewed warning occurrences.
+Last passing build in the factory (Quartus Prime Lite 25.1std, `bazel build //src/nand2doom:de10_lite_image`, issue #135, common PS/2 receiver and Set-2 decoder): the full report gate passed with 4 reviewed warning occurrences.
 
 | Resource or check | Result |
 |---|---|
-| Logic elements | 27,401 of 49,760 (55%) |
+| Logic elements | 27,410 of 49,760 (55%) |
 | M9K blocks | 174 of 182 (8 left) |
 | PLLs | 1 of 4 |
-| Minimum slack, any clock, check and corner | 0.141 ns |
+| Minimum slack, any clock, check and corner | 0.140 ns |
 
 System clock (25 MHz PLL output) slack per corner, in ns:
 
 | Corner | Setup | Hold |
 |---|---|---|
-| Slow 1200mV 85C | 3.744 | 0.332 |
-| Slow 1200mV 0C | 4.541 | 0.289 |
-| Fast 1200mV 0C | 8.186 | 0.157 |
+| Slow 1200mV 85C | 3.928 | 0.286 |
+| Slow 1200mV 0C | 4.645 | 0.220 |
+| Fast 1200mV 0C | 8.339 | 0.141 |
 
-Worst SDRAM margins: read setup 3.744 (the system clock's worst path), read hold 23.872, write setup 9.547, write hold 19.037 ns. Built from the RTL, settings and constraints of #155; the previous gate (#78, commit `c3ed333`) had 27,241 logic elements and system clock setup 4.263 / 4.978 / 8.493 ns.
+Worst SDRAM margins: read setup 3.928 (the system clock's worst path), read hold 23.762, write setup 9.035, write hold 19.120 ns. The previous gate (#155) had 27,401 logic elements and system clock setup 3.744 / 4.541 / 8.186 ns.
 
 The earlier fits of both boards, from nand2anything, follow.
 

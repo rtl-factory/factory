@@ -165,10 +165,12 @@ class ProjectTargetTests(unittest.TestCase):
         self.assertEqual("cocotb", targets["n2d_ps2_keyboard"].kind)
         self.assertEqual(34, targets["n2d_ps2_keyboard"].default_seed)
         self.assertEqual(50_000, targets["n2d_ps2_keyboard"].max_cycles)
-        self.assertEqual(
+        for source in (
             "src/common/rtl/sync/n2a_cdc_bit_sync.sv",
-            targets["n2d_ps2_keyboard"].sources[0],
-        )
+            "src/common/rtl/ps2/n2a_ps2_receiver.sv",
+            "src/common/rtl/ps2/n2a_ps2_decoder.sv",
+        ):
+            self.assertIn(source, targets["n2d_ps2_keyboard"].sources)
         self.assertEqual("cocotb", targets["n2d_rv32im_core"].kind)
         self.assertEqual(29, targets["n2d_rv32im_core"].default_seed)
         self.assertEqual(4_096, targets["n2d_rv32im_core"].max_cycles)

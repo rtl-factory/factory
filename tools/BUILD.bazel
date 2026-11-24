@@ -13,6 +13,12 @@ py_library(
     visibility = ["//visibility:public"],
 )
 
+# Why: every project's <top>.lint test runs the RTL lint on its own files and the baseline.
+exports_files(
+    ["lint/baseline.py", "lint/rtl_baseline.json", "lint/rtl_lint.py"],
+    visibility = ["//visibility:public"],
+)
+
 # The Quartus build tool, as the board image action runs it (hdl.bzl quartus_image).
 exports_files(["quartus/quartus.py"], visibility = ["//visibility:public"])
 
@@ -44,5 +50,18 @@ py_test(
     main = "//tools/bazel:wiki_refs_main.py",
     deps = [":python"],
     # Why: it lists the checkout's tracked files with git and reads the whole tree, which no sandbox or cache sees.
+    tags = ["L0", "external", "no-sandbox", "lint"],
+)
+
+# The RTL coding rules a script can check (wiki/bkm/rtl.md) as an L0 test; each lint
+# top's Verilator lint is its own test, //src/<project>:<top>.lint. CI writes the base
+# branch's baseline to workdir/lint/base-rtl-baseline.json first.
+py_test(
+    name = "rtl_lint",
+    srcs = ["//tools/bazel:rtl_lint_main.py"],
+    main = "//tools/bazel:rtl_lint_main.py",
+    deps = [":python"],
+    args = ["--base-baseline", "workdir/lint/base-rtl-baseline.json"],
+    # Why: it lists the checkout's tracked files with git, which no sandbox or cache sees.
     tags = ["L0", "external", "no-sandbox", "lint"],
 )

@@ -69,25 +69,25 @@ DE2-115 SDC (`src/nand2doom/fpga/de2_115/n2d_de2_115.sdc`) differs as follows:
 
 ## Budget
 
-Last passing build in the factory (Quartus Prime Lite 25.1std, `python3 src/nand2doom/scripts/board/quartus.py --board de2_115`, issues #141 and #142, common SDRAM controller): the full report gate passed.
+Last passing build in the factory (Quartus Prime Lite 25.1std, `bazel build //src/nand2doom:de2_115_image`, issue #135, common PS/2 receiver and Set-2 decoder): the full report gate passed.
 
 | Resource or check | Result |
 |---|---|
-| Logic elements | 29,184 of 114,480 (25%) |
+| Logic elements | 29,090 of 114,480 (25%) |
 | M9K blocks | 320 of 432 |
 | PLLs | 1 of 4 |
-| Worst setup slack, any clock and corner | 6.431 ns |
-| Minimum slack, any clock, check and corner | 0.158 ns (hold) |
+| Worst setup slack, any clock and corner | 6.331 ns |
+| Minimum slack, any clock, check and corner | 0.115 ns (hold) |
 
 System clock (25 MHz PLL output) slack per corner, in ns:
 
 | Corner | Setup | Hold |
 |---|---|---|
-| Slow 1200mV 85C | 7.463 | 0.383 |
-| Slow 1200mV 0C | 7.943 | 0.335 |
-| Fast 1200mV 0C | 9.531 | 0.158 |
+| Slow 1200mV 85C | 6.616 | 0.304 |
+| Slow 1200mV 0C | 7.172 | 0.316 |
+| Fast 1200mV 0C | 9.026 | 0.115 |
 
-Worst SDRAM margins: read setup 7.463, read hold 22.612, write setup 6.431, write hold 20.611 ns. Built from the RTL, settings and constraints of #155; 88 reviewed warning occurrences, 84 of them constant outputs (unused LEDs and digits). The previous gate (#78, commit `c3ed333`) had 29,181 logic elements, 90 warnings, and system clock setup 6.848 / 7.402 / 9.215 ns.
+Worst SDRAM margins: read setup 6.616, read hold 22.842, write setup 6.331, write hold 20.415 ns. 88 reviewed warning occurrences, 84 of them constant outputs (unused LEDs and digits). The previous gate (#155) had 29,184 logic elements and system clock setup 7.463 / 7.943 / 9.531 ns.
 
 The earlier nand2anything fits of this board are in the
 [DE10-Lite fitted results](../de10_lite/board-spec.md#fitted-results) and

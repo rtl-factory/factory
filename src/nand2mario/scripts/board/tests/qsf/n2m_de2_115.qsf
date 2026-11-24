@@ -12,6 +12,8 @@ set_global_assignment -name SYSTEMVERILOG_FILE "src/common/rtl/jtag/n2a_jtag_key
 set_global_assignment -name SYSTEMVERILOG_FILE "src/common/rtl/jtag/n2a_jtag_virtual.sv"
 set_global_assignment -name SYSTEMVERILOG_FILE "src/nand2mario/fpga/board_io/n2m_board_inputs.sv"
 set_global_assignment -name SYSTEMVERILOG_FILE "src/nand2mario/rtl/core/n2m_interfaces_pkg.sv"
+set_global_assignment -name SYSTEMVERILOG_FILE "src/common/rtl/ps2/n2a_ps2_pkg.sv"
+set_global_assignment -name SYSTEMVERILOG_FILE "src/common/rtl/ps2/n2a_ps2_decoder.sv"
 set_global_assignment -name SYSTEMVERILOG_FILE "src/nand2mario/fpga/board_io/n2m_scancode_buttons.sv"
 set_global_assignment -name SYSTEMVERILOG_FILE "src/nand2mario/fpga/board_io/n2m_seven_segment.sv"
 set_global_assignment -name SYSTEMVERILOG_FILE "src/nand2mario/rtl/audio/n2m_apu.sv"
