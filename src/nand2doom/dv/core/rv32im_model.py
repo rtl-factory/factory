@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .rv32_asm import EBREAK, X0, X1, X2, X3, X4, addi, bne, lw, mul, sw
 from .rv32i_smoke_model import Observation
 
 MASK32 = 0xFFFF_FFFF
@@ -12,55 +13,6 @@ def u32(value: int) -> int:
 def signed(value: int) -> int:
     value &= MASK32
     return value - (1 << 32) if value & 0x8000_0000 else value
-
-
-def encode_r(funct7: int, rs2: int, rs1: int, funct3: int, rd: int) -> int:
-    return (
-        ((funct7 & 0x7F) << 25)
-        | ((rs2 & 31) << 20)
-        | ((rs1 & 31) << 15)
-        | ((funct3 & 7) << 12)
-        | ((rd & 31) << 7)
-        | 0x33
-    )
-
-
-def encode_i(imm: int, rs1: int, funct3: int, rd: int, opcode: int = 0x13) -> int:
-    return ((imm & 0xFFF) << 20) | ((rs1 & 31) << 15) | ((funct3 & 7) << 12) | ((rd & 31) << 7) | opcode
-
-
-def encode_s(imm: int, rs2: int, rs1: int, funct3: int) -> int:
-    value = imm & 0xFFF
-    return (((value >> 5) & 0x7F) << 25) | ((rs2 & 31) << 20) | ((rs1 & 31) << 15) | ((funct3 & 7) << 12) | ((value & 31) << 7) | 0x23
-
-
-def encode_b(imm: int, rs2: int, rs1: int, funct3: int) -> int:
-    assert imm % 2 == 0
-    value = imm & 0x1FFF
-    return (((value >> 12) & 1) << 31) | (((value >> 5) & 0x3F) << 25) | ((rs2 & 31) << 20) | ((rs1 & 31) << 15) | ((funct3 & 7) << 12) | (((value >> 1) & 15) << 8) | (((value >> 11) & 1) << 7) | 0x63
-
-
-def encode_u(imm: int, rd: int, opcode: int) -> int:
-    return (imm & 0xFFFFF000) | ((rd & 31) << 7) | opcode
-
-
-def encode_j(imm: int, rd: int) -> int:
-    assert imm % 2 == 0
-    value = imm & 0x1FFFFF
-    return (((value >> 20) & 1) << 31) | (((value >> 1) & 0x3FF) << 21) | (((value >> 11) & 1) << 20) | (((value >> 12) & 0xFF) << 12) | ((rd & 31) << 7) | 0x6F
-
-
-def encode_csr(csr: int, operand: int, funct3: int, rd: int) -> int:
-    return ((csr & 0xFFF) << 20) | ((operand & 31) << 15) | ((funct3 & 7) << 12) | ((rd & 31) << 7) | 0x73
-
-
-def load_immediate(rd: int, value: int) -> list[int]:
-    value = u32(value)
-    upper = (value + 0x800) & 0xFFFFF000
-    lower = signed(value - upper)
-    if upper == 0:
-        return [encode_i(lower, 0, 0, rd)]
-    return [encode_u(upper, rd, 0x37), encode_i(lower, rd, 0, rd)]
 
 
 def m_result(funct3: int, left: int, right: int) -> int:
@@ -97,19 +49,19 @@ def m_result(funct3: int, left: int, right: int) -> int:
 def c_like_signature_program() -> tuple[int, ...]:
     """Generate: product=1; for (n=5;n;n--) product*=n; signature=product+7."""
     return (
-        encode_i(5, 0, 0, 1),
-        encode_i(1, 0, 0, 2),
-        encode_r(1, 1, 2, 0, 2),
-        encode_i(-1, 1, 0, 1),
-        encode_b(-8, 0, 1, 1),
-        encode_i(7, 2, 0, 3),
-        encode_s(0, 3, 0, 2),
-        encode_i(0, 0, 2, 4, 0x03),
-        0x0010_0073,
+        addi(X1, X0, 5),
+        addi(X2, X0, 1),
+        mul(X2, X2, X1),
+        addi(X1, X1, -1),
+        bne(X1, X0, -8),
+        addi(X3, X2, 7),
+        sw(X3, 0, X0),
+        lw(X4, 0, X0),
+        EBREAK,
     )
 
 
-DEFAULT_INSTRUCTION = 0x0010_0073  # Why: fetches beyond the program image stop as EBREAK instead of running zero words
+DEFAULT_INSTRUCTION = EBREAK  # Why: fetches beyond the program image stop as EBREAK instead of running zero words
 COUNTER_CYCLE = (0xB00, 0xB80)
 COUNTER_INSTRET = (0xB02, 0xB82)
 # Why: these counters depend on timing the model does not have, so reads adopt

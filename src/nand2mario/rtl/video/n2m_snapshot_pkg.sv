@@ -15,8 +15,8 @@ package n2m_snapshot_pkg;
     localparam int unsigned SNAPSHOT_PIXEL_BYTES = 160 * 144 / 4;
     localparam int unsigned SNAPSHOT_RECORD_BYTES = SNAPSHOT_HEADER_BYTES + SNAPSHOT_PIXEL_BYTES;
     localparam int unsigned SNAPSHOT_OFFSET_WIDTH = $clog2(SNAPSHOT_RECORD_BYTES);
-    localparam logic [7:0] SNAPSHOT_MAGIC0 = 8'h4E;   // 'N'
-    localparam logic [7:0] SNAPSHOT_MAGIC1 = 8'h4D;   // 'M'
+    localparam logic [7:0] SNAPSHOT_MAGIC0 = "N";
+    localparam logic [7:0] SNAPSHOT_MAGIC1 = "M";
     localparam logic [7:0] SNAPSHOT_FORMAT_VERSION = 8'h01;
     localparam int unsigned FRAME_ID_WIDTH = 32;
     /* verilator lint_on UNUSEDPARAM */

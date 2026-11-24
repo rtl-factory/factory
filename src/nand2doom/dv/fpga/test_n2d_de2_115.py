@@ -7,6 +7,7 @@ from cocotb.utils import get_sim_time
 import zlib
 
 from src.common.dv.uart.uart_wire import UartWire
+from src.nand2doom.dv.core.rv32_asm import X0, X5, X6, addi, assemble, beqz, j, lui, lw, sw
 from src.nand2doom.dv.fpga.board_jtag import check_jtag_keys
 from src.nand2doom.dv.memory.sdram_pin_model import NOP, WRITE, SdramPinModel, join
 import src.nand2doom.scripts.host.n2d_uart_debug_host as wire
@@ -27,38 +28,27 @@ SCAN_CODE = 0x1c
 BAUD = 2_000_000
 BIT_PS = 10**12 / BAUD
 STREAM_ADDRESS = 0x0004_0000
-
-
-def _i(opcode, rd, funct3, rs1, imm):
-    return ((imm & 0xfff) << 20) | (rs1 << 15) | (funct3 << 12) | (rd << 7) | opcode
-
-
-def _s(rs2, rs1, imm):
-    return (((imm >> 5) & 0x7f) << 25) | (rs2 << 20) | (rs1 << 15) | (2 << 12) | \
-        ((imm & 0x1f) << 7) | 0x23
-
-
-def _beq(rs1, rs2, offset):
-    imm = offset & 0x1fff
-    return (((imm >> 12) & 1) << 31) | (((imm >> 5) & 0x3f) << 25) | (rs2 << 20) | \
-        (rs1 << 15) | (((imm >> 1) & 0xf) << 8) | (((imm >> 11) & 1) << 7) | 0x63
+VIDEO_CONTROL, INPUT_DATA = 0x2000_1000, 0x2000_2000
 
 
 # Why: the program checks display and input on the board top without the host:
 # it commits the palette and swaps the framebuffer banks (the host poked the
-# back bank), polls the input FIFO DATA register (an empty FIFO reads zero)
+# back bank) with word stores to video control +0 and +8, polls the input
+# FIFO DATA register (each read pops one event; an empty FIFO reads zero)
 # until a PS/2 event arrives, stores it at RESULT and parks. x5/x6 are scratch.
-PROGRAM = (
-    (0x20001 << 12) | (5 << 7) | 0x37,  # lui  x5, 0x20001 (video control)
-    _i(0x13, 6, 0, 0, 1),               # addi x6, x0, 1
-    _s(6, 5, 0),                        # sw   x6, 0(x5): palette commit
-    _s(6, 5, 8),                        # sw   x6, 8(x5): framebuffer swap
-    (0x20002 << 12) | (5 << 7) | 0x37,  # lui  x5, 0x20002 (input DATA)
-    _i(0x03, 6, 2, 5, 0),               # lw   x6, 0(x5): pops one event
-    _beq(6, 0, -4),                     # beq  x6, x0, -4: empty reads zero
-    _s(6, 0, RESULT),                   # sw   x6, RESULT(x0)
-    0x0000006f,                         # jal  x0, 0
-)
+PROGRAM = tuple(assemble([
+    lui(X5, VIDEO_CONTROL >> 12),
+    addi(X6, X0, 1),
+    sw(X6, 0, X5),
+    sw(X6, 8, X5),
+    lui(X5, INPUT_DATA >> 12),
+    "poll:",
+    lw(X6, 0, X5),
+    beqz(X6, "poll"),
+    sw(X6, RESULT, X0),
+    "park:",
+    j("park"),
+]))
 
 
 def odd_parity(value):
