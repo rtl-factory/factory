@@ -60,6 +60,25 @@ class HaltPlan:
 
 
 @dataclass
+class PendingInstruction:
+    """An accepted fetch: its response is driven when ``remaining`` reaches 0."""
+
+    address: int
+    remaining: int
+
+
+@dataclass
+class PendingData:
+    """An accepted data request: its response is driven when ``remaining`` reaches 0."""
+
+    write: bool
+    address: int
+    data: int
+    mask: int
+    remaining: int
+
+
+@dataclass
 class RunResult:
     observations: list
     memory: bytearray
@@ -208,8 +227,8 @@ async def run_program(
     if reset:
         await reset_core(dut, settle_cycles)
 
-    pending_instruction: list | None = None  # Why: a list, not a tuple, so remaining counts down in place: [address, remaining]
-    pending_data: list | None = None  # Why: a list so remaining counts down in place: [write, address, data, mask, remaining]
+    pending_instruction: PendingInstruction | None = None
+    pending_data: PendingData | None = None
     held_data: tuple | None = None
     observations: list = []
     result = RunResult(observations, memory, 0, model)
@@ -221,11 +240,11 @@ async def run_program(
     halt_on_data_armed = halt_on_first_data
 
     for cycle in range(max_cycles):
-        instruction_now = pending_instruction is not None and pending_instruction[1] == 0
-        data_now = pending_data is not None and pending_data[4] == 0
+        instruction_now = pending_instruction is not None and pending_instruction.remaining == 0
+        data_now = pending_data is not None and pending_data.remaining == 0
         dut.instruction_response_valid_i.value = int(instruction_now)
         if instruction_now:
-            address = pending_instruction[0]
+            address = pending_instruction.address
             index = address >> 2
             dut.instruction_response_data_i.value = (
                 words[index] if index < len(words) else DEFAULT_INSTRUCTION
@@ -237,9 +256,9 @@ async def run_program(
         dut.data_response_valid_i.value = int(data_now)
         if data_now:
             dut.data_response_read_data_i.value = (
-                0 if data_error(pending_data[1]) else word(memory, pending_data[1])
+                0 if data_error(pending_data.address) else word(memory, pending_data.address)
             )
-            dut.data_response_error_i.value = int(data_error(pending_data[1]))
+            dut.data_response_error_i.value = int(data_error(pending_data.address))
         else:
             dut.data_response_read_data_i.value = 0
             dut.data_response_error_i.value = 0
@@ -330,12 +349,11 @@ async def run_program(
             )
 
         if data_now:
-            write, address, value, mask, _ = pending_data
-            if write and not data_error(address):
-                base = address & ~3
+            if pending_data.write and not data_error(pending_data.address):
+                base = pending_data.address & ~3
                 for lane in range(4):
-                    if mask & (1 << lane):
-                        memory[base + lane] = (value >> (8 * lane)) & 0xFF
+                    if pending_data.mask & (1 << lane):
+                        memory[base + lane] = (pending_data.data >> (8 * lane)) & 0xFF
 
         stop = False
         if int(dut.observation_valid_o.value):
@@ -377,17 +395,17 @@ async def run_program(
         if instruction_now:
             pending_instruction = None
         elif pending_instruction is not None:
-            pending_instruction[1] -= 1
+            pending_instruction.remaining -= 1
         if data_now:
             pending_data = None
         elif pending_data is not None:
-            pending_data[4] -= 1
+            pending_data.remaining -= 1
         if next_instruction is not None:
             assert pending_instruction is None
-            pending_instruction = [next_instruction, instruction.delay(rng) - 1]
+            pending_instruction = PendingInstruction(next_instruction, instruction.delay(rng) - 1)
         if next_data is not None:
             assert pending_data is None
-            pending_data = [*next_data, data.delay(rng) - 1]
+            pending_data = PendingData(*next_data, data.delay(rng) - 1)
 
         result.cycles = cycle + 1
         if stop:

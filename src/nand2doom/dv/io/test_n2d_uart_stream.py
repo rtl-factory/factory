@@ -17,8 +17,6 @@ import src.nand2doom.scripts.host.n2d_uart_debug_host as wire
 BAUD = 2_000_000  # Why: the factory board rate; the fixture runs 12 1/2 clocks per bit
 BIT_PS = 10**12 / BAUD
 CLOCK_NS = 40
-GAP_CYCLES = 4000  # Why: equal to n2d_uart_stream_memory STREAM_GAP_TIMEOUT_CYCLES, which the waits below must exceed
-IDLE_CYCLES = 40000  # Why: equal to n2d_uart_stream_memory STREAM_IDLE_CYCLES, which the waits below must exceed
 SAMPLE_WINDOW_PS = 100_000  # Why: sampling each bit centre and +/-100 ns catches marginal bit timing a single centre sample would pass
 SEED = int(os.environ.get("DV_SEED", os.environ.get("N2A_SEED", "125")))
 MAX_CYCLES = int(os.environ.get("DV_MAX_CYCLES", os.environ.get("N2A_MAX_CYCLES", "3000000")))
@@ -89,7 +87,10 @@ class Host:
 @cocotb.test()
 async def stream_load_contract(dut):
     rng = random.Random(SEED)
-    cocotb.log.info("seed=%d max_cycles=%d baud=%d", SEED, MAX_CYCLES, BAUD)
+    gap_cycles = int(dut.STREAM_GAP_TIMEOUT_CYCLES.value)
+    idle_cycles = int(dut.STREAM_IDLE_CYCLES.value)
+    cocotb.log.info("seed=%d max_cycles=%d baud=%d gap=%d idle=%d", SEED, MAX_CYCLES, BAUD,
+                    gap_cycles, idle_cycles)
     cocotb.start_soon(Clock(dut.clk_i, CLOCK_NS, unit="ns").start())
     dut.reset_i.value = 1
     dut.uart_rx_i.value = 1
@@ -210,7 +211,7 @@ async def stream_load_contract(dut):
             frame = frame[:-3]
         stream += frame
     await host.send(bytes(stream))
-    replies = await host.settle(GAP_CYCLES + 4000)
+    replies = await host.settle(gap_cycles + 4000)
     order = [reply.sequence for reply in replies]
     assert order == sorted(order), f"replies out of order: {order}"
     status = {reply.sequence: reply.status for reply in replies}
@@ -290,7 +291,7 @@ async def stream_load_contract(dut):
     await host.send(wire.stream_write_frame(next_sequence(), 0x1000, junk)[:200])
     # Why: a restarted host is slower than the frame gap bound; the abandoned
     # frame is dropped before its first byte arrives.
-    await ClockCycles(dut.clk_i, GAP_CYCLES + 100)
+    await ClockCycles(dut.clk_i, gap_cycles + 100)
     restart = await host.exchange(wire.stream_frame(wire.STREAM_END, next_sequence()))
     assert restart.kind == wire.STREAM_END and restart.status == wire.ST_OK
     await ClockCycles(dut.clk_i, 200)
@@ -303,7 +304,7 @@ async def stream_load_contract(dut):
     reopened = await host.exchange(wire.stream_frame(wire.STREAM_HELLO, next_sequence()))
     assert reopened.value == wire.STREAM_IDENTITY
     await host.send(wire.stream_write_frame(next_sequence(), 0x1000, junk)[:200])
-    await ClockCycles(dut.clk_i, GAP_CYCLES + IDLE_CYCLES + 100)
+    await ClockCycles(dut.clk_i, gap_cycles + idle_cycles + 100)
     await host.send(wire.request(wire.CMD_PING, 9))
     ping = wire.decode_response(await host.take(15, 20000))
     assert ping.status == wire.ST_OK and ping.sequence == 9

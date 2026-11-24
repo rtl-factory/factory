@@ -19,7 +19,7 @@ from ..interrupts.interrupts_model import VBLANK
 from ..memory.memory_model import GameBoyMemory
 from ..video import ppu_model as m
 from .peripheral_model import Peripherals
-from .test_system import (idle_host, HALT_OPCODE, compare_signature, defined_signature, interrupt_entry,
+from .test_system import (await_core_release, idle_host, HALT_OPCODE, compare_signature, defined_signature, interrupt_entry,
                           load_image, power_up, store_bytes, ticks_at, store_array)
 
 CLOCK_PERIOD_NS = 40
@@ -121,6 +121,7 @@ async def system_background_frame(dut):
     await RisingEdge(dut.clk_i)
     await FallingEdge(dut.clk_i)
     dut.reset_i.value = 0
+    cycles += await await_core_release(dut)
     release_edge = cycles
     release_ns = get_sim_time(unit='ns')
 

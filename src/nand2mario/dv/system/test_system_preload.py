@@ -18,10 +18,11 @@ import random
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
+from cocotb.utils import get_sim_time
 
 from ...scripts.board.cart_loader import (CMD_HOLD, CMD_PING, CMD_READ, CMD_WRITE, address_field, decode_response,
                                   encode_request, response_total_length)
-from .test_system import CLOCK_PERIOD_NS, power_up
+from .test_system import CLOCK_PERIOD_NS, VRAM_BYTES, power_up, store_array, store_bytes
 from src.common.dv.uart.uart_wire import UartWire
 
 from .test_system_sdram import SDRAM_INITIALIZED_CLOCK, Host, load_image, release_and_verify
@@ -126,6 +127,15 @@ async def preload_and_interleave(dut, system, host, image, rng, onchip):
     return preload_clocks, retirements, run_clocks, banks, wram_bytes
 
 
+async def vram_at_core_release(dut, system):
+    """Clocks from now until the core leaves reset, and the VRAM contents
+    at that edge, before the core can touch it."""
+    started = get_sim_time(unit='ns')
+    await FallingEdge(dut.core_reset_o)
+    await ReadOnly()
+    return round((get_sim_time(unit='ns') - started) / CLOCK_PERIOD_NS), store_bytes(store_array(system.u_memory.u_vram))
+
+
 def garbage_headers(system, rng):
     """The mapper's header registers have no power-up value either."""
     for register in (system.u_cartridge.header_type_q, system.u_cartridge.header_rom_size_q,
@@ -136,7 +146,9 @@ def garbage_headers(system, rng):
 @cocotb.test(timeout_time=200, timeout_unit='ms')
 async def system_direct_preload(dut):
     """On-chip backing: the direct preload starts on the first edge after
-    reset (the backing is ready at once)."""
+    reset (the backing is ready at once), while the boot VRAM sweep still
+    holds the core after the short reset, whatever its power-up state; the
+    core starts on zeroed VRAM."""
     seed = int(os.environ['DV_SEED'])
     assert int(os.environ['DV_CLOCK_HZ']) == 25_000_000
     cocotb.log.info('n2m_system direct preload (on-chip) seed=%d (directed)', seed)
@@ -152,16 +164,26 @@ async def system_direct_preload(dut):
     dut.rom_load_write_i.value = 0
     dut.rom_load_address_i.value = 0
     dut.rom_load_data_i.value = 0
+    # Why: the sweep state has no power-up value either; a counter near its end
+    # and a finished sweep must not let the core start on uncleared VRAM.
+    dut.vram_clear_q.value = 8100
+    dut.vram_swept_q.value = 1
+    dut.vram_hold_q.value = 0
     cocotb.start_soon(Clock(dut.clk_i, CLOCK_PERIOD_NS, unit='ns').start())
     for _ in range(3):
         await RisingEdge(dut.clk_i)
     await FallingEdge(dut.clk_i)
     dut.reset_i.value = 0
+    release = cocotb.start_soon(vram_at_core_release(dut, dut))
     cocotb.start_soon(host.ticker())
     cocotb.start_soon(host.receiver())
     await ReadOnly()
-    assert int(dut.core_reset_o.value) == 0, 'the on-chip backing is initialized at once'
+    assert int(dut.core_reset_o.value) == 1, 'the VRAM sweep outlasts a short reset'
     fields = await preload_and_interleave(dut, dut, host, image, rng, onchip=True)
+    release_clocks, vram = release.result()
+    # Why: one byte per edge from the end of the system reset; the bound allows the clock phase.
+    assert VRAM_BYTES - 2 <= release_clocks <= VRAM_BYTES + 2, release_clocks
+    assert vram == bytes(VRAM_BYTES), 'the core left reset before VRAM was zeroed'
     cocotb.log.info('n2m_system direct preload (on-chip) passed: preload_clocks=%d retirements=%d run_clocks=%d '
                     'banks_executed=%s wram_bytes=%d total_clocks=%d', fields[0], fields[1], fields[2],
                     sorted(fields[3]), fields[4], host.clock)
@@ -207,8 +229,9 @@ async def system_sdram_direct_preload(dut):
             break
         if host.clock < SDRAM_INITIALIZED_CLOCK:
             assert int(dut.core_reset_o.value) == 1, 'the core waits for the SDRAM'
-        # Why: the core runs from SDRAM once it is initialized and the mapper
-        # wins a shared edge, so the direct port gets in between fetches.
+        # Why: once the SDRAM is initialized the direct port gets in between
+        # core fetches (the mapper wins a shared edge), or at once while the
+        # VRAM sweep still holds the core.
         assert host.clock < SDRAM_INITIALIZED_CLOCK + 200, 'the direct port never became ready'
     assert host.clock >= SDRAM_INITIALIZED_CLOCK, ('ready before the SDRAM initialized', host.clock)
     await RisingEdge(dut.clk_i)

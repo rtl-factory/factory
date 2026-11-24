@@ -1,6 +1,7 @@
 """Hardware-free contract of the common JTAG keyboard host: wire protocol, persistent Tcl
 process lifecycle, native-worker selection, scan-code translation and typing."""
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -125,6 +126,22 @@ class ProtocolTests(unittest.TestCase):
             self.assertEqual(process.call_args.kwargs['startup_timeout'], 12)
 
 
+class WireConstantTests(unittest.TestCase):
+    PACKAGE = ROOT / 'src/common/rtl/jtag/n2a_jtag_keyboard_pkg.sv'
+
+    def test_host_constants_equal_the_endpoint_package(self):
+        text = self.PACKAGE.read_text()
+        rtl = {name: int(value, 16) for name, value in
+               re.findall(r"localparam\s+logic\s*\[7:0\]\s+(\w+)\s*=\s*8'h([0-9A-Fa-f]+);", text)}
+        rtl.update((name, int(value)) for name, value in
+                   re.findall(r"localparam\s+int\s+unsigned\s+(\w+)\s*=\s*(\d+);", text))
+        self.assertEqual(rtl, {'COMMAND_MAGIC': jtag.COMMAND_MAGIC, 'STATUS_MAGIC': jtag.STATUS_MAGIC,
+                               'MAX_BATCH_CODES': jtag.MAX_BATCH_CODES})
+        body = re.search(r'typedef\s+enum\s+logic\s*\[2:0\]\s*\{(.*?)\}\s*t_result;', text, re.S)[1]
+        codes = {name: int(value) for name, value in re.findall(r"RESULT_(\w+)\s*=\s*3'd(\d+)", body)}
+        self.assertEqual(codes, {member.name: member.value for member in jtag.Result})
+
+
 class TypingTests(unittest.TestCase):
     def test_translation_covers_modifiers_and_extended_keys(self):
         codes, unsupported = jtag.keys_to_scancodes(b'A\x1b[A\n\x01\xff')
@@ -132,6 +149,14 @@ class TypingTests(unittest.TestCase):
         self.assertEqual(unsupported, b'\xff')
         self.assertEqual(jtag.split_trailing_escape(b'ab\x1b['), (b'ab', b'\x1b['))
         self.assertEqual(jtag.split_trailing_escape(b'\x1b'), (b'', b'\x1b'))
+
+    def test_home_and_end_from_linux_console_and_xterm(self):
+        home, end = bytes.fromhex('e06ce0f06c'), bytes.fromhex('e069e0f069')
+        for sequence, codes in ((b'\x1b[1~', home), (b'\x1b[4~', end), (b'\x1b[H', home), (b'\x1b[F', end)):
+            with self.subTest(sequence=sequence):
+                self.assertEqual(jtag.keys_to_scancodes(sequence), (codes, b''))
+                self.assertEqual(len(jtag.key_strokes(sequence)), 1)
+        self.assertEqual(jtag.split_trailing_escape(b'a\x1b[1'), (b'a', b'\x1b[1'))
 
     def test_key_strokes_split_make_and_break_per_key(self):
         self.assertEqual(jtag.key_strokes(b'Aa\x1b[D\n'), [
