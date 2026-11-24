@@ -35,7 +35,9 @@ jobs:
     concurrency:
       group: regression-${{ github.event_name == 'workflow_dispatch' && inputs.level || (github.event.schedule == '7 23 * * *' && 'l4') || (github.event.schedule == '37 */6 * * *' && 'l3') || 'l2' }}
       cancel-in-progress: false
-    timeout-minutes: 720
+    # Why: one runner serves every job, so a hung level must not hold it longer than
+    # its level needs: L2 2 hours, L3 6 hours, L4 12 hours.
+    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && (inputs.level == 'l4' && 720 || inputs.level == 'l3' && 360 || 120) || (github.event.schedule == '7 23 * * *' && 720) || (github.event.schedule == '37 */6 * * *' && 360) || 120 }}
     steps:
       - uses: actions/checkout@v4
 
