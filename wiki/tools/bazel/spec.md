@@ -21,11 +21,12 @@ How the build meets its [requirements](prd.md). How agents use it day to day is 
 
 - `@hdl_registry` runs `tools/bazel/hdl_libraries.py registry` with the host's `python3`. It reads every `src/<project>/cfg/targets.json` and exposes them as `SIM_TARGETS`, a dictionary from project to its targets with their libraries resolved into `sources` and `headers`, every `src/<project>/fv/<block>/<target>.sby` as `FV_TARGETS`: its header's level and timeout, and the files of its library, and the lint tops (`hdl_libraries.py lint_tops`, with the `lint` objects of the registries) as `LINT_TARGETS`: each top's sources and headers. Bazel watches the files and folders it read, so editing a registry, a library list or a `.sby` file, or adding one, re-reads it. The formats are the runners' ([simulation](../sim/spec.md), [formal](../fv/spec.md)); nothing else lists targets.
 - `@oss_cad_suite` checks the `VERSION` stamp in the suite's install directory (`$OSS_CAD_SUITE`, else `install_dir` in `cfg/toolchain.json`) against the pin and links its `bin/` folder; the stamp is an input of every formal test. Without the pinned suite it provides an `sby` that prints the fix and fails, so only the formal tests fail.
+- `@rv32_gcc` downloads the RV32 GCC pinned as `rv32_gcc` in `cfg/toolchain.json` and checks its SHA-256; `:all` is every file and `:gcc` the compiler. A project with `hdl_project(rv32_gcc = True)` and `unit_tests(rv32_gcc = True)` gives its tests both as data and the compiler's path as `N2D_RISCV_PINNED`.
 - `@verilator` finds the Verilator install (`$VERILATOR`, then `PATH`, then `~/verilator/bin`), checks `verilator --version` against `cfg/toolchain.json`, and links its executables into the repository. They are inputs of every model action, so a different binary rebuilds every model.
 
 ## Targets of a project
 
-`hdl_project(name, python_deps = [])` in `src/<name>/BUILD.bazel` makes, for each target of the project's registry:
+`hdl_project(name, python_deps = [], rv32_gcc = False)` in `src/<name>/BUILD.bazel` makes, for each target of the project's registry:
 
 | Target | What it is |
 |---|---|

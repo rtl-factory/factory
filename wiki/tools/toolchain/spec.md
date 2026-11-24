@@ -22,6 +22,7 @@ How the toolchain is built, against its [requirements](prd.md). Decisions: ADR 0
 | Python | 3.12 or newer | |
 | Yosys, SymbiYosys, solvers and yosys-slang | OSS CAD Suite `2026-11-01` (Yosys 0.70+286, SymbiYosys 0.70, Yices 2.7.0) | One dated bundle keeps Yosys, SymbiYosys, the solvers and the yosys-slang SystemVerilog front end mutually compatible; pinned by release date and SHA-256 in `cfg/toolchain.json` |
 | Quartus Prime Lite | 25.1std.0 Build 1129 | Proven for both boards in nand2anything |
+| RV32 GCC | xPack `riscv-none-elf-gcc` 15.2.0-1 | GitHub release `xpack-riscv-none-elf-gcc-15.2.0-1-linux-x64.tar.gz`, pinned by SHA-256 in `cfg/toolchain.json` (`rv32_gcc`); Bazel fetches it ([Install (RV32 GCC)](#install-rv32-gcc)). Chosen over a host compiler because Arch's `riscv64-elf-gcc` is built `--disable-tls` and cannot link the pinned Picolibc's thread-local `errno` (#225) |
 
 Quartus files, downloaded in a browser from Altera's *Quartus Prime Lite 25.1 for Linux* page, "Individual Files" tab (scripted downloads are refused):
 
@@ -80,6 +81,10 @@ Known host issues: a `setlocale` warning needs an `en_US.UTF-8` locale; on Arch,
 4. `python3 tools/toolchain/check.py --tool oss-cad-suite` checks the release stamp (`~/oss-cad-suite/VERSION`), the Yosys version, `sby`, `yosys-smtbmc`, `yosys-abc` and `yices-smt2`, and that the `slang` plugin loads.
 
 The cloud session hook runs these steps when the check fails (about 45 s), beside the Verilator build and the Quartus steps; a failure is logged and does not stop the others. The `l0` CI job runs steps 1 and 2 when the check fails: on every GitHub-hosted run, and on the self-hosted runner only after a pin change.
+
+## Install (RV32 GCC)
+
+Nothing to install for `bazel test`: the `@rv32_gcc` repository downloads the pinned archive, checks its SHA-256 and unpacks it into Bazel's repository cache (`tools/bazel/extensions.bzl`). The nand2doom C-program tests receive its compiler's path as `N2D_RISCV_PINNED`, and the RV32 tool resolver (`src/nand2doom/scripts/sw_build/n2d_image.py`) uses it and its sibling binutils ahead of `N2D_RISCV_GCC` and `PATH`. A direct (non-Bazel) run still uses `N2D_RISCV_GCC`, else `riscv64-unknown-elf-*` on `PATH`.
 
 ## Install (Verilator)
 

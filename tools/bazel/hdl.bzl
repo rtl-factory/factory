@@ -33,6 +33,17 @@ load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
 
 LEVELS = ["L0", "L1", "L2", "L3", "L4"]
+
+# The pinned RV32 GCC (cfg/toolchain.json) for the C-program tests: its files as data and
+# its compiler's path, which the nand2doom tool resolver prefers (#226).
+RV32_DATA = ["@rv32_gcc//:all", "@rv32_gcc//:gcc"]
+RV32_ENV = {"N2D_RISCV_PINNED": "$(rootpath @rv32_gcc//:gcc)"}
+
+def _rv32_data(enabled):
+    return RV32_DATA if enabled else []
+
+def _rv32_env(enabled):
+    return RV32_ENV if enabled else {}
 PROJECTS = sorted(SIM_TARGETS.keys())
 
 # The packages every simulation test imports: cocotb, its functional-coverage library
@@ -129,12 +140,13 @@ def _model_key(name, target):
         target.get("public_depth"),
     ])
 
-def hdl_project(name, python_deps = []):
+def hdl_project(name, python_deps = [], rv32_gcc = False):
     """Every simulation target of src/<name>/cfg/targets.json, plus the project's files.
 
     Args:
       name: the project, as in src/<name>/.
       python_deps: pip packages the project's own Python imports, as requirement() labels.
+      rv32_gcc: whether the project's tests build RV32 C programs with the pinned GCC.
     """
     native.exports_files(
         native.glob(["**"], exclude = ["BUILD.bazel"]),
@@ -172,7 +184,7 @@ def hdl_project(name, python_deps = []):
         tags = _tags(target)
         timeout = _timeout(target.get("timeout_seconds", 600))
         if target.get("wrapper"):
-            _wrapped_test(target_name, name, tags, timeout, python)
+            _wrapped_test(target_name, name, tags, timeout, python, rv32_gcc)
             continue
         write_file(
             name = target_name + ".spec",
@@ -222,12 +234,12 @@ def hdl_project(name, python_deps = []):
                 "//tools/bazel:coverage_on": ["--coverage"],
                 "//conditions:default": [],
             }),
-            data = [model, ":%s.spec" % target_name, "@verilator//:verilator", "@verilator//:verilator_coverage"],
+            data = [model, ":%s.spec" % target_name, "@verilator//:verilator", "@verilator//:verilator_coverage"] + _rv32_data(rv32_gcc),
             deps = python + SIM_PYTHON,
             env = {
                 "SIM_PATH_PREPEND": "$(rootpaths @verilator//:verilator)",
                 "SIM_ROOT": ".",
-            },
+            } | _rv32_env(rv32_gcc),
             tags = tags,
             timeout = timeout,
         )
@@ -265,7 +277,7 @@ def _lint_tests(project):
             timeout = "short",
         )
 
-def _wrapped_test(target_name, project, tags, timeout, python):
+def _wrapped_test(target_name, project, tags, timeout, python, rv32_gcc):
     py_test(
         name = target_name,
         srcs = ["//tools/sim:sim.py"],
@@ -278,9 +290,9 @@ def _wrapped_test(target_name, project, tags, timeout, python):
             "//tools/bazel:hdl_libraries.py",
             "@verilator//:verilator",
             "@verilator//:verilator_coverage",
-        ],
+        ] + _rv32_data(rv32_gcc),
         deps = python + SIM_PYTHON + [requirement("pillow")],
-        env = {"SIM_PATH_PREPEND": "$(rootpaths @verilator//:verilator)"} | select({
+        env = {"SIM_PATH_PREPEND": "$(rootpaths @verilator//:verilator)"} | _rv32_env(rv32_gcc) | select({
             "//tools/bazel:waves_on": {"SIM_WAVES": "1"},
             "//conditions:default": {},
         }) | select({
@@ -293,11 +305,12 @@ def _wrapped_test(target_name, project, tags, timeout, python):
         timeout = "eternal",
     )
 
-def unit_tests(deps = []):
+def unit_tests(deps = [], rv32_gcc = False):
     """One pytest test, `<folder>.unit`, per tests/ folder in this package.
 
     Args:
       deps: Python libraries the tests import besides every project's and the tools'.
+      rv32_gcc: whether the tests build RV32 C programs with the pinned GCC.
     """
     for folder in native.glob(["**/tests"], exclude_directories = 0, allow_empty = True):
         if not folder.endswith("tests"):
@@ -308,8 +321,8 @@ def unit_tests(deps = []):
             srcs = ["//tools/bazel:pytest_main.py"],
             main = "//tools/bazel:pytest_main.py",
             args = [native.package_name() + "/" + folder],
-            data = native.glob([folder + "/**"]) + ["@verilator//:verilator"],
-            env = {"UNIT_PATH_PREPEND": "$(rootpaths @verilator//:verilator)"},
+            data = native.glob([folder + "/**"]) + ["@verilator//:verilator"] + _rv32_data(rv32_gcc),
+            env = {"UNIT_PATH_PREPEND": "$(rootpaths @verilator//:verilator)"} | _rv32_env(rv32_gcc),
             deps = deps + ["//src/%s:python" % p for p in PROJECTS] + SIM_PYTHON + [
                 "//tools:python",
                 "//tools/bazel:scratch",

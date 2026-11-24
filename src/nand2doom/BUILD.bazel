@@ -7,10 +7,12 @@ hdl_project(
     name = "nand2doom",
     # Why: the Doom build unpacks the Picolibc .zst package under Python 3.12 (#224).
     python_deps = [requirement("backports.zstd")],
+    # Why: the C-program tests build with the pinned RV32 GCC, not the host's (#226).
+    rv32_gcc = True,
 )
 
 # The unit tests of the project's scripts.
-unit_tests()
+unit_tests(rv32_gcc = True)
 
 # Board images: bazel build //src/nand2doom:<board>_image on a host with Quartus.
 quartus_image(

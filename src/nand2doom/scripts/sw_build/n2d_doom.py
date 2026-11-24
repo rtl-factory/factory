@@ -104,7 +104,7 @@ UPSTREAM_WARNING_EXCEPTIONS = (
     "-Wno-unused-but-set-parameter", "-Wno-unused-but-set-variable",
     "-Wno-unused-variable", "-Wno-unused-const-variable",
     "-Wno-enum-conversion", "-Wno-type-limits", "-Wno-format",
-    "-Wno-dangling-pointer",
+    "-Wno-dangling-pointer", "-Wno-unterminated-string-initialization",
 )
 
 ENGINE_OBJECTS = """

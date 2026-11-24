@@ -9,6 +9,7 @@ verilator: the Verilator install the toolchain pinned (cfg/toolchain.json),
 found on PATH or under ~/verilator, version-checked and fingerprinted.
 oss_cad_suite: the OSS CAD Suite install the toolchain pinned, found under its
 install directory, release-checked.
+rv32_gcc: the RV32 GCC the toolchain pinned, downloaded and checksum-checked.
 """
 
 def _registry_impl(rctx):
@@ -134,10 +135,39 @@ oss_cad_suite_repository = repository_rule(
     environ = ["OSS_CAD_SUITE", "HOME"],
 )
 
+def _rv32_gcc_impl(rctx):
+    pin = json.decode(rctx.read(rctx.attr.toolchain))["rv32_gcc"]
+    rctx.download_and_extract(
+        url = pin["url"],
+        sha256 = pin["sha256"],
+        stripPrefix = pin["strip_prefix"],
+    )
+    rctx.file("BUILD.bazel", """\
+# RV32 GCC {version} ({url}); every file is an input of the C-program tests, so
+# another pin reruns them.
+filegroup(
+    name = "all",
+    srcs = glob(["**"], exclude = ["BUILD.bazel"]),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "gcc",
+    srcs = ["bin/{prefix}gcc"],
+    visibility = ["//visibility:public"],
+)
+""".format(version = pin["version"], url = pin["url"], prefix = pin["prefix"]))
+
+rv32_gcc_repository = repository_rule(
+    implementation = _rv32_gcc_impl,
+    attrs = {"toolchain": attr.label(default = "//cfg:toolchain.json")},
+)
+
 def _hdl_impl(mctx):
     hdl_registry(name = "hdl_registry")
     verilator_repository(name = "verilator")
     oss_cad_suite_repository(name = "oss_cad_suite")
+    rv32_gcc_repository(name = "rv32_gcc")
     return mctx.extension_metadata(reproducible = False)
 
 hdl = module_extension(implementation = _hdl_impl)

@@ -34,16 +34,38 @@ def repository_root() -> Path:
     return Path(__file__).resolve().parents[4]
 
 
-def _requested_tool(environment_name: str, default: str) -> str:
-    """The tool named by environment_name, else a sibling of N2D_RISCV_GCC, else default.
+def _pinned_gcc() -> str | None:
+    """The pinned RV32 GCC Bazel hands a test (N2D_RISCV_PINNED, #226), as an absolute path.
 
-    Why: a host whose RV32 toolchain is off Bazel's PATH sets only N2D_RISCV_GCC
-    (wiki/bkm/flow.md, Runners); each binutil sits beside it with the same prefix.
+    Why: Bazel gives a path relative to the test's runfiles workspace, and a wrapper may
+    change directory before it builds.
     """
-    requested = os.environ.get(environment_name)
+    pinned = os.environ.get("N2D_RISCV_PINNED")
+    if not pinned:
+        return None
+    if not os.path.isabs(pinned) and os.environ.get("TEST_SRCDIR"):
+        workspace = os.environ.get("TEST_WORKSPACE", "_main")
+        pinned = os.path.join(os.environ["TEST_SRCDIR"], workspace, pinned)
+    return os.path.abspath(pinned)
+
+
+def _requested_tool(environment_name: str, default: str) -> str:
+    """The RV32 tool for environment_name: under bazel test the pinned GCC or its sibling
+    binutil; otherwise the tool that variable names, else a sibling of N2D_RISCV_GCC,
+    else default.
+
+    Why: every host builds the C programs with the same pinned compiler under Bazel
+    (wiki/tools/toolchain/spec.md); a direct run on a host whose RV32 toolchain is off
+    PATH sets only N2D_RISCV_GCC, and each binutil sits beside it with the same prefix.
+    """
+    rv32 = environment_name.startswith("N2D_RISCV_")
+    pinned = _pinned_gcc() if rv32 else None
+    requested = None if pinned else os.environ.get(environment_name)
     if requested:
         return requested
-    gcc = os.environ.get("N2D_RISCV_GCC", "")
+    gcc = pinned or os.environ.get("N2D_RISCV_GCC", "")
+    if environment_name == "N2D_RISCV_GCC" and pinned:
+        return pinned
     if environment_name.startswith("N2D_RISCV_") and environment_name != "N2D_RISCV_GCC" \
             and gcc.endswith("gcc"):
         return gcc[:-len("gcc")] + environment_name[len("N2D_RISCV_"):].lower()
