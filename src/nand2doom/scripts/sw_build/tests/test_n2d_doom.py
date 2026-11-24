@@ -326,6 +326,7 @@ class N2dDoomToolTests(unittest.TestCase):
         self.assertEqual(recipe["compiler_options"]["engine_flags"], ["-O2", "-flto=1"])
         self.assertEqual(recipe["compiler_options"]["platform_flags"], ["-Os", "-fno-lto"])
         self.assertIn("capture.c", recipe["platform_sources"])
+        self.assertIn("errno_tls.S", recipe["platform_sources"])
         self.assertEqual(recipe["identity_object"], "capture_identity.o")
         self.assertEqual(recipe["defines"], ["-DN2D_DETERMINISTIC_TIME=1"])
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):

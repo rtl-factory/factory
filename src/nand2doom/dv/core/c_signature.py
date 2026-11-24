@@ -30,7 +30,7 @@ def compile_c_program(
     linker script (optionally linking libgcc); return little-endian words,
     provenance and the ELF path."""
     compiler = shutil.which(
-        os.environ.get("N2D_RISCV_GCC", "riscv64-unknown-elf-gcc")
+        _requested_tool("N2D_RISCV_GCC", "riscv64-unknown-elf-gcc")
     )
     objcopy = shutil.which(
         _requested_tool("N2D_RISCV_OBJCOPY", "riscv64-unknown-elf-objcopy")

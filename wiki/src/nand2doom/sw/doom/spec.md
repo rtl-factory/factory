@@ -27,7 +27,9 @@ file whose digest is recorded outside source history.
   accepts only `freedoom1.wad` and bounds every read.
 - **TLS.** `.tdata`/`.tbss` precede BSS; startup points `tp` at the TLS block
   and zeroes TLS and BSS; a pre-engine self-check proves `errno` and heap
-  sentinels independent, else publishes a distinct failure marker.
+  sentinels independent, else publishes a distinct failure marker. The pinned
+  GCC has no native TLS, so `errno_tls.S` answers its emulated-TLS `errno`
+  accesses with Picolibc's real TLS `errno`.
 - **Networking** is out of scope: the adapter returns the zero WAD-directory
   checksum instead of peer hashing.
 

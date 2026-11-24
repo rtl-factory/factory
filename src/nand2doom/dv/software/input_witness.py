@@ -10,6 +10,10 @@ from src.nand2doom.dv.software.doom_gameplay import BREAK, COMPLETION, MAKE, TUR
 # Why: only the supported production Os RV32IM ABI is matched; relocated global
 # immediates are read from the actual image, and both instruction identity and
 # runtime address are checked, so a rebuilt image cannot silently move a seam.
+# The offsets are those of the rv32_gcc pin in cfg/toolchain.json; a pin bump
+# re-derives them from the new image's disassembly and updates SEAMS_RV32_GCC,
+# which an L0 test compares with the pin.
+SEAMS_RV32_GCC = "15.2.0-1"
 SEAMS = {
     "entry": ("BuildNewTic", 0, 0xfd010113, 0xffffffff),
     "input_call": ("BuildNewTic", 48, 0x000080e7, 0xfffff),
@@ -18,15 +22,15 @@ SEAMS = {
     "slot": ("BuildNewTic", 176, 0x00042583, 0xfffff),
     "command_call": ("BuildNewTic", 188, 0x000780e7, 0xffffffff),
     "publish": ("BuildNewTic", 256, 0x00942023, 0x01fff07f),
-    "return": ("BuildNewTic", 288, 0x00008067, 0xffffffff),
-    "status": ("DG_GetKey", 8, 0x0007a783, 0xffffffff),
-    "zero": ("DG_GetKey", 20, 0x00000513, 0xffffffff),
-    "empty_return": ("DG_GetKey", 24, 0x00008067, 0xffffffff),
-    "data": ("DG_GetKey", 32, 0x0007a783, 0xffffffff),
-    "key_marker": ("DG_GetKey", 128, 0x00f72223, 0xffffffff),
-    "key_return": ("DG_GetKey", 132, 0x00008067, 0xffffffff),
+    "return": ("BuildNewTic", 284, 0x00008067, 0xffffffff),
+    "status": ("DG_GetKey", 4, 0x0047a783, 0xffffffff),
+    "zero": ("DG_GetKey", 16, 0x00000513, 0xffffffff),
+    "empty_return": ("DG_GetKey", 20, 0x00008067, 0xffffffff),
+    "data": ("DG_GetKey", 28, 0x0007a783, 0xffffffff),
+    "key_marker": ("DG_GetKey", 124, 0x00f72223, 0xffffffff),
+    "key_return": ("DG_GetKey", 128, 0x00008067, 0xffffffff),
     "event_return": ("I_GetEvent", 144, 0x00008067, 0xffffffff),
-    "turn": ("N2D_RecordTiccmd", 56, 0x00f72223, 0xffffffff),
+    "turn": ("N2D_RecordTiccmd", 48, 0x00f72223, 0xffffffff),
 }
 
 

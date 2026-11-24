@@ -84,6 +84,17 @@ class N2dImageToolTests(unittest.TestCase):
                              n2d_image._requested_tool("N2D_RISCV_NM", "riscv64-unknown-elf-nm"))
             self.assertEqual("cc", n2d_image._requested_tool("CC", "cc"))
 
+    def test_the_pinned_compiler_wins_under_bazel(self) -> None:
+        environment = {"N2D_RISCV_PINNED": "../rv32/bin/riscv-none-elf-gcc", "TEST_SRCDIR": "/r",
+                       "TEST_WORKSPACE": "_main", "N2D_RISCV_GCC": "/host/riscv64-elf-gcc",
+                       "N2D_RISCV_NM": "/host/nm"}
+        with mock.patch.dict(os.environ, environment, clear=True):
+            self.assertEqual("/r/rv32/bin/riscv-none-elf-gcc",
+                             n2d_image._requested_tool("N2D_RISCV_GCC", "riscv64-unknown-elf-gcc"))
+            self.assertEqual("/r/rv32/bin/riscv-none-elf-nm",
+                             n2d_image._requested_tool("N2D_RISCV_NM", "riscv64-unknown-elf-nm"))
+            self.assertEqual("cc", n2d_image._requested_tool("CC", "cc"))
+
     def test_scratch_path_is_the_bazel_outputs_under_a_test(self) -> None:
         with mock.patch.dict(os.environ, {"TEST_UNDECLARED_OUTPUTS_DIR": "/t/out"}):
             self.assertEqual(Path("/t/out/software/x"), n2d_image.scratch_path("software/x", REPO_ROOT))
