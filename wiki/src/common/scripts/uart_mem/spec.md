@@ -36,4 +36,4 @@ A request starts with `0xA8`, a response with `0x8A`; both carry the protocol ve
 
 ## Tests
 
-`python3 -m pytest src/common/scripts/uart_mem/tests` covers framing, identity, chunking, the load transaction (one hold, verify before entry, one release, failures leave the CPU held), readback and shared-UART project bytes; `test_uart_mem_load.py` covers the load script's plan, defaults, project check, held failure, and that its serial transport returns a waiting response without sitting out the deadline.
+`python3 -m pytest src/common/scripts/uart_mem/tests` covers framing, identity, chunking, the load transaction (one hold, verify before entry, one release, failures leave the CPU held), readback and shared-UART project bytes; `test_uart_mem_load.py` covers the load script's plan, defaults, project check, held failure, and that its serial transport returns a waiting response without sitting out the deadline. In simulation, benches run this library itself through `src/common/dv/uart_mem/sim_host.py` ([DV plan](../../dv/uart_mem/dv-plan.md)); `n2m_system_uart_mem` (L0) loads and boots nand2mario with `load` at the 2 Mbaud board rate.

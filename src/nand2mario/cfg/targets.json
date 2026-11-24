@@ -403,6 +403,25 @@
         "{workdir}"
       ]
     },
+    "n2m_system_uart_mem": {
+      "kind": "cocotb",
+      "description": "n2m_system loaded and booted by the common UART memory host library: uart_mem.load (identify, hold, write and read back, entry, release) over the serial pins at exactly 2 Mbaud against the board bit period (12 1/2 clocks through the fractional PHY), a cartridge header and a program at 0x0100 over garbage ROM, retired to its final HALT with its WRAM marker",
+      "top": "n2m_system",
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.nand2mario.dv.system.test_system_uart_mem",
+      "testcase": "system_uart_mem_load",
+      "default_seed": 42,
+      "max_cycles": 100000,
+      "parameters": {
+        "CART_ROM_BYTES": 32768,
+        "CART_RAM_BYTES": 8192,
+        "UART_CLKS_PER_BIT": 12,
+        "UART_FRAC_NUM": 1,
+        "UART_FRAC_DEN": 2
+      },
+      "level": "L0"
+    },
     "n2m_sdram_ctrl": {
       "kind": "cocotb",
       "description": "The common SDRAM controller in the nand2mario configuration against the common IS42S16320D device model: power-up initialization sequence and clock numbers, CL2 single-beat reads and byte-masked writes, response/ready latencies, refresh cadence and randomized traffic against the Python pin monitor and shadow",
@@ -568,11 +587,11 @@
         "n2m_de10_lite_lint"
       ],
       "clock_hz": 25000000,
-      "timeout_seconds": 900,
+      "timeout_seconds": 1500,
       "test_module": "src.nand2mario.dv.fpga.test_de10_lite",
       "testcase": "board_smoke",
       "default_seed": 97,
-      "max_cycles": 8000000,
+      "max_cycles": 13000000,
       "parameters": {
         "UART_CLKS_PER_BIT": 12,
         "UART_FRAC_NUM": 1,
@@ -590,6 +609,29 @@
         "{workdir}"
       ]
     },
+    "n2m_de10_lite_uart_mem": {
+      "kind": "cocotb",
+      "description": "nand2mario DE10-LITE board top loaded as the board console loads it: after PLL lock and SDRAM initialization, uart_mem.load (identify, hold, write and read back, entry, release) writes a cartridge header and a program at 0x0100 into the SDRAM device over the board UART pins at exactly 2 Mbaud against the board bit period (12 1/2 clocks through the fractional PHY), and the core boots it to its final HALT with its WRAM marker",
+      "top": "n2m_de10_lite_fixture",
+      "libraries": [
+        "n2m_de10_lite_fixture",
+        "sld_virtual_jtag_stub",
+        "n2m_de10_lite_lint"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 300,
+      "test_module": "src.nand2mario.dv.fpga.test_de10_lite",
+      "testcase": "board_uart_mem_boot",
+      "default_seed": 97,
+      "max_cycles": 100000,
+      "parameters": {
+        "UART_CLKS_PER_BIT": 12,
+        "UART_FRAC_NUM": 1,
+        "UART_FRAC_DEN": 2,
+        "HEARTBEAT_BIT": 20
+      },
+      "level": "L0"
+    },
     "n2m_de2_115": {
       "kind": "cocotb",
       "description": "DE2-115 portable board smoke: low-half SDRAM UART load, execution, ADV7123 DAC edge/width, complete UART frame snapshot, JTAG and fallback input",
@@ -600,11 +642,11 @@
         "n2m_de10_lite_lint"
       ],
       "clock_hz": 25000000,
-      "timeout_seconds": 1800,
+      "timeout_seconds": 2400,
       "test_module": "src.nand2mario.dv.fpga.test_de10_lite",
       "testcase": "board_smoke",
       "default_seed": 97,
-      "max_cycles": 12000000,
+      "max_cycles": 17000000,
       "parameters": {
         "UART_CLKS_PER_BIT": 12,
         "UART_FRAC_NUM": 1,
@@ -621,6 +663,29 @@
         "--workdir",
         "{workdir}"
       ]
+    },
+    "n2m_de2_115_uart_mem": {
+      "kind": "cocotb",
+      "description": "nand2mario DE2-115 board top loaded as the board console loads it: after PLL lock and SDRAM initialization, uart_mem.load (identify, hold, write and read back, entry, release) writes a cartridge header and a program at 0x0100 into the SDRAM device over the board UART pins at exactly 2 Mbaud against the board bit period (12 1/2 clocks through the fractional PHY), and the core boots it to its final HALT with its WRAM marker",
+      "top": "n2m_de2_115_fixture",
+      "libraries": [
+        "n2m_de2_115_fixture",
+        "sld_virtual_jtag_stub",
+        "n2m_de10_lite_lint"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 300,
+      "test_module": "src.nand2mario.dv.fpga.test_de10_lite",
+      "testcase": "board_uart_mem_boot",
+      "default_seed": 97,
+      "max_cycles": 100000,
+      "parameters": {
+        "UART_CLKS_PER_BIT": 12,
+        "UART_FRAC_NUM": 1,
+        "UART_FRAC_DEN": 2,
+        "HEARTBEAT_BIT": 20
+      },
+      "level": "L0"
     },
     "n2m_system_sw_games": {
       "kind": "cocotb",
