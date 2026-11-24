@@ -37,6 +37,8 @@ The Game Boy memory map, implemented in `rtl/memory/n2m_memory_decode.sv`, with 
 
 The default system clock is 25 MHz; the CPU and peripherals run on clock enables from the timebase. Crossings are not written out here yet.
 
+The console core is in reset while the system reset, a UART link hold, an uninitialized cartridge backing or a library switch asks for it. While it is in reset, the boot VRAM sweep writes zero to one VRAM byte per clock from address 0, and the core leaves reset only once the sweep has covered all 8192 bytes: a request that ends earlier keeps the core in reset until then, and a longer one releases it at once. The system reset holds the sweep at its start, so after a system reset the core starts 8192 clocks after the reset ends, whatever state the sweep powered up in; any other request starts the sweep when it begins. VRAM therefore starts zeroed after every core reset, as the DMG boot ROM leaves it.
+
 ## Top-level behaviour
 
 - Cartridges start at 0x0100: the DMG boot ROM is not modelled.

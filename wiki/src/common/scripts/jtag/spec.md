@@ -6,7 +6,7 @@ How the host works, against its [requirements](prd.md). Code in `src/common/scri
 
 | Part | Role |
 |---|---|
-| Translation | `keys_to_scancodes`, `key_strokes`, `split_trailing_escape`: host bytes (a `TERM=linux` key stream) to Set-2 make and break codes |
+| Translation | `keys_to_scancodes`, `key_strokes`, `split_trailing_escape`: host bytes (a `TERM=linux` or xterm key stream; Home and End in either form, `ESC [ 1 ~`/`ESC [ 4 ~` or `ESC [ H`/`ESC [ F`) to Set-2 make and break codes |
 | Session | `Session`, `send_all`, `type_text`: the command and status protocol with the endpoint, exactly-once delivery |
 | Transport | `ProcessTransport` and `open_transport`: one persistent `quartus_stp` process running the Tcl script, driven by line messages |
 | Native worker | `native_worker` (`--native-worker`): runs under Windows Python when Quartus is the Windows build and the caller is in WSL |
@@ -17,7 +17,9 @@ How the host works, against its [requirements](prd.md). Code in `src/common/scri
 The endpoint has two virtual instruction registers, each a 64-bit data scan:
 
 - **IR 1, command.** The host shifts in `0xA3` (bits 63:56), the number of codes 1 to 4 (55:48), an 8-bit sequence number (47:40) and up to four scan codes, first code in bits 7:0 (31:0).
-- **IR 2, status.** The host reads `0x5A` (63:56), busy (55), error (54), result code (53:51: 0 reset, 1 all accepted, 2 partly accepted), number accepted (50:48), sequence of the last command (39:32) and the running total of accepted codes (31:0). Bits 47:40 are zero.
+- **IR 2, status.** The host reads `0x5A` (63:56), busy (55), error (54), result code (53:51: 0 reset, 1 all accepted, 2 partly accepted, 3 malformed command, 4 unexpected sequence; 3 and 4 latch until a system reset), number accepted (50:48), sequence of the last command (39:32) and the running total of accepted codes (31:0). Bits 47:40 are zero.
+
+The identity bytes, the code limit and the result codes are defined once for the endpoint in `src/common/rtl/jtag/n2a_jtag_keyboard_pkg.sv`. The host library keeps the same values as `COMMAND_MAGIC`, `STATUS_MAGIC`, `MAX_BATCH_CODES` and `Result` (it imports nothing from the repository), and its unit test fails when they differ from the package.
 
 Any other identity, a set error bit, an unknown result code or an inconsistent combination (a reset status with nonzero fields, "all accepted" with none accepted) is an uncertain outcome.
 

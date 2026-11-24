@@ -12,9 +12,9 @@ module n2a_jtag_keyboard (
     output logic [7:0] inject_byte_o,
     input logic inject_ready_i
 );
-    import n2a_types_pkg::*;
+    import n2a_jtag_keyboard_pkg::*;
 
-    localparam logic [63:0] RESET_RESPONSE = 64'h5a00_0000_0000_0000;
+    localparam logic [63:0] RESET_RESPONSE = {STATUS_MAGIC, 56'd0};
     // Why: reset_i is synchronous to clk_i and resets the system domain directly.
     // The scan domain's synchronizer takes it from a flop, so reset_i is never an
     // asynchronous reset itself and the crossing starts glitch-free.
@@ -23,8 +23,8 @@ module n2a_jtag_keyboard (
     n2a_reset_sync u_scan_reset (.clk_i(tck_i), .async_reset_i(scan_reset_request_q),
         .reset_o(scan_reset));
 
-    t_jtag_keyboard_scan scan_q, scan_d;
-    localparam t_jtag_keyboard_scan SCAN_RESET = '{response: RESET_RESPONSE, default: '0};
+    t_scan scan_q, scan_d;
+    localparam t_scan SCAN_RESET = '{response: RESET_RESPONSE, default: '0};
     logic ack_sync, req_sync, ack_q;
     logic [63:0] response_q;
     n2a_cdc_bit_sync u_req (.clk_i(clk_i), .reset_i(reset_i),
@@ -38,8 +38,6 @@ module n2a_jtag_keyboard (
     always_comb begin
         scan_d = scan_q;
         if (scan_q.busy && ack_sync == scan_q.request) begin
-            // Why: response_q crosses from clk_i without a synchronizer. It is safe
-            // because clk_i sets it with ack and holds it until the next request.
             scan_d.response = response_q;
             scan_d.busy = 1'b0;
         end
@@ -83,12 +81,13 @@ module n2a_jtag_keyboard (
     `DFF_ARST_VAL(scan_q, scan_d, tck_i, scan_reset, SCAN_RESET)
     assign tdo_o = (ir_i == 2'd1 || ir_i == 2'd2) ? scan_q.shift_data[0] : scan_q.bypass;
 
-    t_jtag_keyboard_system q, d;
-    localparam t_jtag_keyboard_system SYSTEM_RESET = '{phase: KBD_IDLE, response: RESET_RESPONSE, default: '0};
+    t_system q, d;
+    localparam t_system SYSTEM_RESET = '{phase: KBD_IDLE, code: RESULT_RESET, response: RESET_RESPONSE,
+                                         default: '0};
     logic [63:0] completion;
     logic [7:0] command_seq;
     assign command_seq = q.command[47:40];
-    assign completion = {8'h5a, 2'b00, q.code, q.accepted, 8'h00, command_seq, q.total};
+    assign completion = {STATUS_MAGIC, 2'b00, q.code, q.accepted, 8'h00, command_seq, q.total};
     assign ack_q = q.ack;
     assign response_q = q.response;
     // Why: byte and valid leave from registers and inject_ready_i is registered
@@ -112,21 +111,21 @@ module n2a_jtag_keyboard (
                     // first protocol failure stays reported until a system reset.
                     d.ack = req_sync;
                     d.phase = KBD_IDLE;
-                end else if (q.command[63:56] != 8'ha3 || q.command[55:48] < 8'd1 ||
-                    q.command[55:48] > 8'd4 || q.command[39:32] != 0) begin
-                    d.code = 3'd3;
+                end else if (q.command[63:56] != COMMAND_MAGIC || q.command[55:48] < 8'd1 ||
+                    q.command[55:48] > 8'(MAX_BATCH_CODES) || q.command[39:32] != 0) begin
+                    d.code = RESULT_MALFORMED;
                     d.fault = 1'b1;
                     d.phase = KBD_FINISH;
                 end else if (q.have_last && q.command == q.last_command) begin
                     d.ack = req_sync;
                     d.phase = KBD_IDLE;
                 end else if (command_seq != q.expected_seq) begin
-                    d.code = 3'd4;
+                    d.code = RESULT_SEQUENCE;
                     d.fault = 1'b1;
                     d.phase = KBD_FINISH;
                 end else begin
                     d.expected_seq = q.expected_seq + 1'b1;
-                    d.code = 3'd1;
+                    d.code = RESULT_ACCEPTED;
                     d.byte_data = q.command[7:0];
                     d.valid = 1'b1;
                     d.phase = KBD_OFFER;
@@ -138,7 +137,7 @@ module n2a_jtag_keyboard (
             end
             KBD_ACCOUNT: begin
                 if (!q.take) begin
-                    d.code = 3'd2;
+                    d.code = RESULT_PARTIAL;
                     d.phase = KBD_FINISH;
                 end else begin
                     d.accepted = q.accepted + 1'b1;
@@ -154,7 +153,7 @@ module n2a_jtag_keyboard (
             KBD_FINISH: begin
                 d.response = completion;
                 d.ack = req_sync;
-                if (q.code == 3'd1 || q.code == 3'd2) begin
+                if (q.code == RESULT_ACCEPTED || q.code == RESULT_PARTIAL) begin
                     d.last_command = q.command;
                     d.have_last = 1'b1;
                 end
@@ -164,6 +163,8 @@ module n2a_jtag_keyboard (
         endcase
     end
     `DFF_RST_VAL(q, d, clk_i, reset_i, SYSTEM_RESET)
-    `ASSERT_CLOCKED_FATAL(clk_i, reset_i, q.accepted <= 3'd4, "Prefix exceeded batch limit")
+    `ASSERT_CLOCKED_FATAL(clk_i, reset_i, d.response == q.response || d.ack != q.ack,
+        "Unsynchronized response changed without ack")
+    `ASSERT_CLOCKED_FATAL(clk_i, reset_i, q.accepted <= 3'(MAX_BATCH_CODES), "Prefix exceeded batch limit")
     `ASSERT_CLOCKED_FATAL(clk_i, reset_i, !q.valid || q.phase == KBD_OFFER, "Byte outside offer phase")
 endmodule

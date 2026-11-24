@@ -20,7 +20,7 @@ from ..core.test_cpu import unpack
 from ..dma import dma_model as dm
 from ..memory.memory_model import GameBoyMemory
 from ..video import ppu_model as m
-from .test_system import (idle_host, HALT_OPCODE, compare_signature, defined_signature, interrupt_entry,
+from .test_system import (await_core_release, idle_host, HALT_OPCODE, compare_signature, defined_signature, interrupt_entry,
                           load_image, power_up, store_bytes, ticks_at, store_array)
 from .test_system_background import (DOTS_PER_FRAME, DOT_EDGES, HALT_WAKE_CYCLES, VideoPeripherals,
                                      compare_frame, dot_edge, dots_at)
@@ -88,6 +88,7 @@ async def system_objects_frame(dut):
     await RisingEdge(dut.clk_i)
     await FallingEdge(dut.clk_i)
     dut.reset_i.value = 0
+    cycles += await await_core_release(dut)
     release_edge = cycles
     release_ns = get_sim_time(unit='ns')
 

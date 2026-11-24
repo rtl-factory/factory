@@ -206,24 +206,24 @@ The DE2-115 SDC differences are in the [DE2-115 board spec](../de2_115/board-spe
 
 ## Budget
 
-Last passing build in the factory (Quartus Prime Lite 25.1std, `bazel build //src/nand2doom:de10_lite_image`, issue #135, common PS/2 receiver and Set-2 decoder): the full report gate passed with 4 reviewed warning occurrences.
+Last passing build in the factory (Quartus Prime Lite 25.1std.0 Build 1129, `bazel build //src/nand2doom:de10_lite_image`, issue #191, `uart_mem` Digest command): the full report gate passed with 4 reviewed warning occurrences.
 
 | Resource or check | Result |
 |---|---|
-| Logic elements | 27,410 of 49,760 (55%) |
+| Logic elements | 27,691 of 49,760 (56%) |
 | M9K blocks | 174 of 182 (8 left) |
 | PLLs | 1 of 4 |
-| Minimum slack, any clock, check and corner | 0.140 ns |
+| Minimum slack, any clock, check and corner | 0.147 ns |
 
 System clock (25 MHz PLL output) slack per corner, in ns:
 
 | Corner | Setup | Hold |
 |---|---|---|
-| Slow 1200mV 85C | 3.928 | 0.286 |
-| Slow 1200mV 0C | 4.645 | 0.220 |
-| Fast 1200mV 0C | 8.339 | 0.141 |
+| Slow 1200mV 85C | 4.772 | 0.324 |
+| Slow 1200mV 0C | 5.492 | 0.273 |
+| Fast 1200mV 0C | 8.748 | 0.158 |
 
-Worst SDRAM margins: read setup 3.928 (the system clock's worst path), read hold 23.762, write setup 9.035, write hold 19.120 ns. The previous gate (#155) had 27,401 logic elements and system clock setup 3.744 / 4.541 / 8.186 ns.
+Worst SDRAM margins: read setup 4.772 (the system clock's worst path), read hold 23.575, write setup 8.714, write hold 19.109 ns. SOF sha256 `b3e41d1a89d39338776635b5279474f1eeb6b69669d6b4e37a231f5feced5331`. The previous gate (#135, common PS/2 receiver) had 27,410 logic elements, minimum slack 0.140 ns and system clock setup 3.928 / 4.645 / 8.339 ns; the Digest datapath costs about 281 logic elements.
 
 The earlier fits of both boards, from nand2anything, follow.
 

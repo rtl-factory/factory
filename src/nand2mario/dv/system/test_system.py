@@ -21,6 +21,7 @@ from ..memory.memory_model import GameBoyMemory
 from .peripheral_model import Peripherals
 
 CLOCK_PERIOD_NS = 40
+VRAM_BYTES = 8192
 MACHINE_CYCLE_EDGES = 390625 / 16384   # Why: the exact 25 MHz / 1,048,576 Hz ratio, not a rounded one.
 INSTRUCTION_BOUND = 1500
 HALT_OPCODE = 0x76
@@ -72,6 +73,19 @@ def store_array(ram):
     """The storage array of one common RAM wrapper instance
     (n2a_sync_ram_enabled or n2a_tdp_ram_enabled over its portable store)."""
     return ram.u_ram.memory
+
+
+async def await_core_release(dut):
+    """Edges until the core leaves reset (the VRAM sweep outlasts a system
+    reset); returns at the falling edge before the first edge it runs on."""
+    edges = 0
+    while True:
+        await RisingEdge(dut.clk_i)
+        edges += 1
+        await ReadOnly()
+        if not int(dut.core_reset_o.value):
+            await FallingEdge(dut.clk_i)
+            return edges
 
 
 def store_bytes(array):
@@ -165,10 +179,11 @@ async def system_smoke(dut):
     dut.rom_load_write_i.value = 0
     await RisingEdge(dut.clk_i)
     await FallingEdge(dut.clk_i)
-    # Ref: Pan Docs "Power Up Sequence": the DMG boot ROM leaves VRAM zeroed, so the reset
-    # held over the 32 KiB load must sweep the garbage-filled VRAM to zero.
-    assert store_bytes(store_array(dut.u_memory.u_vram)) == bytes(8192), 'VRAM not cleared during reset'
     dut.reset_i.value = 0
+    cycles += await await_core_release(dut)
+    # Ref: Pan Docs "Power Up Sequence": the DMG boot ROM leaves VRAM zeroed, so the
+    # core must start on garbage-filled VRAM swept to zero.
+    assert store_bytes(store_array(dut.u_memory.u_vram)) == bytes(VRAM_BYTES), 'VRAM not cleared at core release'
     release_edge = cycles
 
     peripherals = Peripherals()

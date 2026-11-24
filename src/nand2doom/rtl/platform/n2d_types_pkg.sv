@@ -61,13 +61,23 @@ package n2d_types_pkg;
         logic committed;
     } t_fb_pal;
 
+    // Owner of the one line-memory transaction, one bit per MEM_OWNER_* PMON
+    // event: fetch is bit 0 (event 87) through debug at bit 4 (event 91).
+    typedef struct packed {
+        logic debug;           // 91: the debug master
+        logic data_write;      // 90: D-cache writeback or maintenance write
+        logic data_prefetch;   // 89: D-cache next-line prefetch read
+        logic data_read;       // 88: D-cache demand read
+        logic fetch;           // 87: I-cache line fill
+    } t_pmon_owner;
+
     // n2d_pmon_platform_events per-transaction tracking.
     typedef struct packed {
-        logic       dcache_write;
-        logic       icache_line_read_pending;
-        logic       dcache_line_read_pending;
-        logic       memory_busy;
-        logic [4:0] owner;    // MEM_OWNER_* of the transaction, by event order
+        logic        dcache_write;
+        logic        icache_line_read_pending;
+        logic        dcache_line_read_pending;
+        logic        memory_busy;
+        t_pmon_owner owner;
     } t_pmon_track;
 
     // n2d_ps2_keyboard receiver enable and sticky diagnostics (asynchronous

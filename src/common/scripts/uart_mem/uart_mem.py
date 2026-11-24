@@ -23,7 +23,11 @@ VERSION = 0x01
 MAGIC = 0x4D41324E
 FIXED_IDENT_WORDS = 5
 
-IDENTIFY, HOLD, RELEASE, ENTRY, WRITE, READ = 0x01, 0x02, 0x03, 0x04, 0x10, 0x11
+IDENTIFY, HOLD, RELEASE, ENTRY, WRITE, READ, DIGEST = 0x01, 0x02, 0x03, 0x04, 0x10, 0x11, 0x12
+# Why: the 16-bit length field, in whole words, bounds a Digest range.
+DIGEST_MAX_LENGTH = 0xFFFC
+# Ref: wiki/src/common/scripts/uart_mem/spec.md "Commands": Identify word 2 bit 2.
+CAP_DIGEST = 0x4
 
 STATUS_NAMES = {
     0x00: "ok", 0x01: "version", 0x02: "command", 0x03: "checksum",
@@ -129,6 +133,7 @@ class Identity:
     entry_any: bool
     live_gap_cycles: int
     windows: tuple[Window, ...]
+    digest: bool = False
 
     @property
     def project(self) -> str:
@@ -149,7 +154,7 @@ def parse_identity(payload: bytes) -> Identity:
     return Identity(project_id=words[1], max_length=words[2] >> 16, held=bool(words[2] & 1),
                     hold_requested=bool(words[2] & 2), entry=words[3],
                     entry_any=bool(words[4] & 0x10000), live_gap_cycles=words[4] & 0xFFFF,
-                    windows=windows)
+                    windows=windows, digest=bool(words[2] & CAP_DIGEST))
 
 
 @dataclass
@@ -261,6 +266,8 @@ class Client:
             raise self._fail(EndpointError(f"write failed: {error}")) from error
         if command == READ:
             max_length = length
+        elif command == DIGEST:
+            max_length = 4
         elif command == IDENTIFY:
             max_length = 4 * (FIXED_IDENT_WORDS + 3 * 8)
         else:
@@ -298,6 +305,25 @@ class Client:
         for chunk_address, offset, size in self._chunks(address, len(data)):
             self.command(WRITE, chunk_address, size, data[offset:offset + size])
 
+    def digest(self, address: int, length: int) -> int:
+        """The stored CRC-32 (zlib.crc32) of one aligned range of at most
+        DIGEST_MAX_LENGTH bytes, read under the same rules as Read."""
+        if address % 4 or length % 4 or not 0 < length <= DIGEST_MAX_LENGTH:
+            raise ValueError("a digest range is whole aligned words, at most DIGEST_MAX_LENGTH bytes")
+        data = self.command(DIGEST, address, length)
+        if len(data) != 4:
+            raise self._fail(EndpointError("short digest payload"))
+        return int.from_bytes(data, "little")
+
+    def stored_matches(self, address: int, data: bytes) -> bool:
+        """Whether memory at address already holds data (whole words), by
+        comparing the digest of every DIGEST_MAX_LENGTH piece."""
+        for offset in range(0, len(data), DIGEST_MAX_LENGTH):
+            piece = data[offset:offset + DIGEST_MAX_LENGTH]
+            if self.digest(address + offset, len(piece)) != zlib.crc32(piece):
+                return False
+        return True
+
     def read(self, address: int, length: int) -> bytes:
         out = bytearray()
         for chunk_address, _, size in self._chunks(address, length):
@@ -314,12 +340,20 @@ def check_identity(identity: Identity, project_id: int | None) -> None:
                             f"the expected 0x{project_id:08x}")
 
 
+SKIPPED, WRITTEN = "skipped", "written"
+
+
 def load(client: Client, segments: Sequence[Segment], entry: int,
          project_id: int | None = None,
-         progress: Callable[[int, int], None] | None = None) -> None:
-    """The bench load transaction: hold once, write and read back every
-    segment, set the entry state only after all verified, release once.
+         progress: Callable[[int, int], None] | None = None,
+         skip_unchanged: bool = False) -> list[str]:
+    """The load transaction: hold once, write and verify every segment, set
+    the entry state only after all verified, release once. Returns each
+    segment's outcome, SKIPPED or WRITTEN.
 
+    A segment is verified by Digest when the endpoint advertises it, else by
+    reading it back. With skip_unchanged (and Digest), a segment that does
+    not hold the entry and whose stored digest already matches is skipped.
     A segment or identity that fails preflight raises before any hold. A
     failure from the hold through the last verify raises LoadError and sends
     no entry or release, so the CPU stays held. If the entry or release reply
@@ -334,6 +368,7 @@ def load(client: Client, segments: Sequence[Segment], entry: int,
             raise LoadError(index, f"0x{segment.address:x}+{len(segment.data)} is outside "
                                    "every writable window")
     client.hold()
+    outcomes = []
     for index, segment in enumerate(segments):
         data = segment.data
         try:
@@ -343,9 +378,18 @@ def load(client: Client, segments: Sequence[Segment], entry: int,
                 # word are read first and written back unchanged.
                 last = segment.address + len(data) - tail
                 data = data + client.read(last, 4)[tail:]
-            client.write(segment.address, data)
-            if client.read(segment.address, len(data)) != data:
-                raise LoadError(index, "readback differs from the image")
+            holds_entry = segment.address <= entry < segment.address + len(data)
+            if (skip_unchanged and identity.digest and not holds_entry and
+                    client.stored_matches(segment.address, data)):
+                outcomes.append(SKIPPED)
+            else:
+                client.write(segment.address, data)
+                if identity.digest:
+                    if not client.stored_matches(segment.address, data):
+                        raise LoadError(index, "stored digest differs from the image")
+                elif client.read(segment.address, len(data)) != data:
+                    raise LoadError(index, "readback differs from the image")
+                outcomes.append(WRITTEN)
         except LoadError:
             client.poisoned = True
             raise
@@ -358,6 +402,7 @@ def load(client: Client, segments: Sequence[Segment], entry: int,
         client.release()
     except EndpointError as error:
         raise LoadError(None, str(error)) from error
+    return outcomes
 
 
 def read_window(client: Client, address: int, length: int) -> bytes:

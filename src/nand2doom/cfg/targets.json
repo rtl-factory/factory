@@ -862,6 +862,18 @@
       "max_cycles": 1500000,
       "level": "L2"
     },
+    "n2a_uart_mem_digest": {
+      "kind": "cocotb",
+      "description": "Common UART memory endpoint Digest: CRC-32 of held ranges up to twice MAX_LENGTH against the written image, the length, alignment and range refusals with no memory traffic, a memory error and a timeout, then a live Digest of a window the CPU draws into, scoreboarded and within the stall bound, and the not-held refusal",
+      "top": "n2a_uart_mem_fixture",
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.uart_mem.test_uart_mem",
+      "testcase": "uart_mem_digest",
+      "default_seed": 63,
+      "max_cycles": 400000,
+      "level": "L0"
+    },
     "common_sync_ram": {
       "kind": "cocotb",
       "description": "Common portable synchronous RAM contract",

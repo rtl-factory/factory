@@ -38,8 +38,8 @@ module n2m_vga_scanout (
 );
     import n2m_display_pkg::*;
 
-    // Raster coordinate widths: $clog2(800) and $clog2(525), the full VGA
-    // line and frame of the common n2a_vga_timing defaults.
+    // Raster coordinate widths of the common n2a_vga_timing defaults; the
+    // timing block fails elaboration unless they equal $clog2 of its totals.
     localparam int unsigned H_COORD_WIDTH = 10;
     localparam int unsigned V_COORD_WIDTH = 10;
     localparam logic [H_COORD_WIDTH-1:0] IMAGE_LEFT_X   = H_COORD_WIDTH'(IMAGE_LEFT);
@@ -65,7 +65,10 @@ module n2m_vga_scanout (
                                              vsync_qq: 1'b1, frame_start_qq: 1'b0};
     t_scanout_pipe pipe_q, pipe_d;
 
-    n2a_vga_timing u_timing (
+    n2a_vga_timing #(
+        .H_COORD_WIDTH (H_COORD_WIDTH),
+        .V_COORD_WIDTH (V_COORD_WIDTH)
+    ) u_timing (
         .clk_i         (clk_i),
         .reset_i       (reset_i),
         .pixel_x_o     (timing_x),
