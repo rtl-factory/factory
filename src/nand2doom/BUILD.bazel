@@ -10,14 +10,13 @@ unit_tests()
 # Board images: bazel build //src/nand2doom:<board>_image on a host with Quartus.
 quartus_image(
     name = "de10_lite_image",
-    args = ["--board", "de10_lite"],
+    manifest = "src/nand2doom/cfg/n2d_quartus.json",
     project = "n2d_de10_lite",
-    script = "scripts/board/quartus.py",
 )
 
 quartus_image(
     name = "de2_115_image",
-    args = ["--board", "de2_115"],
+    board = "de2_115",
+    manifest = "src/nand2doom/cfg/n2d_quartus.json",
     project = "n2d_de2_115",
-    script = "scripts/board/quartus.py",
 )

@@ -15,5 +15,5 @@ Its documents are in the wiki at the mirrored path, `wiki/src/nand2doom/`: the l
 
 ```sh
 python3 tools/sim/sim.py test --project nand2doom --level L0
-python3 src/nand2doom/scripts/board/quartus.py --board de10_lite   # or de2_115
+python3 tools/quartus/quartus.py --manifest src/nand2doom/cfg/n2d_quartus.json   # --board de2_115
 ```

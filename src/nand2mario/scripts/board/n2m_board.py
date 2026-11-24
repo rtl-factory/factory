@@ -9,7 +9,8 @@
     python3 src/nand2mario/scripts/board/n2m_board.py joypad --mode press right
     ... joypad --cable 'USB-Blaster [1-1]' --yes start     # device resolved by the board IDCODE
 
-`compile` runs the Quartus build (n2m_quartus.py). `program` prints the exact
+`compile` runs the shared Quartus build tool (tools/quartus/quartus.py) on the
+board's manifest. `program` prints the exact
 quartus_pgm command for the built SOF and runs it only with --yes. `load`
 sends a cartridge image through the UART loader host (cart_loader.py) at the
 board's 2 Mbaud: without --yes it writes the request frames to a dump
@@ -37,6 +38,8 @@ ROOT = Path(__file__).resolve().parents[4]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from tools.board import jtag_chain  # noqa: E402
+from tools.quartus import image, manifest  # noqa: E402
+from tools.quartus import quartus as quartus_tool  # noqa: E402
 from src.common.scripts.uart_mem import uart_mem as um  # noqa: E402
 
 DEFAULT_SOF = "workdir/quartus/n2m_de10_lite/output_files/n2m_de10_lite.sof"
@@ -44,6 +47,19 @@ DEFAULT_SOF = "workdir/quartus/n2m_de10_lite/output_files/n2m_de10_lite.sof"
 BUTTON_KEYS = {"right": b"\x1b[C", "left": b"\x1b[D", "up": b"\x1b[A", "down": b"\x1b[B",
                "a": b"x", "b": b"z", "select": b" ", "start": b"\r"}
 BATCH = 4
+MANIFESTS = {"de10_lite": "src/nand2mario/cfg/n2m_quartus.json",
+             "de2_115": "src/nand2mario/cfg/n2m_de2_115_quartus.json"}
+LIBRARY_PROFILE = "src/nand2mario/cfg/n2m_library_quartus_profile.json"
+
+
+def image_arguments(board: str, library: bool) -> list[str]:
+    """The Quartus tool's manifest (and library profile) arguments of one board image."""
+    return ["--manifest", MANIFESTS[board]] + (["--profile", LIBRARY_PROFILE] if library else [])
+
+
+def image_config(board: str, library: bool) -> dict:
+    """The resolved config of one board image, as the Quartus tool builds it."""
+    return manifest.load(ROOT, MANIFESTS[board], None, LIBRARY_PROFILE if library else None)
 
 
 def button_strokes(names, jtag) -> list[tuple[bytes, bytes]]:
@@ -132,17 +148,16 @@ def run_program(args, *, runner=subprocess.run, which=shutil.which):
     """Dry run by default: the plan names the SOF and the exact command.
     With --yes the command runs and its exit status is returned."""
     board = getattr(args, "board", "de10_lite")
-    from src.nand2mario.scripts.board.n2m_quartus import selected_config
     library = getattr(args, "library", False)
-    project = selected_config(ROOT, board, library=library)["project"]
+    config = image_config(board, library)
+    project = config["project"]
     sof = (ROOT / (args.sof or f"workdir/quartus/{project}/output_files/{project}.sof")).resolve()
     result = {"board": board, "library": library, "sof": str(sof), "exists": sof.is_file(), "cable": args.cable or ""}
     if not sof.is_relative_to(ROOT / "workdir"):
         raise ValueError("the SOF must live below workdir (a built image, never a committed one)")
     receipt = sof.with_suffix(".json")
     if receipt.exists() or args.yes:
-        from src.nand2mario.scripts.board.n2m_quartus import BOARD_DEVICES, validate_image_identity
-        result["identity"] = validate_image_identity(sof, project=project, device=BOARD_DEVICES[board], library=library)
+        result["identity"] = image.verify_image(sof, config)
     elif any(name in sof.name and name != f"n2m_{board}" for name in ("n2m_de10_lite", "n2m_de2_115")):
         raise ValueError("SOF name does not match selected board")
     result["command"] = shlex.join(program_command(sof, args.cable or "<cable>", args.quartus_bin))
@@ -222,7 +237,7 @@ def run_snapshot(args, *, snapshot_tool=None):
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="n2m_board.py", description=__doc__.split("\n\n", 1)[0])
     sub = p.add_subparsers(dest="action", required=True)
-    c = sub.add_parser("compile", help="run the Quartus build gate (n2m_quartus.py)")
+    c = sub.add_parser("compile", help="run the Quartus build gate (tools/quartus/quartus.py)")
     c.add_argument("--plan", action="store_true", help="validate and show inputs without writing")
     c.add_argument("--quartus", help="quartus_sh executable (or QUARTUS_SH/PATH)")
     g = sub.add_parser("program", help="configure the FPGA SRAM from the built SOF (dry run without --yes)")
@@ -274,13 +289,10 @@ def main(argv=None, *, jtag=None, runner=subprocess.run, resolve=jtag_chain.reso
     args = parser().parse_args(argv)
     try:
         if args.action == "compile":
-            from src.nand2mario.scripts.board import n2m_quartus
-            quartus_argv = ["--board", args.board] + (["--plan"] if args.plan else [])
-            if args.library:
-                quartus_argv += ["--library"]
+            quartus_argv = image_arguments(args.board, args.library) + (["--plan"] if args.plan else [])
             if args.quartus:
                 quartus_argv += ["--quartus", args.quartus]
-            return n2m_quartus.main(quartus_argv)
+            return quartus_tool.main(quartus_argv, root=ROOT)
         if args.action == "program":
             code, result = run_program(args, runner=runner)
         elif args.action == "load":

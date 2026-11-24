@@ -30,11 +30,11 @@ The pages came over from nand2anything (its per-area HAS and DV pages and tool s
 | `rtl/video/` | `n2d_framebuffer_vga`: framebuffer, palette and VGA scanout over the common timing block. |
 | `rtl/io/` | `n2d_uart_debug`, `n2d_uart_debug_engine`, `n2d_uart_bulk`, `n2d_uart_stream`, `n2d_uart_mem_port` and `n2d_ps2_keyboard`. |
 | `rtl/platform/` | `n2d_system` (the product top shared by both boards), `n2d_pkg`, `n2d_types_pkg`, `n2d_debug_device_line_bridge`, `n2d_pmon_platform_events`. |
-| `fpga/de10_lite/`, `fpga/de2_115/` | Each board's top, its Intel and portable clock backends, its Quartus settings fragment and SDC. Pins and the source list are in `cfg/n2d_quartus.json` (DE2-115 as overrides under `boards`). |
+| `fpga/de10_lite/`, `fpga/de2_115/` | Each board's top, its Intel and portable clock backends, its Quartus settings fragment and SDC. The pins used and the source list are in `cfg/n2d_quartus.json` (DE2-115 as overrides under `boards`), pin locations in `src/common/fpga/<board>/pins.json`. |
 | `dv/<block>/` | cocotb tests, models and native harnesses; targets in `cfg/targets.json`. |
 | `fv/<block>/` | Formal harnesses and their SymbiYosys files, one per target ([FV](fv/README.md)). |
 | `sw/runtime/`, `sw/doom/`, `sw/third_party/` | Software that runs on the design's CPU: the C runtime and validation program, the Doom platform adaptation, and the third-party notices and pinned-input manifest. |
-| `scripts/` | Host scripts, one folder each: `sw_build/` (image and Doom builds), `board/` (Quartus build and timing), `host/` (UART and JTAG host, play, controls, capture), `perf/` (performance harness and oracles). |
+| `scripts/` | Host scripts, one folder each: `sw_build/` (image and Doom builds), `board/` (Quartus manifest tests and timing analysis), `host/` (UART and JTAG host, play, controls, capture), `perf/` (performance harness and oracles). |
 
 The ASIC flow (`n2d_asic_soc`, its OpenROAD files and IHP models) stayed in nand2anything, as it did for nand2mario.
 
@@ -48,8 +48,8 @@ python3 tools/fv/fv.py run --project nand2doom
 # script unit tests
 python3 -m pytest src/nand2doom/scripts
 # Quartus fit and timing, both boards
-python3 src/nand2doom/scripts/board/quartus.py --board de10_lite
-python3 src/nand2doom/scripts/board/quartus.py --board de2_115
+python3 tools/quartus/quartus.py --manifest src/nand2doom/cfg/n2d_quartus.json
+python3 tools/quartus/quartus.py --manifest src/nand2doom/cfg/n2d_quartus.json --board de2_115
 ```
 
 The software build needs `riscv64-unknown-elf-gcc` and binutils. The Doom inputs (DoomGeneric, Freedoom, picolibc) are not committed: the build fetches each from its pinned origin, checks its SHA-256 and caches it in `workdir/downloads/nand2doom/`.
