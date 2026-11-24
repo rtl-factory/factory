@@ -122,14 +122,21 @@ def compiler_flags(root: Path, output: Path) -> list[str]:
     ]
 
 
+def _output_spelling(output: Path, root: Path) -> Path:
+    """The output as the commands name it: repository-relative, or absolute when it
+    lies in the Bazel test's scratch outside the checkout (_confined_output)."""
+    resolved = output.resolve()
+    try:
+        return resolved.relative_to(root.resolve())
+    except ValueError:
+        return resolved
+
+
 def image_commands(
     root: Path, output: Path, gcc: str, objcopy: str
 ) -> tuple[tuple[str, ...], ...]:
     source = Path("src/nand2doom/sw/runtime")
-    try:
-        output_path = output.resolve().relative_to(root.resolve())
-    except ValueError as error:
-        raise ImageBuildError(f"output directory is outside repository: {output}") from error
+    output_path = _output_spelling(output, root)
     common = compiler_flags(root, output)
     objects = tuple(
         output_path / name for name in ("crt0.o", "runtime.o", "validation.o")
@@ -186,7 +193,7 @@ def _sha256(path: Path) -> str:
 def _normalize_map(map_file: Path, output: Path, root: Path) -> None:
     """Replace the caller-selected output prefix with one stable map token."""
 
-    output_prefix = output.resolve().relative_to(root.resolve()).as_posix()
+    output_prefix = _output_spelling(output, root).as_posix()
     text = map_file.read_text(encoding="utf-8")
     normalized = text.replace(output_prefix, "${OUTPUT}")
     map_file.write_text(normalized, encoding="utf-8")

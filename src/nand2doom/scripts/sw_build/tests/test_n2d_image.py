@@ -62,6 +62,15 @@ class N2dImageToolTests(unittest.TestCase):
             with self.assertRaisesRegex(n2d_image.ImageBuildError, "escapes"):
                 n2d_image._confined_output(REPO_ROOT / "outside", REPO_ROOT)
 
+    def test_commands_name_a_bazel_scratch_output_by_its_absolute_path(self) -> None:
+        with tempfile.TemporaryDirectory() as scratch:
+            output = Path(scratch) / "image"
+            commands = n2d_image.image_commands(REPO_ROOT, output, "gcc", "objcopy")
+            self.assertIn(str(output.resolve() / "n2d_validation.bin"), commands[-1])
+        inside = REPO_ROOT / "workdir/software/unit-image"
+        commands = n2d_image.image_commands(REPO_ROOT, inside, "gcc", "objcopy")
+        self.assertIn("workdir/software/unit-image/n2d_validation.bin", commands[-1])
+
     def test_binutils_default_to_siblings_of_the_named_compiler(self) -> None:
         gcc = "/opt/rv/bin/riscv64-elf-gcc"
         with mock.patch.dict(os.environ, {"N2D_RISCV_GCC": gcc}, clear=True):
