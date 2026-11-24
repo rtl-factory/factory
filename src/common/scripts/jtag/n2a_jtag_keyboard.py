@@ -10,6 +10,7 @@ nothing from the repository. Ported from nand2anything tools/jtag.
 from __future__ import annotations
 
 from collections import deque
+import enum
 import math
 import os
 from pathlib import Path
@@ -25,6 +26,19 @@ MASK32 = 0xffffffff
 OP_SECONDS = 2.0
 BATCH_SECONDS = 3.0
 JTAG_KEYS = ('jtag_cable', 'jtag_device', 'jtag_tck_hz', 'jtag_instance', 'jtag_clock_mode', 'jtag_cable_index')
+# Ref: src/common/rtl/jtag/n2a_jtag_keyboard_pkg.sv, the endpoint's wire constants; a unit test keeps these equal.
+COMMAND_MAGIC = 0xA3
+STATUS_MAGIC = 0x5A
+MAX_BATCH_CODES = 4
+
+
+class Result(enum.IntEnum):
+    """Status result code: the endpoint's t_result."""
+    RESET = 0
+    ACCEPTED = 1
+    PARTIAL = 2
+    MALFORMED = 3
+    SEQUENCE = 4
 
 
 class TransferError(RuntimeError):
@@ -57,22 +71,24 @@ def settings(data):
 
 
 def packet(seq, data):
-    if not 0 <= seq <= 255 or not 1 <= len(data) <= 4:
+    if not 0 <= seq <= 255 or not 1 <= len(data) <= MAX_BATCH_CODES:
         raise ValueError('sequence8 and1..4 scan bytes required')
-    return (0xa3 << 56) | (len(data) << 48) | (seq << 40) | int.from_bytes(data, 'little')
+    return (COMMAND_MAGIC << 56) | (len(data) << 48) | (seq << 40) | int.from_bytes(data, 'little')
 
 
 def status(word):
-    if not 0 <= word < 1 << 64 or word >> 56 != 0x5a or (word >> 40) & 255:
+    if not 0 <= word < 1 << 64 or word >> 56 != STATUS_MAGIC or (word >> 40) & 255:
         raise TransferError('invalid JTAG status identity/reserved bits')
     value = dict(busy=bool(word & (1 << 55)), error=bool(word & (1 << 54)),
                  code=(word >> 51) & 7, accepted=(word >> 48) & 7,
                  seq=(word >> 32) & 255, total=word & MASK32)
-    if value['error'] or value['code'] > 2 or value['accepted'] > 4:
+    if (value['error'] or value['code'] not in (Result.RESET, Result.ACCEPTED, Result.PARTIAL)
+            or value['accepted'] > MAX_BATCH_CODES):
         raise TransferError('JTAG scan error or unknown result; no replay')
-    if value['code'] == 0 and (value['accepted'] or value['seq'] or value['total']):
+    if value['code'] == Result.RESET and (value['accepted'] or value['seq'] or value['total']):
         raise TransferError('inconsistent JTAG reset status')
-    if (value['code'] == 1 and not value['accepted']) or (value['code'] == 2 and value['accepted'] == 4):
+    if ((value['code'] == Result.ACCEPTED and not value['accepted'])
+            or (value['code'] == Result.PARTIAL and value['accepted'] == MAX_BATCH_CODES)):
         raise TransferError('inconsistent JTAG accepted status')
     return value
 
@@ -82,7 +98,7 @@ class Session:
         self.transport, self.timeout = transport, timeout
         self.poisoned = False
         self.last = self._ready(time.monotonic() + timeout)
-        self.seq = 0 if self.last['code'] == 0 else (self.last['seq'] + 1) & 255
+        self.seq = 0 if self.last['code'] == Result.RESET else (self.last['seq'] + 1) & 255
         self.total = self.last['total']
 
     def _ready(self, deadline):
@@ -109,8 +125,8 @@ class Session:
             self.transport.scan(1, packet(self.seq, data), deadline=deadline)
             value = self._ready(deadline)
             count = value['accepted']
-            if (value['code'] not in (1, 2) or value['seq'] != self.seq or count > len(data)
-                    or (value['code'] == 1) != (count == len(data))
+            if (value['code'] not in (Result.ACCEPTED, Result.PARTIAL) or value['seq'] != self.seq
+                    or count > len(data) or (value['code'] == Result.ACCEPTED) != (count == len(data))
                     or value['total'] != (self.total + count) & MASK32):
                 raise TransferError('JTAG acceptance/reset/sequence mismatch')
             self.seq, self.total, self.last = (self.seq + 1) & 255, value['total'], value
@@ -130,7 +146,7 @@ def send_all(session, codes, *, deadline, sleep=time.sleep):
     while codes:
         if time.monotonic() >= deadline:
             raise TransferError(f'{len(codes)} scan codes unsent at the delivery bound; no replay')
-        accepted = session.send(codes[:4], deadline=min(deadline, time.monotonic() + BATCH_SECONDS))
+        accepted = session.send(codes[:MAX_BATCH_CODES], deadline=min(deadline, time.monotonic() + BATCH_SECONDS))
         sent += accepted
         codes = codes[accepted:]
         if not accepted:
@@ -149,7 +165,8 @@ SHIFTED = {'!': '1', '@': '2', '#': '3', '$': '4', '%': '5', '^': '6', '&': '7',
 SHIFT, CTRL, RELEASE, EXTENDED = 0x12, 0x14, 0xF0, 0xE0
 EXTENDED_KEYS = {b'\x1b[A': 0x75, b'\x1b[B': 0x72, b'\x1b[C': 0x74, b'\x1b[D': 0x6B,   # Ref: xterm ctlseqs: up, down, right, left
              b'\x1b[H': 0x6C, b'\x1b[F': 0x69, b'\x1b[5~': 0x7D, b'\x1b[6~': 0x7A,  # Ref: xterm ctlseqs: home, end, pgup, pgdn
-             b'\x1b[2~': 0x70, b'\x1b[3~': 0x71}                                    # Ref: xterm ctlseqs: insert, delete
+             b'\x1b[2~': 0x70, b'\x1b[3~': 0x71,                                   # Ref: xterm ctlseqs: insert, delete
+             b'\x1b[1~': 0x6C, b'\x1b[4~': 0x69}                                   # Ref: Linux console_codes(4): home, end
 
 
 def _press(code, extended=False):
@@ -159,7 +176,7 @@ def _press(code, extended=False):
 
 
 def keys_to_scancodes(data: bytes) -> tuple[bytes, bytes]:
-    """Translate host key bytes (a TERM=linux stream) into Set-2 make/break sequences.
+    """Translate host key bytes (a TERM=linux or xterm stream) into Set-2 make/break sequences.
     Returns (scancodes, unsupported) where `unsupported` holds the bytes that have no key."""
     out, rest, i = [], bytearray(), 0
     while i < len(data):

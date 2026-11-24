@@ -7,17 +7,16 @@
 // snapshot-reader register structs and the pure frame-index and palette
 // helpers. The snapshot record and its port types are n2m_snapshot_pkg.
 package n2m_display_pkg;
-    // Source frame: one DMG LCD image of two-bit shades, 23040 pixels;
-    // FRAME_INDEX_WIDTH is $clog2(FRAME_PIXELS).
+    // Source frame: one DMG LCD image of two-bit shades, 23040 pixels.
     localparam int unsigned FRAME_WIDTH  = 160;
     localparam int unsigned FRAME_HEIGHT = 144;
     localparam int unsigned FRAME_PIXELS = FRAME_WIDTH * FRAME_HEIGHT;
-    localparam int unsigned FRAME_INDEX_WIDTH = 15;
+    localparam int unsigned FRAME_INDEX_WIDTH = $clog2(FRAME_PIXELS);
 
     // Frame store: writing, ready and displayed banks, each one frame padded
     // to the power-of-two depth the common RAM contract requires.
     localparam int unsigned BANK_COUNT = 3;
-    localparam int unsigned BANK_DEPTH = 32768;
+    localparam int unsigned BANK_DEPTH = 2 ** FRAME_INDEX_WIDTH;
 
     // VGA raster (the common n2a_vga_timing defaults) and the scaled window:
     // a 480x432 image at (80, 24); IMAGE_RIGHT (560) and IMAGE_BOTTOM (456)

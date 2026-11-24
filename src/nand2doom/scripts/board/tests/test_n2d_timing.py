@@ -95,6 +95,27 @@ class TimingTests(unittest.TestCase):
             "u_system|u_core|regs_q.instruction[3]", "u_system|u_core|regs_q.pc[4]",
             "u_system|u_core|u_decode_alu|lpm_mult:Mult0|mult_core~12")[0])
 
+    def test_classes_of_real_de2_115_paths(self):
+        """Endpoints of the 360 worst setup paths of a DE2-115 fit at 25 MHz
+        (Quartus 25.1std.0, every corner, all clocks and system clock only),
+        one per distinct start and end; each class was read off the path."""
+        system, memory = "n2d_system:u_system|", "n2d_memory_controller:u_memory|n2a_sdram_ctrl:u_sdram|"
+        icache = system + "n2d_icache:u_icache|regs_q.request_address[11]"
+        cases = [
+            ("DRAM_DQ[0]", memory + "regs_q.read_data[48]", "SDRAM pins / controller"),
+            (memory + "regs_q.beat[1]", "DRAM_DQ[8]", "SDRAM pins / controller"),
+            (icache, system + "n2d_icache:u_icache|regs_q.cpu_response_data[21]", "I-cache lookup to state"),
+            (icache, system + "n2d_rv32im_core:u_core|n2d_if:u_if|if_q.pc[31]", "I-cache lookup to state"),
+            (icache, system + "n2d_rv32im_core:u_core|n2d_csr:u_csr|n2d_pmon:u_pmon|regs_q.pending[1]",
+             "I-cache lookup to state"),
+            (system + "n2d_uart_debug:u_debug|n2a_uart_tx:uart_tx|protocol_q.bit_index[0]", "UART_TX",
+             "UART debug / bulk"),
+            (memory + "regs_q.init_done", "LEDR[3]", "Board status pins"),
+            (system + "n2d_rv32im_core:u_core|n2d_ctrl:u_ctrl|ctrl_q.state[0]", "LEDR[2]", "Board status pins"),
+        ]
+        for source, target, name in cases:
+            self.assertEqual(name, timing.classify(source, target, source)[0], (source, target))
+
     def test_parse_and_table_use_the_worst_setup_corner(self):
         result = timing.parse(TSV)
         self.assertEqual(SLOW, timing.worst_corner(result))

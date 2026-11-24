@@ -222,7 +222,7 @@ package n2d_pkg;
     // PHY's fractional accumulator).
     localparam int unsigned N2D_SYSTEM_CLOCK_HZ     = 25_000_000;
     localparam int unsigned N2D_UART_BAUD           = 1_000_000;
-    localparam int unsigned N2D_UART_BOARD_BAUD     = 2_000_000;
+    localparam int unsigned N2D_UART_BOARD_BAUD     = n2a_uart_pkg::N2A_UART_BOARD_BAUD;
     /* verilator lint_on UNUSEDPARAM */
 
     // Stream write/digest window: SDRAM only, 33-bit end arithmetic.

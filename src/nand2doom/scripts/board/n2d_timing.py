@@ -27,9 +27,8 @@ BOARDS = ("de10_lite", "de2_115")
 BOARD_MHZ = 25
 REFERENCE_MHZ = 50
 
-# Why: the first match wins, so specific patterns must come before general
-# ones. The rules stay provisional until checked against real STA paths.
 CLASSES = [
+    ("Board status pins", "glue", r"-> (?:LEDR|LEDG|HEX\d)"),
     ("SDRAM pins / controller", "SDRAM controller", r"DRAM_|u_sdram\|"),
     ("Multiply", "M extension", r"u_core\|[^>]*(?:mult|mul_|product|lpm_mult|Mult\d)"),
     ("Divide", "M extension", r"u_core\|[^>]*(?:div|quotient|remainder)"),
