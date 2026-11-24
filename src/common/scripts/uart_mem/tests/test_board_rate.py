@@ -1,7 +1,9 @@
 """The board UART rate is one constant (wiki/src/common/rtl/uart/mas.md): the
 RTL package value, the host library's BOARD_BAUD, every board declaration's
-baud, nand2doom's uart.json and nand2mario's cartridge-loader default agree,
+baud, nand2doom's uart.json and every host script's --baud default agree,
 and every board top takes its rate from the package."""
+import ast
+import importlib
 import json
 from pathlib import Path
 import re
@@ -33,6 +35,33 @@ class BoardRateTests(unittest.TestCase):
             for board, fields in json.loads(path.read_text())["boards"].items():
                 with self.subTest(declaration=str(path.relative_to(ROOT)), board=board):
                     self.assertEqual(fields["baud"], um.BOARD_BAUD)
+
+    def test_every_host_baud_option_defaults_to_the_board_rate(self):
+        # Why: found, not listed, so a new script's --baud default cannot slip past;
+        # each default is evaluated in its module, and a numeric literal is refused
+        # so the rate stays one constant.
+        scripts = sorted(path for path in ROOT.glob("src/*/scripts/**/*.py")
+                         if "tests" not in path.relative_to(ROOT).parts)
+        scripts += sorted(path for path in ROOT.glob("tools/**/*.py")
+                          if "tests" not in path.relative_to(ROOT).parts)
+        found = 0
+        for path in scripts:
+            for node in ast.walk(ast.parse(path.read_text())):
+                if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                        and node.func.attr == "add_argument" and node.args
+                        and isinstance(node.args[0], ast.Constant) and node.args[0].value == "--baud"):
+                    continue
+                found += 1
+                where = f"{path.relative_to(ROOT)}:{node.lineno}"
+                with self.subTest(option=where):
+                    default = next((k.value for k in node.keywords if k.arg == "default"), None)
+                    self.assertIsNotNone(default, "--baud has no default")
+                    self.assertNotIsInstance(default, ast.Constant, "--baud default is a literal")
+                    module = importlib.import_module(
+                        ".".join(path.relative_to(ROOT).with_suffix("").parts))
+                    self.assertEqual(eval(compile(ast.Expression(default), where, "eval"),
+                                          vars(module)), um.BOARD_BAUD)
+        self.assertGreaterEqual(found, 5)
 
     def test_board_tops_take_the_package_rate(self):
         for top in ("src/nand2mario/fpga/de10_lite/n2m_de10_lite.sv",
