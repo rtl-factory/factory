@@ -12,6 +12,7 @@ from __future__ import annotations
 import atexit
 from collections.abc import Callable
 import hashlib
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -25,14 +26,22 @@ SKIPPED = {"site", "workdir", "worktrees"}
 
 
 def files() -> list[str]:
-    """The checkout's files git would commit: tracked ones, and untracked ones it does not ignore.
+    """The checkout's tracked files, as git's index lists them.
 
-    Why: ignored files (private ROMs, local settings, build output) are never inputs a
-    test may depend on, and a new file not yet added is still the change under test.
+    Why: untracked files (private ROMs, local settings, build output, stray drafts) are
+    never inputs a test may depend on; a new file is tested once it is added.
     """
-    listed = subprocess.run(
-        ["git", "-C", str(CHECKOUT), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
-        check=True, capture_output=True, text=True).stdout
+    # Why: unit tests run unsandboxed against the real source tree, so its .git and the
+    # host git are there; a checkout without them fails here with the reason, not later.
+    # The ceiling stops git from answering for an enclosing repository instead.
+    environment = dict(os.environ, GIT_CEILING_DIRECTORIES=str(CHECKOUT.parent))
+    try:
+        listed = subprocess.run(["git", "-C", str(CHECKOUT), "ls-files", "-z", "--cached"],
+                                check=True, capture_output=True, text=True, env=environment).stdout
+    except (OSError, subprocess.CalledProcessError) as error:
+        detail = getattr(error, "stderr", None) or error
+        raise RuntimeError(f"scratch checkout needs git and the git checkout at {CHECKOUT}: "
+                           f"{detail}") from error
     return sorted({name for name in listed.split("\0")
                    if name and name.split("/", 1)[0] not in SKIPPED})
 
