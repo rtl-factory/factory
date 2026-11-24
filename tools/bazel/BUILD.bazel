@@ -1,6 +1,8 @@
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 load("@rules_python//python:py_binary.bzl", "py_binary")
+load("@pypi//:requirements.bzl", "requirement")
 load("@rules_python//python:py_library.bzl", "py_library")
+load("@rules_python//python:py_test.bzl", "py_test")
 load("//tools/bazel:hdl.bzl", "unit_tests")
 
 exports_files(
@@ -52,3 +54,16 @@ py_library(
 )
 
 unit_tests()
+
+# The board image action's entry point run as Bazel builds it, from this test's own
+# runfiles, which hold an implicit tools/__init__.py and no tools/quartus/.
+py_test(
+    name = "quartus_image_test",
+    srcs = ["pytest_main.py", "quartus_image_test.py"],
+    main = "pytest_main.py",
+    args = ["tools/bazel/quartus_image_test.py"],
+    data = [":quartus_image"],
+    deps = [requirement("pytest")],
+    # Why: the action runs the checkout's tool, which this test runs too, outside any sandbox.
+    tags = ["L0", "external", "no-sandbox", "unit"],
+)
