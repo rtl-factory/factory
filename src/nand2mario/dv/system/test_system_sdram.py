@@ -22,7 +22,7 @@ from ..core.cpu_model import CPU
 from ..core.test_cpu import unpack
 from ..memory.memory_model import GameBoyMemory
 from .peripheral_model import Peripherals
-from .test_system import CLOCK_PERIOD_NS, MACHINE_CYCLE_EDGES, compare_signature, defined_signature, power_up, store_bytes
+from .test_system import CLOCK_PERIOD_NS, MACHINE_CYCLE_EDGES, VRAM_BYTES, compare_signature, defined_signature, power_up, store_bytes
 
 IMAGE_BYTES, BANKS = 1 << 17, 8
 INSTRUCTION_BOUND = 1500
@@ -128,7 +128,11 @@ async def system_sdram_boot(dut):
     while host.clock < SDRAM_INITIALIZED_CLOCK + 2:
         await RisingEdge(dut.clk_i)
     await ReadOnly()
-    assert int(dut.core_reset_o.value) == 0, 'the core runs once the backing is initialized'
+    assert int(dut.core_reset_o.value) == 1, 'the VRAM sweep outlasts the SDRAM initialization'
+    while host.clock < VRAM_BYTES:
+        await RisingEdge(dut.clk_i)
+    await ReadOnly()
+    assert int(dut.core_reset_o.value) == 0, 'the core runs once the backing is initialized and VRAM swept'
     response = await host.exchange(encode_request(CMD_PING))
     assert response.ok and response.initialized and not response.held, response.describe()
 

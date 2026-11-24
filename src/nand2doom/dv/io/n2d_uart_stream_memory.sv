@@ -5,7 +5,11 @@
 // release register.
 module n2d_uart_stream_memory
     import n2d_pkg::*;
-(
+#(
+    // Scaled stream bounds; the test reads them from here.
+    parameter int unsigned STREAM_GAP_TIMEOUT_CYCLES = 4000,
+    parameter int unsigned STREAM_IDLE_CYCLES = 40000
+) (
     input  logic         clk_i,
     input  logic         reset_i,
     input  logic         uart_rx_i,
@@ -55,8 +59,8 @@ module n2d_uart_stream_memory
     n2d_pkg::t_n2d_screen_req unused_screen_req;
     n2d_uart_debug #(
         .BAUD(N2D_UART_BOARD_BAUD),
-        .STREAM_GAP_TIMEOUT_CYCLES(4000),
-        .STREAM_IDLE_CYCLES(40000)
+        .STREAM_GAP_TIMEOUT_CYCLES(STREAM_GAP_TIMEOUT_CYCLES),
+        .STREAM_IDLE_CYCLES(STREAM_IDLE_CYCLES)
     ) u_uart (
         .clk_i, .reset_i, .uart_rx_i, .uart_tx_o,
         .debug_control_o(debug_control),

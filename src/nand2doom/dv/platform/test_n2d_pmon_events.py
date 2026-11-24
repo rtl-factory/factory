@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import random
+from typing import NamedTuple
 
 import cocotb
 from cocotb.clock import Clock
@@ -20,6 +21,14 @@ from cocotb.triggers import FallingEdge, ReadOnly, RisingEdge, Timer
 CLOCK_PERIOD_NS = 40
 I, D, DEBUG = 0, 1, 2
 OWNER_EVENTS = (87, 88, 89, 90, 91)
+
+
+class Transaction(NamedTuple):
+    """The one line transaction the controller holds outstanding."""
+    master: int
+    write: int
+    cycles_to_response: int
+    owner_event: int
 
 
 def _owner_event(master: int, write: int, prefetch: int) -> int:
@@ -41,7 +50,7 @@ class Bench:
         self.valid = [0, 0, 0]
         self.write = [0, 0, 0]
         self.prefetch = 0
-        self.outstanding = None  # Why: None or one (master, write, cycles until response, owner event), because the controller holds one transaction outstanding
+        self.outstanding: Transaction | None = None
         self.counts = {33: 0, 77: 0, 29: 0, 30: 0, 32: 0, 34: 0, 14: 0, 18: 0, 19: 0,
                        **{event_id: 0 for event_id in OWNER_EVENTS}}
         self.contention_cycles = 0
@@ -65,7 +74,7 @@ class Bench:
     async def step(self, memory_ready: int, latency: int, error: int = 0) -> None:
         """Drive one cycle and check the combinational event vector."""
         dut = self.dut
-        respond = self.outstanding is not None and self.outstanding[2] == 0
+        respond = self.outstanding is not None and self.outstanding.cycles_to_response == 0
         dut.master_request_valid_i.value = sum(v << i for i, v in enumerate(self.valid))
         dut.master_request_write_i.value = sum(w << i for i, w in enumerate(self.write))
         dut.data_request_prefetch_i.value = self.prefetch
@@ -97,16 +106,16 @@ class Bench:
             30: int(accepted == [D] and not self.write[D]),
             32: int(bool(accepted) and accepted[0] in (D, DEBUG) and self.write[accepted[0]] == 1),
             19: int(accepted == [D] and self.write[D] == 1),
-            34: int(self.outstanding is not None and self.outstanding[0] in (I, D)
-                    and not self.outstanding[1]),
-            14: int(respond and self.outstanding[0] == I and not error),
-            18: int(respond and self.outstanding[0] == D and not self.outstanding[1] and not error),
+            34: int(self.outstanding is not None and self.outstanding.master in (I, D)
+                    and not self.outstanding.write),
+            14: int(respond and self.outstanding.master == I and not error),
+            18: int(respond and self.outstanding.master == D and not self.outstanding.write and not error),
         }
         owner = None
         if accepted:
             owner = _owner_event(accepted[0], self.write[accepted[0]], self.prefetch)
         elif self.outstanding is not None:
-            owner = self.outstanding[3]
+            owner = self.outstanding.owner_event
         for event_id in OWNER_EVENTS:
             expected[event_id] = int(event_id == owner)
         assert not (refused and owner is not None)
@@ -120,13 +129,13 @@ class Bench:
         if respond:
             self.outstanding = None
         elif self.outstanding is not None:
-            self.outstanding = (*self.outstanding[:2], self.outstanding[2] - 1,
-                                self.outstanding[3])
+            self.outstanding = self.outstanding._replace(
+                cycles_to_response=self.outstanding.cycles_to_response - 1)
         if accepted:
             master = accepted[0]
             assert self.outstanding is None
-            self.outstanding = (master, self.write[master], latency - 1,
-                                _owner_event(master, self.write[master], self.prefetch))
+            self.outstanding = Transaction(master, self.write[master], latency - 1,
+                                           _owner_event(master, self.write[master], self.prefetch))
             self.valid[master] = 0
             if master == D:
                 self.prefetch = 0

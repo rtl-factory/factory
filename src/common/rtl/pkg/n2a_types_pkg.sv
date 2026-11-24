@@ -30,31 +30,4 @@ package n2a_types_pkg;
         logic [7:0] data;
         logic       parity;
     } t_ps2_rx_state;
-
-    // n2a_jtag_keyboard TCK-domain scan state.
-    typedef struct packed {
-        logic [63:0] shift_data, command, response;
-        logic [6:0]  bits_shifted;
-        logic [1:0]  instruction;
-        logic        scan_open, request, busy, error_seen, bypass;
-    } t_jtag_keyboard_scan;
-
-    // n2a_jtag_keyboard system-domain command phase.
-    typedef enum logic [2:0] {
-        KBD_IDLE,
-        KBD_DECODE,
-        KBD_OFFER,
-        KBD_ACCOUNT,
-        KBD_FINISH
-    } t_jtag_keyboard_phase;
-
-    // n2a_jtag_keyboard system-domain command state.
-    typedef struct packed {
-        t_jtag_keyboard_phase phase;
-        logic [63:0] command, last_command, response;
-        logic        ack, have_last, fault, valid, take;
-        logic [7:0]  expected_seq, byte_data;
-        logic [2:0]  accepted, code;
-        logic [31:0] total;
-    } t_jtag_keyboard_system;
 endpackage

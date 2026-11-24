@@ -21,6 +21,7 @@ from ..memory.memory_model import GameBoyMemory
 from .peripheral_model import Peripherals
 
 CLOCK_PERIOD_NS = 40
+VRAM_BYTES = 8192
 MACHINE_CYCLE_EDGES = 390625 / 16384   # Why: the exact 25 MHz / 1,048,576 Hz ratio, not a rounded one.
 INSTRUCTION_BOUND = 1500
 HALT_OPCODE = 0x76
@@ -176,7 +177,7 @@ async def system_smoke(dut):
     await FallingEdge(dut.clk_i)
     # Ref: Pan Docs "Power Up Sequence": the DMG boot ROM leaves VRAM zeroed, so the reset
     # held over the 32 KiB load must sweep the garbage-filled VRAM to zero.
-    assert store_bytes(store_array(dut.u_memory.u_vram)) == bytes(8192), 'VRAM not cleared during reset'
+    assert store_bytes(store_array(dut.u_memory.u_vram)) == bytes(VRAM_BYTES), 'VRAM not cleared during reset'
     dut.reset_i.value = 0
     release_edge = cycles
 

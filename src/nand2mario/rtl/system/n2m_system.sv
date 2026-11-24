@@ -67,8 +67,8 @@ module n2m_system #(
     // Board UART (8-N-1): common UART memory endpoint and cartridge loader.
     input  logic                               uart_rx_i,
     output logic                               uart_tx_o,
-    // Console core reset level: reset_i, a hold on the UART link or an
-    // uninitialized backing.
+    // Console core reset level: reset_i, a hold on the UART link, an
+    // uninitialized backing or the boot VRAM sweep still running.
     output logic                               core_reset_o,
     // Active-high buttons: Right, Left, Up, Down, A, B, Select, Start.
     input  logic [7:0]                         buttons_i,
@@ -184,15 +184,20 @@ module n2m_system #(
     logic                                display_valid, display_pinned, display_snapshot_ready;
     n2m_snapshot_pkg::t_snapshot_response display_snapshot_response;
 
-    assign core_reset = reset_i || loader_hold || !backing_initialized || library_hold;
-    assign core_reset_o = core_reset;
-
-    // Why: there is no boot ROM, so while the core is held in reset the sweep
-    // writes $00 to one VRAM byte per edge; a hold of at least 8192 edges
-    // leaves VRAM zeroed as the DMG boot ROM does.
+    // Why: no boot ROM is modelled, so the core reset sweeps $00 over all of
+    // VRAM, one byte per edge, and outlasts a shorter request until the sweep
+    // ends (wiki/src/nand2mario/rtl/has.md#clocks-and-resets).
+    logic        core_reset_request, vram_swept_q, vram_swept_d, vram_hold_q, vram_hold_d;
     logic [12:0] vram_clear_q, vram_clear_d;
+    assign core_reset_request = reset_i || loader_hold || !backing_initialized || library_hold;
+    assign core_reset = core_reset_request || vram_hold_q;
+    assign core_reset_o = core_reset;
     assign vram_clear_d = core_reset ? vram_clear_q + 13'd1 : 13'd0;
+    assign vram_swept_d = core_reset && (vram_swept_q || (vram_clear_q == '1));
+    assign vram_hold_d = (core_reset_request || vram_hold_q) && !vram_swept_d;
     `DFF(vram_clear_q, vram_clear_d, clk_i)
+    `DFF(vram_swept_q, vram_swept_d, clk_i)
+    `DFF(vram_hold_q, vram_hold_d, clk_i)
 
     n2m_timebase u_timebase (
         .clk_i                  (clk_i),

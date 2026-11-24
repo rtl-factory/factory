@@ -33,6 +33,18 @@
       "max_cycles": 5000,
       "level": "L0"
     },
+    "n2a_jtag_keyboard": {
+      "kind": "cocotb",
+      "description": "Common Virtual JTAG keyboard endpoint: command and status wire format, exact-prefix acceptance, replay, hub padding, latched faults, reset mid-batch and a stopped TCK",
+      "top": "n2a_jtag_keyboard_fixture",
+      "clock_hz": 25000000,
+      "timeout_seconds": 300,
+      "test_module": "src.common.dv.jtag.test_jtag_keyboard",
+      "testcase": "jtag_keyboard_contract",
+      "default_seed": 9,
+      "max_cycles": 500000,
+      "level": "L0"
+    },
     "n2a_sdram_model_dq_outside_write_fail": {
       "kind": "cocotb",
       "description": "Deliberate common SDRAM model violation (DQ driven outside a write burst) is fatal",
