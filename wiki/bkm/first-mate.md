@@ -82,6 +82,7 @@ When one attempt would lock in the wrong shape (a new block's microarchitecture,
 
 - Remove a worktree only when `git worktree list` shows it, its branch has landed (or is a recorded rejected candidate), no crewmate is still using it, and it has no uncommitted changes. Why: a clean worktree is recoverable from its branch; uncommitted work is not.
 - For a worktree with uncommitted work, have its crewmate commit and push it, or escalate; never remove it with `--force`. Why: never discard unmerged work.
+- Remove worktrees, candidate worktrees included, with the worktree tool per [flow step 10](flow.md#steps), and run its `orphans --remove` after a batch of removals. Why: it expunges each worktree's Bazel output base and server, which `git worktree remove` leaves on the disk.
 
 ### Exit criteria
 
