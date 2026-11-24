@@ -7,3 +7,5 @@ pytest==9.1.1
 pillow==12.3.0
 # The board console's terminal app (wiki/tools/board/spec.md).
 textual==8.2.8
+# zstd for the nand2doom Doom build's Picolibc package under Python 3.12 (#224).
+backports.zstd==1.0.0

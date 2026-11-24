@@ -11,6 +11,8 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import FallingEdge, ReadOnly, RisingEdge, Timer
 
+from src.nand2doom.scripts.sw_build.n2d_image import _requested_tool
+
 from .observation import read_observation
 from .c_signature import compile_c_program, compile_signature_program
 from .core_runner import PortTiming, RunResult, btb_entries, run_program, word as _word
@@ -981,7 +983,7 @@ async def _check_btb_reset_sweep(dut) -> None:
 
 def _configure_window(elf_path: Path) -> tuple[int, int]:
     """Fetch range of pmon_configure_under_test before its inhibit restore."""
-    objdump = shutil.which(os.environ.get("N2D_RISCV_OBJDUMP", "riscv64-unknown-elf-objdump"))
+    objdump = shutil.which(_requested_tool("N2D_RISCV_OBJDUMP", "riscv64-unknown-elf-objdump"))
     assert objdump is not None, "riscv64-unknown-elf-objdump (or N2D_RISCV_OBJDUMP) required"
     listing = subprocess.run([objdump, "-d", str(elf_path)], check=True,
                              capture_output=True, text=True, timeout=20).stdout

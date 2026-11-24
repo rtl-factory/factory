@@ -1,5 +1,6 @@
 from pathlib import Path
 import contextlib
+import errno
 import functools
 import io
 import json
@@ -416,6 +417,12 @@ class N2dDoomToolTests(unittest.TestCase):
             )
 
     def test_output_is_confined_before_prepare_or_build(self) -> None:
+        # Why: under bazel test the test's scratch is an allowed output and holds tempfile's folders.
+        environment = mock.patch.dict(os.environ)
+        environment.start()
+        self.addCleanup(environment.stop)
+        for name in ("TEST_UNDECLARED_OUTPUTS_DIR", "TEST_TMPDIR"):
+            os.environ.pop(name, None)
         accepted = self.root / "workdir/software/confined-doom"
         self.assertEqual(
             accepted.resolve(), n2d_doom._confined_output(self.root, accepted)
@@ -438,6 +445,40 @@ class N2dDoomToolTests(unittest.TestCase):
             self.assertNotEqual(0, result.returncode)
             self.assertIn("output must be below", result.stderr)
             self.assertFalse(escaped.exists())
+
+    def test_output_may_be_in_the_bazel_test_scratch(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary, \
+                mock.patch.dict(os.environ, {"TEST_UNDECLARED_OUTPUTS_DIR": temporary}):
+            inside = Path(temporary) / "software/doom"
+            self.assertEqual(inside.resolve(), n2d_doom._confined_output(self.root, inside))
+
+    def _fetch_with_cache_error(self, code: int) -> tuple[Path, Path]:
+        temporary = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, temporary)
+        source = temporary / "source.bin"
+        source.write_bytes(b"nand2doom\n")
+        cache = temporary / "cache"
+        destination = temporary / "out/source.bin"
+        with mock.patch.object(n2d_doom.shutil, "copyfile", side_effect=OSError(code, "cache")):
+            n2d_doom._download(source.as_uri(), destination,
+                               "f599639a6bfa1989af748f66d7f61f8708add23b8aa574098670c791f2e5abf4", cache)
+        return destination, cache
+
+    def test_a_read_only_download_cache_is_not_filled(self) -> None:
+        destination, cache = self._fetch_with_cache_error(errno.EROFS)
+        self.assertEqual(b"nand2doom\n", destination.read_bytes())
+        self.assertEqual([], list(cache.iterdir()))
+
+    def test_other_download_cache_errors_still_fail(self) -> None:
+        with self.assertRaises(OSError):
+            self._fetch_with_cache_error(errno.ENOSPC)
+
+    def test_doom_binutils_follow_the_named_compiler(self) -> None:
+        source = (REPO_ROOT / "src/nand2doom/scripts/sw_build/n2d_doom.py").read_text()
+        # Why: a riscv64-elf host has no riscv64-unknown-elf-* tool, so every lookup goes
+        # through the shared resolver (#221).
+        self.assertNotIn("which(\"riscv64-unknown-elf", source)
+        self.assertNotIn("with_name(\"riscv64-unknown-elf", source)
 
     def test_output_rejects_existing_symlink_component(self) -> None:
         with tempfile.TemporaryDirectory(dir=self.root / "workdir") as temporary:
@@ -523,10 +564,9 @@ class N2dDoomToolTests(unittest.TestCase):
 
     def test_deb_zstd_data_member_extracts(self) -> None:
         try:
-            from compression import zstd
-        except ModuleNotFoundError:
-            self.skipTest("Python 3.14 compression.zstd absent; "
-                          "the zstd data member path needs it")
+            zstd = n2d_doom._zstd("data.tar.zst", Path("fixture.deb"))
+        except RuntimeError:
+            self.skipTest("neither compression.zstd nor backports.zstd is installed")
         package_root = self.enterContext(tempfile.TemporaryDirectory())
         root = Path(package_root)
         package = root / "fixture.deb"
@@ -537,16 +577,17 @@ class N2dDoomToolTests(unittest.TestCase):
             run.assert_not_called()
         self.assertEqual((root / "out/usr/lib/odd.a").read_bytes(), b"odd")
 
-    def test_deb_zstd_without_compression_module_names_python_314(self) -> None:
+    def test_deb_zstd_without_any_zstd_module_names_both(self) -> None:
         package_root = self.enterContext(tempfile.TemporaryDirectory())
         package = Path(package_root) / "fixture.deb"
         package.write_bytes(b"!<arch>\n" + _ar_member("data.tar.zst", b"x"))
         # Why: a None entry makes the import raise ModuleNotFoundError on any Python, so
         # the test runs everywhere.
         with mock.patch.dict(sys.modules,
-                             {"compression": None, "compression.zstd": None}):
+                             {"compression": None, "compression.zstd": None,
+                              "backports": None, "backports.zstd": None}):
             with self.assertRaisesRegex(
-                    RuntimeError, "needs Python 3.14 compression.zstd"):
+                    RuntimeError, "needs compression.zstd"):
                 n2d_doom._extract_deb_data(package, Path(package_root) / "out")
 
     def test_warning_exceptions_apply_only_to_upstream_sources(self) -> None:

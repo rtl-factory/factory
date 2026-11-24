@@ -34,8 +34,24 @@ def repository_root() -> Path:
     return Path(__file__).resolve().parents[4]
 
 
+def _requested_tool(environment_name: str, default: str) -> str:
+    """The tool named by environment_name, else a sibling of N2D_RISCV_GCC, else default.
+
+    Why: a host whose RV32 toolchain is off Bazel's PATH sets only N2D_RISCV_GCC
+    (wiki/bkm/flow.md, Runners); each binutil sits beside it with the same prefix.
+    """
+    requested = os.environ.get(environment_name)
+    if requested:
+        return requested
+    gcc = os.environ.get("N2D_RISCV_GCC", "")
+    if environment_name.startswith("N2D_RISCV_") and environment_name != "N2D_RISCV_GCC" \
+            and gcc.endswith("gcc"):
+        return gcc[:-len("gcc")] + environment_name[len("N2D_RISCV_"):].lower()
+    return default
+
+
 def _tool(environment_name: str, default: str) -> str:
-    requested = os.environ.get(environment_name, default)
+    requested = _requested_tool(environment_name, default)
     resolved = shutil.which(requested)
     if resolved is None:
         raise ImageBuildError(
@@ -53,6 +69,20 @@ def _scratch_roots(root: Path) -> list[Path]:
     bazel = [Path(os.environ[name]) for name in ("TEST_UNDECLARED_OUTPUTS_DIR", "TEST_TMPDIR")
              if os.environ.get(name)]
     return [workdir] + bazel
+
+
+def scratch_path(relative: str, root: Path | None = None, *, keep: bool = True) -> Path:
+    """Where a test or build writes relative: under bazel test, the undeclared outputs
+    for evidence to keep (keep=True) or the test's temporary folder for build trees;
+    otherwise the repository workdir.
+
+    Why: Bazel's sandbox mounts the checkout read-only (wiki/bkm/flow.md, Build), and
+    undeclared outputs are kept in bazel-testlogs and the disk cache.
+    """
+    outputs = os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR" if keep else "TEST_TMPDIR")
+    if outputs:
+        return Path(outputs) / relative
+    return (root or repository_root()) / "workdir" / relative
 
 
 def _confined_output(output: Path, root: Path) -> Path:
@@ -92,14 +122,21 @@ def compiler_flags(root: Path, output: Path) -> list[str]:
     ]
 
 
+def _output_spelling(output: Path, root: Path) -> Path:
+    """The output as the commands name it: repository-relative, or absolute when it
+    lies in the Bazel test's scratch outside the checkout (_confined_output)."""
+    resolved = output.resolve()
+    try:
+        return resolved.relative_to(root.resolve())
+    except ValueError:
+        return resolved
+
+
 def image_commands(
     root: Path, output: Path, gcc: str, objcopy: str
 ) -> tuple[tuple[str, ...], ...]:
     source = Path("src/nand2doom/sw/runtime")
-    try:
-        output_path = output.resolve().relative_to(root.resolve())
-    except ValueError as error:
-        raise ImageBuildError(f"output directory is outside repository: {output}") from error
+    output_path = _output_spelling(output, root)
     common = compiler_flags(root, output)
     objects = tuple(
         output_path / name for name in ("crt0.o", "runtime.o", "validation.o")
@@ -156,7 +193,7 @@ def _sha256(path: Path) -> str:
 def _normalize_map(map_file: Path, output: Path, root: Path) -> None:
     """Replace the caller-selected output prefix with one stable map token."""
 
-    output_prefix = output.resolve().relative_to(root.resolve()).as_posix()
+    output_prefix = _output_spelling(output, root).as_posix()
     text = map_file.read_text(encoding="utf-8")
     normalized = text.replace(output_prefix, "${OUTPUT}")
     map_file.write_text(normalized, encoding="utf-8")
@@ -264,8 +301,8 @@ def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
         output = root / output
     try:
         output = _confined_output(output, root)
-        gcc = os.environ.get("N2D_RISCV_GCC", "riscv64-unknown-elf-gcc")
-        objcopy = os.environ.get("N2D_RISCV_OBJCOPY", "riscv64-unknown-elf-objcopy")
+        gcc = _requested_tool("N2D_RISCV_GCC", "riscv64-unknown-elf-gcc")
+        objcopy = _requested_tool("N2D_RISCV_OBJCOPY", "riscv64-unknown-elf-objcopy")
         print(f"architecture: {ARCH}")
         print(f"abi: {ABI}")
         print(f"output: {output.relative_to(root)}")

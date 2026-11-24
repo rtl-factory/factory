@@ -7,6 +7,7 @@ Spec: wiki/src/nand2doom/scripts/sw_build/spec.md#doom-build.
 from __future__ import annotations
 
 import argparse
+import errno
 import hashlib
 import io
 import json
@@ -19,6 +20,12 @@ import tempfile
 import tarfile
 import urllib.request
 import zipfile
+
+try:
+    from . import n2d_image
+except ImportError:
+    # Why: run as a script, this folder is on sys.path but is not a package.
+    import n2d_image
 
 
 ENGINE_REVISION = "dcb7a8dbc7a16ce3dda29382ac9aae9d77d21284"
@@ -123,13 +130,20 @@ def _sha256(path: Path) -> str:
 
 def _confined_output(repository: Path, requested: Path) -> Path:
     repository = repository.resolve()
-    root = (repository / "workdir").resolve()
     candidate = requested if requested.is_absolute() else repository / requested
     candidate = Path(os.path.abspath(candidate))
-    try:
-        relative = candidate.relative_to(root)
-    except ValueError as error:
-        raise ValueError(f"output must be below {root}") from error
+    # Why: under bazel test the checkout is read-only, so the test's scratch is allowed too.
+    roots = [(repository / "workdir").resolve()] + [
+        Path(os.environ[name]).resolve()
+        for name in ("TEST_UNDECLARED_OUTPUTS_DIR", "TEST_TMPDIR") if os.environ.get(name)]
+    for root in roots:
+        try:
+            relative = candidate.relative_to(root)
+            break
+        except ValueError:
+            continue
+    else:
+        raise ValueError(f"output must be below {roots[0]}")
     current = root
     for component in relative.parts:
         current = current / component
@@ -195,10 +209,18 @@ def _download(url: str, destination: Path, expected: str, cache: Path | None = N
         if _sha256(temporary) != expected:
             raise RuntimeError(f"digest mismatch for {url}")
         if not local.exists() and local != destination:
-            cache.mkdir(parents=True, exist_ok=True)
-            vendored = _temporary_beside(local)
-            shutil.copyfile(temporary, vendored)
-            vendored.replace(local)
+            vendored = None
+            try:
+                cache.mkdir(parents=True, exist_ok=True)
+                vendored = _temporary_beside(local)
+                shutil.copyfile(temporary, vendored)
+                vendored.replace(local)
+            except OSError as error:
+                if vendored is not None:
+                    vendored.unlink(missing_ok=True)
+                # Why: under bazel test the checkout's cache is read-only; the fetch still counts.
+                if error.errno not in (errno.EROFS, errno.EACCES):
+                    raise
         temporary.replace(destination)
     finally:
         temporary.unlink(missing_ok=True)
@@ -904,6 +926,25 @@ def _picolibc(output: Path, override: Path | None) -> Path:
     return root / "usr"
 
 
+def _zstd(name: str, package: Path):
+    """Python 3.14's compression.zstd, or the same API from the pinned backports.zstd.
+
+    Why: Bazel's hermetic Python is 3.12 (MODULE.bazel; #224).
+    """
+    try:
+        from compression import zstd
+        return zstd
+    except ModuleNotFoundError:
+        pass
+    try:
+        from backports import zstd
+        return zstd
+    except ModuleNotFoundError as error:
+        raise RuntimeError(
+            f"{name} needs compression.zstd (Python 3.14) or backports.zstd "
+            f"(tools/sim/requirements.txt), or pass --picolibc-prefix: {package}") from error
+
+
 def _extract_deb_data(package: Path, root: Path) -> None:
     """Extract a Debian package's data tarball without host packaging tools.
 
@@ -927,14 +968,7 @@ def _extract_deb_data(package: Path, root: Path) -> None:
         if name.startswith("data.tar"):
             payload = archive[start:start + size]
             if name.endswith(".zst"):
-                try:
-                    from compression import zstd
-                except ModuleNotFoundError as error:
-                    raise RuntimeError(
-                        f"{name} needs Python 3.14 compression.zstd; run with "
-                        "Python 3.14 or pass --picolibc-prefix: "
-                        f"{package}") from error
-                payload = zstd.decompress(payload)
+                payload = _zstd(name, package).decompress(payload)
             elif name not in ("data.tar", "data.tar.gz", "data.tar.xz"):
                 raise RuntimeError(f"unsupported package data member {name}")
             with tarfile.open(fileobj=io.BytesIO(payload)) as data:
@@ -1067,10 +1101,8 @@ def build(output: Path, repository: Path,
         )
     build_dir = output / "build"
     build_dir.mkdir(parents=True, exist_ok=True)
-    gcc = shutil.which("riscv64-unknown-elf-gcc")
-    objcopy = shutil.which("riscv64-unknown-elf-objcopy")
-    if gcc is None or objcopy is None:
-        raise RuntimeError("riscv64-unknown-elf GCC/binutils are required")
+    gcc = n2d_image._tool("N2D_RISCV_GCC", "riscv64-unknown-elf-gcc")
+    objcopy = n2d_image._tool("N2D_RISCV_OBJCOPY", "riscv64-unknown-elf-objcopy")
     common = _compiler_flags(
         gcc, engine, include, output, repository, upstream=False,
         engine_opt=engine_opt, engine_lto=engine_lto
@@ -1135,7 +1167,7 @@ def build(output: Path, repository: Path,
     image = output / "n2d_doom.bin"
     _run([objcopy, "-O", "binary", str(elf), str(image)])
     symbols = subprocess.run(
-        [str(Path(objcopy).with_name("riscv64-unknown-elf-nm")),
+        [n2d_image._tool("N2D_RISCV_NM", "riscv64-unknown-elf-nm"),
          "-S", "--defined-only", str(elf)],
         check=True, capture_output=True, text=True, timeout=30).stdout
     capture_symbols = {}

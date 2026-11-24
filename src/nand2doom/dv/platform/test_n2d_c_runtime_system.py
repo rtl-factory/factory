@@ -18,7 +18,7 @@ from src.nand2doom.dv.io.test_n2d_uart_debug import _exchange
 from src.nand2doom.dv.platform.event_monitors import (
     observe_completion_events, observe_framebuffer_events, observe_trap_events,
 )
-from src.nand2doom.scripts.sw_build.n2d_image import build_image
+from src.nand2doom.scripts.sw_build.n2d_image import build_image, scratch_path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -124,7 +124,7 @@ async def _observe_trap_cycles(dut, state) -> None:
 
 
 def _build_validation_image() -> tuple[dict[str, object], bytes]:
-    output = REPO_ROOT / "workdir/software/n2d_validation"
+    output = scratch_path("software/n2d_validation", REPO_ROOT, keep=False)
     manifest = build_image(output, REPO_ROOT)
     recorded = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
     assert recorded == manifest
