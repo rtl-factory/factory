@@ -13,8 +13,7 @@ ROOT = Path(__file__).resolve().parents[5]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from src.nand2mario.scripts.board import n2m_board as board  # noqa: E402
-from tools.bazel import hdl_libraries  # noqa: E402
-from tools.quartus import build, gate  # noqa: E402
+from tools.quartus import build, gate, manifest  # noqa: E402
 
 GOLDEN = Path(__file__).resolve().parent / "qsf"
 IMAGES = {"n2m_de10_lite": ("de10_lite", False), "n2m_de2_115": ("de2_115", False),
@@ -35,8 +34,9 @@ def top_ports(path: Path) -> set:
 
 
 def simulation_sources(target: str) -> list:
+    resolver = manifest.hdl_libraries(ROOT)
     targets = json.loads((ROOT / "src/nand2mario/cfg/targets.json").read_text())["targets"]
-    return hdl_libraries.resolve_target(targets[target], hdl_libraries.load(ROOT))["sources"]
+    return resolver.resolve_target(targets[target], resolver.load(ROOT))["sources"]
 
 
 def removed_ram_warnings() -> list:

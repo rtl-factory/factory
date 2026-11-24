@@ -15,7 +15,6 @@ import unittest
 ROOT = Path(__file__).resolve().parents[5]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-from tools.bazel import hdl_libraries  # noqa: E402
 from tools.quartus import build, manifest, quartus  # noqa: E402
 
 MANIFEST = "src/nand2doom/cfg/n2d_quartus.json"
@@ -42,8 +41,9 @@ def top_ports(path: Path) -> set:
 
 
 def simulation_sources(target: str) -> list:
+    resolver = manifest.hdl_libraries(ROOT)
     targets = json.loads((ROOT / "src/nand2doom/cfg/targets.json").read_text())["targets"]
-    return hdl_libraries.resolve_target(targets[target], hdl_libraries.load(ROOT))["sources"]
+    return resolver.resolve_target(targets[target], resolver.load(ROOT))["sources"]
 
 
 class N2dQuartusTests(unittest.TestCase):

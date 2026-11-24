@@ -10,15 +10,10 @@ Spec: wiki/tools/quartus/spec.md.
 from __future__ import annotations
 
 import copy
+import importlib.util
 import json
 from pathlib import Path
 import re
-import sys
-
-ROOT = Path(__file__).resolve().parents[2]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-from tools.bazel import hdl_libraries  # noqa: E402
 
 IDENTIFIER = re.compile(r"[A-Za-z0-9_]+")
 PIN_SPEC = re.compile(r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)(?:\[(?P<msb>\d+)(?::(?P<lsb>\d+))?\])?")
@@ -170,9 +165,23 @@ def apply_profile(manifest: dict, profile: dict) -> dict:
                            if key != "board"}}
 
 
+def hdl_libraries(root: Path):
+    """The library resolver, tools/bazel/hdl_libraries.py, of the tree being built."""
+    # Why: tools/bazel is its own Bazel package, so the resolver is loaded by path
+    # rather than imported; the tree's own copy resolves the tree's libraries.
+    path = root / "tools" / "bazel" / "hdl_libraries.py"
+    if not path.is_file():
+        path = Path(__file__).resolve().parents[1] / "bazel" / "hdl_libraries.py"
+    spec = importlib.util.spec_from_file_location("hdl_libraries", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def resolve_sources(manifest: dict, root: Path) -> dict:
     """The manifest with its libraries resolved into the ordered sources and headers."""
-    resolved = hdl_libraries.resolve_target(manifest, hdl_libraries.load(root))
+    resolver = hdl_libraries(root)
+    resolved = resolver.resolve_target(manifest, resolver.load(root))
     resolved.pop("flavors", None)
     resolved["libraries"] = manifest["libraries"]
     return resolved
