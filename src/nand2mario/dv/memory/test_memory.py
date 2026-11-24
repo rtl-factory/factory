@@ -77,8 +77,8 @@ class Bench:
         through the simulator before the first edge so the checks cannot rely
         on the simulator's default zeros."""
         for store in (self.dut.u_vram, self.dut.u_wram, self.dut.u_oam, self.dut.u_hram):
-            for index in range(len(store.memory)):
-                store.memory[index].value = self.rng.randrange(1, 256)
+            for index in range(len(store.u_ram.memory)):
+                store.u_ram.memory[index].value = self.rng.randrange(1, 256)
 
     def idle(self):
         d = self.dut
