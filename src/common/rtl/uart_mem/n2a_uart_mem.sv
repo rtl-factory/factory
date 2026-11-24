@@ -465,10 +465,10 @@ module n2a_uart_mem
         if (r_q.phase != r_d.phase) timer_d = 32'h0;
     end
 
-    `DFF_ARST_VAL(r_q, r_d, clk_i, reset_i, REGS_RESET)
-    `DFF_ARST_VAL(timer_q, timer_d, clk_i, reset_i, '0)
-    `DFF_ARST_VAL(mem_timer_q, mem_timer_d, clk_i, reset_i, '0)
-    `DFF_ARST_VAL(pace_q, pace_d, clk_i, reset_i, 16'hffff)
+    `DFF_RST_VAL(r_q, r_d, clk_i, reset_i, REGS_RESET)
+    `DFF_RST_VAL(timer_q, timer_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(mem_timer_q, mem_timer_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(pace_q, pace_d, clk_i, reset_i, 16'hffff)
 
     assign down_rx_byte_o = rx_byte_i;
     assign owner_o = (r_q.phase != UART_MEM_IDLE);
@@ -486,12 +486,12 @@ module n2a_uart_mem
     assign mem_req_addr_o = r_q.req_addr;
     assign mem_req_wdata_o = r_q.req_wdata;
 
-    `ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, !(r_q.req_valid && r_q.outstanding),
+    `ASSERT_CLOCKED_FATAL(clk_i, reset_i, !(r_q.req_valid && r_q.outstanding),
         "n2a_uart_mem has more than one request in flight")
-    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, mem_rsp_valid_i, r_q.outstanding,
+    `ASSERT_CLOCKED_FATAL_WHEN(clk_i, reset_i, mem_rsp_valid_i, r_q.outstanding,
         "n2a_uart_mem response without an outstanding request")
-    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, r_q.req_valid && r_q.req_write,
+    `ASSERT_CLOCKED_FATAL_WHEN(clk_i, reset_i, r_q.req_valid && r_q.req_write,
         hold_ack_i, "n2a_uart_mem write request while the CPU is not held")
-    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, mem_accept && !hold_ack_i,
+    `ASSERT_CLOCKED_FATAL_WHEN(clk_i, reset_i, mem_accept && !hold_ack_i,
         pace_q >= LIVE_GAP, "n2a_uart_mem live request inside the pacing gap")
 endmodule
