@@ -1,6 +1,7 @@
 """Worktree clean-up: expunge before removal, landed-branch detection, refusals
 that keep the worktree, and the orphaned output base scan."""
 from pathlib import Path
+import hashlib
 import os
 import stat
 import subprocess
@@ -16,10 +17,14 @@ import hashlib, os, shutil, sys
 from pathlib import Path
 log = Path(os.environ["FAKE_BAZEL_LOG"])
 log.write_text(log.read_text() + " ".join(sys.argv[1:]) + "\\n" if log.exists() else " ".join(sys.argv[1:]) + "\\n")
+root = Path(sys.argv[1].split("=", 1)[1])
+base = root / hashlib.md5(os.getcwd().encode()).hexdigest()
+if sys.argv[2:] == ["info", "output_base"]:
+    print(base)
+    sys.exit(0)
 if os.environ.get("FAKE_BAZEL_FAIL"):
     sys.exit(37)
-root = Path(sys.argv[1].split("=", 1)[1])
-shutil.rmtree(root / hashlib.md5(os.getcwd().encode()).hexdigest(), ignore_errors=True)
+shutil.rmtree(base, ignore_errors=True)
 """
 
 
@@ -48,7 +53,7 @@ def setup(tmp_path, monkeypatch):
     bazel.write_text(FAKE_BAZEL)
     bazel.chmod(0o755)
     root = tmp_path / "user_root"
-    base = worktree.output_base_for(wt.resolve(), root)
+    base = root / hashlib.md5(str(wt.resolve()).encode()).hexdigest()
     base.mkdir(parents=True)
     (base / "DO_NOT_BUILD_HERE").write_text(str(wt.resolve()))
     monkeypatch.chdir(repo)
@@ -73,7 +78,7 @@ def test_squash_merged_worktree_is_expunged_removed_and_its_branch_deleted(setup
     git(repo, "add", ".")
     git(repo, "commit", "-q", "-m", "later work on main")
     assert run_remove(setup) == 0
-    assert log.read_text() == f"--output_user_root={root} clean --expunge\n"
+    assert log.read_text() == f"--output_user_root={root} info output_base\n--output_user_root={root} clean --expunge\n"
     assert not base.exists() and not wt.exists()
     assert branches(repo) == ["main"]
 
@@ -98,6 +103,29 @@ def test_dirty_worktree_is_refused_before_the_expunge(setup):
     (wt / "b.txt").write_text("edited\n")
     assert run_remove(setup) == 2
     assert wt.exists() and base.exists() and not log.exists()
+
+
+def test_detached_worktree_with_unreferenced_commits_is_refused(setup):
+    repo, wt, _, _, base, log = setup
+    detached = repo / "worktrees" / "d"
+    git(repo, "worktree", "add", "-q", "--detach", str(detached), "HEAD")
+    (detached / "d.txt").write_text("d\n")
+    git(detached, "add", ".")
+    git(detached, "commit", "-q", "-m", "only here")
+    _, _, bazel, root, _, _ = setup
+    assert worktree.main(["--output-user-root", str(root), "remove", str(detached), "--base", "main",
+                          "--bazel", str(bazel), "--no-fetch"]) == 2
+    assert detached.exists() and not log.exists()
+
+
+def test_detached_worktree_on_a_branch_commit_is_removed(setup, capsys):
+    repo, _, bazel, root, _, _ = setup
+    detached = repo / "worktrees" / "d"
+    git(repo, "worktree", "add", "-q", "--detach", str(detached), "main")
+    assert worktree.main(["--output-user-root", str(root), "remove", str(detached), "--base", "main",
+                          "--bazel", str(bazel), "--no-fetch"]) == 0
+    assert not detached.exists()
+    assert "no branch to delete" in capsys.readouterr().out
 
 
 def test_failed_expunge_keeps_the_worktree(setup, monkeypatch):
@@ -154,8 +182,3 @@ def test_orphans_lists_then_removes_only_idle_bases_of_gone_workspaces(tmp_path,
     assert live.exists() and serving.exists() and (root / "install").exists() and (root / "cache").exists()
     assert f"server (pid {os.getpid()}) is running" in out
     assert "2 orphaned output base(s) removed" in out
-
-
-def test_output_base_name_is_the_md5_of_the_workspace_path(tmp_path):
-    # Ref: Bazel's output directory layout, outputBase = <outputUserRoot>/<MD5(workspace path)>.
-    assert worktree.output_base_for(Path("/home/user/factory"), tmp_path).name == "01f11d999973e0bf89c316ed52497148"

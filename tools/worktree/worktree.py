@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import argparse
 import getpass
-import hashlib
 import os
 from pathlib import Path
 import shutil
@@ -42,12 +41,6 @@ def default_output_user_root() -> Path:
     """Bazel's default output user root on Linux and macOS."""
     cache = os.environ.get("XDG_CACHE_HOME") or str(Path.home() / ".cache")
     return Path(cache) / "bazel" / f"_bazel_{getpass.getuser()}"
-
-
-def output_base_for(workspace: Path, user_root: Path) -> Path:
-    """Bazel names a workspace's output base by the MD5 of its absolute path."""
-    digest = hashlib.md5(str(workspace).encode()).hexdigest()
-    return user_root / digest
 
 
 def git(*args: str, cwd: Path | None = None, check: bool = True) -> subprocess.CompletedProcess:
@@ -78,11 +71,23 @@ def branch_landed(repo: Path, branch: str, base: str) -> bool:
         return False
     # Why: a squash merge leaves no ancestry, so fold the branch into one commit on
     # its fork point and ask git cherry whether base holds a patch-identical commit.
+    # The probe is an unreferenced commit object; git's gc prunes it.
     identity = ("-c", "user.name=worktree", "-c", "user.email=worktree@localhost")
     squashed = git(*identity, "commit-tree", f"{branch}^{{tree}}", "-p", fork, "-m", "squash probe",
                    cwd=repo).stdout.strip()
     cherry = git("cherry", base, squashed, cwd=repo).stdout.strip()
     return cherry.startswith("-")
+
+
+def run_bazel(command: list[str], cwd: Path, capture: bool = False) -> subprocess.CompletedProcess:
+    try:
+        result = subprocess.run(command, cwd=cwd, capture_output=capture, text=True)
+    except FileNotFoundError:
+        raise CleanupError(f"{command[0]} not found; the worktree is kept so its output base can still be expunged")
+    if result.returncode != 0:
+        detail = f": {result.stderr.strip()}" if capture else ""
+        raise CleanupError(f"{' '.join(command)} failed ({result.returncode}){detail}; the worktree is kept")
+    return result
 
 
 def remove(path: Path, repo: Path, base: str, bazel: str, user_root: Path | None, fetch: bool) -> int:
@@ -98,19 +103,16 @@ def remove(path: Path, repo: Path, base: str, bazel: str, user_root: Path | None
     dirty = git("status", "--porcelain", cwd=path).stdout.strip()
     if dirty:
         raise CleanupError(f"{path} has uncommitted changes; commit and push them first:\n{dirty}")
+    if "branch" not in entry and not git("for-each-ref", "--contains", "HEAD", cwd=path).stdout.strip():
+        raise CleanupError(f"{path} is detached at a commit no branch or tag holds; "
+                           "put it on a branch and push it first")
 
-    command = [bazel]
-    if user_root is not None:
-        command.append(f"--output_user_root={user_root}")
-    command += ["clean", "--expunge"]
-    print(f"expunging the output base: {' '.join(command)} (in {path})")
-    try:
-        expunged = subprocess.run(command, cwd=path)
-    except FileNotFoundError:
-        raise CleanupError(f"{bazel} not found; the worktree is kept so its output base can still be expunged")
-    if expunged.returncode != 0:
-        raise CleanupError(f"bazel clean --expunge failed ({expunged.returncode}); the worktree is kept")
-    left = output_base_for(path, user_root or default_output_user_root())
+    startup = [bazel] + ([f"--output_user_root={user_root}"] if user_root is not None else [])
+    info = run_bazel(startup + ["info", "output_base"], path, capture=True)
+    left = Path(info.stdout.strip())
+    command = startup + ["clean", "--expunge"]
+    print(f"expunging the output base {left}: {' '.join(command)} (in {path})")
+    run_bazel(command, path)
     if left.exists():
         raise CleanupError(f"{left} is still there after the expunge; the worktree is kept")
 
