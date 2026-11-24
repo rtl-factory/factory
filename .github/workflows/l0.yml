@@ -59,7 +59,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/verilator
-          key: verilator-${{ steps.pin.outputs.tag }}-${{ runner.os }}-ubuntu-24.04
+          key: verilator-${{ steps.pin.outputs.tag }}-${{ steps.pin.outputs.commit }}-${{ runner.os }}-ubuntu-24.04
 
       - name: Build Verilator
         if: runner.environment == 'github-hosted' && steps.cache.outputs.cache-hit != 'true'
@@ -71,7 +71,8 @@ jobs:
           # Why: a tag can be moved; the pinned commit is the checksum of the source.
           test "$(git rev-parse HEAD)" = "${{ steps.pin.outputs.commit }}" || { echo "v${{ steps.pin.outputs.version }} is not commit ${{ steps.pin.outputs.commit }}"; exit 1; }
           autoconf
-          ./configure --prefix="$HOME/verilator"
+          # Why: a ccache found here would be baked into verilated.mk (spec: Install (Verilator)).
+          ac_cv_prog_OBJCACHE= ./configure --prefix="$HOME/verilator"
           make -j"$(nproc)"
           make install
 
