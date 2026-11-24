@@ -31,6 +31,31 @@ TAGLINE_ADDRESS, TAGLINE_BYTES, TAGLINE_CHARS = 0x88220, 24, 18
 TAGLINE = struct.Struct('<18s6x')
 PROFILE_DIRECT, PROFILE_LOADER, PROFILE_MBC1 = 1, 2, 3
 GAME_EXIT_VALUE = 0x10
+MBC1_BANK1, EXIT_REGISTER = 0x2000, 0x6000
+
+
+# Ref: Pan Docs "CPU Instruction Set": the SM83 encodings the stubs use; a
+# 16-bit operand is little-endian, and a JR offset counts from the next instruction.
+def _nop():
+    return bytes([0x00])
+
+
+def _jp(address):
+    return bytes([0xC3]) + address.to_bytes(2, 'little')
+
+
+def _jr_self():
+    return bytes([0x18, 0xFE])
+
+
+def _ld_a(value):
+    return bytes([0x3E, value])
+
+
+def _ld_address_a(address):
+    return bytes([0xEA]) + address.to_bytes(2, 'little')
+
+
 # Why: the seven 32 KiB stubs cover the title cases (two registered titles, a full
 # sixteen-character title, a padded title with the CGB-only flag, a title
 # with digits and dashes, a fifteen-byte title with the CGB flag at header
@@ -67,10 +92,10 @@ def game_image(index, title):
         title = title.encode('ascii')
     image = bytearray(((index * 37 + offset * 11 + (offset >> 7) * 5) ^ (offset >> 12)) & 255 for offset in range(SLOT_BYTES))
     image[0x100:0x150] = bytes(0x50)
-    image[0x100:0x104] = bytes([0x00, 0xC3, 0x50, 0x01])
+    image[0x100:0x104] = _nop() + _jp(0x0150)
     image[0x134:0x144] = title.ljust(16, b'\0')
     image[0x14a] = 1
-    image[0x150:0x152] = bytes([0x18, 0xFE])
+    image[0x150:0x152] = _jr_self()
     return bytes(image)
 
 
@@ -83,12 +108,12 @@ def mbc1_image():
     """
     image = bytearray(((MBC1_SLOT * 37 + offset * 11 + (offset >> 7) * 5) ^ (offset >> 12)) & 255 for offset in range(MBC1_BYTES))
     image[0x100:0x150] = bytes(0x50)
-    image[0x100:0x104] = bytes([0x00, 0xC3, 0x50, 0x01])                    # nop; jp $0150
+    image[0x100:0x104] = _nop() + _jp(0x0150)
     image[0x134:0x144] = MBC1_TITLE.ljust(16, b'\0')
     image[0x147], image[0x148], image[0x14a] = 0x01, 0x01, 1                 # Ref: Pan Docs "The Cartridge Header": MBC1, 64 KiB
-    image[0x150:0x158] = bytes([0x3E, 0x02, 0xEA, 0x00, 0x20, 0xC3, 0x00, 0x40])  # ld a,2; ld ($2000),a; jp $4000
-    image[0x4000:0x4002] = bytes([0x18, 0xFE])                                # bank 1: jr $4000
-    image[0x8000:0x8007] = bytes([0x3E, GAME_EXIT_VALUE, 0xEA, 0x00, 0x60, 0x18, 0xFE])  # bank 2: exit; jr
+    image[0x150:0x158] = _ld_a(2) + _ld_address_a(MBC1_BANK1) + _jp(0x4000)
+    image[0x4000:0x4002] = _jr_self()
+    image[0x8000:0x8007] = _ld_a(GAME_EXIT_VALUE) + _ld_address_a(EXIT_REGISTER) + _jr_self()
     return bytes(image)
 
 

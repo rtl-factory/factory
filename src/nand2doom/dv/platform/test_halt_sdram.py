@@ -9,7 +9,7 @@ from cocotb.triggers import FallingEdge, RisingEdge, Timer, with_timeout
 from cocotb.utils import get_sim_time
 
 from src.common.dv.uart.uart_wire import UartWire
-from src.nand2doom.dv.core.rv32i_smoke_model import encode_i, encode_s, encode_b
+from src.nand2doom.dv.core.rv32_asm import X0, X1, X2, X3, X4, X5, X6, X7, addi, beq, bne, j, li, lui, lw, sw
 from src.nand2doom.dv.memory.sdram_pin_model import SdramPinModel
 from src.nand2doom.scripts.host.n2d_uart_debug_host import (
     CMD_PING, CMD_LOAD, CMD_PEEK, CMD_RESUME, CMD_HALT,
@@ -18,6 +18,7 @@ from src.nand2doom.scripts.host.n2d_uart_debug_host import (
 
 BAUD = 1_000_000
 BASE = 0x10000
+FRAMEBUFFER, COLD_BASE = 0x1000_0000, 0x0004_0000
 # Ref: D-cache geometry of the fixture, set by _geometry() at test start: dirty lines that fill
 # every way of every set, their byte span, and the wiki/src/nand2doom/rtl/memory/mas.md "Maintained
 # Halt bound" for that many dirty lines: a 24-clock slot per line plus CPU drain 256, victim buffer
@@ -44,22 +45,20 @@ def cycle():
 
 def fill_program(lines, outstanding=False):
     # Why: contiguous sixteen-byte lines use every way of every set without
-    # eviction, so every line is still dirty at the Halt. A count above the
-    # 12-bit immediate is built as 4096 + low.
-    count = ((encode_i(lines, 0, 0, 2),) if lines < 2048 else
-             (0x00001137, encode_i(lines - 4096, 2, 0, 2)))
-    prefix = (0x000100b7, *count,
-            encode_s(0, 1, 1), encode_i(16, 1, 0, 1),
-            encode_i(-1, 2, 0, 2), encode_b(-12, 0, 2, 1),
-            0x100001b7, encode_i(1, 0, 0, 4), encode_s(0, 4, 3))
+    # eviction, so every line is still dirty at the Halt.
+    count = tuple(li(X2, lines))
+    prefix = (lui(X1, BASE >> 12), *count,
+              sw(X1, 0, X1), addi(X1, X1, 16),
+              addi(X2, X2, -1), bne(X2, X0, -12),
+              lui(X3, FRAMEBUFFER >> 12), addi(X4, X0, 1), sw(X4, 0, X3))
     if not lines:
         prefix = prefix[len(count) + 5:]
     if outstanding:
         # Why: repeated cold reads in a distinct tag, after the dirty stores
         # finish, keep a data request outstanding when the Halt arrives.
-        return prefix + (0x00040337, encode_i(0, 6, 2, 7, 0x03),
-                         encode_i(16, 6, 0, 6), encode_b(-8, 0, 0, 0))
-    return prefix + (encode_i(1, 5, 0, 5), 0xffdff06f)
+        return prefix + (lui(X6, COLD_BASE >> 12), lw(X7, 0, X6),
+                         addi(X6, X6, 16), beq(X0, X0, -8))
+    return prefix + (addi(X5, X5, 1), j(-4))
 
 
 class PinMemory:
