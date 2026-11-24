@@ -38,7 +38,7 @@ class Bench:
 
     def power_up(self):
         """Stores have no power-up value: seeded nonzero garbage everywhere."""
-        for store in (self.dut.u_rom.memory, self.dut.u_ram.memory):
+        for store in (self.dut.u_rom.u_ram.memory, self.dut.u_ram.u_ram.memory):
             for index in range(len(store)):
                 store[index].value = self.rng.randrange(1, 256)
 

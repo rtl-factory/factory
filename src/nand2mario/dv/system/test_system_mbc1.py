@@ -123,9 +123,9 @@ async def system_mbc1(dut):
         await ReadOnly()
     assert int(dut.halted_o.value) == 1, 'CPU must report HALT after the halting retirement'
 
-    wram_observed, wram_expected = defined_signature(store_bytes(dut.u_memory.u_wram.memory), memory, 'wram')
+    wram_observed, wram_expected = defined_signature(store_bytes(dut.u_memory.u_wram.u_ram.memory), memory, 'wram')
     compare_signature(wram_observed, wram_expected, 'WRAM')
-    ram_store = store_bytes(dut.g_onchip.u_backing.u_ram.memory)
+    ram_store = store_bytes(dut.g_onchip.u_backing.u_ram.u_ram.memory)
     ram_pairs = cartridge.defined_ram_bytes()
     compare_signature(bytes(ram_store[offset] for offset, _ in ram_pairs), bytes(value for _, value in ram_pairs), 'CART-RAM')
     assert len(ram_pairs) == 8 and [offset for offset, _ in ram_pairs] == [0x0000, 0x1FFF, 0x2000, 0x3FFF, 0x4000, 0x5FFF, 0x6000, 0x7FFF], (
@@ -134,7 +134,7 @@ async def system_mbc1(dut):
     assert len(wram_observed) >= 0x20, ('the program defines at least $C000-$C01F', len(wram_observed))
 
     # Why: pinned evidence independent of the oracle.
-    wram = store_bytes(dut.u_memory.u_wram.memory)
+    wram = store_bytes(dut.u_memory.u_wram.u_ram.memory)
     pinned = {0x00: 0x52, 0x01: bank_pattern(32, 0x3F80), 0x02: 0x20, 0x03: 0x21, 0x04: 0xC3, 0x05: 0x01,
               0x06: 0x50, 0x07: 0x60, 0x08: 0xFF, 0x09: 0x50, 0x0A: 0xFF, 0x1F: len(TABLE_BANKS)}
     for index, bank in enumerate(TABLE_BANKS):

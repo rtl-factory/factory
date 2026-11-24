@@ -70,18 +70,9 @@ def load_image(button_script=None):
 
 
 def store_array(ram):
-    """The storage array of one n2m_dual_port_ram instance in either backend:
-    the portable array, or the ASIC backend's two-port array or shared
-    single-port store (n2m_dual_port_ram_asic.sv)."""
-    for path in (('memory',), ('g_two_port', 'memory'), ('g_shared_sram', 'u_store', 'memory')):
-        handle = ram
-        try:
-            for name in path:
-                handle = getattr(handle, name)
-        except AttributeError:
-            continue
-        return handle
-    raise AttributeError(f'no storage array under {ram._path}')
+    """The storage array of one common RAM wrapper instance
+    (n2a_sync_ram_enabled or n2a_tdp_ram_enabled over its portable store)."""
+    return ram.u_ram.memory
 
 
 async def await_core_release(dut):

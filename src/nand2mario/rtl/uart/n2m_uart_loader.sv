@@ -95,29 +95,19 @@ module n2m_uart_loader #(
     assign buffer_address = index_q[7:0];
     assign buffer_write = (state_q == PAYLOAD) && rx_valid;
     assign buffer_read = state_q == COMMIT_READ;
-    /* verilator lint_off PINCONNECTEMPTY */
-    n2m_dual_port_ram #(
+    n2a_sync_ram_enabled #(
         .DATA_WIDTH (8),
-        .DEPTH      (MAX_PAYLOAD_BYTES),
-        .DUAL_CLOCK (1'b0)
+        .DEPTH      (MAX_PAYLOAD_BYTES)
     ) u_buffer (
-        .clk_a_i         (clk_i),
-        .reset_a_i       (reset_i),
-        .read_a_i        (1'b0),
-        .write_a_i       (buffer_write),
-        .address_a_i     (buffer_address),
-        .write_data_a_i  (rx_byte),
-        .byte_enable_a_i (1'b1),
-        .read_data_a_o   (),
-        .read_valid_a_o  (),
-        .clk_b_i         (clk_i),
-        .reset_b_i       (reset_i),
-        .read_b_i        (buffer_read),
-        .address_b_i     (buffer_address),
-        .read_data_b_o   (buffer_data),
-        .read_valid_b_o  (buffer_valid)
+        .clk_i          (clk_i),
+        .reset_i        (reset_i),
+        .read_enable_i  (buffer_read),
+        .write_enable_i (buffer_write),
+        .address_i      (buffer_address),
+        .write_data_i   (rx_byte),
+        .read_data_o    (buffer_data),
+        .read_valid_o   (buffer_valid)
     );
-    /* verilator lint_on PINCONNECTEMPTY */
 
     assign receiving = (state_q == CMD) || (state_q == ADDR0) || (state_q == ADDR1) ||
                        (state_q == ADDR2) || (state_q == LEN) || (state_q == PAYLOAD) ||

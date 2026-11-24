@@ -45,7 +45,6 @@ module n2m_ppu_fixture (
     logic [7:0]  vram_data;
     logic        oam_read, oam_valid;
     logic [7:0]  oam_address, oam_data;
-    logic        load_read;
 
     n2m_timebase u_timebase (
         .clk_i                  (clk_i),
@@ -54,50 +53,47 @@ module n2m_ppu_fixture (
         .machine_cycle_enable_o (machine_cycle_enable)
     );
 
-    assign load_read = 1'b0;
     /* verilator lint_off PINCONNECTEMPTY */
-    n2m_dual_port_ram #(
+    n2a_tdp_ram_enabled #(
         .DATA_WIDTH (8),
-        .DEPTH      (8192),
-        .DUAL_CLOCK (1'b0)
+        .DEPTH      (8192)
     ) u_vram (
-        .clk_a_i         (clk_i),
-        .reset_a_i       (reset_i),
-        .read_a_i        (load_read),
-        .write_a_i       (vram_write_i),
-        .address_a_i     (vram_address_i),
-        .write_data_a_i  (vram_data_i),
-        .byte_enable_a_i (1'b1),
-        .read_data_a_o   (),
-        .read_valid_a_o  (),
-        .clk_b_i         (clk_i),
-        .reset_b_i       (reset_i),
-        .read_b_i        (vram_read),
-        .address_b_i     (vram_address),
-        .read_data_b_o   (vram_data),
-        .read_valid_b_o  (vram_valid)
+        .clk_i            (clk_i),
+        .a_reset_i        (reset_i),
+        .a_read_enable_i  (1'b0),
+        .a_write_enable_i (vram_write_i),
+        .a_address_i      (vram_address_i),
+        .a_write_data_i   (vram_data_i),
+        .a_read_data_o    (),
+        .a_read_valid_o   (),
+        .b_reset_i        (reset_i),
+        .b_read_enable_i  (vram_read),
+        .b_write_enable_i (1'b0),
+        .b_address_i      (vram_address),
+        .b_write_data_i   (8'h00),
+        .b_read_data_o    (vram_data),
+        .b_read_valid_o   (vram_valid)
     );
 
-    n2m_dual_port_ram #(
+    n2a_tdp_ram_enabled #(
         .DATA_WIDTH (8),
-        .DEPTH      (256),
-        .DUAL_CLOCK (1'b0)
+        .DEPTH      (256)
     ) u_oam (
-        .clk_a_i         (clk_i),
-        .reset_a_i       (reset_i),
-        .read_a_i        (load_read),
-        .write_a_i       (oam_write_i),
-        .address_a_i     (oam_address_i),
-        .write_data_a_i  (oam_data_i),
-        .byte_enable_a_i (1'b1),
-        .read_data_a_o   (),
-        .read_valid_a_o  (),
-        .clk_b_i         (clk_i),
-        .reset_b_i       (reset_i),
-        .read_b_i        (oam_read),
-        .address_b_i     (oam_address),
-        .read_data_b_o   (oam_data),
-        .read_valid_b_o  (oam_valid)
+        .clk_i            (clk_i),
+        .a_reset_i        (reset_i),
+        .a_read_enable_i  (1'b0),
+        .a_write_enable_i (oam_write_i),
+        .a_address_i      (oam_address_i),
+        .a_write_data_i   (oam_data_i),
+        .a_read_data_o    (),
+        .a_read_valid_o   (),
+        .b_reset_i        (reset_i),
+        .b_read_enable_i  (oam_read),
+        .b_write_enable_i (1'b0),
+        .b_address_i      (oam_address),
+        .b_write_data_i   (8'h00),
+        .b_read_data_o    (oam_data),
+        .b_read_valid_o   (oam_valid)
     );
     /* verilator lint_on PINCONNECTEMPTY */
 

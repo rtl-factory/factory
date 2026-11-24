@@ -2,8 +2,8 @@
 `include "src/common/rtl/pkg/macros.vh"
 
 // On-chip cartridge backing store behind the cartridge backing port: one
-// inferred ROM store written and read back through the load port and read by
-// the mapper, and one inferred cartridge RAM store read and written by the
+// true-dual-port ROM store written and read back through the load port and read by
+// the mapper, and one single-port cartridge RAM store read and written by the
 // mapper (and by the load port). Both are sized by parameter; address bits
 // above a store's size are ignored. The backing port is always ready and
 // answers every accepted request on the next edge (read data from the
@@ -87,54 +87,43 @@ module n2m_cartridge_backing #(
     // drop a load write; port B is the mapper's read port. A same-edge load write
     // and mapper read of one byte read first.
     assign load_reset = 1'b0;
-    /* verilator lint_off PINCONNECTEMPTY */
-    n2m_dual_port_ram #(
+    n2a_tdp_ram_enabled #(
         .DATA_WIDTH (8),
-        .DEPTH      (ROM_BYTES),
-        .DUAL_CLOCK (1'b0)
+        .DEPTH      (ROM_BYTES)
     ) u_rom (
-        .clk_a_i         (clk_i),
-        .reset_a_i       (load_reset),
-        .read_a_i        (load_rom_read),
-        .write_a_i       (load_rom_write),
-        .address_a_i     (load_offset),
-        .write_data_a_i  (load_request_i.write_data),
-        .byte_enable_a_i (1'b1),
-        .read_data_a_o   (load_rom_data),
-        .read_valid_a_o  (load_rom_valid),
-        .clk_b_i         (clk_i),
-        .reset_b_i       (reset_i),
-        .read_b_i        (rom_read),
-        .address_b_i     (rom_offset),
-        .read_data_b_o   (rom_data),
-        .read_valid_b_o  (rom_valid)
+        .clk_i            (clk_i),
+        .a_reset_i        (load_reset),
+        .a_read_enable_i  (load_rom_read),
+        .a_write_enable_i (load_rom_write),
+        .a_address_i      (load_offset),
+        .a_write_data_i   (load_request_i.write_data),
+        .a_read_data_o    (load_rom_data),
+        .a_read_valid_o   (load_rom_valid),
+        .b_reset_i        (reset_i),
+        .b_read_enable_i  (rom_read),
+        .b_write_enable_i (1'b0),
+        .b_address_i      (rom_offset),
+        .b_write_data_i   (8'h00),
+        .b_read_data_o    (rom_data),
+        .b_read_valid_o   (rom_valid)
     );
 
-    // Why: the mapper has priority on cartridge RAM port A so CPU timing never
+    // Why: the mapper has priority on the cartridge RAM so CPU timing never
     // depends on a load; the load port uses it only when the mapper is not
-    // accessing RAM. Port B is reserved.
-    n2m_dual_port_ram #(
+    // accessing RAM. It shares the load port's reset rule.
+    n2a_sync_ram_enabled #(
         .DATA_WIDTH (8),
-        .DEPTH      (RAM_BYTES),
-        .DUAL_CLOCK (1'b0)
+        .DEPTH      (RAM_BYTES)
     ) u_ram (
-        .clk_a_i         (clk_i),
-        .reset_a_i       (load_reset),
-        .read_a_i        (ram_read),
-        .write_a_i       (ram_write),
-        .address_a_i     (ram_offset),
-        .write_data_a_i  (ram_write_data),
-        .byte_enable_a_i (1'b1),
-        .read_data_a_o   (ram_data),
-        .read_valid_a_o  (ram_valid),
-        .clk_b_i         (clk_i),
-        .reset_b_i       (reset_i),
-        .read_b_i        (1'b0),
-        .address_b_i     ('0),
-        .read_data_b_o   (),
-        .read_valid_b_o  ()
+        .clk_i          (clk_i),
+        .reset_i        (load_reset),
+        .read_enable_i  (ram_read),
+        .write_enable_i (ram_write),
+        .address_i      (ram_offset),
+        .write_data_i   (ram_write_data),
+        .read_data_o    (ram_data),
+        .read_valid_o   (ram_valid)
     );
-    /* verilator lint_on PINCONNECTEMPTY */
 
     // Why: every store answers on the next edge, so a response is a fixed one
     // edge after acceptance and the registered store selection picks its data.

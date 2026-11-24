@@ -57,8 +57,8 @@ class Bench:
     def power_up(self):
         for store in (self.dut.u_backing.u_rom, self.dut.u_backing.u_ram, self.dut.u_memory.u_vram,
                       self.dut.u_memory.u_wram, self.dut.u_memory.u_oam, self.dut.u_memory.u_hram):
-            for index in range(len(store.memory)):
-                store.memory[index].value = self.rng.randrange(1, 256)
+            for index in range(len(store.u_ram.memory)):
+                store.u_ram.memory[index].value = self.rng.randrange(1, 256)
 
     async def edge(self):
         self.cycles += 1
