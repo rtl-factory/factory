@@ -361,8 +361,8 @@ async def board_uart_mem_boot(dut):
                             REFERENCE_PERIOD_NS, unit='ns').start())
     await Timer(10 * REFERENCE_PERIOD_NS, unit='ns')
     dut.KEY.value = 0b11
-    await Timer((SDRAM_INITIALIZED_CLOCK + 16) * CLOCK_PERIOD_NS, unit='ns')
+    await Timer((max(SDRAM_INITIALIZED_CLOCK, VRAM_BYTES) + 16) * CLOCK_PERIOD_NS, unit='ns')
     await ReadOnly()
-    assert not int(dut.LEDR.value) & LED_RESET, 'the core runs once the SDRAM is initialized'
+    assert not int(dut.LEDR.value) & LED_RESET, 'the core runs once the SDRAM is initialized and VRAM swept'
     await writable()
     await load_and_boot(system, dut.UART_RXD, dut.UART_TXD, bound)
