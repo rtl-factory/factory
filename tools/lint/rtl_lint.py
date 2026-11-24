@@ -73,6 +73,8 @@ TYPEDEF_NAME = re.compile(r"^t_\w+$")
 PORT_NAME = re.compile(r"\w+_(i|o|io)$")
 INCLUDE = re.compile(r'`include\s+"([^"]*)"')
 WAIVER = re.compile(r"\bverilator\s+lint_(off|on)\b\s*(\w*)")
+ARST = re.compile(r"`DFF_ARST_\w+")
+COMMENT_LINE = re.compile(r"^\s*(//|/\*|\*)")
 
 
 def split(source: str) -> tuple[str, str, list[tuple[int, str]]]:
@@ -238,6 +240,23 @@ def waiver_violations(comments: list[tuple[int, str]]) -> list[tuple[int, str, s
     return found
 
 
+def arst_violations(source: str, code: str) -> list[tuple[int, str, str]]:
+    """Asynchronous-reset flops without a `Why:` in the comment directly above them,
+    or on the same line; a run of such flops shares one comment."""
+    lines, code_lines, found = source.splitlines(), code.splitlines(), []
+    for number, text in enumerate(code_lines, start=1):
+        if not ARST.search(text):
+            continue
+        i, why = number - 1, "Why:" in lines[number - 1]
+        while not why and i > 0 and (COMMENT_LINE.match(lines[i - 1]) or ARST.search(code_lines[i - 1])):
+            i -= 1
+            why = COMMENT_LINE.match(lines[i]) is not None and "Why:" in lines[i]
+        if not why:
+            found.append((number, "arst-why", "reset synchronously, or say in a Why: comment directly above "
+                          "why this flop needs an asynchronous reset"))
+    return found
+
+
 def violations(path: Path, rel: str) -> list[Violation]:
     source = path.read_text(encoding="utf-8", errors="replace")
     kept, code, comments = split(source)
@@ -255,6 +274,8 @@ def violations(path: Path, rel: str) -> list[Violation]:
         if "\t" in text:
             found.append((number, "tab", "indent with spaces, never tabs"))
     found += header_violations(code, board_top(rel)) + typedef_violations(code) + waiver_violations(comments)
+    if rel not in MACRO_FILES:
+        found += arst_violations(source, code)
     return [Violation(rel, line, rule, text) for line, rule, text in sorted(found)]
 
 

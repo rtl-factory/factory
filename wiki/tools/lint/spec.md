@@ -85,6 +85,7 @@ Regenerate the baseline with `--update-baseline` from the checkout root after a 
 | `typedef-name` | a typedef whose name is not `t_<name>` | files and names |
 | `port-suffix` | a module port whose name does not end in `_i`, `_o` or `_io` (ANSI and non-ANSI headers), except in a board top, `src/<project>/fpga/<board>/<prefix>_<board>.sv`, whose ports keep the board's pin names | files and names |
 | `header-import` | an `import` in a module header or at file scope | packages |
+| `arst-why` | a `` `DFF_ARST_* `` use outside the shared macros with no `Why:` on its line or in the comment lines directly above it (a run of such flops shares one comment) | reset and clocks |
 | `include-path` | an `` `include `` whose path does not start at `src/` | formatting |
 | `tab` | a tab anywhere in the file | formatting |
 | `waiver-scope` | a `verilator lint_off <RULE>` with no later `lint_on <RULE>` (or bare `lint_on`) in the file | assertions and checks |

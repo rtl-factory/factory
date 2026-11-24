@@ -104,7 +104,7 @@ class N2mQuartusTests(unittest.TestCase):
 
                 def allowed(source, sink):
                     return any(re.fullmatch(e["from"], source) and re.fullmatch(e["to"], sink) for e in write)
-                reset = "n2a_reset_sync:u_reset|stages_q[1]"
+                reset = "n2a_reset_sync:u_reset|reset_q"
                 self.assertTrue(allowed(reset, "DRAM_CKE"))
                 self.assertTrue(allowed(reset, "DRAM_CS_N"))
                 self.assertFalse(allowed(reset, "DRAM_ADDR[4]"))

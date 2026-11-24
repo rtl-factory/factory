@@ -58,21 +58,14 @@
         end \
     end
 
-// Asynchronous assertion is used only where the owning HAS requires it.
+// Asynchronous reset: only with a Why: at the call site naming the reason,
+// such as a reset synchronizer or a clock that may be stopped (wiki/bkm/rtl.md,
+// Rules: reset and clocks). Every other flop resets synchronously.
 `define DFF_ARST_VAL(Q, D, CLK, RESET, VALUE) \
     always_ff @(posedge (CLK) or posedge (RESET)) begin \
         if (RESET) begin \
             Q <= VALUE; \
         end else begin \
-            Q <= D; \
-        end \
-    end
-
-`define DFF_ARST_EN(Q, D, CLK, ENABLE, RESET, VALUE) \
-    always_ff @(posedge (CLK) or posedge (RESET)) begin \
-        if (RESET) begin \
-            Q <= VALUE; \
-        end else if (ENABLE) begin \
             Q <= D; \
         end \
     end
@@ -174,22 +167,6 @@
     always_ff @(posedge (CLK)) begin \
         if (READ_ENABLE) begin \
             Q <= MEM[ADDRESS]; \
-        end \
-    end
-
-// Memory write port inside an asynchronous-reset domain: the reset only
-// gates the write (no element is cleared or swept), mirroring the original
-// `if (RESET) ... else` branch of an async-reset process so the reset net is
-// never sampled synchronously; the positive first condition matches the
-// reset edge (Quartus template) and a four-state RESET of X takes the else
-// branch as the original did. Reads use MEM_READ* or a combinational index.
-`define MEM_WRITE_ARST_GATED(MEM, CLK, RESET, WRITE_ENABLE, ADDRESS, DATA) \
-    always_ff @(posedge (CLK) or posedge (RESET)) begin \
-        if (RESET) begin \
-        end else begin \
-            if (WRITE_ENABLE) begin \
-                MEM[ADDRESS] <= DATA; \
-            end \
         end \
     end
 

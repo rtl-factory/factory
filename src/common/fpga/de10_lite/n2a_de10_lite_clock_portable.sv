@@ -19,6 +19,9 @@ module n2a_de10_lite_clock (
     logic [2:0] lock_q, lock_d;
     assign clock_d = ~clock_q;
     assign lock_d = {lock_q[1:0], 1'b1};
+    // Why: this models the Intel PLL, whose areset is asynchronous: the raw
+    // reset stops the output clock and clears lock with no clock edge, and the
+    // system reset synchronizers are clocked by this output.
     `DFF_ARST_VAL(clock_q, clock_d, reference_clk_i, reset_i, 1'b0)
     `DFF_ARST_VAL(lock_q, lock_d, reference_clk_i, reset_i, '0)
     assign clk_25_o = clock_q;

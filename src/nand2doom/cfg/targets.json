@@ -6,8 +6,7 @@
       "description": "Real SDRAM Halt clean/partial/outstanding and failed maintenance boundaries",
       "top": "n2d_halt_sdram",
       "libraries": [
-        "n2d_halt_sdram",
-        "n2d_jtag_system_lint"
+        "n2d_halt_sdram"
       ],
       "clock_hz": 25000000,
       "timeout_seconds": 180,
@@ -22,8 +21,7 @@
       "description": "Maintained Halt with all dirty lines and real SDRAM pin model",
       "top": "n2d_halt_sdram",
       "libraries": [
-        "n2d_halt_sdram",
-        "n2d_jtag_system_lint"
+        "n2d_halt_sdram"
       ],
       "clock_hz": 25000000,
       "timeout_seconds": 180,
@@ -39,7 +37,6 @@
       "top": "n2d_de10_lite_fixture",
       "libraries": [
         "n2d_de10_lite_fixture",
-        "n2d_jtag_system_lint",
         "sld_virtual_jtag_stub"
       ],
       "clock_hz": 25000000,
@@ -56,7 +53,6 @@
       "top": "n2d_de10_lite_fixture",
       "libraries": [
         "n2d_de10_lite_fixture",
-        "n2d_jtag_system_lint",
         "sld_virtual_jtag_stub"
       ],
       "clock_hz": 25000000,
@@ -73,7 +69,6 @@
       "top": "n2d_de2_115_fixture",
       "libraries": [
         "n2d_de2_115_fixture",
-        "n2d_jtag_system_lint",
         "sld_virtual_jtag_stub"
       ],
       "clock_hz": 25000000,
@@ -90,7 +85,6 @@
       "top": "n2d_de2_115_fixture",
       "libraries": [
         "n2d_de2_115_fixture",
-        "n2d_jtag_system_lint",
         "sld_virtual_jtag_stub"
       ],
       "clock_hz": 25000000,
@@ -106,8 +100,7 @@
       "description": "nand2doom UART-loaded freestanding RV32IM C runtime and framebuffer",
       "top": "n2d_c_runtime_system",
       "libraries": [
-        "n2d_c_runtime_system",
-        "n2d_jtag_system_lint"
+        "n2d_c_runtime_system"
       ],
       "clock_hz": 25000000,
       "timeout_seconds": 480,
@@ -122,8 +115,7 @@
       "description": "nand2doom manifest-preloaded RV32IM/cache/SDRAM/input/VGA system smoke",
       "top": "n2d_integrated_system",
       "libraries": [
-        "n2d_integrated_system",
-        "n2d_jtag_system_lint"
+        "n2d_integrated_system"
       ],
       "clock_hz": 25000000,
       "timeout_seconds": 480,
@@ -138,8 +130,7 @@
       "description": "nand2doom framebuffer front-view and video-control store errors and the combined swap/palette write on the integrated system",
       "top": "n2d_integrated_system",
       "libraries": [
-        "n2d_integrated_system",
-        "n2d_jtag_system_lint"
+        "n2d_integrated_system"
       ],
       "clock_hz": 25000000,
       "timeout_seconds": 600,
@@ -154,8 +145,7 @@
       "description": "Public serial bulk full framebuffer and SDRAM palette-shadow byte comparison",
       "top": "n2d_integrated_system",
       "libraries": [
-        "n2d_integrated_system",
-        "n2d_jtag_system_lint"
+        "n2d_integrated_system"
       ],
       "clock_hz": 25000000,
       "timeout_seconds": 3600,
@@ -170,8 +160,7 @@
       "description": "selectable long nand2doom real Doom gameplay smoke",
       "top": "n2d_integrated_system",
       "libraries": [
-        "n2d_integrated_system",
-        "n2d_jtag_system_lint"
+        "n2d_integrated_system"
       ],
       "clock_hz": 25000000,
       "timeout_seconds": 3600,
@@ -187,8 +176,7 @@
       "description": "nand2doom synthesizable platform boundary without simulation preload",
       "top": "n2d_system",
       "libraries": [
-        "n2d_system",
-        "n2d_jtag_system_lint"
+        "n2d_system"
       ],
       "clock_hz": 25000000,
       "timeout_seconds": 60,
@@ -203,8 +191,7 @@
         "SYNTHESIS"
       ],
       "libraries": [
-        "n2d_system",
-        "n2d_jtag_system_lint"
+        "n2d_system"
       ],
       "clock_hz": 25000000,
       "timeout_seconds": 60,
@@ -703,8 +690,7 @@
       "description": "production capture helper through UART cache maintenance and public VGA",
       "top": "n2d_integrated_system",
       "libraries": [
-        "n2d_integrated_system",
-        "n2d_jtag_system_lint"
+        "n2d_integrated_system"
       ],
       "clock_hz": 25000000,
       "timeout_seconds": 3600,
@@ -722,8 +708,7 @@
       "timeout_seconds": 600,
       "description": "nand2doom Doom performance harness on the two-cycle fast line model, with the full-width DE2-115 framebuffer geometry",
       "libraries": [
-        "n2d_perf_tb",
-        "n2d_jtag_system_lint"
+        "n2d_perf_tb"
       ],
       "level": "L0"
     },
@@ -735,8 +720,7 @@
       "timeout_seconds": 600,
       "description": "nand2doom Doom performance harness on the two-cycle fast line model, with the half-width DE10-Lite framebuffer geometry",
       "libraries": [
-        "n2d_perf_tb",
-        "n2d_jtag_system_lint"
+        "n2d_perf_tb"
       ],
       "defines": [
         "N2D_PERF_HALF_WIDTH"
@@ -751,8 +735,7 @@
       "timeout_seconds": 600,
       "description": "nand2doom Doom performance harness on the real memory controller and a cycle-level SDRAM device, with the full-width DE2-115 framebuffer geometry",
       "libraries": [
-        "n2d_perf_tb",
-        "n2d_jtag_system_lint"
+        "n2d_perf_tb"
       ],
       "defines": [
         "N2D_PERF_SDRAM"
@@ -767,8 +750,7 @@
       "timeout_seconds": 600,
       "description": "nand2doom Doom performance harness on the real memory controller and a cycle-level SDRAM device, with the half-width DE10-Lite framebuffer geometry",
       "libraries": [
-        "n2d_perf_tb",
-        "n2d_jtag_system_lint"
+        "n2d_perf_tb"
       ],
       "defines": [
         "N2D_PERF_SDRAM",
@@ -784,8 +766,7 @@
       "timeout_seconds": 600,
       "description": "nand2doom Doom performance harness on the two-cycle fast line model, with a bounded FST waveform window, with the full-width DE2-115 framebuffer geometry",
       "libraries": [
-        "n2d_perf_tb",
-        "n2d_jtag_system_lint"
+        "n2d_perf_tb"
       ],
       "defines": [
         "N2D_PERF_FST"
@@ -801,8 +782,7 @@
       "timeout_seconds": 600,
       "description": "nand2doom Doom performance harness on the real memory controller and a cycle-level SDRAM device, with a bounded FST waveform window, with the full-width DE2-115 framebuffer geometry",
       "libraries": [
-        "n2d_perf_tb",
-        "n2d_jtag_system_lint"
+        "n2d_perf_tb"
       ],
       "defines": [
         "N2D_PERF_SDRAM",

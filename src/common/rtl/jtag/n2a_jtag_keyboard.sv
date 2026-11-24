@@ -15,17 +15,24 @@ module n2a_jtag_keyboard (
     import n2a_jtag_keyboard_pkg::*;
 
     localparam logic [63:0] RESET_RESPONSE = {STATUS_MAGIC, 56'd0};
-    logic sys_reset, scan_reset;
-    n2a_reset_sync u_sys_reset (.clk_i(clk_i), .async_reset_i(reset_i), .reset_o(sys_reset));
-    n2a_reset_sync u_scan_reset (.clk_i(tck_i), .async_reset_i(reset_i), .reset_o(scan_reset));
+    // Why: reset_i is synchronous to clk_i and resets the system domain directly.
+    // The scan domain's synchronizer takes it from a flop, so reset_i is never an
+    // asynchronous reset itself and the crossing starts glitch-free.
+    logic scan_reset_request_q, scan_reset;
+    `DFF(scan_reset_request_q, reset_i, clk_i)
+    n2a_reset_sync u_scan_reset (.clk_i(tck_i), .async_reset_i(scan_reset_request_q),
+        .reset_o(scan_reset));
 
     t_scan scan_q, scan_d;
     localparam t_scan SCAN_RESET = '{response: RESET_RESPONSE, default: '0};
     logic ack_sync, req_sync, ack_q;
     logic [63:0] response_q;
-    n2a_cdc_bit_sync u_req (.clk_i(clk_i), .reset_i(sys_reset),
+    n2a_cdc_bit_sync u_req (.clk_i(clk_i), .reset_i(reset_i),
         .async_i(scan_q.request), .sync_o(req_sync));
-    n2a_cdc_bit_sync u_ack (.clk_i(tck_i), .reset_i(scan_reset),
+    // Why: u_ack has no reset, so scan_reset is only ever an asynchronous
+    // reset. Its value is never read stale: scan_q reads ack_sync only while
+    // busy, and busy needs a 64-bit scan first, long after the chain fills.
+    n2a_cdc_bit_sync u_ack (.clk_i(tck_i), .reset_i(1'b0),
         .async_i(ack_q), .sync_o(ack_sync));
 
     always_comb begin
@@ -68,6 +75,9 @@ module n2a_jtag_keyboard (
             end
         end
     end
+    // Why: TCK runs only during a scan, so scan_q must reset while TCK is stopped.
+    // A stale request toggle would otherwise reach the system domain after its
+    // reset and replay an old command.
     `DFF_ARST_VAL(scan_q, scan_d, tck_i, scan_reset, SCAN_RESET)
     assign tdo_o = (ir_i == 2'd1 || ir_i == 2'd2) ? scan_q.shift_data[0] : scan_q.bypass;
 
@@ -83,7 +93,7 @@ module n2a_jtag_keyboard (
     // Why: byte and valid leave from registers and inject_ready_i is registered
     // into take, so only the consumer's FIFO write edge counts as acceptance,
     // never a byte merely staged.
-    assign inject_valid_o = q.valid && !sys_reset && !reset_i;
+    assign inject_valid_o = q.valid && !reset_i;
     assign inject_byte_o = q.byte_data;
 
     always_comb begin
@@ -152,9 +162,9 @@ module n2a_jtag_keyboard (
             default: d.phase = KBD_IDLE;
         endcase
     end
-    `DFF_ARST_VAL(q, d, clk_i, sys_reset, SYSTEM_RESET)
-    `ASSERT_CLOCKED_ARST_FATAL(clk_i, sys_reset, d.response == q.response || d.ack != q.ack,
+    `DFF_RST_VAL(q, d, clk_i, reset_i, SYSTEM_RESET)
+    `ASSERT_CLOCKED_FATAL(clk_i, reset_i, d.response == q.response || d.ack != q.ack,
         "Unsynchronized response changed without ack")
-    `ASSERT_CLOCKED_ARST_FATAL(clk_i, sys_reset, q.accepted <= 3'(MAX_BATCH_CODES), "Prefix exceeded batch limit")
-    `ASSERT_CLOCKED_ARST_FATAL(clk_i, sys_reset, !q.valid || q.phase == KBD_OFFER, "Byte outside offer phase")
+    `ASSERT_CLOCKED_FATAL(clk_i, reset_i, q.accepted <= 3'(MAX_BATCH_CODES), "Prefix exceeded batch limit")
+    `ASSERT_CLOCKED_FATAL(clk_i, reset_i, !q.valid || q.phase == KBD_OFFER, "Byte outside offer phase")
 endmodule

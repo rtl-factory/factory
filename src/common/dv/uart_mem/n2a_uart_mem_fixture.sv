@@ -148,12 +148,12 @@ module n2a_uart_mem_fixture #(
             cpu_wdata_d = {lfsr_q, lfsr_q ^ 16'ha5c3};
         end
     end
-    `DFF_ARST_VAL(lfsr_q, lfsr_d, clk_i, reset_i, 16'hace1)
-    `DFF_ARST_VAL(hold_count_q, hold_count_d, clk_i, reset_i, '0)
-    `DFF_ARST_VAL(cpu_valid_q, cpu_valid_d, clk_i, reset_i, 1'b0)
-    `DFF_ARST_VAL(cpu_write_q, cpu_write_d, clk_i, reset_i, 1'b0)
-    `DFF_ARST_VAL(cpu_addr_q, cpu_addr_d, clk_i, reset_i, '0)
-    `DFF_ARST_VAL(cpu_wdata_q, cpu_wdata_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(lfsr_q, lfsr_d, clk_i, reset_i, 16'hace1)
+    `DFF_RST_VAL(hold_count_q, hold_count_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(cpu_valid_q, cpu_valid_d, clk_i, reset_i, 1'b0)
+    `DFF_RST_VAL(cpu_write_q, cpu_write_d, clk_i, reset_i, 1'b0)
+    `DFF_RST_VAL(cpu_addr_q, cpu_addr_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(cpu_wdata_q, cpu_wdata_d, clk_i, reset_i, '0)
 
     logic        ram_write;
     logic [10:0] ram_address;
@@ -173,8 +173,8 @@ module n2a_uart_mem_fixture #(
         .write_data_i(ram_wdata), .read_data_o(ram_rdata));
     assign rsp_valid_d = ep_accept;
     assign rsp_error_d = ep_accept && mem_error_i;
-    `DFF_ARST_VAL(raw_valid_q, rsp_valid_d, clk_i, reset_i, 1'b0)
-    `DFF_ARST_VAL(raw_error_q, rsp_error_d, clk_i, reset_i, 1'b0)
+    `DFF_RST_VAL(raw_valid_q, rsp_valid_d, clk_i, reset_i, 1'b0)
+    `DFF_RST_VAL(raw_error_q, rsp_error_d, clk_i, reset_i, 1'b0)
     // Why: the data is captured on the clock after acceptance, as the RAM reads
     // it, so mem_rsp_delay_i changes only when the response arrives, not its data.
     assign held_release = held_valid_q && (held_count_q == 16'd0);
@@ -191,10 +191,10 @@ module n2a_uart_mem_fixture #(
             held_count_d = mem_rsp_delay_i - 16'd1;
         end
     end
-    `DFF_ARST_VAL(held_valid_q, held_valid_d, clk_i, reset_i, 1'b0)
-    `DFF_ARST_VAL(held_error_q, held_error_d, clk_i, reset_i, 1'b0)
-    `DFF_ARST_VAL(held_data_q, held_data_d, clk_i, reset_i, '0)
-    `DFF_ARST_VAL(held_count_q, held_count_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(held_valid_q, held_valid_d, clk_i, reset_i, 1'b0)
+    `DFF_RST_VAL(held_error_q, held_error_d, clk_i, reset_i, 1'b0)
+    `DFF_RST_VAL(held_data_q, held_data_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(held_count_q, held_count_d, clk_i, reset_i, '0)
     assign mem_rsp_valid = (raw_valid_q && (mem_rsp_delay_i == 16'd0)) || held_release;
     assign mem_rsp_error = held_release ? held_error_q : raw_error_q;
     assign mem_rsp_rdata = held_release ? held_data_q : ram_rdata;

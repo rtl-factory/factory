@@ -32,11 +32,6 @@
 // simulation preload path and shares the backing's load port with the
 // loader. This is the single growing full-system simulation top; later
 // subsystems attach here.
-//
-// reset_i is the synchronous system reset; the common UART PHYs and endpoint
-// inside the link assert it asynchronously by their own contract, and the
-// mixed use is intended (the link documents the waiver).
-/* verilator lint_off SYNCASYNCNET */
 module n2m_system #(
     parameter int unsigned CART_ROM_BYTES = 2097152,
     parameter int unsigned CART_RAM_BYTES = 32768,
@@ -683,4 +678,3 @@ module n2m_system #(
     `ASSERT_NEVER(system_load_one_outstanding, clk_i, reset_i,
         load_accept && load_outstanding_q)
 endmodule
-/* verilator lint_on SYNCASYNCNET */

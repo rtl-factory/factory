@@ -44,7 +44,5 @@ module n2a_ps2_decoder (
         if (clear_i) pending_d = PENDING_RESET;
     end
 
-    // Why: asynchronous like the receiver, so one reset style serves a
-    // keyboard built from both (wiki/src/common/rtl/ps2/mas.md#clocks-and-resets).
-    `DFF_ARST_VAL(pending_q, pending_d, clk_i, reset_i, PENDING_RESET)
+    `DFF_RST_VAL(pending_q, pending_d, clk_i, reset_i, PENDING_RESET)
 endmodule

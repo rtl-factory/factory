@@ -114,18 +114,16 @@ module n2a_ps2_receiver #(
         end
     end
 
-    // Why: the receiver resets with its pin synchronizers, whose reset is
-    // asynchronous (wiki/src/common/rtl/ps2/mas.md#clocks-and-resets).
-    `DFF_ARST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
-    `DFF_ARST_VAL(frame_timeout_q, frame_timeout_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
+    `DFF_RST_VAL(frame_timeout_q, frame_timeout_d, clk_i, reset_i, '0)
 
-    `ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i,
+    `ASSERT_CLOCKED_FATAL(clk_i, reset_i,
         regs_q.index <= STOP_BIT_INDEX,
         "n2a_ps2_receiver bit index past the stop bit")
-    `ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i,
+    `ASSERT_CLOCKED_FATAL(clk_i, reset_i,
         regs_q.active || (regs_q.index == 4'd0),
         "n2a_ps2_receiver bit index outside a frame")
-    `ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i,
+    `ASSERT_CLOCKED_FATAL(clk_i, reset_i,
         !(byte_valid_o && (errors_o != '0)),
         "n2a_ps2_receiver reported a byte and an error together")
 endmodule

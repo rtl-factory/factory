@@ -148,18 +148,18 @@ module n2a_uart_rx #(
         endcase
     end
 
-    // Why: every register shares one asynchronous reset, so the receiver leaves
-    // reset as a whole and no half-received frame survives it.
-    `DFF_ARST_VAL(protocol_q, protocol_d, clk_i, reset_i, PROTOCOL_RESET)
-    `DFF_ARST_VAL(bit_clock_q, bit_clock_d, clk_i, reset_i, '0)
-    `DFF_ARST_VAL(frac_acc_q, frac_acc_d, clk_i, reset_i, '0)
-    `DFF_ARST_VAL(byte_o, byte_d, clk_i, reset_i, 8'h00)
-    `DFF_ARST_VAL(byte_valid_o, byte_valid_d, clk_i, reset_i, 1'b0)
-    `DFF_ARST_VAL(framing_error_o, framing_error_d, clk_i, reset_i, 1'b0)
+    // Why: every register shares one reset, so the receiver leaves reset as a
+    // whole and no half-received frame survives it.
+    `DFF_RST_VAL(protocol_q, protocol_d, clk_i, reset_i, PROTOCOL_RESET)
+    `DFF_RST_VAL(bit_clock_q, bit_clock_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(frac_acc_q, frac_acc_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(byte_o, byte_d, clk_i, reset_i, 8'h00)
+    `DFF_RST_VAL(byte_valid_o, byte_valid_d, clk_i, reset_i, 1'b0)
+    `DFF_RST_VAL(framing_error_o, framing_error_d, clk_i, reset_i, 1'b0)
 
-    `ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, !$isunknown(rx_sync),
+    `ASSERT_CLOCKED_FATAL(clk_i, reset_i, !$isunknown(rx_sync),
         "n2a_uart_rx synchronized input is unknown")
-    `ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i,
+    `ASSERT_CLOCKED_FATAL(clk_i, reset_i,
         !(byte_valid_o && framing_error_o),
         "n2a_uart_rx valid and error overlap")
 endmodule

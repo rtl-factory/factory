@@ -46,7 +46,7 @@ python3 tools/fv/fv.py run --all
 yosys-slang, the SystemVerilog front end in the suite, is what parses the repository's packages, structs and `import` (the built-in Yosys reader does not). Two limits shape the harnesses and the RTL:
 
 - Concurrent assertions with sequence operators (`|=>`, `##`) are not supported; harnesses write history registers and immediate assertions instead.
-- Sampled-value functions (`$stable`, `$past`, `$rose`, `$fell`) are rejected inside a process with an asynchronous reset. The repository's `ASSERT_CLOCKED_ARST_*` checks that use them must compare against a previous-edge register instead before the block can be proven, as `n2d_ps2_keyboard` does.
+- Sampled-value functions (`$stable`, `$past`, `$rose`, `$fell`) are rejected inside a process with an asynchronous reset. Only the reset synchronizer and the JTAG scan domain reset asynchronously ([RTL coding](../../bkm/rtl.md#rules-reset-and-clocks)).
 
 ## Under Bazel
 

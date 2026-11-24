@@ -509,13 +509,16 @@ EVIDENCE_FIELDS = {"schema", "gate", "stage", "project", "board", "top", "device
 def required_timing(config: dict, system_clock: str, clocks: dict) -> set:
     """The (corner, check, clock) rows the timing summary must hold."""
     corners = config["timing_corners"]
-    required = {(corner, kind, system_clock) for corner in corners for kind in TIMING_KINDS}
+    required = {(corner, kind, system_clock) for corner in corners for kind in ("Setup", "Hold", "Minimum Pulse Width")}
     required |= {(corner, kind, clock) for corner in corners
                  for kind in ("Setup", "Hold") for clock in config["forwarded_clocks"]}
     required |= {(corner, "Minimum Pulse Width", "reference") for corner in corners}
     if config["jtag_clock"]:
-        required |= {(corner, kind, JTAG_CLOCK["name"]) for corner in corners
-                     for kind in ("Setup", "Hold", "Minimum Pulse Width")}
+        # Why: outside the reset synchronizers, whose asynchronous inputs are untimed
+        # (a board pin, PLL lock, or a crossing the SDC cuts), only the JTAG scan domain
+        # resets asynchronously (wiki/bkm/rtl.md, Rules: reset and clocks), so recovery
+        # and removal are required on TCK; the system clock has none to report.
+        required |= {(corner, kind, JTAG_CLOCK["name"]) for corner in corners for kind in TIMING_KINDS}
     return required
 
 

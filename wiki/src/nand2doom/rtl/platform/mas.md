@@ -148,11 +148,10 @@ signature stays in SDRAM and is checked after a precise UART halt.
 
 ## Clocks and resets
 
-One clock, `clk_i` (25 MHz). The UART and PS/2 PHYs need asynchronous reset
-assertion while the product datapaths use synchronous reset, so `n2d_system`
-shares the externally asserted `reset_i` level with both, and the board top
-synchronizes its release outside this boundary (through `n2a_reset_sync`,
-held until SDRAM initialization completes;
+One clock, `clk_i` (25 MHz). Every block inside resets synchronously on
+`reset_i`; the board top asserts it asynchronously and synchronizes its release
+outside this boundary (through `n2a_reset_sync`, held until SDRAM
+initialization completes;
 [board requirements](../../fpga/de10_lite/board-spec.md#requirements)). The
 only crossing inside is the JTAG scan domain, owned by `n2a_jtag_keyboard`
 ([io](../io/mas.md#jtag-keyboard-composition)).

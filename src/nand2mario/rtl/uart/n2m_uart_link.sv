@@ -9,12 +9,6 @@
 // cartridge backing's load port through n2m_uart_mem_port; its hold joins the
 // loader's, so either one holds the console core in reset. Entry is
 // accepted only at the cartridge entry point, where the boot ROM hands over.
-//
-// reset_i is the synchronous system reset. The common UART PHYs and the
-// endpoint assert it asynchronously by their own contract; because reset_i
-// is a registered system signal whose release is synchronous to clk_i, the
-// mixed use is intended (the same waiver as the Doom and Hack system tops).
-/* verilator lint_off SYNCASYNCNET */
 module n2m_uart_link #(
     parameter int unsigned CLKS_PER_BIT = 217,
     parameter int unsigned FRAC_NUM = 0,
@@ -154,4 +148,3 @@ module n2m_uart_link #(
 
     `ASSERT_NEVER(load_port_shared, clk_i, reset_i, port_busy && loader_busy)
 endmodule
-/* verilator lint_on SYNCASYNCNET */

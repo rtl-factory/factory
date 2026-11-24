@@ -128,10 +128,8 @@ free-running 25 MHz clock:
   each arrives complete, once, in order, with no overflow.
 
 A white-box monitor checks every offer against the arbitration rule and
-requires each refusal reason to occur. System targets tie the scan ports idle
-and list `src/nand2doom/dv/io/n2d_jtag_system_lint.v`, whose waivers are
-`SYNCASYNCNET` on the endpoint's `u_sys_reset` and `u_scan_reset` stages and
-`DECLFILENAME` on the common `sld_virtual_jtag` stub. Both board targets
+requires each refusal reason to occur. System targets tie the scan ports idle.
+Both board targets
 (`n2d_de10_lite`, `n2d_de2_115`) elaborate the board top's
 `n2a_jtag_virtual` on that stub and play the hub through it
 (`board_jtag.py`): with

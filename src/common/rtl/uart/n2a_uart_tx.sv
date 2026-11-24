@@ -59,6 +59,9 @@ module n2a_uart_tx #(
             UART_DATA:  tx_o = protocol_q.shift[protocol_q.bit_index];
             default:    tx_o = 1'b1;
         endcase
+        // Why: reset holds the line idle at once, even before clk_i runs, so the
+        // host never sees a start bit from a frame cut short by reset.
+        if (reset_i) tx_o = 1'b1;
     end
 
     always_comb begin
@@ -122,14 +125,13 @@ module n2a_uart_tx #(
         endcase
     end
 
-    // Why: an asynchronous reset holds the line idle even before clk_i runs.
-    `DFF_ARST_VAL(protocol_q, protocol_d, clk_i, reset_i, PROTOCOL_RESET)
-    `DFF_ARST_VAL(bit_clock_q, bit_clock_d, clk_i, reset_i, '0)
-    `DFF_ARST_VAL(frac_acc_q, frac_acc_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(protocol_q, protocol_d, clk_i, reset_i, PROTOCOL_RESET)
+    `DFF_RST_VAL(bit_clock_q, bit_clock_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(frac_acc_q, frac_acc_d, clk_i, reset_i, '0)
 
-    `ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, !$isunknown(byte_valid_i),
+    `ASSERT_CLOCKED_FATAL(clk_i, reset_i, !$isunknown(byte_valid_i),
         "n2a_uart_tx byte_valid_i is unknown")
-    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i,
+    `ASSERT_CLOCKED_FATAL_WHEN(clk_i, reset_i,
         (byte_valid_i && byte_ready_o), !$isunknown(byte_i),
         "n2a_uart_tx accepted unknown byte_i")
 endmodule

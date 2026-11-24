@@ -35,8 +35,8 @@
     // Armed one edge after RESET releases: NAME_armed_q is assertion state only.
     `define ASSERT_AFTER_RESET(NAME, CLK, RESET, PROPERTY) \
         logic NAME``_armed_q; \
-        `DFF_ARST_VAL(NAME``_armed_q, 1'b1, CLK, RESET, 1'b0) \
-        `ASSERT(NAME, CLK, !NAME``_armed_q, PROPERTY)
+        `DFF_RST_VAL(NAME``_armed_q, 1'b1, CLK, RESET, 1'b0) \
+        `ASSERT(NAME, CLK, (RESET) || !NAME``_armed_q, PROPERTY)
 
     // Simulation-only support register for assertions (counters, history).
     // NEXT must be an inline expression; nothing outside assertions may read NAME.
@@ -107,33 +107,6 @@
         end \
     end
 
-// Asynchronous-reset processes: the original assert lived in the else branch
-// of `always_ff @(posedge CLK or posedge RESET) if (RESET) ... else ...`.
-// These forms keep that exact shape: the first condition tests RESET with
-// the polarity of its edge (required by Quartus template matching, Error
-// 10200 otherwise) and the body sits in the else branch, so a four-state
-// RESET of X takes the else branch exactly as the original process did. A
-// RESET asserted to 1 inhibits the body at any event; at a CLK edge (or a
-// four-state 0->X reset event) the body runs when RESET is not 1. Two-state
-// simulation cannot observe the X case.
-`define ASSERT_CLOCKED_ARST_FATAL_UNGUARDED(CLK, RESET, CONDITION, MESSAGE) \
-    always_ff @(posedge (CLK) or posedge (RESET)) begin \
-        if (RESET) begin \
-        end else begin \
-            assert (CONDITION) else $fatal(1, MESSAGE); \
-        end \
-    end
-
-`define ASSERT_CLOCKED_ARST_FATAL_WHEN_UNGUARDED(CLK, RESET, GUARD, CONDITION, MESSAGE) \
-    always_ff @(posedge (CLK) or posedge (RESET)) begin \
-        if (RESET) begin \
-        end else begin \
-            if (GUARD) begin \
-                assert (CONDITION) else $fatal(1, MESSAGE); \
-            end \
-        end \
-    end
-
 `ifndef SYNTHESIS
     `define ASSERT_CLOCKED(CLK, RESET, CONDITION) \
         always_ff @(posedge (CLK)) begin \
@@ -163,29 +136,6 @@
     `define ASSERT_CLOCKED_ERROR_WHEN(CLK, RESET, GUARD, CONDITION, MESSAGE) \
         `ASSERT_CLOCKED_ERROR_WHEN_UNGUARDED(CLK, RESET, GUARD, CONDITION, MESSAGE)
 
-    `define ASSERT_CLOCKED_ARST(CLK, RESET, CONDITION) \
-        always_ff @(posedge (CLK) or posedge (RESET)) begin \
-            if (RESET) begin \
-            end else begin \
-                assert (CONDITION); \
-            end \
-        end
-
-    `define ASSERT_CLOCKED_ARST_WHEN(CLK, RESET, GUARD, CONDITION) \
-        always_ff @(posedge (CLK) or posedge (RESET)) begin \
-            if (RESET) begin \
-            end else begin \
-                if (GUARD) begin \
-                    assert (CONDITION); \
-                end \
-            end \
-        end
-
-    `define ASSERT_CLOCKED_ARST_FATAL(CLK, RESET, CONDITION, MESSAGE) \
-        `ASSERT_CLOCKED_ARST_FATAL_UNGUARDED(CLK, RESET, CONDITION, MESSAGE)
-
-    `define ASSERT_CLOCKED_ARST_FATAL_WHEN(CLK, RESET, GUARD, CONDITION, MESSAGE) \
-        `ASSERT_CLOCKED_ARST_FATAL_WHEN_UNGUARDED(CLK, RESET, GUARD, CONDITION, MESSAGE)
 
     // Time-zero default-action check, simulation only.
     `define ASSERT_INITIAL(CONDITION) \
@@ -199,10 +149,6 @@
     `define ASSERT_CLOCKED_ERROR(CLK, RESET, CONDITION, MESSAGE)
     `define ASSERT_CLOCKED_FATAL_WHEN(CLK, RESET, GUARD, CONDITION, MESSAGE)
     `define ASSERT_CLOCKED_ERROR_WHEN(CLK, RESET, GUARD, CONDITION, MESSAGE)
-    `define ASSERT_CLOCKED_ARST(CLK, RESET, CONDITION)
-    `define ASSERT_CLOCKED_ARST_WHEN(CLK, RESET, GUARD, CONDITION)
-    `define ASSERT_CLOCKED_ARST_FATAL(CLK, RESET, CONDITION, MESSAGE)
-    `define ASSERT_CLOCKED_ARST_FATAL_WHEN(CLK, RESET, GUARD, CONDITION, MESSAGE)
     `define ASSERT_INITIAL(CONDITION)
 `endif
 

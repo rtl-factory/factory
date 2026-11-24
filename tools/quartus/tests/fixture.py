@@ -231,9 +231,9 @@ def write_build(root: Path, output: Path, config: dict) -> Path:
         (reports / f"{project}.{name}").write_text("fixture\n")
     timing = []
     for corner in config["timing_corners"]:
-        for clock, kinds in ((SYSTEM_CLOCK, ("Setup", "Hold", "Recovery", "Removal", "Minimum Pulse Width")),
+        for clock, kinds in ((SYSTEM_CLOCK, ("Setup", "Hold", "Minimum Pulse Width")),
                              *((name, ("Setup", "Hold")) for name in config["forwarded_clocks"]),
-                             ("jtag_tck", ("Setup", "Hold", "Minimum Pulse Width")),
+                             ("jtag_tck", ("Setup", "Hold", "Recovery", "Removal", "Minimum Pulse Width")),
                              ("reference", ("Minimum Pulse Width",))):
             timing += [f"Type : {corner} Model {kind} '{clock}'\nSlack : 0.125\nTNS : 0.000\n" for kind in kinds]
         label = build.corner_label(corner)

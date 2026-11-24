@@ -21,9 +21,10 @@ module n2a_cdc_bit_sync #(
 
     assign stages_d = {stages_q[IMPLEMENTATION_STAGES-2:0], async_i};
 
-    // Asynchronous reset loads every stage with RESET_VALUE (owning HAS).
+    // Why: reset loads every stage with RESET_VALUE, the input's resting level,
+    // so leaving reset shows no false edge.
     localparam logic [IMPLEMENTATION_STAGES-1:0] STAGES_RESET = {IMPLEMENTATION_STAGES{RESET_VALUE}};
-    `DFF_ARST_VAL(stages_q, stages_d, clk_i, reset_i, STAGES_RESET)
+    `DFF_RST_VAL(stages_q, stages_d, clk_i, reset_i, STAGES_RESET)
 
     assign sync_o = stages_q[IMPLEMENTATION_STAGES-1];
 endmodule
