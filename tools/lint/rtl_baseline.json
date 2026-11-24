@@ -20,7 +20,7 @@
   "src/nand2mario/rtl/core/n2m_cpu_stop_policy.sv": 6
  },
  "verilator": {
-  "n2m_de10_lite": 12,
-  "n2m_de2_115": 12
+  "n2m_de10_lite": 11,
+  "n2m_de2_115": 11
  }
 }

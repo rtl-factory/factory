@@ -22,7 +22,9 @@ from src.common.scripts.jtag import n2a_jtag_keyboard as jtag  # noqa: E402
 CONFIG = "src/nand2mario/cfg/n2m_quartus.json"
 TOP = ROOT / "src/nand2mario/fpga/de10_lite/n2m_de10_lite.sv"
 PAIRS = (("src/common/fpga/de10_lite/n2a_de10_lite_clock_portable.sv", "src/common/fpga/de10_lite/n2a_de10_lite_clock_intel.sv"),
-         ("src/common/rtl/memory/n2a_sdp_ram_portable.sv", "src/common/rtl/memory/n2a_sdp_ram_intel.sv"))
+         ("src/common/rtl/memory/n2a_sdp_ram_portable.sv", "src/common/rtl/memory/n2a_sdp_ram_intel.sv"),
+         ("src/common/rtl/memory/n2a_tdp_ram_portable.sv", "src/common/rtl/memory/n2a_tdp_ram_intel.sv"),
+         ("src/common/rtl/memory/n2a_sync_ram.sv", "src/common/rtl/memory/n2a_sync_ram_intel.sv"))
 
 
 def setUpModule():

@@ -241,9 +241,9 @@ async def release_and_verify(dut, system, host, image):
     assert int(dut.halted_o.value) == 1, 'CPU must report HALT after the halting retirement'
     assert banks_executed == set(range(BANKS)), ('code executes from bank 0 and every switched bank', sorted(banks_executed))
 
-    wram_observed, wram_expected = defined_signature(store_bytes(system.u_memory.u_wram.memory), memory, 'wram')
+    wram_observed, wram_expected = defined_signature(store_bytes(system.u_memory.u_wram.u_ram.memory), memory, 'wram')
     compare_signature(wram_observed, wram_expected, 'WRAM')
-    wram = store_bytes(system.u_memory.u_wram.memory)
+    wram = store_bytes(system.u_memory.u_wram.u_ram.memory)
     # Why: the mode-1 low window selects BANK2 << 5 = 32, which the 8-bank mask
     # reduces to bank 0: both low-window reads see bank 0's unused $FF bytes.
     pinned = {0x00: 0x53, 0x01: 0xFF, 0x02: 0xFF, 0x03: 0x60, 0x04: 0xFF, 0x13: 0x01, 0x14: BANKS - 1}

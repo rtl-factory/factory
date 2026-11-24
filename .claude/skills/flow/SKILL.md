@@ -14,4 +14,4 @@ Every change runs this loop. The rules for each step are in `wiki/bkm/flow.md`; 
 7. **Review**: a reviewer crewmate with a fresh context reviews it (`review`); fix and return to step 5 until it passes.
 8. **Approve**: the reviewer's pass, plus a captain's word when the pull request needs captain.
 9. **Land**: the first mate merges once checks are green: squash for an issue branch, merge commit for an epic branch (`land`).
-10. **Clean up**: remove the worktree and the branch.
+10. **Clean up**: `python3 tools/worktree/worktree.py remove worktrees/issue-<number>` expunges the worktree's Bazel output base, then removes the worktree and its landed branch; never use `git worktree remove` alone.

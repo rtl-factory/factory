@@ -13,6 +13,14 @@ STATUS = 0x004
 CONTROL = 0x008
 INJECT = 0x00C
 BIT_VALID = 1 << 31
+# Ref: PS/2 scan code set 2: 1D is W, E0 75 is up arrow, F0 prefixes a break.
+SCAN_W, SCAN_UP = 0x1D, 0x75
+PREFIX_EXTENDED, PREFIX_BREAK = 0xE0, 0xF0
+
+
+def key_event(code: int, *, extended: bool = False, key_break: bool = False) -> int:
+    """The DATA event of one key: {extended, break, code} in bits 9..0."""
+    return (int(extended) << 9) | (int(key_break) << 8) | code
 
 
 async def reset_dut(dut) -> None:
@@ -191,20 +199,20 @@ async def ps2_keyboard_serial_mmio_contract(dut) -> None:
     assert status & (1 << 12)
     assert ((status >> 3) & 0xF) == 0
 
-    # Ref: PS/2 scan code set 2: 1D is W, E0 75 is up arrow, F0 prefixes a break.
-    await send_frame(dut, 0x1D)  # W make
-    await send_frame(dut, 0xF0)
-    await send_frame(dut, 0x1D)  # W break
-    await send_frame(dut, 0xE0)
-    await send_frame(dut, 0x75)  # up-arrow make
-    await send_frame(dut, 0xE0)
-    await send_frame(dut, 0xF0)
-    await send_frame(dut, 0x75)  # up-arrow break
+    strokes = (
+        (SCAN_W,),
+        (PREFIX_BREAK, SCAN_W),
+        (PREFIX_EXTENDED, SCAN_UP),
+        (PREFIX_EXTENDED, PREFIX_BREAK, SCAN_UP),
+    )
+    for stroke in strokes:
+        for value in stroke:
+            await send_frame(dut, value)
     assert [await pop_event(dut) for _ in range(4)] == [
-        0x01D,
-        0x11D,
-        0x275,
-        0x375,
+        key_event(SCAN_W),
+        key_event(SCAN_W, key_break=True),
+        key_event(SCAN_UP, extended=True),
+        key_event(SCAN_UP, extended=True, key_break=True),
     ]
 
     await send_frame(dut, 0x29)
@@ -329,7 +337,7 @@ async def ps2_keyboard_serial_mmio_contract(dut) -> None:
 
     # Why: without the control boundary a stale prefix could qualify the next
     # recovered event.
-    await send_frame(dut, 0xE0)
+    await send_frame(dut, PREFIX_EXTENDED)
     _, error = await mmio(
         dut,
         CONTROL,
@@ -338,8 +346,8 @@ async def ps2_keyboard_serial_mmio_contract(dut) -> None:
         strobe=1,
     )
     assert error == 0
-    await send_frame(dut, 0x75)
-    assert await pop_event(dut) == 0x075
+    await send_frame(dut, SCAN_UP)
+    assert await pop_event(dut) == key_event(SCAN_UP)
 
     await clear_all(dut, enabled=False)
     await send_frame(dut, 0x2D)

@@ -19,7 +19,7 @@ The path every change takes from intent to `main`, the CI levels that gate it, t
 7. **Review.** The first mate dispatches a reviewer crewmate; it reviews against the issue, the spec and the BKMs and posts its findings as a pull request review. Fix the findings and return to step 5 until the reviewer passes the pull request.
 8. **Approve.** Treat the reviewer's pass as approval, unless the pull request needs captain (see Merging); then wait for a captain to say it is ready, and record that as a pull request comment.
 9. **Land.** Once approved and the required checks are green, the first mate merges it (see Merging).
-10. **Clean up.** Remove the worktree and delete the issue branch.
+10. **Clean up.** Run `python3 tools/worktree/worktree.py remove worktrees/issue-<number>` (with `--base origin/<epic branch>` for an issue of an epic): it expunges the worktree's Bazel output base, which also stops its Bazel server, then removes the worktree and deletes the issue branch once it has landed ([worktree spec](../tools/worktree/spec.md)). Then run `python3 tools/worktree/worktree.py orphans --remove` to delete output bases left by worktrees removed some other way.
 
 ### Rules
 
@@ -29,6 +29,7 @@ The path every change takes from intent to `main`, the CI levels that gate it, t
 - A change to a block, a script or a tool must change its code and its spec in the same pull request. Why: a spec that lags the code misleads the next reader.
 - A pull request into `main` must close at least one issue. Why: nothing lands without a decision behind it; the `issue-link` check enforces it.
 - Related issues should be linked ("blocked by", "relates to"), not made into an epic. Why: an epic is for landing together, not for grouping.
+- Remove a worktree only with the worktree tool, never with `git worktree remove` or `rm` alone. Why: each worktree has its own Bazel output base (gigabytes) and server, which git leaves behind; on 2026-11-24, 19 orphaned output bases and 6 idle servers filled the disk (#208).
 
 ### Merging
 
@@ -52,7 +53,7 @@ Use an epic only when several issues cannot reach `main` one by one: each would 
 
 ### Exit criteria
 
-- The pull request is merged, every issue it closes is closed, and the worktree and branch are gone.
+- The pull request is merged, every issue it closes is closed, and the worktree, its Bazel output base and the branch are gone.
 
 ## CI levels
 
@@ -144,7 +145,7 @@ How to build and check anything in the factory with Bazel: run a regression leve
 - Declare a simulation target only in `src/<project>/cfg/targets.json`, a formal target only as its `.sby` file with its `# level:` and `# timeout:` header, unit tests only as a `tests/` folder in a package that calls `unit_tests()`, and a lint top only by its library (every design root and common block is one; a vendor primitive's stand-in it needs goes in the `lint` object of `src/<project>/cfg/targets.json`); never write a Bazel target for them by hand. Why: the registry is the one list of targets, and Bazel reads it ([Bazel spec](../tools/bazel/spec.md)).
 - Name a target's libraries, never its files: a simulation target its top (and `libraries`, `flavors` when it needs more), a formal target `# library:`, a board manifest `libraries`. After adding, renaming or moving an HDL file, or a new instance, package or include, run `python3 tools/bazel/hdl_libraries.py update` and commit the changed `libraries.json`. Keep `` `include `` files under `src/<project>/` with an `.svh` or `.vh` extension. Why: each design's files are declared once and derived from the HDL ([Bazel spec, Libraries](../tools/bazel/spec.md#libraries)); Bazel builds each model from those files only, so a stale list breaks the sandboxed build instead of leaving a stale cached result.
 - A test reads its data through paths inside the repository and writes only to `$TEST_UNDECLARED_OUTPUTS_DIR` or `$TEST_TMPDIR` (or the runner's work folder). Two tests that may run at once never write the same file; write a unique temporary file and rename it into place. Why: a test that reads a file Bazel did not declare can pass from the cache after that file changed, and parallel tests that share a file fail at random.
-- Never pass `--nocache_test_results`, delete the disk cache or run `bazel clean` to make a failure go away; find the input the cache missed and declare it. Why: a cache that needs clearing is a missing input, and clearing it hides the bug for the next agent.
+- Never pass `--nocache_test_results`, delete the disk cache or run `bazel clean` to make a failure go away (expunging a finished worktree's output base at [clean-up](#steps) is not that); find the input the cache missed and declare it. Why: a cache that needs clearing is a missing input, and clearing it hides the bug for the next agent.
 - Change a pin (`.bazelversion`, `MODULE.bazel`, `tools/sim/requirements*.txt`, `cfg/toolchain.json`) only through its own issue, and regenerate `tools/sim/requirements_lock.txt` with the command in its header. Why: a pin change reruns everything and can change every result.
 - Put machine-only Bazel settings (a registry mirror, `--action_env=QUARTUS_SH`, cache paths) in `user.bazelrc` or `~/.bazelrc`, and Bazelisk's own settings (`BAZELISK_BASE_URL`) in the environment or `~/.bazeliskrc`; never in `.bazelrc`. Why: `.bazelrc` is what CI and every agent share, and Bazelisk reads no `.bazelrc`.
 - State in a pull request's Evidence the Bazel command you ran, its `Executed N out of M tests` line and its failures. Why: the reviewer checks the same command, and the line shows what was cached.
