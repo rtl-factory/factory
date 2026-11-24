@@ -68,8 +68,8 @@
       "deps": [
         "macros",
         "n2a_cdc_bit_sync",
-        "n2a_reset_sync",
-        "n2a_types_pkg"
+        "n2a_jtag_keyboard_pkg",
+        "n2a_reset_sync"
       ],
       "srcs": [
         "src/common/rtl/jtag/n2a_jtag_keyboard.sv"
@@ -81,6 +81,11 @@
       ],
       "srcs": [
         "src/common/dv/jtag/n2a_jtag_keyboard_fixture.sv"
+      ]
+    },
+    "n2a_jtag_keyboard_pkg": {
+      "srcs": [
+        "src/common/rtl/jtag/n2a_jtag_keyboard_pkg.sv"
       ]
     },
     "n2a_jtag_virtual": {

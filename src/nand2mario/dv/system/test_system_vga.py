@@ -19,7 +19,7 @@ from ..core.test_cpu import unpack
 from ..memory.memory_model import GameBoyMemory
 from ..video import display_model as dm
 from ..video import ppu_model as m
-from .test_system import HALT_OPCODE, idle_host, interrupt_entry, load_image, power_up, ticks_at
+from .test_system import HALT_OPCODE, await_core_release, idle_host, interrupt_entry, load_image, power_up, ticks_at
 from .test_system_background import VideoPeripherals, compare_frame, dot_edge, dots_at
 
 CLOCK_PERIOD_NS = 40
@@ -67,6 +67,7 @@ async def system_vga_frame(dut):
     await RisingEdge(dut.clk_i)
     await FallingEdge(dut.clk_i)
     dut.reset_i.value = 0
+    cycles += await await_core_release(dut)
     release_edge = cycles
     release_ns = get_sim_time(unit='ns')
 

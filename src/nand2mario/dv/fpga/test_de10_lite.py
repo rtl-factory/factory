@@ -28,7 +28,7 @@ from src.common.dv.uart_mem import sim_host
 from src.common.scripts.uart_mem import uart_mem as um
 from ...scripts.board.cart_loader import CMD_PING, decode_response, encode_request, response_total_length
 from ..core.test_cpu import unpack
-from ..system.test_system import load_image, power_up
+from ..system.test_system import VRAM_BYTES, load_image, power_up
 from ..system.test_system_uart_mem import ENTRY, PROJECT, load_and_boot
 from ..video import display_model as dm
 from ..video import ppu_model as m
@@ -188,7 +188,11 @@ async def board_smoke(dut):
     await Timer(max(0, int(release_ns + (SDRAM_INITIALIZED_CLOCK + 4) * CLOCK_PERIOD_NS - get_sim_time(unit='ns'))) + 1,
                 unit='ns')
     await ReadOnly()
-    assert not int(dut.LEDR.value) & LED_RESET, 'the core runs once the SDRAM is initialized'
+    assert int(dut.LEDR.value) & LED_RESET, 'the VRAM sweep outlasts the SDRAM initialization'
+    await Timer(max(0, int(release_ns + (VRAM_BYTES + 8) * CLOCK_PERIOD_NS - get_sim_time(unit='ns'))) + 1,
+                unit='ns')
+    await ReadOnly()
+    assert not int(dut.LEDR.value) & LED_RESET, 'the core runs once the SDRAM is initialized and VRAM swept'
     response = await uart.exchange(encode_request(CMD_PING))
     assert response.ok and response.initialized and not response.held, response.describe()
     # Ref: wiki/src/common/scripts/uart_mem/spec.md "Load transaction": the board console's own load.
@@ -357,8 +361,8 @@ async def board_uart_mem_boot(dut):
                             REFERENCE_PERIOD_NS, unit='ns').start())
     await Timer(10 * REFERENCE_PERIOD_NS, unit='ns')
     dut.KEY.value = 0b11
-    await Timer((SDRAM_INITIALIZED_CLOCK + 16) * CLOCK_PERIOD_NS, unit='ns')
+    await Timer((max(SDRAM_INITIALIZED_CLOCK, VRAM_BYTES) + 16) * CLOCK_PERIOD_NS, unit='ns')
     await ReadOnly()
-    assert not int(dut.LEDR.value) & LED_RESET, 'the core runs once the SDRAM is initialized'
+    assert not int(dut.LEDR.value) & LED_RESET, 'the core runs once the SDRAM is initialized and VRAM swept'
     await writable()
     await load_and_boot(system, dut.UART_RXD, dut.UART_TXD, bound)

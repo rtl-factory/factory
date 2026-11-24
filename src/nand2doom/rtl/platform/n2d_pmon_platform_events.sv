@@ -58,18 +58,17 @@ module n2d_pmon_platform_events (
     t_pmon_track track_q, track_d;
     logic [2:0] line_accept;
     logic       uncached_accept;
-    logic [4:0] accept_owner;
+    t_pmon_owner accept_owner;
 
     assign line_accept = line_request_valid_i & line_request_ready_i;
     assign uncached_accept = data_accept_i && !data_sdram_i;
-    // Ref: wiki/src/nand2doom/rtl/core/mas.md "Performance monitor" events 87-91,
-    // bit 0 first: owner of a transaction accepted this clock is fetch, data
-    // demand read, data prefetch, data write (writeback or maintenance), debug.
-    assign accept_owner = {line_accept[2],
-        line_accept[1] && line_request_write_i[1],
-        line_accept[1] && !line_request_write_i[1] && line_request_prefetch_i,
-        line_accept[1] && !line_request_write_i[1] && !line_request_prefetch_i,
-        line_accept[0]};
+    // Ref: wiki/src/nand2doom/rtl/core/mas.md "Performance monitor" events 87-91.
+    assign accept_owner = '{
+        debug:         line_accept[2],
+        data_write:    line_accept[1] && line_request_write_i[1],
+        data_prefetch: line_accept[1] && !line_request_write_i[1] && line_request_prefetch_i,
+        data_read:     line_accept[1] && !line_request_write_i[1] && !line_request_prefetch_i,
+        fetch:         line_accept[0]};
 
     always_comb begin
         track_d = track_q;
@@ -87,7 +86,7 @@ module n2d_pmon_platform_events (
         // through its single response pulse.
         if (|line_response_valid_i) begin
             track_d.memory_busy = 1'b0;
-            track_d.owner = 5'b0;
+            track_d.owner = '0;
         end
         if (|line_accept) begin
             track_d.memory_busy = 1'b1;
@@ -131,5 +130,5 @@ module n2d_pmon_platform_events (
     `ASSERT_CLOCKED(clk_i, reset_i, $onehot0(line_accept))
     `ASSERT_CLOCKED_WHEN(clk_i, reset_i, track_q.memory_busy, line_accept == 3'b000)
     `ASSERT_CLOCKED(clk_i, reset_i, $onehot0(events_o[91:87]))
-    `ASSERT_CLOCKED(clk_i, reset_i, track_q.memory_busy == (track_q.owner != 5'b0))
+    `ASSERT_CLOCKED(clk_i, reset_i, track_q.memory_busy == (track_q.owner != '0))
 endmodule

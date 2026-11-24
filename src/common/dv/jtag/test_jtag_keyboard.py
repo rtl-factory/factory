@@ -7,15 +7,18 @@ import cocotb
 import os
 from cocotb.triggers import Timer
 
+from src.common.scripts.jtag.n2a_jtag_keyboard import COMMAND_MAGIC, STATUS_MAGIC, Result
+
 MASK64 = (1 << 64) - 1
 
 
 def packet(seq, data):
-    return (0xA3 << 56) | (len(data) << 48) | (seq << 40) | int.from_bytes(data, 'little')
+    """A command of any length, including ones the host library refuses to build."""
+    return (COMMAND_MAGIC << 56) | (len(data) << 48) | (seq << 40) | int.from_bytes(data, 'little')
 
 
 def fields(word):
-    assert word >> 56 == 0x5A, hex(word)
+    assert word >> 56 == STATUS_MAGIC, hex(word)
     assert (word >> 40) & 255 == 0, hex(word)
     return ((word >> 55) & 1, (word >> 54) & 1, (word >> 51) & 7,
             (word >> 48) & 7, (word >> 32) & 255, word & 0xffffffff)
@@ -168,18 +171,18 @@ async def jtag_keyboard_contract(dut):
     # for every pad, so that RTL fails here exactly as it failed on the board.
     for pad in (1, 7, 9):
         await b.reset()
-        assert first_64_bits(packet(0, b'x'), pad) >> 56 != 0xA3, pad
+        assert first_64_bits(packet(0, b'x'), pad) >> 56 != COMMAND_MAGIC, pad
         await b.scan(1, packet(0, b'x'), pad=pad)
         status = await b.status()
         if status[0]: status = await b.status()
         assert status[1:] == (0, 1, 1, 0, 1), status
-        assert await b.scan(2, pad=pad) >> 56 == 0x5a
+        assert await b.scan(2, pad=pad) >> 56 == STATUS_MAGIC
         assert b.accepted == [ord('x')]
-    # Why: after a malformed command (code 3) or wrong sequence (code 4) the host
-    # cannot know which later bytes are safe, so the first failure latches.
-    for command, code in ((packet(0, b'') ,3), (packet(0,b'12345'),3),
-                          (packet(0,b'x') ^ (1 << 56),3),
-                          (packet(0,b'x') | (1 << 32),3), (packet(1,b'x'),4)):
+    # Why: after a malformed command or a wrong sequence the host cannot know
+    # which later bytes are safe, so the first failure latches.
+    for command, code in ((packet(0, b''), Result.MALFORMED), (packet(0, b'12345'), Result.MALFORMED),
+                          (packet(0, b'x') ^ (1 << 56), Result.MALFORMED),
+                          (packet(0, b'x') | (1 << 32), Result.MALFORMED), (packet(1, b'x'), Result.SEQUENCE)):
         await b.reset()
         await b.scan(1, command)
         status = await b.status()

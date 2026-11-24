@@ -6,8 +6,7 @@
 // turns E0/F0 prefixes and codes into key events
 // (wiki/src/common/rtl/ps2/mas.md#decoder). An event the map below names sets
 // (make) or clears (break) its button; every other event is ignored. Buttons
-// are active-high in the joypad order
-// (wiki/src/nand2mario/rtl/has.md#block-diagram):
+// are active-high in the n2m_joypad buttons_i order:
 //   Right/Left/Up/Down: the extended arrow keys; A: X; B: Z;
 //   Select: Space; Start: Enter.
 // Board mapping policy lives in wiki/src/nand2mario/rtl/has.md#boards.
