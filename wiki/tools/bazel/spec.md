@@ -15,7 +15,7 @@ How the build meets its [requirements](prd.md). How agents use it day to day is 
 | `tools/bazel/scratch.py` | The scratch checkout a unit test runs checkout-rooted code against |
 | `tools/bazel/quartus_image.py` | The board image action: runs a project's Quartus script and keeps its outputs |
 | `tools/bazel/hdl_libraries.py` | The HDL libraries: derives each project's `cfg/libraries.json` from its HDL, resolves a target's libraries into its ordered file list, and prints the registry Bazel reads |
-| `src/<project>/BUILD.bazel` | One `hdl_project()` call, plus its `unit_tests()` and board images |
+| `src/<project>/BUILD.bazel` | One `hdl_project()` call, plus `unit_tests()` and any board images |
 
 ## Repositories
 
