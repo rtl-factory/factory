@@ -214,11 +214,6 @@
         "src/nand2doom/dv/io/n2d_jtag_input_fixture.sv"
       ]
     },
-    "n2d_jtag_system_lint": {
-      "srcs": [
-        "src/nand2doom/dv/io/n2d_jtag_system_lint.v"
-      ]
-    },
     "n2d_ls_types_pkg": {
       "srcs": [
         "src/nand2doom/rtl/memory/n2d_ls_types_pkg.sv"

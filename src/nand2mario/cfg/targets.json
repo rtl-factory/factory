@@ -643,8 +643,7 @@
       "top": "n2m_de10_lite_fixture",
       "libraries": [
         "n2m_de10_lite_fixture",
-        "sld_virtual_jtag_stub",
-        "n2m_de10_lite_lint"
+        "sld_virtual_jtag_stub"
       ],
       "clock_hz": 25000000,
       "timeout_seconds": 900,
@@ -675,8 +674,7 @@
       "top": "n2m_de2_115_fixture",
       "libraries": [
         "n2m_de2_115_fixture",
-        "sld_virtual_jtag_stub",
-        "n2m_de10_lite_lint"
+        "sld_virtual_jtag_stub"
       ],
       "clock_hz": 25000000,
       "timeout_seconds": 1800,

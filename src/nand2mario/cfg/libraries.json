@@ -140,11 +140,6 @@
         "src/nand2mario/dv/fpga/n2m_de10_lite_fixture.sv"
       ]
     },
-    "n2m_de10_lite_lint": {
-      "srcs": [
-        "src/nand2mario/dv/fpga/n2m_de10_lite_lint.v"
-      ]
-    },
     "n2m_de2_115": {
       "deps": [
         "macros",

@@ -25,9 +25,11 @@ set_max_delay 80.000 -from [n2m_jtag_required [get_registers {*u_jtag_keyboard*|
 set_min_delay 0.000 -from [n2m_jtag_required [get_registers {*u_jtag_keyboard*|scan_q.command[*]}] command_hold] -to [n2m_jtag_required [get_registers {*u_jtag_keyboard*|q.command[*]}] command_capture]
 set_max_delay 100.000 -from [n2m_jtag_required [get_registers {*u_jtag_keyboard*|q.response[*]}] response_hold] -to [n2m_jtag_required [get_registers {*u_jtag_keyboard*|scan_q.response[*]}] response_capture]
 set_min_delay 0.000 -from [n2m_jtag_required [get_registers {*u_jtag_keyboard*|q.response[*]}] response_hold] -to [n2m_jtag_required [get_registers {*u_jtag_keyboard*|scan_q.response[*]}] response_capture]
-foreach instance {u_req u_ack u_sys_reset u_scan_reset} {
+# The bit synchronizers' second stage is stages_q[1]; the reset
+# synchronizer's is reset_q (n2a_reset_sync).
+foreach {instance second} {u_req {stages_q[1]} u_ack {stages_q[1]} u_scan_reset reset_q} {
     set_false_path -to [n2m_jtag_required [get_registers "*u_jtag_keyboard*|${instance}|stages_q\[0\]"] "$instance first stage"]
-    n2m_jtag_required [get_registers "*u_jtag_keyboard*|${instance}|stages_q\[1\]"] "$instance second stage"
+    n2m_jtag_required [get_registers "*u_jtag_keyboard*|${instance}|${second}"] "$instance second stage"
 }
 set jtag_inputs [n2m_jtag_required [get_ports {altera_reserved_tdi altera_reserved_tms}] jtag_inputs]
 set_input_delay -clock jtag_tck -clock_fall -max 10.000 $jtag_inputs
