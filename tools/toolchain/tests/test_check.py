@@ -1,4 +1,4 @@
-"""Readiness check: passes only on the pinned Verilator, OSS CAD Suite release and Quartus with both families."""
+"""Readiness check: passes only on the pinned Verilator, Bazelisk, OSS CAD Suite release and Quartus with both families."""
 import json
 from pathlib import Path
 import sys
@@ -120,8 +120,53 @@ def test_verilator_fail_without_coverage_tool(monkeypatch):
     assert r["status"] == "FAIL" and "verilator_coverage" in r["found"]
 
 
+def test_verilator_fail_on_baked_in_ccache(monkeypatch):
+    monkeypatch.delenv("VERILATOR", raising=False)
+    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=on_path, is_file=lambda _p: True,
+                              read=lambda _p: "VERILATOR_ROOT ?= x\nOBJCACHE ?= ccache\n")
+    assert r["status"] == "FAIL" and "ccache" in r["found"]
+
+
+def test_verilator_pass_on_empty_objcache(monkeypatch):
+    monkeypatch.delenv("VERILATOR", raising=False)
+    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=on_path, is_file=lambda _p: True,
+                              read=lambda _p: "OBJCACHE ?= \nCXX ?= g++\n")
+    assert r["status"] == "PASS"
+
+
 def test_verilator_fail_when_missing(monkeypatch, tmp_path):
     monkeypatch.delenv("VERILATOR", raising=False)
     monkeypatch.setenv("HOME", str(tmp_path))
     r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=lambda _n: None)
+    assert r["status"] == "FAIL" and r["fix"]
+
+
+BAZELISK = json.loads((check.DEFAULT_CONFIG).read_text())["bazelisk"]
+
+
+def pinned_bazelisk(tmp_path):
+    (tmp_path / "bazelisk").write_text("")
+    (tmp_path / "bazel").symlink_to(tmp_path / "bazelisk")
+    pin = dict(BAZELISK, install_dir=str(tmp_path))
+    return pin, lambda name: str(tmp_path / "bazel") if name.endswith("bazel") else None
+
+
+def test_bazel_pass_on_pinned_bazelisk(tmp_path):
+    pin, which = pinned_bazelisk(tmp_path)
+    assert check.check_bazel(pin, which=which, digest=lambda _p: BAZELISK["sha256"])["status"] == "PASS"
+
+
+def test_bazel_fail_on_changed_bazelisk(tmp_path):
+    pin, which = pinned_bazelisk(tmp_path)
+    r = check.check_bazel(pin, which=which, digest=lambda _p: "0" * 64)
+    assert r["status"] == "FAIL" and "SHA-256" in r["found"]
+
+
+def test_bazel_warn_on_other_bazel(tmp_path):
+    r = check.check_bazel(dict(BAZELISK, install_dir=str(tmp_path)), which=lambda _n: "/usr/local/bin/bazel")
+    assert r["status"] == "WARN" and r["path"] == "/usr/local/bin/bazel"
+
+
+def test_bazel_fail_when_missing(tmp_path):
+    r = check.check_bazel(dict(BAZELISK, install_dir=str(tmp_path)), which=lambda _n: None)
     assert r["status"] == "FAIL" and r["fix"]

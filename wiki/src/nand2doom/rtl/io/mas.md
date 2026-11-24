@@ -383,12 +383,19 @@ asserts `halt_req`. Everything else advances on `clk_i`.
 
 `src/nand2doom/rtl/io/n2d_ps2_keyboard.sv`, receive-only at 25 MHz. Board
 tops wire `PS2_CLK`/`PS2_DAT` straight through `n2d_system`; no pin adapter.
+Framing and prefixes are the common
+[PS/2 blocks](../../../common/rtl/ps2/mas.md): `u_receiver`
+(`n2a_ps2_receiver`, enabled by CONTROL bit 0, aborted by every accepted
+CONTROL write) feeds `u_physical_decoder` (`n2a_ps2_decoder`, never
+back-pressured), and `u_scan_decoder` decodes the [JTAG](#jtag-keyboard)
+byte stream. The keyboard keeps the enable, the sticky diagnostics, the FIFO
+and the MMIO registers.
 
-- Each pin passes its own `n2a_cdc_bit_sync`; data is sampled on registered
-  falling clock edges. Frame: low start, eight LSB-first bits, odd parity,
-  high stop. Bad start, parity or stop discards the frame and sets its sticky
-  diagnostic; no falling edge for 5,000 clocks (200 µs) discards and sets
-  timeout. Every discard clears pending prefixes.
+- Frame: low start, eight LSB-first bits, odd parity, high stop, sampled on
+  synchronized falling clock edges. Bad start, parity or stop discards the
+  frame and sets its sticky diagnostic; no falling edge for 5,000 clocks
+  (200 µs) discards and sets timeout. Every discard clears pending prefixes
+  (each receiver error clears the physical decoder).
 - `E0`/`F0` set pending extended/break; the next byte forms the event (bit 9
   extended, bit 8 break, bits 7:0 code) into an eight-entry circular FIFO.
 - Full: the new event is dropped and overflow set; a same-edge pop makes room.
@@ -423,7 +430,8 @@ constrain the hub TCK and mailbox buses ([FPGA timing](../../fpga/de10_lite/boar
 | `src/nand2doom/rtl/io/n2d_uart_bulk.sv` | Bulk framer |
 | `src/nand2doom/rtl/io/n2d_uart_stream.sv` | Stream session |
 | `src/nand2doom/rtl/io/n2d_uart_mem_port.sv` | Common endpoint bus adapter |
-| `src/nand2doom/rtl/io/n2d_ps2_keyboard.sv` | PS/2 receiver, FIFO, MMIO |
+| `src/nand2doom/rtl/io/n2d_ps2_keyboard.sv` | PS/2 keyboard: enable, diagnostics, FIFO, MMIO |
+| `src/common/rtl/ps2/` | Common PS/2 receiver and Set-2 decoder |
 | `src/nand2doom/rtl/platform/n2d_pkg.sv`, `n2d_types_pkg.sv` | Codes, helpers, state records |
 | `src/nand2doom/scripts/host/n2d_uart_debug_host.py` | Host codec |
 
@@ -431,7 +439,8 @@ constrain the hub TCK and mailbox buses ([FPGA timing](../../fpga/de10_lite/boar
 
 One clock, `clk_i` (25 MHz). The UART bridge reset is asynchronous and active
 high and asserts `halt_req` ([UART bridge](#uart-bridge)); everything else
-advances on `clk_i`. The PS/2 pins each pass an `n2a_cdc_bit_sync`, and the
+advances on `clk_i`. The PS/2 pins each pass an `n2a_cdc_bit_sync` inside the
+common receiver, and the
 JTAG TCK to system crossings are inside the common `n2a_jtag_keyboard`
 ([JTAG keyboard composition](#jtag-keyboard-composition)); the scan domain
 stays in reset where the scan ports are tied idle.

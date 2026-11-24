@@ -646,6 +646,38 @@
       "default_seed": 5,
       "max_cycles": 100000,
       "level": "L0"
+    },
+    "n2a_ps2_receiver": {
+      "kind": "cocotb",
+      "description": "Common PS/2 line receiver: frames to bytes at non-harmonic pin timing, bad start, parity, stop and timeout discards, enable and abort",
+      "top": "n2a_ps2_receiver",
+      "clock_hz": 25000000,
+      "timeout_seconds": 120,
+      "test_module": "src.common.dv.ps2.test_ps2_receiver",
+      "testcase": "ps2_receiver_contract",
+      "default_seed": 11,
+      "max_cycles": 100000,
+      "level": "L0"
+    },
+    "n2a_ps2_decoder": {
+      "kind": "cocotb",
+      "description": "Common Set-2 event decoder: make, break and extended sequences, refusal and clear, random streams against a reference model",
+      "top": "n2a_ps2_decoder",
+      "clock_hz": 25000000,
+      "timeout_seconds": 60,
+      "test_module": "src.common.dv.ps2.test_ps2_decoder",
+      "testcase": "ps2_decoder_contract",
+      "default_seed": 23,
+      "max_cycles": 10000,
+      "level": "L0"
+    }
+  },
+  "lint": {
+    "n2a_jtag_virtual": {
+      "libraries": [
+        "n2a_jtag_virtual",
+        "sld_virtual_jtag_stub"
+      ]
     }
   }
 }

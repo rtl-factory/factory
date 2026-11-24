@@ -21,7 +21,7 @@ package n2a_types_pkg;
         logic        extra;
     } t_uart_protocol;
 
-    // n2a_ps2_rx frame state. The parameter-sized timeout counter is a
+    // n2a_ps2_receiver frame state. The parameter-sized timeout counter is a
     // separate register in the receiver.
     typedef struct packed {
         logic       previous;

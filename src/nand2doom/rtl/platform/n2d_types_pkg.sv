@@ -80,22 +80,14 @@ package n2d_types_pkg;
         t_pmon_owner owner;
     } t_pmon_track;
 
-    // n2d_ps2_keyboard physical receiver: synchronized-clock edge history,
-    // frame assembly, prefix tracking and sticky diagnostics (asynchronous
-    // reset per wiki/src/nand2doom/rtl/io/mas.md). The frame timeout counter follows
-    // FRAME_TIMEOUT_CYCLES and is a register of its own.
+    // n2d_ps2_keyboard receiver enable and sticky diagnostics (asynchronous
+    // reset per wiki/src/nand2doom/rtl/io/mas.md); framing and prefixes live
+    // in the common n2a_ps2_receiver and n2a_ps2_decoder.
     typedef struct packed {
-        logic       ps2_clk_previous;
-        logic       receiver_enable;
-        logic       frame_active;
-        logic [3:0] frame_bit_index;
-        logic [7:0] frame_data;
-        logic       frame_parity;
-        logic       extended_prefix;
-        logic       break_prefix;
-        logic       parity_error;
-        logic       frame_error;
-        logic       timeout_error;
+        logic receiver_enable;
+        logic parity_error;
+        logic frame_error;
+        logic timeout_error;
     } t_ps2_rx;
 
     // n2d_ps2_keyboard event FIFO bookkeeping (asynchronous reset); the
@@ -107,14 +99,6 @@ package n2d_types_pkg;
         logic [3:0] fifo_count;
         logic       overflow_error;
     } t_ps2_fifo;
-
-    // n2d_ps2_keyboard byte-stream prefix qualifiers, independent of the
-    // physical receiver's: only reset or the byte that completes the event
-    // clears them.
-    typedef struct packed {
-        logic extended_prefix;
-        logic break_prefix;
-    } t_ps2_scan_inject;
 
     // n2d_system data-port owner of the outstanding CPU data request.
     typedef enum logic [2:0] {

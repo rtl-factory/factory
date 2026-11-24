@@ -93,6 +93,49 @@
         "src/common/rtl/jtag/n2a_jtag_virtual.sv"
       ]
     },
+    "n2a_ps2_decoder": {
+      "deps": [
+        "macros",
+        "n2a_ps2_pkg"
+      ],
+      "srcs": [
+        "src/common/rtl/ps2/n2a_ps2_decoder.sv"
+      ]
+    },
+    "n2a_ps2_decoder_fv": {
+      "deps": [
+        "n2a_ps2_decoder",
+        "n2a_ps2_pkg"
+      ],
+      "srcs": [
+        "src/common/fv/ps2/n2a_ps2_decoder_fv.sv"
+      ]
+    },
+    "n2a_ps2_pkg": {
+      "srcs": [
+        "src/common/rtl/ps2/n2a_ps2_pkg.sv"
+      ]
+    },
+    "n2a_ps2_receiver": {
+      "deps": [
+        "macros",
+        "n2a_cdc_bit_sync",
+        "n2a_ps2_pkg",
+        "n2a_types_pkg"
+      ],
+      "srcs": [
+        "src/common/rtl/ps2/n2a_ps2_receiver.sv"
+      ]
+    },
+    "n2a_ps2_receiver_fv": {
+      "deps": [
+        "n2a_ps2_pkg",
+        "n2a_ps2_receiver"
+      ],
+      "srcs": [
+        "src/common/fv/ps2/n2a_ps2_receiver_fv.sv"
+      ]
+    },
     "n2a_reset_sync": {
       "deps": [
         "macros"
@@ -210,14 +253,6 @@
         "src/common/dv/memory/n2a_sync_ram_512x141_fixture.sv"
       ]
     },
-    "n2a_sync_ram_invalid_addr_width_fixture": {
-      "deps": [
-        "n2a_sync_ram"
-      ],
-      "srcs": [
-        "src/common/dv/memory/n2a_sync_ram_invalid_addr_width_fixture.sv"
-      ]
-    },
     "n2a_sync_ram_invalid_data_width_fixture": {
       "deps": [
         "n2a_sync_ram"
@@ -292,14 +327,6 @@
       ],
       "srcs": [
         "src/common/dv/memory/n2a_tdp_ram_16384x8_fixture.sv"
-      ]
-    },
-    "n2a_tdp_ram_invalid_addr_width_fixture": {
-      "deps": [
-        "n2a_tdp_ram"
-      ],
-      "srcs": [
-        "src/common/dv/memory/n2a_tdp_ram_invalid_addr_width_fixture.sv"
       ]
     },
     "n2a_tdp_ram_invalid_data_width_fixture": {
