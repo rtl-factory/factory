@@ -41,7 +41,7 @@ A pin map names pins after the board's manual (`ARDUINO_IO`, `GPIO`, `KEY`); a p
 
 ## Manifests
 
-A manifest is `src/<project>/cfg/*_quartus.json`. Required keys: `board`, `project`, `top`, `clock_hz`, `timeout_seconds`, `timing_corners`, `libraries`, `settings`, `constraints`, `pins`, `forwarded_clocks`, `ram_requirements`, `reviewed_warnings`. Optional: `flavors`, `parameters`, `verilog_macros`, `timing_paths`, `require_clean_source`, `boards`. Any other key is refused.
+A manifest is `src/<project>/cfg/*_quartus.json`. Required keys: `board`, `project`, `top`, `clock_hz`, `timeout_seconds`, `timing_corners`, `libraries`, `settings`, `constraints`, `pins`, `forwarded_clocks`, `jtag_clock`, `ram_requirements`, `reviewed_warnings`. Optional: `flavors`, `parameters`, `verilog_macros`, `timing_paths`, `require_clean_source`, `boards`. Any other key is refused.
 
 | Key | Meaning |
 |---|---|
@@ -51,6 +51,7 @@ A manifest is `src/<project>/cfg/*_quartus.json`. Required keys: `board`, `proje
 | `parameters`, `verilog_macros` | Top-level parameters (upper-case names, non-negative integers) and extra macros; `SYNTHESIS=1` is always set |
 | `pins` | The top's ports: `X`, `X[3]` or `X[7:0]` take the board pin of the same name, `PORT=PIN` wires one port bit to a board pin of another name (`RESET_N=KEY[0]`) |
 | `forwarded_clocks` | Each clock the board drives out on a pin (the inverted system clock), by name: `{"sdram_clock": "DRAM_CLK"}` |
+| `jtag_clock` | `true` when the design has a virtual JTAG hub: the gate then requires the 100 ns `jtag_tck` clock and its timing rows |
 | `timing_paths` | Named path groups the audit reports and the gate checks (below) |
 | `ram_requirements` | Every fitted RAM (below) |
 | `reviewed_warnings` | The warning contract (below) |
@@ -84,8 +85,8 @@ A full compile passes only when every check holds:
 
 1. The staged inputs are those of this config and unchanged since compilation.
 2. The map, fit, timing, assembler reports and the SOF exist and are not empty, and the audit reports exist.
-3. Every timing-summary row at every corner has non-negative slack and zero TNS; the rows cover setup, hold, recovery, removal and pulse width of the system clock (the one clock matching `u_clock|u_pll|…|clk[0]`), setup and hold of each forwarded clock, the reference clock's pulse width and, when present, the JTAG clock.
-4. The fitted clocks are exactly the reference, the system clock (reference divided down, master `reference`), each forwarded clock (inverted system clock on its pin) and, when present, `jtag_tck` (100 ns on `altera_reserved_tck`), and `clocks.tsv` agrees.
+3. Every timing-summary row at every corner has non-negative slack and zero TNS; the rows cover setup, hold, recovery, removal and pulse width of the system clock (the one clock matching `u_clock|u_pll|…|clk[0]`), setup and hold of each forwarded clock, the reference clock's pulse width and, when the manifest sets `jtag_clock`, setup, hold and pulse width of the JTAG clock.
+4. The fitted clocks are exactly the reference, the system clock (reference divided down, master `reference`), each forwarded clock (inverted system clock on its pin) and, when the manifest sets `jtag_clock`, `jtag_tck` (100 ns on `altera_reserved_tck`), and `clocks.tsv` agrees.
 5. `check_timing` finds exactly one `no_clock` (the PLL lock synchronizer), one `virtual_clock` and one `no_output_delay` per forwarded clock pin, and nothing else; no constraint is ignored; no clock, port or path is unconstrained.
 6. Exactly one PLL; every fitted RAM matches one requirement (by `name` substring, or `prefix[i].array` for an indexed array): its mode, single clock, port A and B depth and width, M9K count and "Old data" read-during-write on the ports it uses; the requirements account for every fitted M9K.
 7. The system clock's restricted Fmax is at least `clock_hz` at every corner.

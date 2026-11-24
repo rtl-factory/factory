@@ -100,6 +100,18 @@ class GateTest(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, re.escape(message)):
                     gate.verify_reports(self.output, config)
 
+    def test_jtag_clock_is_required_when_the_manifest_sets_it(self):
+        config, reports = self.built()
+        self.assertTrue({(corner, kind, "jtag_tck") for corner in config["timing_corners"]
+                         for kind in ("Setup", "Hold", "Minimum Pulse Width")}
+                        <= gate.required_timing(config, fixture.SYSTEM_CLOCK, {}))
+        sta = reports / f"{config['project']}.sta.rpt"
+        sta.write_text("".join(line for line in sta.read_text().splitlines(keepends=True)
+                               if not line.startswith("; jtag_tck ;")))
+        self.edit(reports / "clocks.tsv", "jtag_tck\t100\n", "")
+        with self.assertRaisesRegex(RuntimeError, "missing or unexpected fitted clocks"):
+            gate.verify_reports(self.output, config)
+
     def test_stale_reports_of_another_config_are_refused(self):
         config, _ = self.built()
         changed = copy.deepcopy(config)

@@ -106,6 +106,7 @@
   ],
   "settings": "src/nand2mario/fpga/de10_lite/n2m_de10_lite.qsf",
   "constraints": "src/nand2mario/fpga/de10_lite/n2m_de10_lite.sdc",
+  "jtag_clock": true,
   "forwarded_clocks": {
     "sdram_clock": "DRAM_CLK"
   },

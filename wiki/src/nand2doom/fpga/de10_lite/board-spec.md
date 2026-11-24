@@ -232,7 +232,7 @@ The earlier fits of both boards, from nand2anything, follow.
 
 ### Fitted results
 
-Built by `quartus.py --board de2_115|de10_lite`, Quartus Prime 25.1std.0
+Built by the since-removed `quartus.py --board de2_115|de10_lite`, Quartus Prime 25.1std.0
 Build 1129 Lite, fitter seed 1, 25 MHz, full gate passed. Sources: DE2-115
 `c506a56`, DE10-Lite `939c653` (byte-identical RTL, constraints, settings).
 `n2d_timing.py --board BOARD --mhz 25 --sta-only --build-dir workdir/quartus/n2d_BOARD`

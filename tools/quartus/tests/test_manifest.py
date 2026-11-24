@@ -105,6 +105,7 @@ class ManifestTest(unittest.TestCase):
                  "invalid forwarded clocks": lambda d: d.update(forwarded_clocks={"x": "LED[9]"}),
                  "invalid RAM requirement": lambda d: d["ram_requirements"][0].update(mode="Dual"),
                  "require_clean_source": lambda d: d.update(require_clean_source="yes"),
+                 "jtag_clock must be true or false": lambda d: d.update(jtag_clock="yes"),
                  "reviewed_warnings keys": lambda d: d["reviewed_warnings"].update(other=1),
                  "invalid reviewed warning pattern": lambda d: d["reviewed_warnings"]["patterns"].append("(")}
         for message, edit in cases.items():

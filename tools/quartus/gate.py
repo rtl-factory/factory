@@ -153,7 +153,7 @@ def check_clocks(clocks: dict, system_clock: str, config: dict) -> dict:
         expected[name] = {"Type": "Generated", "Period": system_ns, "Rise": system_ns / 2, "Fall": system_ns,
                           "Divide by": 1, "Multiply by": 1, "Inverted": "true", "Master": system_clock,
                           "Source": system_clock, "Targets": port}
-    if JTAG_CLOCK["name"] in clocks:
+    if config["jtag_clock"]:
         period = JTAG_CLOCK["period_ns"]
         expected[JTAG_CLOCK["name"]] = {"Type": "Base", "Period": period, "Rise": 0, "Fall": period / 2,
                                         "Targets": JTAG_CLOCK["target"], "Master": "", "Source": ""}
@@ -513,7 +513,7 @@ def required_timing(config: dict, system_clock: str, clocks: dict) -> set:
     required |= {(corner, kind, clock) for corner in corners
                  for kind in ("Setup", "Hold") for clock in config["forwarded_clocks"]}
     required |= {(corner, "Minimum Pulse Width", "reference") for corner in corners}
-    if JTAG_CLOCK["name"] in clocks:
+    if config["jtag_clock"]:
         required |= {(corner, kind, JTAG_CLOCK["name"]) for corner in corners
                      for kind in ("Setup", "Hold", "Minimum Pulse Width")}
     return required

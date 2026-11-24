@@ -107,6 +107,7 @@
   ],
   "settings": "src/nand2mario/fpga/de2_115/n2m_de2_115.qsf",
   "constraints": "src/nand2mario/fpga/de2_115/n2m_de2_115.sdc",
+  "jtag_clock": true,
   "forwarded_clocks": {
     "sdram_clock": "DRAM_CLK",
     "vga_dac_clock": "VGA_CLK"

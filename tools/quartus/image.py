@@ -52,8 +52,10 @@ def verify_image(sof: Path, config: dict) -> dict:
         identity = json.loads(files["receipt"].read_text())
     except ValueError as error:
         raise ValueError(f"malformed SOF identity receipt: {error}") from error
-    if (not isinstance(identity, dict) or set(identity) != RECEIPT_FIELDS
-            or identity["schema"] != RECEIPT_SCHEMA or type(identity["source_dirty"]) is not bool
+    if isinstance(identity, dict) and identity.get("schema") != RECEIPT_SCHEMA:
+        raise ValueError(f"SOF identity receipt has schema {identity.get('schema')!r}, not {RECEIPT_SCHEMA}: "
+                         "rebuild the image")
+    if (not isinstance(identity, dict) or set(identity) != RECEIPT_FIELDS or type(identity["source_dirty"]) is not bool
             or not isinstance(identity["quartus_version"], str) or not identity["quartus_version"].strip()
             or not isinstance(identity["source_sha"], str) or not re.fullmatch(r"[0-9a-f]{40}", identity["source_sha"])
             or any(not isinstance(identity[key], str) or not re.fullmatch(r"[0-9a-f]{64}", identity[key])

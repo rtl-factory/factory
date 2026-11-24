@@ -78,6 +78,7 @@
   "settings": "src/nand2doom/fpga/de10_lite/de10_lite.qsf",
   "constraints": "src/nand2doom/fpga/de10_lite/de10_lite.sdc",
   "verilog_macros": ["DISABLE_ASSERTIONS=1"],
+  "jtag_clock": true,
   "forwarded_clocks": {"sdram_clock": "DRAM_CLK"},
   "timing_paths": {
     "sdram_read": {"from_ports": "DRAM_DQ[*]", "launch": "sdram_clock", "latch": "system", "endpoints": [

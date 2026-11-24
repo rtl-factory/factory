@@ -79,6 +79,7 @@ MANIFEST_DATA = {
     "pins": ["CLK_50", "LED[3:0]", "DRAM_CLK", "DRAM_CKE", "DRAM_DQ[3:0]", "DRAM_ADDR[1:0]",
              "RESET_N=KEY[0]", "UART_RX=GPIO[0]"],
     "forwarded_clocks": {"sdram_clock": "DRAM_CLK"},
+    "jtag_clock": True,
     "timing_paths": {
         "sdram_read": {"from_ports": "DRAM_DQ[*]", "launch": "sdram_clock", "latch": "system", "endpoints": [
             {"from": r"DRAM_DQ\[[0-3]\]", "to": CONTROLLER + r"read_data\[[0-3]\]"}]},

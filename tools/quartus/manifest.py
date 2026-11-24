@@ -24,7 +24,8 @@ SYSTEM_CLOCK = "system"
 BOARD_KEYS = {"board", "family", "device", "reference_port", "reference_hz", "clock_module",
               "default_io_standard", "io_standards", "pins"}
 REQUIRED_KEYS = {"board", "project", "top", "clock_hz", "timeout_seconds", "timing_corners", "libraries",
-                 "settings", "constraints", "pins", "forwarded_clocks", "ram_requirements", "reviewed_warnings"}
+                 "settings", "constraints", "pins", "forwarded_clocks", "jtag_clock", "ram_requirements",
+                 "reviewed_warnings"}
 OPTIONAL_KEYS = {"flavors", "parameters", "verilog_macros", "timing_paths",
                  "require_clean_source", "boards"}
 # Why: a board override swaps board facts only; the design's libraries, and the
@@ -208,10 +209,13 @@ def load(root: Path, manifest_path: str, board: str | None = None, profile_path:
         "settings": manifest["settings"], "constraints": manifest["constraints"],
         "verilog_macros": manifest.get("verilog_macros", []), "parameters": manifest.get("parameters", {}),
         "pins": pins, "io_standards": standards,
-        "forwarded_clocks": manifest["forwarded_clocks"], "timing_paths": manifest.get("timing_paths", {}),
+        "forwarded_clocks": manifest["forwarded_clocks"], "jtag_clock": manifest["jtag_clock"],
+        "timing_paths": manifest.get("timing_paths", {}),
         "ram_requirements": manifest["ram_requirements"], "reviewed_warnings": manifest["reviewed_warnings"],
         "require_clean_source": manifest.get("require_clean_source", False),
     }
+    if type(config["jtag_clock"]) is not bool:
+        raise ValueError(f"{manifest_path}: jtag_clock must be true or false")
     return validate(config, root)
 
 
