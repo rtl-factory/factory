@@ -24,10 +24,12 @@ from cocotb.utils import get_sim_time
 
 from src.common.dv.jtag.vjtag_stub_host import StubHost
 from src.common.dv.uart.uart_wire import UartWire
-from ...scripts.board.cart_loader import (CMD_HOLD, CMD_PING, CMD_READ, CMD_RELEASE, CMD_WRITE, address_field,
-                                  chunks, decode_response, encode_request, response_total_length)
+from src.common.dv.uart_mem import sim_host
+from src.common.scripts.uart_mem import uart_mem as um
+from ...scripts.board.cart_loader import CMD_PING, decode_response, encode_request, response_total_length
 from ..core.test_cpu import unpack
 from ..system.test_system import VRAM_BYTES, load_image, power_up
+from ..system.test_system_uart_mem import ENTRY, PROJECT, load_and_boot
 from ..video import display_model as dm
 from ..video import ppu_model as m
 
@@ -107,6 +109,15 @@ class UartHost:
         return response
 
 
+async def watch_core_reset(system, holds):
+    """Record the edges on which the core is held in reset."""
+    while True:
+        await RisingEdge(system.clk_i)
+        if int(system.core_reset_o.value):
+            holds.append(get_sim_time(unit='ns'))
+            return
+
+
 def check_heartbeat(dut, release_ns):
     heartbeat_bit = HEARTBEAT_BIT
     elapsed = int(get_sim_time(unit='ns') - release_ns) // CLOCK_PERIOD_NS
@@ -127,7 +138,7 @@ async def settle(clock, cycles):
         await RisingEdge(clock)
 
 
-@cocotb.test(timeout_time=400, timeout_unit='ms')
+@cocotb.test(timeout_time=800, timeout_unit='ms')
 async def board_smoke(dut):
     seed = int(os.environ['DV_SEED'])
     bound = int(os.environ['DV_MAX_CYCLES'])
@@ -184,24 +195,18 @@ async def board_smoke(dut):
     assert not int(dut.LEDR.value) & LED_RESET, 'the core runs once the SDRAM is initialized and VRAM swept'
     response = await uart.exchange(encode_request(CMD_PING))
     assert response.ok and response.initialized and not response.held, response.describe()
-    response = await uart.exchange(encode_request(CMD_HOLD))
-    assert response.ok and response.held
-    await ReadOnly()
-    assert int(dut.LEDR.value) & LED_RESET, 'HOLD resets the core'
-    pieces = chunks(image)
-    for offset, data in pieces:
-        response = await uart.exchange(encode_request(CMD_WRITE, address_field(offset), data))
-        assert response.ok and response.offset == offset and response.length == len(data), response.describe()
-    for offset, data in (pieces[0], pieces[1], pieces[-1]):
-        response = await uart.exchange(encode_request(CMD_READ, address_field(offset), length=len(data)))
-        assert response.ok and response.payload == data, (offset, response.describe())
+    # Ref: wiki/src/common/scripts/uart_mem/spec.md "Load transaction": the board console's own load.
+    client = sim_host.client(UartWire(rx=dut.UART_RXD, tx=dut.UART_TXD, bit_ps=BIT_NS * 1000),
+                             poll_ps=10 * BIT_NS * 1000, timeout_s=0.05)
+    holds = []
+    cocotb.start_soon(watch_core_reset(system, holds))
+    await sim_host.run(um.load, client, [um.Segment(0, image)], ENTRY, PROJECT)
+    assert holds, 'the load must hold the core in reset'
     header_word = int(dut.u_sdram.memory[HEADER_TYPE >> 1].value)
     assert (header_word >> 8) & 0xFF == image[HEADER_TYPE], 'the header byte lives in the SDRAM device'
-    cocotb.log.info('image loaded over the UART pins: %d frames at %.0f us', len(pieces), get_sim_time(unit='us'))
-    response = await uart.exchange(encode_request(CMD_RELEASE))
-    assert response.ok and not response.held
+    cocotb.log.info('image loaded through uart_mem.load over the UART pins by %.0f us', get_sim_time(unit='us'))
     await ReadOnly()
-    assert not int(dut.LEDR.value) & LED_RESET, 'RELEASE starts the core'
+    assert not int(dut.LEDR.value) & LED_RESET, 'the release starts the core'
 
     # Why: run the background program to its final HALT (IE cleared), keeping
     # the last retired PC for the digit check.
@@ -334,3 +339,30 @@ async def board_smoke(dut):
     final_edges = int(get_sim_time(unit='ns') - release_ns) // CLOCK_PERIOD_NS
     assert final_edges <= bound, f'finite bound exceeded ({final_edges})'
     cocotb.log.info('n2m board smoke passed: retirements=%d edges=%d', retirements, final_edges)
+
+
+@cocotb.test(timeout_time=60, timeout_unit='ms')
+async def board_uart_mem_boot(dut):
+    """The real board top, loaded the way the board console loads it: after
+    PLL lock and SDRAM initialization, uart_mem.load writes a cartridge header
+    and a program at 0x0100 into SDRAM over the board UART pins at exactly 2
+    Mbaud (the board bit period, 12 1/2 clocks), and the core boots it
+    to its final HALT (src/nand2mario/dv/system/test_system_uart_mem.py)."""
+    seed = int(os.environ['DV_SEED'])
+    bound = int(os.environ['DV_MAX_CYCLES'])
+    assert int(os.environ['DV_CLOCK_HZ']) == 25_000_000
+    cocotb.log.info('n2m board uart_mem boot seed=%d bound=%d', seed, bound)
+    system = dut.u_board.u_system
+    dut.KEY.value = 0b10
+    dut.SW.value = 0
+    dut.UART_RXD.value = 1
+    power_up(system, random.Random(seed), onchip=False)
+    cocotb.start_soon(Clock(dut.CLOCK_50 if hasattr(dut, 'CLOCK_50') else dut.MAX10_CLK1_50,
+                            REFERENCE_PERIOD_NS, unit='ns').start())
+    await Timer(10 * REFERENCE_PERIOD_NS, unit='ns')
+    dut.KEY.value = 0b11
+    await Timer((SDRAM_INITIALIZED_CLOCK + 16) * CLOCK_PERIOD_NS, unit='ns')
+    await ReadOnly()
+    assert not int(dut.LEDR.value) & LED_RESET, 'the core runs once the SDRAM is initialized'
+    await writable()
+    await load_and_boot(system, dut.UART_RXD, dut.UART_TXD, bound)

@@ -24,9 +24,11 @@ PROJECT_ID = 0x5453_4554
 ENTRY = 0x100
 
 REQ_SOF, RSP_SOF, VERSION = 0xA8, 0x8A, 0x01
-IDENTIFY, HOLD, RELEASE, ENTRY_CMD, WRITE, READ = 0x01, 0x02, 0x03, 0x04, 0x10, 0x11
+IDENTIFY, HOLD, RELEASE, ENTRY_CMD, WRITE, READ, DIGEST = 0x01, 0x02, 0x03, 0x04, 0x10, 0x11, 0x12
+CAP_DIGEST = 0x4
 OK, ST_VERSION, ST_COMMAND, ST_CHECKSUM, ST_ALIGNMENT = 0, 1, 2, 3, 4
 ST_RANGE, ST_LENGTH, ST_NOT_HELD, ST_TIMEOUT, ST_MEMORY, ST_OVERRUN = 5, 6, 7, 8, 9, 10
+REFUSALS = (ST_VERSION, ST_COMMAND, ST_ALIGNMENT, ST_RANGE, ST_LENGTH, ST_NOT_HELD)
 ATTR_W, ATTR_RH, ATTR_RL = 1, 2, 4
 WINDOWS = [(0x0000, 0x800, ATTR_W | ATTR_RH), (0x1000, 0x400, ATTR_W | ATTR_RH | ATTR_RL)]
 
@@ -257,7 +259,7 @@ async def uart_mem_load_readback(dut):
     ident = await bench.call(IDENTIFY)
     words = [int.from_bytes(ident[i:i + 4], "little") for i in range(0, len(ident), 4)]
     assert words[:2] == [0x4D41324E, PROJECT_ID]
-    assert words[2] == (MAX_LENGTH << 16) | (2 << 8), hex(words[2])
+    assert words[2] == (MAX_LENGTH << 16) | (2 << 8) | CAP_DIGEST, hex(words[2])
     assert words[3:5] == [ENTRY, LIVE_GAP]
     assert [tuple(words[5 + 3 * i:8 + 3 * i]) for i in range(2)] == WINDOWS
 
@@ -458,3 +460,61 @@ async def uart_mem_contract(dut):
     dut.hold_block_i.value = 0
     assert int(dut.hold_o.value) == 0
     assert len(bench.releases) == 2
+
+
+@cocotb.test()
+async def uart_mem_digest(dut):
+    """Digest: the CRC-32 of a range, held and live, its refusals and a memory
+    error. Each value is checked against zlib.crc32 of the words the endpoint
+    fetched, which the scoreboard checks against memory at their cycle."""
+    seed = int(os.environ.get("DV_SEED", "63"))
+    rng = random.Random(seed)
+    dut._log.info("seed %d", seed)
+    bench = Bench(dut)
+    await bench.start()
+    dut.cpu_enable_i.value = 1
+    ident = await bench.call(IDENTIFY)
+    assert int.from_bytes(ident[8:12], "little") & CAP_DIGEST, "Digest capability not advertised"
+
+    async def digest(address, length, expect=OK):
+        first = len(bench.read_log)
+        data = await bench.call(DIGEST, address, length, expect=expect)
+        # Why: a refused request has no payload; an accepted one always four bytes.
+        assert len(data) == (0 if expect in REFUSALS else 4), f"digest payload {data.hex()}"
+        return int.from_bytes(data, "little"), bench.read_log[first:]
+
+    await bench.call(HOLD)
+    program = bytes(rng.getrandbits(8) for _ in range(0x800))
+    await bench.write(0x0000, program)
+    # Why: 0x800 bytes is twice MAX_LENGTH: a Digest range is bounded only by its
+    # 16-bit length field.
+    for address, length in ((0x0000, 0x800), (0x0004, 4), (0x0100, 0x404)):
+        value, fetched = await digest(address, length)
+        assert [a for a, _ in fetched] == list(range(address, address + length, 4)), \
+            "digest addresses are not the ascending requested range"
+        assert value == zlib.crc32(program[address:address + length]), \
+            f"digest 0x{value:08x} of 0x{address:x}+{length}"
+    for address, length, status in ((0x0000, 0, ST_LENGTH), (0x0000, 6, ST_LENGTH),
+                                     (0x0002, 4, ST_ALIGNMENT), (0x07FC, 8, ST_RANGE),
+                                     (0x2000, 4, ST_RANGE)):
+        value, fetched = await digest(address, length, expect=status)
+        assert not fetched, f"refused digest 0x{address:x}+{length} touched memory"
+    dut.mem_error_i.value = 1
+    value, _ = await digest(0x0000, 16, expect=ST_MEMORY)
+    assert value == 0
+    dut.mem_error_i.value = 0
+    dut.mem_stall_i.value = 1
+    value, _ = await digest(0x0000, 16, expect=ST_TIMEOUT)
+    assert value == 0
+    dut.mem_stall_i.value = 0
+    await bench.call(RELEASE)
+
+    # Why: the CPU draws into window 1 while the endpoint digests it, so the
+    # value must be the digest of the words fetched, at the live pacing.
+    begin = bench.cycle
+    value, fetched = await digest(0x1000, 0x400)
+    assert [a for a, _ in fetched] == list(range(0x1000, 0x1400, 4))
+    assert value == zlib.crc32(b"".join(w.to_bytes(4, "little") for _, w in fetched))
+    stalls, span = check_stall_bound(bench, begin)
+    dut._log.info("live digest: %d cycles, %d stall cycles", span, stalls)
+    await digest(0x0000, 0x800, expect=ST_NOT_HELD)
