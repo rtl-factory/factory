@@ -7,8 +7,7 @@ module n2a_sync_ram_invalid_min_depth_fixture;
 
     n2a_sync_ram #(
         .DATA_WIDTH(8),
-        .DEPTH(1),
-        .ADDR_WIDTH(1)
+        .DEPTH(1)
     ) dut (
         .clk_i(clk),
         .write_enable_i(write_enable),

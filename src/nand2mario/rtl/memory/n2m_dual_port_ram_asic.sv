@@ -33,35 +33,35 @@
 module n2m_dual_port_ram #(
     parameter int unsigned DATA_WIDTH = 32,
     parameter int unsigned DEPTH = 256,
-    parameter int unsigned ADDR_WIDTH = $clog2(DEPTH),
     parameter int unsigned BYTE_LANES = DATA_WIDTH / 8,
     parameter bit DUAL_CLOCK = 1'b0
 ) (
-    input  logic                   clk_a_i,
-    input  logic                   reset_a_i,
-    input  logic                   read_a_i,
-    input  logic                   write_a_i,
-    input  logic [ADDR_WIDTH-1:0]  address_a_i,
-    input  logic [DATA_WIDTH-1:0]  write_data_a_i,
-    input  logic [BYTE_LANES-1:0]  byte_enable_a_i,
-    output logic [DATA_WIDTH-1:0]  read_data_a_o,
-    output logic                   read_valid_a_o,
+    input  logic                      clk_a_i,
+    input  logic                      reset_a_i,
+    input  logic                      read_a_i,
+    input  logic                      write_a_i,
+    input  logic [$clog2(DEPTH)-1:0]  address_a_i,
+    input  logic [DATA_WIDTH-1:0]     write_data_a_i,
+    input  logic [BYTE_LANES-1:0]     byte_enable_a_i,
+    output logic [DATA_WIDTH-1:0]     read_data_a_o,
+    output logic                      read_valid_a_o,
 
-    input  logic                   clk_b_i,
-    input  logic                   reset_b_i,
-    input  logic                   read_b_i,
-    input  logic [ADDR_WIDTH-1:0]  address_b_i,
-    output logic [DATA_WIDTH-1:0]  read_data_b_o,
-    output logic                   read_valid_b_o
+    input  logic                      clk_b_i,
+    input  logic                      reset_b_i,
+    input  logic                      read_b_i,
+    input  logic [$clog2(DEPTH)-1:0]  address_b_i,
+    output logic [DATA_WIDTH-1:0]     read_data_b_o,
+    output logic                      read_valid_b_o
 );
+    // Why: the address ports derive their width from DEPTH, matching the
+    // portable backend's interface; this reads it back from a port.
+    localparam int unsigned ADDR_WIDTH = $bits(address_a_i);
     // Smallest store mapped to one shared single-port SRAM.
     localparam int unsigned SRAM_MIN_BYTES = 8192;
     localparam bit SHARED_SRAM = !DUAL_CLOCK && (DATA_WIDTH == 8) && (DEPTH >= SRAM_MIN_BYTES);
     localparam int unsigned IMPLEMENTATION_DATA_WIDTH =
         (DATA_WIDTH < 8) ? 8 : DATA_WIDTH;
     localparam int unsigned IMPLEMENTATION_DEPTH = (DEPTH < 2) ? 2 : DEPTH;
-    localparam int unsigned REQUIRED_ADDR_WIDTH =
-        (DEPTH < 2) ? 1 : $clog2(DEPTH);
     localparam bit DEPTH_IS_POWER_OF_TWO =
         (DEPTH >= 2) && ((DEPTH & (DEPTH - 1)) == 0);
 
@@ -193,8 +193,6 @@ module n2m_dual_port_ram #(
         "n2m_dual_port_ram DATA_WIDTH must be a positive byte multiple")
     `ASSERT_PARAM(g_invalid_depth, DEPTH_IS_POWER_OF_TWO,
         "n2m_dual_port_ram DEPTH must be a power of two and at least 2")
-    `ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
-        "n2m_dual_port_ram ADDR_WIDTH must equal $clog2(DEPTH)")
     `ASSERT_PARAM(g_invalid_byte_lanes, BYTE_LANES == (DATA_WIDTH / 8),
         "n2m_dual_port_ram BYTE_LANES must equal DATA_WIDTH/8")
 

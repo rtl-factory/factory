@@ -66,6 +66,9 @@ def _model_impl(ctx):
         inputs = depset(ctx.files.srcs + ctx.files.headers + [ctx.file.spec] + ctx.files._verilator),
         outputs = [out],
         env = {
+            # Why: a Verilator configured where ccache was on PATH names it in
+            # verilated.mk (OBJCACHE ?= ccache); the sandbox may not have it.
+            "OBJCACHE": "",
             "PATH": "/usr/local/bin:/usr/bin:/bin",
             "SIM_BUILD_JOBS": "2",
             "SIM_PATH_PREPEND": verilator_bin,
