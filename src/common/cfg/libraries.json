@@ -286,30 +286,6 @@
         "src/common/dv/memory/n2a_sync_ram_invalid_min_depth_fixture.sv"
       ]
     },
-    "n2a_sync_ram_wt": {
-      "deps": [
-        "macros"
-      ],
-      "srcs": [
-        "src/common/rtl/memory/n2a_sync_ram_wt.sv"
-      ]
-    },
-    "n2a_sync_ram_wt_8192x16_fixture": {
-      "deps": [
-        "n2a_sync_ram_wt"
-      ],
-      "srcs": [
-        "src/common/dv/memory/n2a_sync_ram_wt_8192x16_fixture.sv"
-      ]
-    },
-    "n2a_sync_ram_wt_8192x8_fixture": {
-      "deps": [
-        "n2a_sync_ram_wt"
-      ],
-      "srcs": [
-        "src/common/dv/memory/n2a_sync_ram_wt_8192x8_fixture.sv"
-      ]
-    },
     "n2a_tdp_ram": {
       "variants": {
         "intel": {
