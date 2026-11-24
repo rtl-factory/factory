@@ -926,6 +926,25 @@ def _picolibc(output: Path, override: Path | None) -> Path:
     return root / "usr"
 
 
+def _zstd(name: str, package: Path):
+    """Python 3.14's compression.zstd, or the same API from the pinned backports.zstd.
+
+    Why: Bazel's hermetic Python is 3.12 (MODULE.bazel; #224).
+    """
+    try:
+        from compression import zstd
+        return zstd
+    except ModuleNotFoundError:
+        pass
+    try:
+        from backports import zstd
+        return zstd
+    except ModuleNotFoundError as error:
+        raise RuntimeError(
+            f"{name} needs compression.zstd (Python 3.14) or backports.zstd "
+            f"(tools/sim/requirements.txt), or pass --picolibc-prefix: {package}") from error
+
+
 def _extract_deb_data(package: Path, root: Path) -> None:
     """Extract a Debian package's data tarball without host packaging tools.
 
@@ -949,14 +968,7 @@ def _extract_deb_data(package: Path, root: Path) -> None:
         if name.startswith("data.tar"):
             payload = archive[start:start + size]
             if name.endswith(".zst"):
-                try:
-                    from compression import zstd
-                except ModuleNotFoundError as error:
-                    raise RuntimeError(
-                        f"{name} needs Python 3.14 compression.zstd; run with "
-                        "Python 3.14 or pass --picolibc-prefix: "
-                        f"{package}") from error
-                payload = zstd.decompress(payload)
+                payload = _zstd(name, package).decompress(payload)
             elif name not in ("data.tar", "data.tar.gz", "data.tar.xz"):
                 raise RuntimeError(f"unsupported package data member {name}")
             with tarfile.open(fileobj=io.BytesIO(payload)) as data:

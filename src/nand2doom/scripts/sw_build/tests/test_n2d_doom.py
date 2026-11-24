@@ -564,10 +564,9 @@ class N2dDoomToolTests(unittest.TestCase):
 
     def test_deb_zstd_data_member_extracts(self) -> None:
         try:
-            from compression import zstd
-        except ModuleNotFoundError:
-            self.skipTest("Python 3.14 compression.zstd absent; "
-                          "the zstd data member path needs it")
+            zstd = n2d_doom._zstd("data.tar.zst", Path("fixture.deb"))
+        except RuntimeError:
+            self.skipTest("neither compression.zstd nor backports.zstd is installed")
         package_root = self.enterContext(tempfile.TemporaryDirectory())
         root = Path(package_root)
         package = root / "fixture.deb"
@@ -578,16 +577,17 @@ class N2dDoomToolTests(unittest.TestCase):
             run.assert_not_called()
         self.assertEqual((root / "out/usr/lib/odd.a").read_bytes(), b"odd")
 
-    def test_deb_zstd_without_compression_module_names_python_314(self) -> None:
+    def test_deb_zstd_without_any_zstd_module_names_both(self) -> None:
         package_root = self.enterContext(tempfile.TemporaryDirectory())
         package = Path(package_root) / "fixture.deb"
         package.write_bytes(b"!<arch>\n" + _ar_member("data.tar.zst", b"x"))
         # Why: a None entry makes the import raise ModuleNotFoundError on any Python, so
         # the test runs everywhere.
         with mock.patch.dict(sys.modules,
-                             {"compression": None, "compression.zstd": None}):
+                             {"compression": None, "compression.zstd": None,
+                              "backports": None, "backports.zstd": None}):
             with self.assertRaisesRegex(
-                    RuntimeError, "needs Python 3.14 compression.zstd"):
+                    RuntimeError, "needs compression.zstd"):
                 n2d_doom._extract_deb_data(package, Path(package_root) / "out")
 
     def test_warning_exceptions_apply_only_to_upstream_sources(self) -> None:

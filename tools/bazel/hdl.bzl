@@ -129,11 +129,12 @@ def _model_key(name, target):
         target.get("public_depth"),
     ])
 
-def hdl_project(name):
+def hdl_project(name, python_deps = []):
     """Every simulation target of src/<name>/cfg/targets.json, plus the project's files.
 
     Args:
       name: the project, as in src/<name>/.
+      python_deps: pip packages the project's own Python imports, as requirement() labels.
     """
     native.exports_files(
         native.glob(["**"], exclude = ["BUILD.bazel"]),
@@ -156,6 +157,7 @@ def hdl_project(name):
         srcs = native.glob(["**/*.py"], allow_empty = True),
         data = native.glob(["**"], exclude = HDL_FILES + ["**/*.py", "BUILD.bazel"]),
         imports = ["../.."],
+        deps = python_deps,
         visibility = ["//visibility:public"],
     )
 

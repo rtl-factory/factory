@@ -1,8 +1,13 @@
+load("@pypi//:requirements.bzl", "requirement")
 load("//tools/bazel:hdl.bzl", "hdl_project", "quartus_image", "unit_tests")
 
 # Every simulation target of cfg/targets.json, and the project's files
 # (wiki/tools/bazel/spec.md).
-hdl_project(name = "nand2doom")
+hdl_project(
+    name = "nand2doom",
+    # Why: the Doom build unpacks the Picolibc .zst package under Python 3.12 (#224).
+    python_deps = [requirement("backports.zstd")],
+)
 
 # The unit tests of the project's scripts.
 unit_tests()

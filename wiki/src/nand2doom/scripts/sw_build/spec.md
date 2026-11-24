@@ -52,7 +52,7 @@ python3 src/nand2doom/scripts/sw_build/n2d_doom.py build [--variant production|d
 
 Each download lands in `<output>/downloads/`. A file already there with the pinned digest is kept. Otherwise the copy in `workdir/downloads/nand2doom/` is used if present; it must be a regular file with the pinned digest, else the build stops ("cached input changed"). With no cached copy the input is fetched from its URL (60 s timeout) and, once its digest checks, copied into the cache when the cache can be written (under `bazel test` it cannot, and the fetch is still used). A destination or temporary that is a link is refused. Another variant's output first hard-links (or copies) the production output's `downloads/` and complete `toolchain/` trees, and every file is checked again.
 
-`--picolibc-prefix` uses an installed Picolibc instead of the package; it must hold the pinned consumed artifacts and include tree. The package is unpacked in Python (`ar`, then `data.tar`, `.gz`, `.xz` or, with Python 3.14, `.zst`), with no host package manager.
+`--picolibc-prefix` uses an installed Picolibc instead of the package; it must hold the pinned consumed artifacts and include tree. The package is unpacked in Python (`ar`, then `data.tar`, `.gz`, `.xz` or `.zst`, the last through Python 3.14's `compression.zstd` or the pinned `backports.zstd`), with no host package manager.
 
 ### Prepare
 
