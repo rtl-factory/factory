@@ -77,6 +77,7 @@ def test_a_block_that_follows_the_rules_passes(tmp_path):
     ("    typedef struct { logic a; } t_loose;", "struct-packed"),
     ("    typedef union packed { logic a; } t_either;", "no-union-interface"),
     ("    typedef enum {A_ONE, A_TWO} t_implicit;", "enum-width"),
+    ("    typedef enum logic {B_OFF, B_ON} t_unsized;", "enum-width"),
     ("    typedef logic [3:0] nibble_t;", "typedef-name"),
     ("\tassign count_o = count_q;", "tab"),
     ('`include "macros.vh"', "include-path"),
@@ -99,6 +100,15 @@ def test_non_ansi_and_unpacked_ports_are_named_by_their_last_word(tmp_path):
     assert rules(tmp_path, text) == [(3, "port-suffix")]
 
 
+def test_a_board_top_keeps_the_board_pin_names(tmp_path):
+    top = "module n2x_de2_115 (\n    input logic CLOCK_50,\n    output logic [17:0] LEDR\n);\nendmodule\n"
+    assert rules(tmp_path, top, "src/n2x/fpga/de2_115/n2x_de2_115.sv") == []
+    assert len(rules(tmp_path, top, "src/n2x/fpga/de2_115/n2x_de2_115_helper.sv")) == 2
+    assert len(rules(tmp_path, top, "src/n2x/fpga/board_io/n2x_de2_115.sv")) == 2
+    imported = top.replace("module n2x_de2_115 (", "module n2x_de2_115\n    import p::*;\n(")
+    assert rules(tmp_path, imported, "src/n2x/fpga/de2_115/n2x_de2_115.sv") == [(2, "header-import")]
+
+
 def test_imports_belong_in_the_module_body(tmp_path):
     text = CLEAN.replace("module n2x_counter #(", "module n2x_counter\n    import n2x_pkg::*;\n#(")
     assert (4, "header-import") in rules(tmp_path, text)
@@ -113,7 +123,7 @@ def test_ports_after_a_header_import_are_still_checked(tmp_path):
 
 
 def test_an_enum_member_with_a_value_is_not_the_typedef_name(tmp_path):
-    text = "package n2x_pkg;\n    typedef enum logic {\n        X_ON = 1'b1\n    } state_t;\nendpackage\n"
+    text = "package n2x_pkg;\n    typedef enum logic [0:0] {\n        X_ON = 1'b1\n    } state_t;\nendpackage\n"
     assert rules(tmp_path, text, "src/n2x/rtl/blk/n2x_pkg.sv") == [(2, "typedef-name")]
 
 

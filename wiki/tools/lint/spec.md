@@ -81,9 +81,9 @@ Regenerate the baseline with `--update-baseline` from the checkout root after a 
 | `initial`, `task` | `initial` or `task` outside the shared macros | sequential and combinational logic |
 | `casex` | `casex` | combinational logic |
 | `struct-packed`, `no-union-interface` | a `struct` that is not `packed`; `union`, `interface`, `modport` | structs |
-| `enum-width` | an `enum` not on `logic` | enums |
+| `enum-width` | an `enum` not declared `enum logic [...]` | enums |
 | `typedef-name` | a typedef whose name is not `t_<name>` | files and names |
-| `port-suffix` | a module port whose name does not end in `_i`, `_o` or `_io` (ANSI and non-ANSI headers) | files and names |
+| `port-suffix` | a module port whose name does not end in `_i`, `_o` or `_io` (ANSI and non-ANSI headers), except in a board top, `src/<project>/fpga/<board>/<prefix>_<board>.sv`, whose ports keep the board's pin names | files and names |
 | `header-import` | an `import` in a module header or at file scope | packages |
 | `include-path` | an `` `include `` whose path does not start at `src/` | formatting |
 | `tab` | a tab anywhere in the file | formatting |
@@ -93,8 +93,9 @@ Regenerate the baseline with `--update-baseline` from the checkout root after a 
 
 ### Verilator lint
 
-- **Tops:** `tools/bazel/hdl_libraries.py lint_tops()` derives them from the libraries: every module of `rtl/` or `fpga/` that no other design library needs (each project's tops, such as its board tops), and every module of `src/common/rtl/` and `src/common/fpga/` (each common block, at its default parameters and default variant). A project's `targets.json` may hold a `lint` object, `{"<top>": {"libraries": [...], "flavors": [...]}}`, that adds what a top needs beyond its own library, such as a vendor primitive's stand-in (`sld_virtual_jtag_stub`) and the project's composition waivers, or names one more top. Each top's files are its libraries resolved exactly as for a simulation target.
+- **Tops:** `tools/bazel/hdl_libraries.py lint_tops()` derives them from the libraries: every module of `rtl/` or `fpga/` that no other design library needs (each project's tops, such as its board tops), and every module of `src/common/rtl/` and `src/common/fpga/` (each common block, at its default parameters and default variant). A project's `targets.json` may hold a `lint` object, `{"<top>": {"libraries": [...], "flavors": [...]}}`, that adds what a top needs beyond its own library, such as a vendor primitive's stand-in (`sld_virtual_jtag_stub`), or names one more top. It never adds out-of-line `verilator_config` waivers: a warning is waived inline or baselined. Each top's files are its libraries resolved exactly as for a simulation target.
 - **Run:** `verilator --lint-only -Wall --assert -Wno-fatal --top-module <top> <sources>` in the working folder (the test's runfiles under Bazel), so root-relative includes resolve. Each `%Warning-` line counts; any `%Error`, or a non-zero exit, fails whatever the baseline holds.
 - **Waivers:** Verilator's own inline comments, `/* verilator lint_off <RULE> */ ... /* verilator lint_on <RULE> */`, on the narrowest span; the rule checker's `waiver-scope` fails one left open.
-- **Baseline:** per top, under `verilator`: more warnings than the entry fails and lists them; fewer fails until the baseline is regenerated; `//tools:rtl_lint` fails an entry for a top that is no longer linted.
+- **Baseline:** both sections hold counts, per file and per top, not the violations themselves, so a change that fixes one violation and adds another in the same file or top passes; the reviewer reads the diff for that, and `--all` (rules) or the test's log (Verilator) lists what the count holds.
+- **Verilator baseline:** per top, under `verilator`: more warnings than the entry fails and lists them; fewer fails until the baseline is regenerated; `//tools:rtl_lint` fails an entry for a top that is no longer linted.
 - **Bazel:** `hdl_project()` makes `//src/<project>:<top>.lint` for each top from `@hdl_registry`'s `LINT_TARGETS`, tagged `L0` and `lint`. It runs sandboxed and cached, with only the top's sources and headers, `rtl_lint.py`, `baseline.py`, the baseline and `@verilator` as inputs, so it reruns only when one of them changes.

@@ -6,24 +6,24 @@
   "src/common/rtl/memory/n2a_sync_ram_wt.sv": 1,
   "src/common/rtl/memory/n2a_tdp_ram_intel.sv": 1,
   "src/common/rtl/memory/n2a_tdp_ram_portable.sv": 1,
+  "src/common/rtl/sdram/n2a_sdram_pkg.sv": 1,
   "src/common/rtl/uart_mem/n2a_uart_mem.sv": 1,
-  "src/nand2doom/fpga/de10_lite/n2d_de10_lite.sv": 23,
-  "src/nand2doom/fpga/de2_115/n2d_de2_115.sv": 35,
+  "src/nand2doom/fpga/de2_115/n2d_de2_115.sv": 1,
   "src/nand2doom/rtl/io/n2d_uart_bulk.sv": 1,
   "src/nand2doom/rtl/io/n2d_uart_debug.sv": 1,
   "src/nand2doom/rtl/io/n2d_uart_debug_engine.sv": 7,
   "src/nand2doom/rtl/io/n2d_uart_mem_port.sv": 1,
   "src/nand2doom/rtl/io/n2d_uart_stream.sv": 1,
   "src/nand2doom/rtl/platform/n2d_system.sv": 1,
-  "src/nand2mario/fpga/de10_lite/n2m_de10_lite.sv": 28,
-  "src/nand2mario/fpga/de2_115/n2m_de2_115.sv": 30,
   "src/nand2mario/rtl/core/n2m_cpu_control.sv": 24,
   "src/nand2mario/rtl/core/n2m_cpu_execute.sv": 2,
   "src/nand2mario/rtl/core/n2m_cpu_stop_policy.sv": 6
  },
  "verilator": {
   "n2a_jtag_keyboard": 2,
-  "n2m_de10_lite": 12,
-  "n2m_de2_115": 12
+  "n2d_de10_lite": 2,
+  "n2d_de2_115": 2,
+  "n2m_de10_lite": 14,
+  "n2m_de2_115": 14
  }
 }

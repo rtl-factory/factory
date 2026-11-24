@@ -66,7 +66,7 @@ KEYWORD_RULES = [KeywordRule(*rule) for rule in [
     ("delay", r"(?<![#\w])#(?!#)(?!\s*\()", "no # delays in RTL", set()),
     ("struct-packed", r"\bstruct\b(?!\s+packed\b)", "every struct is a struct packed", set()),
     ("no-union-interface", r"\b(union|interface|modport)\b", "no unions, interfaces or modports in RTL", set()),
-    ("enum-width", r"\benum\b(?!\s+logic\b)", "declare enums as typedef enum logic [N-1:0], never on the implicit int",
+    ("enum-width", r"\benum\b(?!\s+logic\s*\[)", "declare enums as typedef enum logic [N-1:0] with an explicit width",
      set()),
 ]]
 TYPEDEF_NAME = re.compile(r"^t_\w+$")
@@ -159,8 +159,15 @@ def declared_name(text: str) -> str:
     return match.group(1) if match else ""
 
 
-def header_violations(code: str) -> list[tuple[int, str, str]]:
-    """Port names without a direction suffix, and imports in a module header or at file scope."""
+def board_top(rel: str) -> bool:
+    """A board top, src/<project>/fpga/<board>/<prefix>_<board>.sv, whose ports keep the board's pin names."""
+    parts = Path(rel).parts
+    return len(parts) == 5 and parts[2] == "fpga" and Path(rel).stem.endswith("_" + parts[3])
+
+
+def header_violations(code: str, pins: bool = False) -> list[tuple[int, str, str]]:
+    """Port names without a direction suffix (unless the ports are board pins), and
+    imports in a module header or at file scope."""
     found = []
     for match in re.finditer(r"\b(?:module|macromodule)\s+(?:automatic\s+|static\s+)?(\w+)", code):
         i = match.end()
@@ -182,7 +189,7 @@ def header_violations(code: str) -> list[tuple[int, str, str]]:
                     if c == "," and depth == 0:
                         item = re.sub(r"^\s*`.*$", "", ports[start:j], flags=re.M)
                         name = declared_name(item)
-                        if name and not PORT_NAME.match(name):
+                        if name and not pins and not PORT_NAME.match(name):
                             line = line_of(code, offset + start + len(ports[start:j]) - len(ports[start:j].lstrip()))
                             found.append((line, "port-suffix", f"port {name} needs a direction suffix _i, _o or _io"))
                         start = j + 1
@@ -247,7 +254,7 @@ def violations(path: Path, rel: str) -> list[Violation]:
     for number, text in enumerate(source.splitlines(), start=1):
         if "\t" in text:
             found.append((number, "tab", "indent with spaces, never tabs"))
-    found += header_violations(code) + typedef_violations(code) + waiver_violations(comments)
+    found += header_violations(code, board_top(rel)) + typedef_violations(code) + waiver_violations(comments)
     return [Violation(rel, line, rule, text) for line, rule, text in sorted(found)]
 
 
@@ -316,6 +323,8 @@ def verilator_main(argv: list[str]) -> int:
         print(line)
     if errors or problems:
         return 1
+    for line in warnings:
+        print("  baselined: " + line)
     print(f"verilator lint {args.top}: PASS ({len(sources)} files, {len(warnings)} baselined warnings)")
     return 0
 
