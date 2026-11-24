@@ -74,24 +74,31 @@ async def system_uart_mem_load(dut):
         await RisingEdge(dut.clk_i)
     dut.reset_i.value = 0
 
+    await load_and_boot(dut, dut.uart_rx_i, dut.uart_tx_o, bound)
+
+
+async def load_and_boot(system, rx, tx, bound):
+    """Load HEADER and PROGRAM into `system` (an n2m_system) with uart_mem.load
+    over its UART pins `rx`/`tx` at exactly 2 Mbaud, then require the core to
+    retire the program to its final HALT and store its marker."""
     # Why: the core runs garbage ROM until the hold and the loaded program
     # finishes within the release response, so retirements are recorded from
     # the last core reset on, in the background.
     pcs = []
-    cocotb.start_soon(record_retirements(dut, pcs))
-    wire = UartWire(rx=dut.uart_rx_i, tx=dut.uart_tx_o, bit_ps=BIT_PS, sample_window_ps=SAMPLE_WINDOW_PS)
+    cocotb.start_soon(record_retirements(system, pcs))
+    wire = UartWire(rx=rx, tx=tx, bit_ps=BIT_PS, sample_window_ps=SAMPLE_WINDOW_PS)
     client = sim_host.client(wire, poll_ps=10 * BIT_PS, timeout_s=0.005)
     identity = await sim_host.run(client.identify)
     assert identity.project == 'n2m ' and identity.entry == ENTRY, identity
     await sim_host.run(um.load, client, [HEADER, PROGRAM], ENTRY, PROJECT)
     cocotb.log.info('loaded through uart_mem.load by edge %d', edge_now())
-    assert not int(dut.core_reset_o.value), 'release must start the core'
-    while not (pcs and int(dut.halted_o.value) and int(dut.u_memory.interrupt_enable_o.value) == 0):
+    assert not int(system.core_reset_o.value), 'release must start the core'
+    while not (pcs and int(system.halted_o.value) and int(system.u_memory.interrupt_enable_o.value) == 0):
         assert edge_now() <= bound, f'finite bound exceeded after retiring {pcs}'
-        await RisingEdge(dut.clk_i)
+        await RisingEdge(system.clk_i)
         await ReadOnly()
     assert pcs == PROGRAM_PCS, f'retired {[hex(pc) for pc in pcs]}, expected the loaded program'
-    wram = store_array(dut.u_memory.u_wram)
+    wram = store_array(system.u_memory.u_wram)
     assert int(wram[MARKER_ADDRESS - 0xC000].value) == MARKER, 'the program stored its marker'
     cocotb.log.info('booted the loaded program to its HALT by edge %d', edge_now())
 
