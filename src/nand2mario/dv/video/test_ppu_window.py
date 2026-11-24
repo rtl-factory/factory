@@ -110,9 +110,9 @@ async def ppu_window_contract(dut):
     b = Bench(dut, seed)
     b.idle()
     for index in range(8192):
-        dut.u_vram.memory[index].value = b.rng.randrange(1, 256)
+        dut.u_vram.u_ram.memory[index].value = b.rng.randrange(1, 256)
     for index in range(256):
-        dut.u_oam.memory[index].value = b.rng.randrange(1, 256)
+        dut.u_oam.u_ram.memory[index].value = b.rng.randrange(1, 256)
     cocotb.start_soon(Clock(dut.clk_i, CLOCK_PERIOD_NS, unit='ns').start())
     await b.reset()
     model = m.PpuTiming()
