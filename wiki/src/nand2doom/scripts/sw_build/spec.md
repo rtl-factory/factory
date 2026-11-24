@@ -84,7 +84,7 @@ Both scripts resolve the output against the checkout root and require it below `
 python3 -m pytest src/nand2doom/scripts/sw_build
 ```
 
-The Doom tests need the inputs, which they read from (or fetch once into) `workdir/downloads/nand2doom/`. `test_n2d_wall_loop.py` compiles the pinned wall-loop seam and its adaptation with the host compiler and compares pixels and final state.
+The Doom tests need the pinned engine archive, which they read from `workdir/downloads/nand2doom/` when it holds the pinned digest and otherwise fetch once into their temporary folder (`scratch.pinned`, with `_download`'s `cache` set to that folder), never filling the cache. Both scripts' `main` take the checkout as a `root` keyword (default: this checkout); the tests run every plan, confinement and image build against a [scratch checkout](../../../../tools/bazel/spec.md#unit-tests) or the test's temporary folder, so they write nothing into the checkout's `workdir/` and pass whatever it holds. `test_n2d_wall_loop.py` compiles the pinned wall-loop seam and its adaptation with the host compiler and compares pixels and final state.
 
 ## Origin
 

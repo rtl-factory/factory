@@ -8,21 +8,23 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from src.nand2mario.scripts.sw_build.cpu_sw import ROOT, build
+from src.nand2mario.scripts.sw_build import cpu_sw
+from src.nand2mario.scripts.sw_build.cpu_sw import build
 from src.nand2mario.scripts.sw_build.asm.assembler import assemble
 from src.nand2mario.scripts.sw_build.asm.expressions import AssemblyError
 from src.nand2mario.scripts.sw_build.asm.linker import link
 from src.nand2mario.scripts.sw_build.asm.objects import validate
 from src.nand2mario.dv.core.cpu_model import CPU
+from tools.bazel import scratch
 
 
 class SoftwareTests(unittest.TestCase):
     def setUp(self):
-        parent = ROOT / 'workdir/issue42/units'
-        parent.mkdir(parents=True, exist_ok=True)
-        self.temporary = tempfile.TemporaryDirectory(dir=parent)
-        self.addCleanup(self.temporary.cleanup)
-        self.tree = Path(self.temporary.name)
+        # Why: cpu_sw confines every source and output to its module ROOT, so the test
+        # points that ROOT at a scratch checkout and works below its workdir/.
+        self.root = scratch.checkout(self)
+        self.enterContext(patch.object(cpu_sw, 'ROOT', self.root))
+        self.tree = Path(tempfile.mkdtemp(dir=self.root / 'workdir'))
         self.prelude = self.tree / 'interfaces.inc'
         self.prelude.write_text('')
 
@@ -82,8 +84,8 @@ class SoftwareTests(unittest.TestCase):
             self.assemble('INCLUDE "../outside.asm"')
 
     def test_cli_closed_environment_and_dry_run(self):
-        source = ROOT / 'src/nand2mario/sw/cpu/smoke.asm'
-        layout = ROOT / 'src/nand2mario/sw/cpu/layout.json'
+        source = self.root / 'src/nand2mario/sw/cpu/smoke.asm'
+        layout = self.root / 'src/nand2mario/sw/cpu/layout.json'
         output = self.tree / 'built'
         plan = build([source], layout, 'smoke::start', output, True)
         self.assertTrue(plan['dry_run'])
@@ -101,7 +103,7 @@ sys.addaudithook(audit)
 runpy.run_path(str(root/'src/nand2mario/scripts/sw_build/cpu_sw.py'),run_name='__main__')
 '''
         env = {k: v for k, v in os.environ.items() if k not in ('PYTHONPATH', 'PYTHONHOME')}
-        command = [sys.executable, '-I', '-c', script, str(ROOT), '--source', str(source),
+        command = [sys.executable, '-I', '-c', script, str(self.root), '--source', str(source),
                    '--layout', str(layout), '--entry', 'smoke::start', '--output', str(output)]
         result = subprocess.run(command, env=env, cwd=self.tree, capture_output=True, text=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -115,14 +117,14 @@ runpy.run_path(str(root/'src/nand2mario/scripts/sw_build/cpu_sw.py'),run_name='_
         self.assertTrue(model.halted)
         self.assertEqual(model.mem[0xC000:0xC002], bytes([110, 0xA5]))
         with self.assertRaises(ValueError):
-            build([source], layout, 'smoke::start', ROOT / 'src/output', True)
+            build([source], layout, 'smoke::start', self.root / 'src/output', True)
 
     def test_output_destinations_and_ancestors(self):
-        source = ROOT / 'src/nand2mario/sw/cpu/smoke.asm'
-        layout = ROOT / 'src/nand2mario/sw/cpu/layout.json'
+        source = self.root / 'src/nand2mario/sw/cpu/smoke.asm'
+        layout = self.root / 'src/nand2mario/sw/cpu/layout.json'
         output = self.tree / 'outputs'
         output.mkdir()
-        victim = ROOT / 'README.md'
+        victim = self.root / 'README.md'
         original = victim.read_bytes()
         destinations = ['program.gb', 'smoke.object.json', 'map.json',
                         'symbols.json', 'listing.json']

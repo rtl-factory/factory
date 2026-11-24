@@ -122,9 +122,7 @@ class DecodeTests(unittest.TestCase):
 
 class CliTests(unittest.TestCase):
     def setUp(self):
-        workdir = decoder.REPO_ROOT / "workdir"
-        workdir.mkdir(exist_ok=True)
-        self.temporary = tempfile.TemporaryDirectory(prefix="frame-decode-test-", dir=workdir)
+        self.temporary = tempfile.TemporaryDirectory(prefix="frame-decode-test-")
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         self.index = self.root / "indices.bin"

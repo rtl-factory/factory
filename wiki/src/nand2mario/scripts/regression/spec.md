@@ -25,7 +25,7 @@ The registry names the pre-step module for each target. The pre-step builds the 
 
 ## Output
 
-Everything is written below `workdir/`, and any output path outside it is refused. No ROM, image or frame is committed.
+Everything is written below `workdir/`, and any output path outside it is refused. No ROM, image or frame is committed. The tests point the module `ROOT` at a temporary folder or a [scratch checkout](../../../../tools/bazel/spec.md#unit-tests), so they write nothing into the checkout's `workdir/`.
 
 ## Origin
 

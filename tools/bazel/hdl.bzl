@@ -315,8 +315,8 @@ def unit_tests(deps = []):
                 requirement("pytest"),
             ],
             # Why: unit tests read the checkout (registries, wiki pages, programs) and some
-            # write its workdir/ or download pinned inputs, so they run outside the sandbox
-            # and always run; they take seconds.
+            # download pinned inputs, so they run outside the sandbox and always run; they
+            # take seconds.
             tags = ["L0", "external", "no-sandbox", "unit"],
             timeout = "long",
         )

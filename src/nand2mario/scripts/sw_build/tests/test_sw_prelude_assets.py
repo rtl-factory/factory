@@ -2,15 +2,16 @@
 import hashlib
 import json
 import re
-import shutil
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from src.nand2mario.scripts.sw_build import cpu_sw
 from src.nand2mario.scripts.sw_build.asm import interfaces_inc
 from src.nand2mario.scripts.sw_build.asm.assets import encode_shades, parse_shades
 from src.nand2mario.scripts.sw_build.asm.expressions import AssemblyError
+from tools.bazel import scratch
 
 ROOT = Path(__file__).resolve().parents[5]
 
@@ -88,9 +89,10 @@ class AssetTests(unittest.TestCase):
 
 class CliTests(unittest.TestCase):
     def setUp(self):
-        (ROOT / 'workdir').mkdir(exist_ok=True)
-        self.tmp = Path(tempfile.mkdtemp(dir=ROOT / 'workdir'))
-        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        # Why: cpu_sw confines sources, assets and output to its module ROOT.
+        root = scratch.checkout(self)
+        self.enterContext(patch.object(cpu_sw, 'ROOT', root))
+        self.tmp = Path(tempfile.mkdtemp(dir=root / 'workdir'))
         (self.tmp / 'art.json').write_text(json.dumps(
             {'schema_version': 1, 'width': 8, 'height': 8, 'pixels': [[3] * 8] * 8}))
         (self.tmp / 'prog.asm').write_text(

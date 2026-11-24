@@ -10,7 +10,6 @@ from PIL import Image
 
 from src.nand2mario.scripts.showcase import sim_showcase_render as render
 
-ROOT = Path(__file__).resolve().parents[5]
 SHADES = (0, 85, 170, 255)
 
 
@@ -22,9 +21,7 @@ def frame(seed):
 
 class SimShowcaseRenderTests(unittest.TestCase):
     def setUp(self):
-        parent = ROOT / "workdir/n2m/unit-tests"
-        parent.mkdir(parents=True, exist_ok=True)
-        self.tmp = tempfile.TemporaryDirectory(dir=parent)
+        self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.res = Path(self.tmp.name) / "results"
         self.out = Path(self.tmp.name) / "out"

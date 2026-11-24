@@ -1,12 +1,11 @@
 """Host-compiled production arithmetic and public sleep callback boundaries."""
 import ctypes
 from pathlib import Path
+import tempfile
 import unittest
 
 from src.nand2doom.dv.software.clock_build import compile_probe
 from src.nand2doom.dv.software.clock_vectors import old_clock_fails
-
-ROOT = Path(__file__).resolve().parents[4]
 
 
 class ClockTests(unittest.TestCase):
@@ -14,7 +13,9 @@ class ClockTests(unittest.TestCase):
         old_clock_fails()
 
     def test_compiled_production_clock(self):
-        artifact, expected = compile_probe(ROOT / "workdir/unit-tests/n2d_clock", host=True)
+        # Why: the probe build accepts the Bazel test's own temporary folder as output.
+        output = self.enterContext(tempfile.TemporaryDirectory())
+        artifact, expected = compile_probe(Path(output) / "n2d_clock", host=True)
         library = ctypes.CDLL(str(artifact))
         library.c_entry()
         observed = list((ctypes.c_uint32 * len(expected)).in_dll(library, "probe_results"))

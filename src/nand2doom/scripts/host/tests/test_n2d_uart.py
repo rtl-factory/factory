@@ -254,9 +254,7 @@ class UartTests(unittest.TestCase):
 class ManifestTests(unittest.TestCase):
     run_main = UartTests.run_main
     def setUp(self):
-        parent = ROOT / "workdir/unit-tests"
-        parent.mkdir(parents=True, exist_ok=True)
-        self.temporary = tempfile.TemporaryDirectory(dir=parent)
+        self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.folder = Path(self.temporary.name)
         (self.folder / "image.bin").write_bytes(b"abcde")

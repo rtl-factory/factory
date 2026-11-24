@@ -24,8 +24,9 @@ plans; cycle and IPC measurement uses the
 Builder unit tests check RV32IM/ILP32 flags, non-mutating planning and
 `workdir/` confinement; the integration test runs the installed GNU
 cross-toolchain and records its version. Engine adaptations are host-tested
-against the pinned upstream archive, which the tests fetch into the
-`workdir/downloads/nand2doom/` cache on first use.
+against the pinned upstream archive, which the tests read from the
+`workdir/downloads/nand2doom/` cache or fetch into their own temporary folder,
+never writing the cache.
 
 ## Features
 

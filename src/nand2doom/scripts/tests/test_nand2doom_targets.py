@@ -66,7 +66,6 @@ class ProjectTargetTests(unittest.TestCase):
 
     def test_project_targets(self):
         targets = sim.target_views()
-        self.temp_path = REPO_ROOT / "workdir/unit-tests"
         self.assertEqual(2_400_000, targets["n2d_c_runtime_system"].max_cycles)
         self.assertEqual(2_400_000, targets["n2d_integrated_system"].max_cycles)
         clock = targets["n2d_doom_clock"]

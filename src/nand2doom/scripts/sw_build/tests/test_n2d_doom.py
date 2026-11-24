@@ -1,5 +1,6 @@
 from pathlib import Path
 import contextlib
+import functools
 import io
 import json
 import lzma
@@ -17,6 +18,7 @@ from unittest import mock
 REPO_ROOT = Path(__file__).resolve().parents[5]
 sys.path.insert(0, str(REPO_ROOT))
 from src.nand2doom.scripts.sw_build import n2d_doom  # noqa: E402
+from tools.bazel import scratch  # noqa: E402
 
 
 def _ar_member(name: str, payload: bytes) -> bytes:
@@ -37,11 +39,11 @@ def _tarball(entries: dict[str, bytes]) -> bytes:
 
 def _upstream_source(test: unittest.TestCase, name: str) -> str:
     """A pinned upstream engine file, read from the vendored engine archive."""
-    archive = n2d_doom.VENDORED_DOWNLOADS / f"doomgeneric-{n2d_doom.ENGINE_REVISION}.tar.gz"
-    if not archive.is_file():
-        n2d_doom._download(n2d_doom.ENGINE_URL, archive, n2d_doom.ENGINE_SHA256)
-    if n2d_doom._sha256(archive) != n2d_doom.ENGINE_SHA256:
-        test.fail("cached engine archive does not match the pinned SHA-256")
+    archive = scratch.pinned(
+        n2d_doom.VENDORED_DOWNLOADS / f"doomgeneric-{n2d_doom.ENGINE_REVISION}.tar.gz",
+        n2d_doom.ENGINE_SHA256,
+        lambda path: n2d_doom._download(n2d_doom.ENGINE_URL, path, n2d_doom.ENGINE_SHA256,
+                                        cache=path.parent))
     with tarfile.open(archive, "r:gz") as engine:
         member = f"doomgeneric-{n2d_doom.ENGINE_REVISION}/doomgeneric/{name}"
         return engine.extractfile(member).read().decode("utf-8")
@@ -276,6 +278,10 @@ int main(void) {
 
 
 class N2dDoomToolTests(unittest.TestCase):
+    @functools.cached_property
+    def root(self) -> Path:
+        return scratch.checkout(self)
+
     def test_engine_experiments_leave_platform_and_capture_outside_lto(self) -> None:
         args = ("gcc", Path("engine"), Path("include"), Path("output"), REPO_ROOT)
         for level in ("Os", "O2", "O3"):
@@ -301,29 +307,26 @@ class N2dDoomToolTests(unittest.TestCase):
                 n2d_doom.compiler_options(level, lto)
 
     def test_plan_never_downloads_discovers_compilers_or_writes(self) -> None:
-        workdir = REPO_ROOT / "workdir"
-        workdir.mkdir(exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=workdir) as temporary:
-            output = Path(temporary) / "not-created"
-            stdout = io.StringIO()
-            with mock.patch.object(n2d_doom, "prepare") as prepare, \
-                    mock.patch.object(n2d_doom, "build") as build, \
-                    mock.patch.object(n2d_doom.shutil, "which") as which, \
-                    mock.patch.object(n2d_doom, "_download") as download, \
-                    mock.patch.object(n2d_doom, "_version") as version, \
-                    contextlib.redirect_stdout(stdout):
-                self.assertEqual(n2d_doom.main(["build", "--plan", "--variant", "deterministic",
-                                                "--output", str(output), "--engine-opt", "O2",
-                                                "--engine-lto"]), 0)
-                for action in (prepare, build, which, download, version):
-                    action.assert_not_called()
-            self.assertFalse(output.exists())
-            recipe = json.loads(stdout.getvalue())
-            self.assertEqual(recipe["compiler_options"]["engine_flags"], ["-O2", "-flto=1"])
-            self.assertEqual(recipe["compiler_options"]["platform_flags"], ["-Os", "-fno-lto"])
-            self.assertIn("capture.c", recipe["platform_sources"])
-            self.assertEqual(recipe["identity_object"], "capture_identity.o")
-            self.assertEqual(recipe["defines"], ["-DN2D_DETERMINISTIC_TIME=1"])
+        output = self.root / "workdir/not-created"
+        stdout = io.StringIO()
+        with mock.patch.object(n2d_doom, "prepare") as prepare, \
+                mock.patch.object(n2d_doom, "build") as build, \
+                mock.patch.object(n2d_doom.shutil, "which") as which, \
+                mock.patch.object(n2d_doom, "_download") as download, \
+                mock.patch.object(n2d_doom, "_version") as version, \
+                contextlib.redirect_stdout(stdout):
+            self.assertEqual(n2d_doom.main(["build", "--plan", "--variant", "deterministic",
+                                            "--output", str(output), "--engine-opt", "O2",
+                                            "--engine-lto"], root=self.root), 0)
+            for action in (prepare, build, which, download, version):
+                action.assert_not_called()
+        self.assertFalse(output.exists())
+        recipe = json.loads(stdout.getvalue())
+        self.assertEqual(recipe["compiler_options"]["engine_flags"], ["-O2", "-flto=1"])
+        self.assertEqual(recipe["compiler_options"]["platform_flags"], ["-Os", "-fno-lto"])
+        self.assertIn("capture.c", recipe["platform_sources"])
+        self.assertEqual(recipe["identity_object"], "capture_identity.o")
+        self.assertEqual(recipe["defines"], ["-DN2D_DETERMINISTIC_TIME=1"])
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             with self.assertRaises(SystemExit):
                 n2d_doom.main(["prepare", "--engine-lto"])
@@ -333,12 +336,12 @@ class N2dDoomToolTests(unittest.TestCase):
                 mock.patch.dict(os.environ, {"N2D_OPT": "-O3", "N2D_EXTRA_CFLAGS": "-ffast-math"}), \
                 contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(n2d_doom.main(["build", "--variant", "production", "--engine-opt", "O2",
-                                           "--engine-lto"]), 0)
+                                           "--engine-lto"], root=self.root), 0)
             self.assertEqual(build.call_args.kwargs, {"engine_opt": "O2", "engine_lto": True})
-            self.assertEqual(n2d_doom.main(["build", "--variant", "production"]), 0)
+            self.assertEqual(n2d_doom.main(["build", "--variant", "production"], root=self.root), 0)
             self.assertEqual(build.call_args.kwargs, {"engine_opt": None, "engine_lto": None})
             self.assertEqual(n2d_doom.main(["build", "--variant", "production", "--engine-opt",
-                                           "Os", "--no-engine-lto"]), 0)
+                                           "Os", "--no-engine-lto"], root=self.root), 0)
             self.assertEqual(build.call_args.kwargs, {"engine_opt": "Os", "engine_lto": False})
 
     def test_variant_default_compiler_profiles(self) -> None:
@@ -413,19 +416,19 @@ class N2dDoomToolTests(unittest.TestCase):
             )
 
     def test_output_is_confined_before_prepare_or_build(self) -> None:
-        accepted = REPO_ROOT / "workdir/software/confined-doom"
+        accepted = self.root / "workdir/software/confined-doom"
         self.assertEqual(
-            accepted.resolve(), n2d_doom._confined_output(REPO_ROOT, accepted)
+            accepted.resolve(), n2d_doom._confined_output(self.root, accepted)
         )
         with tempfile.TemporaryDirectory() as temporary:
             escaped = Path(temporary) / "escaped-doom"
             with self.assertRaisesRegex(ValueError, "below"):
-                n2d_doom._confined_output(REPO_ROOT, escaped)
+                n2d_doom._confined_output(self.root, escaped)
             with self.assertRaisesRegex(ValueError, "below"):
-                n2d_doom.prepare(escaped, REPO_ROOT)
+                n2d_doom.prepare(escaped, self.root)
             with mock.patch.object(n2d_doom, "prepare") as prepare:
                 with self.assertRaisesRegex(ValueError, "below"):
-                    n2d_doom.build(escaped, REPO_ROOT, None)
+                    n2d_doom.build(escaped, self.root, None)
                 prepare.assert_not_called()
             result = subprocess.run(
                 [sys.executable, str(REPO_ROOT / "src/nand2doom/scripts/sw_build/n2d_doom.py"),
@@ -437,18 +440,14 @@ class N2dDoomToolTests(unittest.TestCase):
             self.assertFalse(escaped.exists())
 
     def test_output_rejects_existing_symlink_component(self) -> None:
-        workdir = REPO_ROOT / "workdir"
-        workdir.mkdir(exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=workdir) as temporary:
+        with tempfile.TemporaryDirectory(dir=self.root / "workdir") as temporary:
             link = Path(temporary) / "redirect"
             link.symlink_to(Path(tempfile.gettempdir()), target_is_directory=True)
             with self.assertRaisesRegex(ValueError, "symbolic-link"):
-                n2d_doom._confined_output(REPO_ROOT, link / "doom")
+                n2d_doom._confined_output(self.root, link / "doom")
 
     def test_prepare_rejects_redirected_nested_output_before_download(self) -> None:
-        workdir = REPO_ROOT / "workdir"
-        workdir.mkdir(exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=workdir) as temporary:
+        with tempfile.TemporaryDirectory(dir=self.root / "workdir") as temporary:
             output = Path(temporary) / "doom"
             output.mkdir()
             (output / "downloads").symlink_to(
@@ -456,7 +455,7 @@ class N2dDoomToolTests(unittest.TestCase):
             )
             with mock.patch.object(n2d_doom, "_download") as download:
                 with self.assertRaisesRegex(ValueError, "symbolic-link child"):
-                    n2d_doom.prepare(output, REPO_ROOT)
+                    n2d_doom.prepare(output, self.root)
                 download.assert_not_called()
 
     def test_picolibc_override_requires_pinned_consumed_artifacts(self) -> None:
@@ -744,7 +743,7 @@ class N2dDoomToolTests(unittest.TestCase):
         self.assertNotEqual(n2d_doom.VARIANTS["deterministic"]["output"],
                             n2d_doom.VARIANTS["production"]["output"])
         with self.assertRaisesRegex(ValueError, "unknown Doom firmware variant"):
-            n2d_doom.build(REPO_ROOT / "workdir/software/x", REPO_ROOT, None, "fast")
+            n2d_doom.build(self.root / "workdir/software/x", self.root, None, "fast")
 
     def test_variant_selection(self) -> None:
         select = n2d_doom.selected_variants
@@ -770,7 +769,7 @@ class N2dDoomToolTests(unittest.TestCase):
         self.assertIn("--output requires a single --variant", result.stderr)
 
     def test_seed_inputs_hard_links_production_downloads_and_toolchain(self) -> None:
-        with tempfile.TemporaryDirectory(dir=REPO_ROOT / "workdir") as temporary:
+        with tempfile.TemporaryDirectory() as temporary:
             repository = Path(temporary)
             (repository / "workdir/software").mkdir(parents=True)
             source = repository / n2d_doom.VARIANTS["production"]["output"]
@@ -793,7 +792,7 @@ class N2dDoomToolTests(unittest.TestCase):
             n2d_doom._seed_inputs(target.resolve(), repository)
             self.assertFalse((target / "downloads/new.zip").exists())
     def test_partial_production_toolchain_is_never_shared_or_overwritten(self) -> None:
-        with tempfile.TemporaryDirectory(dir=REPO_ROOT / "workdir") as temporary:
+        with tempfile.TemporaryDirectory() as temporary:
             repository = Path(temporary)
             source = repository / n2d_doom.VARIANTS["production"]["output"]
             partial = source / "toolchain/usr/include/stdio.h"

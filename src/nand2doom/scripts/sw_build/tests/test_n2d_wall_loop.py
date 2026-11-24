@@ -172,9 +172,7 @@ class WallLoopTests(unittest.TestCase):
         _, body = self.upstream()
         program = PRELUDE + body.replace("R_RenderSegLoop", "upstream_R_RenderSegLoop", 1)
         program += n2d_doom._wall_loop_body(body) + MAIN
-        generated = Path(__file__).resolve().parents[5] / "workdir/unit-tests/wall-loop"
-        generated.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=generated) as directory:
+        with tempfile.TemporaryDirectory() as directory:
             source = Path(directory)/"wall.c";binary = Path(directory)/"wall"
             source.write_text(program)
             subprocess.run([compiler, "-O2", "-fwrapv", "-Wall", "-Wextra", "-Werror",
