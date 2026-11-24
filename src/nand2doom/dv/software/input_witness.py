@@ -11,7 +11,9 @@ from src.nand2doom.dv.software.doom_gameplay import BREAK, COMPLETION, MAKE, TUR
 # immediates are read from the actual image, and both instruction identity and
 # runtime address are checked, so a rebuilt image cannot silently move a seam.
 # The offsets are those of the rv32_gcc pin in cfg/toolchain.json; a pin bump
-# re-derives them from the new image's disassembly.
+# re-derives them from the new image's disassembly and updates SEAMS_RV32_GCC,
+# which an L0 test compares with the pin.
+SEAMS_RV32_GCC = "15.2.0-1"
 SEAMS = {
     "entry": ("BuildNewTic", 0, 0xfd010113, 0xffffffff),
     "input_call": ("BuildNewTic", 48, 0x000080e7, 0xfffff),

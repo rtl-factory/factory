@@ -1,9 +1,11 @@
 """Independent nonzero-slot architectural stimuli for the real input ledger."""
 import copy
+import json
 import unittest
+from pathlib import Path
 
 from src.nand2doom.dv.software.doom_gameplay import GameplayTrace, MAKE, BREAK, TURN, COMPLETION
-from src.nand2doom.dv.software.input_witness import InputWitness
+from src.nand2doom.dv.software.input_witness import SEAMS_RV32_GCC, InputWitness
 
 from src.nand2doom.dv.software.input_witness_vectors import abi_fixture, initialized_trace, rows
 
@@ -34,7 +36,16 @@ def exercise(records, a=None, slot=7):
     return w, t, events
 
 
+REPO_ROOT = Path(__file__).resolve().parents[4]
+
+
 class InputWitnessTests(unittest.TestCase):
+    def test_seams_match_the_pinned_compiler(self):
+        pin = json.loads((REPO_ROOT / "cfg/toolchain.json").read_text())["rv32_gcc"]["version"]
+        self.assertEqual(pin, SEAMS_RV32_GCC,
+                         "rv32_gcc pin changed: re-derive input_witness SEAMS from the new "
+                         "Doom image's disassembly")
+
     def test_real_status_make_empty_and_direct_break_nonzero_slots(self):
         for slot in (3, 7, 17):
             with self.subTest(slot=slot):
