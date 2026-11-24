@@ -102,7 +102,7 @@ How to write SystemVerilog RTL in this factory, and how a reviewer checks it. On
 ### Rules: reset and clocks
 
 - Reset is synchronous and active-high on `reset_i`: use `DFF_RST`, `DFF_RST_VAL` or `DFF_RST_EN`. Why: one reset style keeps timing, simulation and formal assumptions the same in every block. Check: review.
-- Use an asynchronous reset (`DFF_ARST_*`) only with a `Why:` comment naming the reason, such as a reset synchronizer or logic that must reset while its clock is stopped. Why: async reset adds a recovery and removal path to time-close. Check: review.
+- Use an asynchronous reset (`DFF_ARST_*`) only with a `Why:` comment naming the reason, such as a reset synchronizer or logic that must reset while its clock is stopped. Why: async reset adds a recovery and removal path to time-close. Check: lint (`arst-why`).
 - You should reset only the state that needs a known value (control, valid bits, FSM state); leave pure datapath flops without reset (`DFF`, `DFF_EN`). Why: fewer reset nets, and a datapath that depends on reset is a bug the valid bits should catch. Check: review.
 - Cross a clock domain only through the synchronizers in `src/common/rtl/sync/`, and name the crossing in the block's MAS. Why: a hand-made crossing is invisible to lint and metastable in hardware. Check: review.
 
