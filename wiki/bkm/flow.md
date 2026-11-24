@@ -96,7 +96,7 @@ L1 has no job yet: until it exists, a pull request into `main` runs only L0 in C
 
 - Runtime budget per level is not yet set.
 - L1 has no CI job yet; it will run on the self-hosted runner ([Runners](#runners)).
-- A scheduled run waits in the queue while the self-hosted runner is offline (GitHub drops it after 24 hours); runs queued meanwhile collapse to one per level.
+- A scheduled run waits in the queue while the self-hosted runner is offline (GitHub drops it after 24 hours); runs queued meanwhile collapse to at most two per level.
 
 ## Runners
 
