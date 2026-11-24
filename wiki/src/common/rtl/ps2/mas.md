@@ -34,7 +34,7 @@ Parameter `FRAME_TIMEOUT_CYCLES` (default 5,000: 200 µs at 25 MHz; at least
 
 | Port | Dir | Width | Meaning |
 | --- | --- | --- | --- |
-| `clk_i`, `reset_i` | in | 1 | System clock; asynchronous active-high reset |
+| `clk_i`, `reset_i` | in | 1 | System clock; synchronous active-high reset |
 | `ps2_clk_i`, `ps2_data_i` | in | 1 | PS/2 pins, asynchronous, idle high |
 | `enable_i` | in | 1 | Low: the line is ignored and a frame in progress is held |
 | `abort_i` | in | 1 | Abandon the frame in progress; nothing is reported on this clock |
@@ -60,7 +60,7 @@ Parameter `FRAME_TIMEOUT_CYCLES` (default 5,000: 200 µs at 25 MHz; at least
 
 | Port | Dir | Width | Meaning |
 | --- | --- | --- | --- |
-| `clk_i`, `reset_i` | in | 1 | System clock; asynchronous active-high reset |
+| `clk_i`, `reset_i` | in | 1 | System clock; synchronous active-high reset |
 | `byte_valid_i`, `byte_i` | in | 1, 8 | One Set-2 byte offered |
 | `byte_ready_o` | out | 1 | The offered byte is taken on this clock |
 | `clear_i` | in | 1 | Drop the pending qualifiers at the end of this clock |
@@ -113,10 +113,8 @@ state is set by an `E0` or `F0`, cleared by a taken event, and cleared by
 
 One clock, `clk_i`. The receiver owns the crossing of the two PS/2 pins into
 `clk_i`, through `n2a_cdc_bit_sync`: each pin is a slow level, sampled only
-after its clock has fallen. Both blocks reset asynchronously, like the pin
-synchronizers and the nand2doom keyboard around them. A synchronous-reset
-user, such as `n2m_scancode_buttons`, sees the same state after any reset of
-at least one clock.
+after its clock has fallen. Both blocks reset synchronously, like the pin
+synchronizers and every user ([RTL coding](../../../../bkm/rtl.md#rules-reset-and-clocks)).
 
 ## Design choices
 
