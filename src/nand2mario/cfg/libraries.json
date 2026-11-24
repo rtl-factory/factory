@@ -480,7 +480,9 @@
     },
     "n2m_scancode_buttons": {
       "deps": [
-        "macros"
+        "macros",
+        "n2a_ps2_decoder",
+        "n2a_ps2_pkg"
       ],
       "srcs": [
         "src/nand2mario/fpga/board_io/n2m_scancode_buttons.sv"

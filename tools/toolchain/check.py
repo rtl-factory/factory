@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Toolchain readiness check: reads cfg/toolchain.json and reports PASS, WARN
-or FAIL per tool (Verilator, OSS CAD Suite, Quartus), with the fix. Never changes the host. Exit status is
+or FAIL per tool (Verilator, Bazel, OSS CAD Suite, Quartus), with the fix. Never changes the host. Exit status is
 nonzero on any FAIL; READY is printed when nothing fails.
 
     python3 tools/toolchain/check.py [--config cfg/toolchain.json] [--json] [--tool NAME]
@@ -10,6 +10,7 @@ Spec: wiki/tools/toolchain/spec.md.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -23,6 +24,8 @@ DEFAULT_CONFIG = ROOT / "cfg" / "toolchain.json"
 SPEC = "wiki/tools/toolchain/spec.md (Install, Quartus)"
 FORMAL_SPEC = "wiki/tools/toolchain/spec.md (Install, OSS CAD Suite)"
 SIM_SPEC = "wiki/tools/toolchain/spec.md (Install, Verilator)"
+BAZEL_SPEC = "wiki/tools/toolchain/spec.md (Install, Bazelisk)"
+HOOK = "rerun .claude/hooks/session-start.sh in a cloud session"
 
 
 def run(command: list[str], timeout: int = 120) -> tuple[int, str]:
@@ -81,10 +84,11 @@ def find_verilator(which=shutil.which) -> str | None:
     return str(candidate) if candidate.is_file() else None
 
 
-def check_verilator(pin: dict, *, runner=run, which=shutil.which, is_file=os.path.isfile) -> dict:
-    """The pinned Verilator, with verilator_coverage beside it for coverage reports."""
+def check_verilator(pin: dict, *, runner=run, which=shutil.which, is_file=os.path.isfile, read=None) -> dict:
+    """The pinned Verilator, with verilator_coverage beside it for coverage reports
+    and no compiler cache baked into its verilated.mk."""
     result = {"tool": "verilator", "want": pin["version"]}
-    fix = f'build Verilator {pin["tag"]} into ~/verilator per {SIM_SPEC}'
+    fix = f'build Verilator {pin["tag"]} into ~/verilator per {SIM_SPEC}, or {HOOK}'
     executable = find_verilator(which)
     if not executable:
         return dict(result, status="FAIL", found="verilator not found", fix=fix)
@@ -96,6 +100,13 @@ def check_verilator(pin: dict, *, runner=run, which=shutil.which, is_file=os.pat
         return dict(result, status="FAIL", found=found, fix=fix)
     if not is_file(str(Path(executable).resolve().parent / "verilator_coverage")):
         return dict(result, status="FAIL", found=f"{found}; missing verilator_coverage", fix=fix)
+    # Why: configure bakes a ccache found on PATH into verilated.mk (OBJCACHE ?= ccache);
+    # a build where it is missing then fails.
+    makefile = Path(executable).resolve().parent.parent / "share" / "verilator" / "include" / "verilated.mk"
+    cache = re.search(r"^OBJCACHE\s*\?=[ \t]*(\S*)", (read or read_stamp)(makefile) or "", re.M)
+    if cache and cache.group(1):
+        return dict(result, status="FAIL", found=f"{found}; {makefile} needs {cache.group(1)}",
+                    fix=f"rebuild with ac_cv_prog_OBJCACHE= ./configure per {SIM_SPEC}, or {HOOK}")
     return dict(result, status="PASS", found=found)
 
 
@@ -134,13 +145,40 @@ def check_oss_cad_suite(pin: dict, *, runner=run, is_file=os.path.isfile, read=r
     return dict(result, status="PASS", found=f'{pin["version"]} (Yosys {found}, {", ".join(pin["plugins"])})')
 
 
-TOOLS = ("verilator", "oss-cad-suite", "quartus")
+def sha256(path: str) -> str | None:
+    try:
+        with open(path, "rb") as handle:
+            return hashlib.file_digest(handle, "sha256").hexdigest()
+    except OSError:
+        return None
+
+
+def check_bazel(pin: dict, *, which=shutil.which, digest=sha256) -> dict:
+    """A bazel command: PASS for the pinned Bazelisk, WARN for another one (a
+    CI runner's setup-bazel), FAIL for none or a changed pinned binary."""
+    result = {"tool": "bazel", "want": f'Bazelisk {pin["version"]}'}
+    pinned = Path(pin["install_dir"]).expanduser() / "bazelisk"
+    fix = f'install Bazelisk {pin["version"]} as {pinned} per {BAZEL_SPEC}, or {HOOK}'
+    found = which("bazel") or which(str(pinned.with_name("bazel")))
+    if not found:
+        return dict(result, status="FAIL", found="bazel not found", fix=fix)
+    result["path"] = found
+    if os.path.realpath(found) != os.path.realpath(pinned):
+        return dict(result, status="WARN", found=f"{found}, not the pinned Bazelisk", fix=fix)
+    if digest(str(pinned)) != pin["sha256"]:
+        return dict(result, status="FAIL", found=f"{pinned} does not match the pinned SHA-256", fix=fix)
+    return dict(result, status="PASS", found=f'Bazelisk {pin["version"]} at {found}')
+
+
+TOOLS = ("verilator", "bazel", "oss-cad-suite", "quartus")
 
 
 def check(config: dict, *, runner=run, which=shutil.which, tools=TOOLS) -> list[dict]:
     results = []
     if "verilator" in tools:
         results.append(check_verilator(config["verilator"], runner=runner, which=which))
+    if "bazel" in tools:
+        results.append(check_bazel(config["bazelisk"], which=which))
     if "oss-cad-suite" in tools:
         results.append(check_oss_cad_suite(config["oss_cad_suite"], runner=runner))
     if "quartus" in tools:

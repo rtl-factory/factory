@@ -1,0 +1,26 @@
+# Formal setup for n2a_ps2_receiver. Plan and results:
+# wiki/src/common/fv/ps2/fv-plan.md. Run: python3 tools/fv/fv.py run n2a_ps2_receiver
+# level: L0
+# timeout: 600
+# library: n2a_ps2_receiver_fv
+[tasks]
+prove
+cover
+
+[options]
+prove: mode prove
+cover: mode cover
+cover: depth 40
+
+[engines]
+prove: abc pdr
+cover: smtbmc yices
+
+[script]
+read_slang --no-synthesis-define -I . {sources} --top n2a_ps2_receiver_fv
+prep -top n2a_ps2_receiver_fv
+flatten
+techmap
+opt -fast
+setundef -undriven -anyseq
+setundef -anyseq
