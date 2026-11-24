@@ -1,0 +1,89 @@
+# Scheduled regression on `main` (wiki/bkm/flow.md CI levels): L2 every hour,
+# L3 every 6 hours, L4 nightly, each one `bazel test --config=ci --config=l<n> //...`
+# on the self-hosted runner. Levels are cumulative through the .bazelrc tag filters.
+# A failing scheduled level opens or updates one priority:P0 issue (ADR 0005).
+name: regression
+
+on:
+  schedule:
+    # Why: off the top of the hour, when GitHub's scheduler is busiest and drops runs. Times are UTC.
+    - cron: "17 * * * *"
+    - cron: "37 */6 * * *"
+    - cron: "7 23 * * *"
+  workflow_dispatch:
+    inputs:
+      level:
+        description: Regression level to run
+        type: choice
+        options: [l2, l3, l4]
+        default: l2
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  regression:
+    # Why: schedule and workflow_dispatch never carry a fork's code, so this job
+    # always runs on the self-hosted runner (wiki/bkm/flow.md, Runners).
+    runs-on: [self-hosted, rtl-factory]
+    env:
+      LEVEL: ${{ github.event_name == 'workflow_dispatch' && inputs.level || (github.event.schedule == '7 23 * * *' && 'l4') || (github.event.schedule == '37 */6 * * *' && 'l3') || 'l2' }}
+    # Why: one queue per level, never cancelled, so an hourly run cannot displace the
+    # nightly one, and runs queued while the runner is offline collapse to one per level.
+    concurrency:
+      group: regression-${{ github.event_name == 'workflow_dispatch' && inputs.level || (github.event.schedule == '7 23 * * *' && 'l4') || (github.event.schedule == '37 */6 * * *' && 'l3') || 'l2' }}
+      cancel-in-progress: false
+    timeout-minutes: 720
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the toolchain
+        run: python3 tools/toolchain/check.py --tool oss-cad-suite
+
+      - name: Regression tests
+        run: bazel test --config=ci --config="$LEVEL" //...
+
+      - name: Keep test logs and formal traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs-${{ env.LEVEL }}
+          path: |
+            bazel-testlogs/**/test.log
+            bazel-testlogs/**/test.outputs/**/*.vcd
+            bazel-testlogs/**/test.outputs/**/logfile.txt
+            bazel-testlogs/**/test.outputs/*.log
+          if-no-files-found: ignore
+
+      - name: File the failure as a P0 issue
+        # Why: a failing level on main is fixed forward or reverted at once, through a
+        # priority:P0 issue (wiki/bkm/flow.md CI levels); one open issue per level.
+        if: failure() && github.ref == 'refs/heads/main'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const level = process.env.LEVEL.toUpperCase();
+            const title = `${level} regression fails on main`;
+            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const open = await github.paginate(github.rest.issues.listForRepo, { ...context.repo, state: 'open', labels: 'priority:P0' });
+            const found = open.find(i => i.title === title && !i.pull_request);
+            if (found) {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: found.number, body: `Still failing at ${context.sha}: ${run}` });
+              core.info(`commented on #${found.number}`);
+              return;
+            }
+            const body = [
+              '## Spec references', '- wiki/bkm/flow.md (CI levels)', '',
+              '## Observed behaviour', `The scheduled ${level} regression failed on \`main\` at ${context.sha}: ${run}`, '',
+              '## Expected behaviour', `${level} passes on \`main\`.`, '',
+              '## Reproduce', `\`bazel test --config=${process.env.LEVEL} //...\` at ${context.sha}; the failing targets and their logs are in the run above.`, '',
+              '## Scope', '- Fix forward or revert the change that broke it.', '',
+              '## Out of scope', '- Other levels.', '',
+              '## Blast radius', 'Unknown until triaged.', '',
+              '## Acceptance criteria', `- [ ] ${level} passes on \`main\`.`, '',
+              '## Blocked by', 'None',
+            ].join('\n');
+            const { data } = await github.rest.issues.create({ ...context.repo, title, body,
+              labels: ['type:bug', 'area:workflow', 'priority:P0', 'size:small', 'complexity:medium', 'status:triage'] });
+            core.info(`opened #${data.number}`);
