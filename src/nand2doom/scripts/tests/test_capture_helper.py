@@ -1,13 +1,14 @@
 import ctypes
 from pathlib import Path
+import tempfile
 import unittest
 from src.nand2doom.dv.software.capture_build import compile_probe
 
-ROOT = Path(__file__).resolve().parents[4]
-
 class CaptureHelperTests(unittest.TestCase):
     def test_production_state_machine(self):
-        artifact, expected = compile_probe(ROOT/'workdir/n2d-capture-helper/helper-host', host=True)
+        # Why: the probe build accepts the Bazel test's own temporary folder as output.
+        output = self.enterContext(tempfile.TemporaryDirectory())
+        artifact, expected = compile_probe(Path(output) / 'helper-host', host=True)
         library=ctypes.CDLL(str(artifact))
         library.c_entry()
         got=list((ctypes.c_uint32*len(expected)).in_dll(library,'capture_results'))

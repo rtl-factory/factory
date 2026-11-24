@@ -1,5 +1,6 @@
 """Byte transport exercises the production Client, not a permissive client stub."""
 from pathlib import Path
+import functools
 import json
 import subprocess
 import struct
@@ -14,6 +15,7 @@ from src.nand2doom.scripts.host import n2d_capture as capture
 from src.nand2doom.scripts.host import n2d_uart as uart
 from src.nand2doom.scripts.host import n2d_uart_debug_host as wire
 from src.nand2doom.scripts.host.tests.test_n2d_uart import response
+from tools.bazel import scratch
 
 class Device:
     def __init__(self):
@@ -329,6 +331,10 @@ class ReleaseReset(Device):
         return result
 
 class CapturePlanTests(unittest.TestCase):
+    @functools.cached_property
+    def root(self):
+        return scratch.checkout(self)
+
     def fixture(self, root):
         inputs={'sources': {'fixture.c': 'test-only'}}
         identity=capture.digest(json.dumps(inputs,sort_keys=True,separators=(',', ':')).encode())
@@ -349,7 +355,7 @@ class CapturePlanTests(unittest.TestCase):
         return path,manifest
 
     def test_manifest_digests_types_identity_and_output_plan(self):
-        with tempfile.TemporaryDirectory(dir=ROOT/'workdir') as directory:
+        with tempfile.TemporaryDirectory(dir=self.root/'workdir') as directory:
             root=Path(directory)
             path,manifest=self.fixture(root)
             self.assertEqual(capture.validate_layout(path)['address'],0x1000)
@@ -361,7 +367,7 @@ class CapturePlanTests(unittest.TestCase):
                 manifest['capture'][field]=old
             path.write_text(json.dumps(manifest))
             before={str(p.relative_to(root)):p.read_bytes() for p in root.rglob('*') if p.is_file()}
-            result=subprocess.run([sys.executable,'-S',str(ROOT/'src/nand2doom/scripts/host/n2d_capture.py'),
+            result=subprocess.run([sys.executable,'-S',str(self.root/'src/nand2doom/scripts/host/n2d_capture.py'),
                 '--dry-run','--manifest',str(path),'--hardware-image',str(root/'hardware.sof'),
                 '--output',str(root/'new-output')],capture_output=True,text=True,timeout=10)
             self.assertEqual(result.returncode,0,result.stdout+result.stderr)
@@ -383,7 +389,7 @@ class CapturePlanTests(unittest.TestCase):
         self.assertIn('--clock-history-attested',result.stdout)
 
     def test_output_planning_rejects_file_ancestors_and_symlinks_without_writes(self):
-        with tempfile.TemporaryDirectory(dir=ROOT/'workdir') as directory:
+        with tempfile.TemporaryDirectory(dir=self.root/'workdir') as directory:
             root=Path(directory);manifest,_=self.fixture(root)
             for case in ('root-file','nested-file','root-link','nested-link','broken-link','existing'):
                 repo=root/case;repo.mkdir();work=repo/'workdir'
@@ -417,7 +423,7 @@ class CapturePlanTests(unittest.TestCase):
 
     def test_release_reset_never_publishes_success_or_continuity(self):
         for boundary in ('before-release','after-release','later-ack'):
-            with self.subTest(boundary=boundary),tempfile.TemporaryDirectory(dir=ROOT/'workdir') as directory:
+            with self.subTest(boundary=boundary),tempfile.TemporaryDirectory(dir=self.root/'workdir') as directory:
                 root=Path(directory);path,manifest=self.fixture(root)
                 d=ReleaseReset(boundary)
                 d.header[12:20]=struct.unpack('<8I',bytes.fromhex(manifest['capture']['identity']))
@@ -428,7 +434,7 @@ class CapturePlanTests(unittest.TestCase):
                 with patch.object(capture,'Capture',operation):
                     status=capture.main(['--manifest',str(path),'--output',str(root/'failed'),
                         '--hardware-image',str(root/'hardware.sof'),'--port','MOCK',
-                        '--clock-history-attested'],opener=lambda *_:d)
+                        '--clock-history-attested'],opener=lambda *_:d,root=self.root)
                 self.assertEqual(status,3)
                 self.assertTrue(d.closed)
                 report=json.loads((root/'failed/failure.json').read_text())
@@ -438,7 +444,7 @@ class CapturePlanTests(unittest.TestCase):
                     self.assertFalse((root/'failed'/name).exists())
 
     def test_clock_overrun_preserves_failure_and_never_sends_cleanup(self):
-        with tempfile.TemporaryDirectory(dir=ROOT/'workdir') as directory:
+        with tempfile.TemporaryDirectory(dir=self.root/'workdir') as directory:
             root=Path(directory)
             path,_=self.fixture(root)
             d=Device();d.delay=200
@@ -450,7 +456,7 @@ class CapturePlanTests(unittest.TestCase):
             with patch.object(capture,'Capture',operation):
                 status=capture.main(['--manifest',str(path),'--output',str(root/'failed'),
                     '--hardware-image',str(root/'hardware.sof'),'--port','FAKE',
-                    '--clock-history-attested'],opener=lambda *_:d)
+                    '--clock-history-attested'],opener=lambda *_:d,root=self.root)
             self.assertEqual(status,3)
             self.assertEqual(len(d.requests),1)
             self.assertTrue(d.closed)
@@ -461,7 +467,7 @@ class CapturePlanTests(unittest.TestCase):
             self.assertFalse((root/'failed/indices.bin').exists())
 
     def test_bulk_error_prefix_never_publishes_image_or_success(self):
-        with tempfile.TemporaryDirectory(dir=ROOT/'workdir') as directory:
+        with tempfile.TemporaryDirectory(dir=self.root/'workdir') as directory:
             root=Path(directory);path,manifest=self.fixture(root)
             d=Device();d.bulk_fault='status';d.bulk_fault_at=2
             d.header[12:20]=struct.unpack('<8I',bytes.fromhex(manifest['capture']['identity']))
@@ -472,7 +478,7 @@ class CapturePlanTests(unittest.TestCase):
             with patch.object(capture,'Capture',operation):
                 status=capture.main(['--manifest',str(path),'--output',str(root/'failed'),
                     '--hardware-image',str(root/'hardware.sof'),'--port','MOCK',
-                    '--clock-history-attested'],opener=lambda *_:d)
+                    '--clock-history-attested'],opener=lambda *_:d,root=self.root)
             self.assertEqual(status,3)
             report=json.loads((root/'failed/failure.json').read_text())
             self.assertTrue(report['transport_poisoned'])

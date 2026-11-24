@@ -255,9 +255,10 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
+    """The command line; root is the checkout whose workdir/ takes the output (default: this one)."""
     args = create_parser().parse_args(argv)
-    root = repository_root()
+    root = repository_root() if root is None else root
     output = Path(args.output)
     if not output.is_absolute():
         output = root / output

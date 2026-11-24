@@ -19,7 +19,6 @@ class ProjectTargetTests(unittest.TestCase):
 
     def test_project_targets(self):
         targets = sim.target_views()
-        self.temp_path = REPO_ROOT / "workdir/unit-tests"
         self.assertEqual("cocotb", targets["n2m_timebase"].kind)
         self.assertEqual(390_649, targets["n2m_timebase"].max_cycles)
         self.assertEqual(

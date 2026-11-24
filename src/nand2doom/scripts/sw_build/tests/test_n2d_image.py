@@ -1,4 +1,5 @@
 from contextlib import redirect_stdout
+import functools
 import io
 import os
 from pathlib import Path
@@ -13,9 +14,14 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from src.nand2doom.scripts.sw_build import n2d_image  # noqa: E402
+from tools.bazel import scratch  # noqa: E402
 
 
 class N2dImageToolTests(unittest.TestCase):
+    @functools.cached_property
+    def root(self) -> Path:
+        return scratch.checkout(self)
+
     def test_compiler_contract_is_explicit(self) -> None:
         commands = n2d_image.image_commands(
             REPO_ROOT,
@@ -35,11 +41,10 @@ class N2dImageToolTests(unittest.TestCase):
             self.assertIn(expected, flags)
 
     def test_plan_is_non_mutating(self) -> None:
-        output = REPO_ROOT / "workdir/software/plan-only"
-        self.assertFalse(output.exists())
+        output = self.root / "workdir/software/plan-only"
         stdout = io.StringIO()
         with redirect_stdout(stdout):
-            status = n2d_image.main(["--output", str(output), "--plan"])
+            status = n2d_image.main(["--output", str(output), "--plan"], root=self.root)
         self.assertEqual(0, status)
         self.assertIn("architecture: rv32im", stdout.getvalue())
         self.assertIn("abi: ilp32", stdout.getvalue())
@@ -58,23 +63,19 @@ class N2dImageToolTests(unittest.TestCase):
                 n2d_image._confined_output(REPO_ROOT / "outside", REPO_ROOT)
 
     def test_clean_cross_output_builds_are_identical(self) -> None:
-        parent = REPO_ROOT / "workdir/unit-tests"
-        parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=parent) as temporary:
-            root = Path(temporary)
-            output_a = root / "image-a"
-            output_b = root / "image-b"
-            manifest_a = n2d_image.build_image(output_a, REPO_ROOT)
-            manifest_b = n2d_image.build_image(output_b, REPO_ROOT)
-            self.assertEqual(manifest_a, manifest_b)
-            self.assertEqual(
-                (output_a / "n2d_validation.map").read_bytes(),
-                (output_b / "n2d_validation.map").read_bytes(),
-            )
-            self.assertIn(
-                "OUTPUT(${OUTPUT}/n2d_validation.elf",
-                (output_a / "n2d_validation.map").read_text(encoding="utf-8"),
-            )
+        output_a = self.root / "workdir/image-a"
+        output_b = self.root / "workdir/image-b"
+        manifest_a = n2d_image.build_image(output_a, self.root)
+        manifest_b = n2d_image.build_image(output_b, self.root)
+        self.assertEqual(manifest_a, manifest_b)
+        self.assertEqual(
+            (output_a / "n2d_validation.map").read_bytes(),
+            (output_b / "n2d_validation.map").read_bytes(),
+        )
+        self.assertIn(
+            "OUTPUT(${OUTPUT}/n2d_validation.elf",
+            (output_a / "n2d_validation.map").read_text(encoding="utf-8"),
+        )
 
 
 if __name__ == "__main__":

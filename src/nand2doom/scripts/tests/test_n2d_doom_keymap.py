@@ -7,7 +7,6 @@ that same header's definitions and, for printable keys, from the common JTAG
 keyboard host's independent Set-2 table.
 """
 import ctypes
-import hashlib
 import os
 from pathlib import Path
 import re
@@ -15,6 +14,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -23,19 +23,22 @@ if str(ROOT) not in sys.path:
 from src.nand2doom.scripts.host import n2d_control as control  # noqa: E402
 from src.nand2doom.scripts.sw_build import n2d_doom as doom  # noqa: E402
 from src.common.scripts.jtag import n2a_jtag_keyboard as jtag  # noqa: E402
+from tools.bazel import scratch  # noqa: E402
 
-OUTPUT = ROOT / "workdir/unit-tests/n2d_doom_keymap"
-ARCHIVE = doom.VENDORED_DOWNLOADS / f"doomgeneric-{doom.ENGINE_REVISION}.tar.gz"
 E0 = 0x200
+
+
+def engine_archive():
+    """The pinned engine archive, read from the download cache or fetched into the test's temporary folder."""
+    return scratch.pinned(doom.VENDORED_DOWNLOADS / f"doomgeneric-{doom.ENGINE_REVISION}.tar.gz",
+                          doom.ENGINE_SHA256,
+                          lambda path: doom._download(doom.ENGINE_URL, path, doom.ENGINE_SHA256,
+                                                      cache=path.parent))
 
 
 def doomkeys():
     """doomkeys.h from the pinned archive, and its integer KEY_* definitions."""
-    if not ARCHIVE.exists():
-        doom._download(doom.ENGINE_URL, ARCHIVE, doom.ENGINE_SHA256)
-    if hashlib.sha256(ARCHIVE.read_bytes()).hexdigest() != doom.ENGINE_SHA256:
-        raise AssertionError("vendored engine archive does not match the pinned SHA-256")
-    with tarfile.open(ARCHIVE) as archive:
+    with tarfile.open(engine_archive()) as archive:
         text = archive.extractfile(
             f"doomgeneric-{doom.ENGINE_REVISION}/doomgeneric/doomkeys.h").read().decode()
     values = {}
@@ -61,19 +64,18 @@ def expected_map(keys):
     return result
 
 
-def compile_probe():
+def compile_probe(output):
     compiler = shutil.which(os.environ.get("CC", "cc"))
     if compiler is None:
         raise unittest.SkipTest("no host C compiler")
-    OUTPUT.mkdir(parents=True, exist_ok=True)
     text, _ = doomkeys()
-    (OUTPUT / "doomkeys.h").write_text(text)
-    probe = OUTPUT / "probe.c"
+    (output / "doomkeys.h").write_text(text)
+    probe = output / "probe.c"
     probe.write_text('#include "keymap.h"\n'
                      "unsigned char probe(uint32_t event) { return n2d_doom_key(event); }\n")
-    library = OUTPUT / "keymap_probe.so"
+    library = output / "keymap_probe.so"
     subprocess.run([compiler, "-std=c11", "-Wall", "-Wextra", "-Werror", "-shared", "-fPIC",
-                    "-I", str(OUTPUT), "-I", str(ROOT / "src/nand2doom/sw/doom"),
+                    "-I", str(output), "-I", str(ROOT / "src/nand2doom/sw/doom"),
                     str(probe), "-o", str(library)], check=True, timeout=60)
     function = ctypes.CDLL(str(library)).probe
     function.argtypes, function.restype = [ctypes.c_uint32], ctypes.c_ubyte
@@ -83,7 +85,8 @@ def compile_probe():
 class KeymapTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.probe = staticmethod(compile_probe())
+        output = cls.enterClassContext(tempfile.TemporaryDirectory())
+        cls.probe = staticmethod(compile_probe(Path(output)))
         _, cls.keys = doomkeys()
         cls.expected = expected_map(cls.keys)
 

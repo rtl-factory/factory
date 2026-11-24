@@ -1,25 +1,26 @@
 """Original games build reproducibly from committed source with recorded hashes."""
 import hashlib
 import json
-import tempfile
 import unittest
 from unittest.mock import patch
 from pathlib import Path
 
-from src.nand2mario.scripts.sw_build import sw_games
+from src.nand2mario.scripts.sw_build import cpu_sw, sw_games
+from tools.bazel import scratch
 
 ROOT = Path(__file__).resolve().parents[5]
 
 
 class GamesTests(unittest.TestCase):
     def test_each_game_matches_recorded_sha256(self):
-        (ROOT / 'workdir').mkdir(exist_ok=True)
         games = sw_games.load()
         self.assertEqual(sorted(games), ['menu', 'springtrail', 'stackdrop'])
-        with tempfile.TemporaryDirectory(dir=ROOT / 'workdir') as tmp:
+        # Why: the game sources and the output are confined to the module ROOTs.
+        root = scratch.checkout(self)
+        with patch.object(sw_games, 'ROOT', root), patch.object(cpu_sw, 'ROOT', root):
             for name, game in games.items():
-                sw_games.build(name, Path(tmp) / name)
-                image = (Path(tmp) / name / 'program.gb').read_bytes()
+                sw_games.build(name, root / 'workdir' / name)
+                image = (root / 'workdir' / name / 'program.gb').read_bytes()
                 self.assertEqual(hashlib.sha256(image).hexdigest(), game['image_sha256'], name)
                 self.assertEqual(image[0x134:0x134 + len(game['title'])], game['title'].encode())
 

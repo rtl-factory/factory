@@ -18,7 +18,7 @@ A direct-entry image is 32 KiB, with the header at `$0100` to `$014F` and the ti
 
 ## Confinement
 
-Every output path is resolved and must sit below the repository's `workdir/`. Existing links and special files are rejected before anything is created, at the target and at every ancestor. `--dry-run` validates and prints the plan.
+Every output path is resolved and must sit below the repository's `workdir/`. Existing links and special files are rejected before anything is created, at the target and at every ancestor. `--dry-run` validates and prints the plan. The tests point the module `ROOT` at a [scratch checkout](../../../../tools/bazel/spec.md#unit-tests), so they write nothing into the checkout's `workdir/`.
 
 ## Origin
 

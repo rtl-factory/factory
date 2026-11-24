@@ -166,13 +166,19 @@ def _temporary_beside(path: Path) -> Path:
     return Path(name)
 
 
-def _download(url: str, destination: Path, expected: str) -> None:
+def _download(url: str, destination: Path, expected: str, cache: Path | None = None) -> None:
+    """Fetch url to destination through the download cache, checking its pinned SHA-256.
+
+    The cache (default VENDORED_DOWNLOADS) is read first and filled after a fetch;
+    a cache that is destination's own folder is never filled.
+    """
+    cache = VENDORED_DOWNLOADS if cache is None else cache
     if destination.is_symlink():
         raise ValueError(f"download destination is a symbolic link: {destination}")
     destination.parent.mkdir(parents=True, exist_ok=True)
     if destination.exists() and _sha256(destination) == expected:
         return
-    local = VENDORED_DOWNLOADS / destination.name
+    local = cache / destination.name
     if local.exists() and (local.is_symlink() or _sha256(local) != expected):
         raise ValueError(f"cached input changed: {local.name} (delete it to fetch it again)")
     # Why: parallel test targets may fetch the same input, so each writes its own
@@ -189,7 +195,7 @@ def _download(url: str, destination: Path, expected: str) -> None:
         if _sha256(temporary) != expected:
             raise RuntimeError(f"digest mismatch for {url}")
         if not local.exists() and local != destination:
-            VENDORED_DOWNLOADS.mkdir(parents=True, exist_ok=True)
+            cache.mkdir(parents=True, exist_ok=True)
             vendored = _temporary_beside(local)
             shutil.copyfile(temporary, vendored)
             vendored.replace(local)
@@ -1219,7 +1225,8 @@ def selected_variants(command: str, variant: str | None,
     return list(VARIANTS) if variant == "all" else [variant]
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
+    """The command line; root is the checkout whose workdir/ takes the output (default: this one)."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("prepare", "build"))
     parser.add_argument("--variant", choices=(*VARIANTS, "all"), default=None,
@@ -1239,7 +1246,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--plan", action="store_true",
                         help="show selected recipe without downloads, compiler discovery or writes")
     args = parser.parse_args(argv)
-    repository = Path(__file__).resolve().parents[4]
+    repository = Path(__file__).resolve().parents[4] if root is None else root
     if args.command == "prepare" and (args.engine_opt is not None
                                       or args.engine_lto is not None):
         parser.error("compiler options apply only to build")

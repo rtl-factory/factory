@@ -8,6 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from src.nand2mario.scripts.regression import game_qualification as game
+from tools.bazel import scratch
 
 
 def checksums(data):
@@ -22,6 +23,11 @@ def pin(data):
 
 
 class GameQualificationTests(unittest.TestCase):
+    def setUp(self):
+        # Why: every output is confined below the module ROOT's workdir/, so the test
+        # points ROOT at a scratch checkout.
+        self.enterContext(patch.object(game, 'ROOT', scratch.checkout(self)))
+
     def test_image_admission(self):
         image = checksums(bytearray(32768))
         game.check_image(image, pin(image))
@@ -46,9 +52,7 @@ class GameQualificationTests(unittest.TestCase):
             game.check_image(image, pin(image))
 
     def test_fetch_rejects_bad_notice_before_binary(self):
-        root = game.ROOT / 'workdir'
-        root.mkdir(exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=root) as temporary:
+        with tempfile.TemporaryDirectory(dir=game.ROOT / 'workdir') as temporary:
             output = Path(temporary) / 'assets'
             license_pin = dict(pin(b'license'), url='https://example.invalid/LICENSE')
             manifest = {'games': {'fixture': dict(notices={'LICENSE': license_pin})}}
@@ -79,7 +83,9 @@ class GameQualificationTests(unittest.TestCase):
                 (test / 'game-result.json').write_text(json.dumps({'game': name}))
                 return int(name == 'max-pirate')
 
+            # Why: the scratch checkout is no git repository, so the source commit is stubbed.
             with patch.object(game, 'acquire', return_value=Path(temporary) / 'game.gb'), \
+                    patch.object(game.subprocess, 'check_output', return_value='0' * 40), \
                     patch.object(game, 'run_one', side_effect=simulate) as execute:
                 self.assertEqual(1, game.run('all', None, output))
                 self.assertEqual(len(game.manifest()['games']), execute.call_count)

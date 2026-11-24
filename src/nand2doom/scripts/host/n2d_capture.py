@@ -296,13 +296,14 @@ def parser():
     return result
 
 
-def main(argv=None, *, opener=uart.open_serial):
+def main(argv=None, *, opener=uart.open_serial, root=None):
+    """The command line; root is the checkout whose workdir/ takes the output (default: this one)."""
     args=parser().parse_args(argv)
     try:
         if not math.isfinite(args.timeout) or not .01<=args.timeout<=1:
             raise ValueError('timeout must be finite 0.01..1 seconds')
         layout=validate_layout(args.manifest)
-        output=plan_output(Path(__file__).resolve().parents[4],args.output)
+        output=plan_output(Path(__file__).resolve().parents[4] if root is None else root,args.output)
         hardware_hash=digest(args.hardware_image.read_bytes())
         if args.dry_run:
             print(json.dumps(dict(mailbox=layout['address'],bursts=17,budget_seconds=LIMIT,
