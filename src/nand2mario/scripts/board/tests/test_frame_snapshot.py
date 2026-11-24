@@ -5,6 +5,7 @@ standard-library decoders, the capture sequence against a fake loader
 (success, NO_FRAME, a lost pin, a changed identity, the deadline, the
 release after failure) and the command line with its workdir confinement."""
 import contextlib
+import functools
 import hashlib
 import io
 import json
@@ -12,7 +13,6 @@ from pathlib import Path
 import random
 import struct
 import sys
-import tempfile
 import types
 import unittest
 import zlib
@@ -21,8 +21,7 @@ from src.nand2mario.dv.video import display_model as dm
 from src.nand2mario.scripts.board import cart_loader as loader
 from src.nand2mario.scripts.board import frame_snapshot as fs
 from src.nand2mario.scripts.board.tests.test_cart_loader import FakeDevice
-
-ROOT = Path(__file__).resolve().parents[5]
+from tools.bazel import scratch
 
 
 def random_frame(rng):
@@ -495,17 +494,20 @@ class SessionTests(unittest.TestCase):
 
 class CommandLineTests(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(dir=ROOT / 'workdir')
-        self.dir = Path(self.temporary.name)
         self.rng = random.Random(11)
 
-    def tearDown(self):
-        self.temporary.cleanup()
+    @functools.cached_property
+    def root(self):
+        return scratch.checkout(self)
+
+    @property
+    def dir(self):
+        return self.root / 'workdir'
 
     def run_main(self, *argv, **kwargs):
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            code = fs.main(list(argv), **kwargs)
+            code = fs.main(list(argv), root=self.root, **kwargs)
         return code, out.getvalue(), err.getvalue()
 
     def test_plan_and_confinement(self):

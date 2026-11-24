@@ -57,9 +57,9 @@ def image_arguments(board: str, library: bool) -> list[str]:
     return ["--manifest", MANIFESTS[board]] + (["--profile", LIBRARY_PROFILE] if library else [])
 
 
-def image_config(board: str, library: bool) -> dict:
+def image_config(board: str, library: bool, root: Path = ROOT) -> dict:
     """The resolved config of one board image, as the Quartus tool builds it."""
-    return manifest.load(ROOT, MANIFESTS[board], None, LIBRARY_PROFILE if library else None)
+    return manifest.load(root, MANIFESTS[board], None, LIBRARY_PROFILE if library else None)
 
 
 def button_strokes(names, jtag) -> list[tuple[bytes, bytes]]:
@@ -144,16 +144,16 @@ def program_command(sof: Path, cable: str, quartus_bin: str | None) -> list[str]
     return jtag_chain.program_command(sof, cable, quartus_bin)
 
 
-def run_program(args, *, runner=subprocess.run, which=shutil.which):
+def run_program(args, *, runner=subprocess.run, which=shutil.which, root: Path = ROOT):
     """Dry run by default: the plan names the SOF and the exact command.
     With --yes the command runs and its exit status is returned."""
     board = getattr(args, "board", "de10_lite")
     library = getattr(args, "library", False)
-    config = image_config(board, library)
+    config = image_config(board, library, root)
     project = config["project"]
-    sof = (ROOT / (args.sof or f"workdir/quartus/{project}/output_files/{project}.sof")).resolve()
+    sof = (root / (args.sof or f"workdir/quartus/{project}/output_files/{project}.sof")).resolve()
     result = {"board": board, "library": library, "sof": str(sof), "exists": sof.is_file(), "cable": args.cable or ""}
-    if not sof.is_relative_to(ROOT / "workdir"):
+    if not sof.is_relative_to(root / "workdir"):
         raise ValueError("the SOF must live below workdir (a built image, never a committed one)")
     receipt = sof.with_suffix(".json")
     if receipt.exists() or args.yes:
@@ -177,7 +177,7 @@ def run_program(args, *, runner=subprocess.run, which=shutil.which):
     return completed.returncode, result
 
 
-def run_load(args, *, loader=None):
+def run_load(args, *, loader=None, root: Path = ROOT):
     """Dry run by default: the loader's own dump transport records every
     request frame under workdir/ and fabricates OK responses. With --yes the
     loader opens --port at the board rate, loads, verifies and releases."""
@@ -191,8 +191,8 @@ def run_load(args, *, loader=None):
             raise ValueError("loading needs the exact --port of the 3.3 V adapter; nothing sent")
         argv = ["--image", str(image), "--port", args.port, "--baud", str(args.baud)]
     else:
-        dump = (ROOT / args.dump).resolve()
-        if not dump.is_relative_to(ROOT / "workdir"):
+        dump = (root / args.dump).resolve()
+        if not dump.is_relative_to(root / "workdir"):
             raise ValueError("the dry-run dump must live below workdir")
         dump.parent.mkdir(parents=True, exist_ok=True)
         # Why: the dump transport fabricates zero READ payloads, so a dry run
@@ -204,27 +204,27 @@ def run_load(args, *, loader=None):
     result = {"image": str(image), "bytes": image.stat().st_size, "baud": args.baud,
               "status": "ok" if code == 0 else "error"}
     if not args.yes:
-        result["dump"] = str((ROOT / args.dump).resolve())
+        result["dump"] = str((root / args.dump).resolve())
         result["dry_run"] = "no port opened and no readback; add --yes with --port to load and verify the board"
     return code, result
 
 
-def run_snapshot(args, *, snapshot_tool=None):
+def run_snapshot(args, *, snapshot_tool=None, root: Path = ROOT):
     """Dry run by default: the capture sequence's request frames are written
     below workdir/ and nothing is opened. With --yes the capture tool pins,
     reads and releases the displayed frame over --port into --out."""
     if snapshot_tool is None:
         from src.nand2mario.scripts.board import frame_snapshot as snapshot_tool
-    out = (ROOT / args.out).resolve()
-    if not out.is_relative_to(ROOT / "workdir"):
+    out = (root / args.out).resolve()
+    if not out.is_relative_to(root / "workdir"):
         raise ValueError("the snapshot output must live below workdir")
     if args.yes:
         if not args.port:
             raise ValueError("a snapshot needs the exact --port of the 3.3 V adapter; nothing sent")
         code = snapshot_tool.main(["capture", "--port", args.port, "--baud", str(args.baud), "--out", str(out)])
         return code, {"port": args.port, "baud": args.baud, "out": str(out), "status": "ok" if code == 0 else "error"}
-    plan_file = (ROOT / args.plan_file).resolve()
-    if not plan_file.is_relative_to(ROOT / "workdir"):
+    plan_file = (root / args.plan_file).resolve()
+    if not plan_file.is_relative_to(root / "workdir"):
         raise ValueError("the dry-run plan file must live below workdir")
     frames = snapshot_tool.plan_frames()
     plan_file.parent.mkdir(parents=True, exist_ok=True)
@@ -285,20 +285,20 @@ def parser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv=None, *, jtag=None, runner=subprocess.run, resolve=jtag_chain.resolve) -> int:
+def main(argv=None, *, jtag=None, runner=subprocess.run, resolve=jtag_chain.resolve, root: Path = ROOT) -> int:
     args = parser().parse_args(argv)
     try:
         if args.action == "compile":
             quartus_argv = image_arguments(args.board, args.library) + (["--plan"] if args.plan else [])
             if args.quartus:
                 quartus_argv += ["--quartus", args.quartus]
-            return quartus_tool.main(quartus_argv, root=ROOT)
+            return quartus_tool.main(quartus_argv, root=root)
         if args.action == "program":
-            code, result = run_program(args, runner=runner)
+            code, result = run_program(args, runner=runner, root=root)
         elif args.action == "load":
-            code, result = run_load(args)
+            code, result = run_load(args, root=root)
         elif args.action == "snapshot":
-            code, result = run_snapshot(args)
+            code, result = run_snapshot(args, root=root)
         else:
             code, result = run_joypad(args, jtag=jtag, resolve=resolve)
     except (ValueError, OSError, RuntimeError, subprocess.TimeoutExpired) as exc:

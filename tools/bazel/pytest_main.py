@@ -14,4 +14,8 @@ if __name__ == "__main__":
     # Why: the strict action PATH has no Verilator; tests that lint with it find Bazel's.
     tools = [os.path.dirname(os.path.abspath(p)) for p in os.environ.get("UNIT_PATH_PREPEND", "").split()]
     os.environ["PATH"] = os.pathsep.join(dict.fromkeys(tools + [os.environ.get("PATH", "")]))
+    # Why: an unsandboxed test inherits the host's TMPDIR; pointing it at the test's own
+    # folder keeps every tempfile (and scratch.checkout) inside what Bazel cleans up.
+    if os.environ.get("TEST_TMPDIR"):
+        os.environ["TMPDIR"] = os.environ["TEST_TMPDIR"]
     sys.exit(pytest.main(["-q", "-p", "no:cacheprovider", *sys.argv[1:]]))

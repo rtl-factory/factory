@@ -12,6 +12,7 @@ How the build meets its [requirements](prd.md). How agents use it day to day is 
 | `tools/bazel/extensions.bzl` | The `hdl_registry` and `verilator` repositories |
 | `tools/bazel/hdl.bzl` | `hdl_project()`, the `verilator_model` rule, the test macros and `unit_tests()` |
 | `tools/bazel/pytest_main.py` | The entry point of every unit-test target |
+| `tools/bazel/scratch.py` | The scratch checkout a unit test runs checkout-rooted code against |
 | `tools/bazel/quartus_image.py` | The board image action: runs a project's Quartus script and keeps its outputs |
 | `tools/bazel/hdl_libraries.py` | The HDL libraries: derives each project's `cfg/libraries.json` from its HDL, resolves a target's libraries into its ordered file list, and prints the registry Bazel reads |
 | `src/<project>/BUILD.bazel` | One call, `hdl_project(name = "<project>")` |
@@ -60,6 +61,8 @@ A formal test runs `tools/fv/fv.py run <target>` with `FV_ROOT` set to its runfi
 
 `unit_tests()` (called in every project package, `//tools`, `//tools/sim` and `//tools/fv`) makes one test per `tests/` folder of its package, named after the folder's owner (`//src/nand2mario:scripts_board.unit`, `//tools:lint.unit`, `//tools/sim:sim.unit`): `tools/bazel/pytest_main.py` runs pytest on that folder with every project's and the tools' Python and the locked packages. Unit tests are tagged `L0`, `unit`, `no-sandbox` and `external`: they read the checkout (registries, wiki pages, programs), some write its `workdir/` or download pinned inputs, and the whole set takes seconds, so they always run rather than being cached. A new `tests/` folder in a package that calls `unit_tests()` becomes a test with no edit; a new package with tests must call it. The strict action PATH has no Verilator, so each unit test gets Bazel's `@verilator` and `pytest_main.py` puts it first on PATH (`UNIT_PATH_PREPEND`).
 
+`pytest_main.py` also points `TMPDIR` at the test's `TEST_TMPDIR`, so every `tempfile` folder of an unsandboxed unit test is the test's own and Bazel removes it. A unit test that runs code taking a checkout root (a script or tool that reads `src/` and writes below `<root>/workdir/`) passes it `scratch.checkout(self)` (`from tools.bazel import scratch`), never the real checkout root it found from `__file__`: a fresh copy of the checkout's files (everything but `.git`, `site/`, `workdir/`, `worktrees/` and the `bazel-*` links) with an empty `workdir/`, below the test's temporary folder and removed when the test ends. The copy keeps the code's own in-tree checks (a source path must resolve below the root) true, and the test then passes whatever the real `workdir/` holds and writes nothing into it. Such code takes the root as a `root` keyword that defaults to the checkout (`main(argv, root=...)`), as the Quartus build tool and the board scripts do.
+
 `//tools:comment_lint` runs the comment lint as an L0 test, tagged `external` and `no-sandbox` because it lists the checkout's tracked files with git. It reads the base branch's baseline from `workdir/lint/base-baseline.json` when that file exists; the L0 job writes it from the pull request's base branch before `bazel test`. `//tools:wiki_refs` runs the wiki reference check the same way, with the same tags. `//tools:rtl_lint` runs the RTL rule checker the same way, against `workdir/lint/base-rtl-baseline.json`; the Verilator half of the RTL lint is the sandboxed, cached `<top>.lint` tests of the projects.
 
 ## Wrapped targets
@@ -90,4 +93,4 @@ Resolving lists every library after the libraries it needs, each once, so packag
 
 ## Hermeticity
 
-What a cached result does not see: the host C++ compiler and `make` that Verilator calls, files a test reads through a path it resolved out of the runfiles, and everything a wrapped target does. The fixed action `PATH` keeps the first stable; a test must read its data through its own package path, never the checkout.
+What a cached result does not see: the host C++ compiler and `make` that Verilator calls, files a test reads through a path it resolved out of the runfiles, and everything a wrapped target does. The fixed action `PATH` keeps the first stable; a test must read its data through its own package path, never the checkout. A unit test writes only below its own temporary folder; code it runs that writes the checkout's `workdir/` runs against a [scratch checkout](#unit-tests).
