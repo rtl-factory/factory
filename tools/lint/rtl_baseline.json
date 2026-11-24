@@ -3,7 +3,6 @@
   "src/common/rtl/memory/n2a_sdp_ram_intel.sv": 1,
   "src/common/rtl/memory/n2a_sdp_ram_portable.sv": 1,
   "src/common/rtl/memory/n2a_sync_ram_intel.sv": 1,
-  "src/common/rtl/memory/n2a_sync_ram_wt.sv": 1,
   "src/common/rtl/memory/n2a_tdp_ram_intel.sv": 1,
   "src/common/rtl/memory/n2a_tdp_ram_portable.sv": 1,
   "src/common/rtl/sdram/n2a_sdram_pkg.sv": 1,

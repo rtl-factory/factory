@@ -886,42 +886,6 @@
       "max_cycles": 16,
       "level": "L0"
     },
-    "common_sync_ram_wt": {
-      "kind": "cocotb",
-      "description": "Common write-through single-port RAM contract, portable backend",
-      "top": "n2a_sync_ram_wt",
-      "clock_hz": 25000000,
-      "timeout_seconds": 30,
-      "test_module": "src.common.dv.memory.test_sync_ram_wt",
-      "testcase": "sync_ram_wt_contract",
-      "default_seed": 22,
-      "max_cycles": 24,
-      "level": "L0"
-    },
-    "common_sync_ram_wt_8192x16": {
-      "kind": "cocotb",
-      "description": "Common write-through RAM at the Hack screen CPU-copy geometry, portable backend",
-      "top": "n2a_sync_ram_wt_8192x16_fixture",
-      "clock_hz": 25000000,
-      "timeout_seconds": 30,
-      "test_module": "src.common.dv.memory.test_sync_ram_wt",
-      "testcase": "sync_ram_wt_contract",
-      "default_seed": 22,
-      "max_cycles": 24,
-      "level": "L0"
-    },
-    "common_sync_ram_wt_8192x8": {
-      "kind": "cocotb",
-      "description": "Common write-through RAM at the nand2mario VRAM/WRAM byte geometry, portable backend",
-      "top": "n2a_sync_ram_wt_8192x8_fixture",
-      "clock_hz": 25000000,
-      "timeout_seconds": 30,
-      "test_module": "src.common.dv.memory.test_sync_ram_wt",
-      "testcase": "sync_ram_wt_contract",
-      "default_seed": 22,
-      "max_cycles": 24,
-      "level": "L0"
-    },
     "common_sync_ram_invalid_data_width": {
       "kind": "native",
       "description": "Common synchronous RAM zero data-width rejection",
