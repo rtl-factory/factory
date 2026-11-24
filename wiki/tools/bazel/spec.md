@@ -15,7 +15,7 @@ How the build meets its [requirements](prd.md). How agents use it day to day is 
 | `tools/bazel/scratch.py` | The scratch checkout a unit test runs checkout-rooted code against |
 | `tools/bazel/quartus_image.py` | The board image action: runs a project's Quartus script and keeps its outputs |
 | `tools/bazel/hdl_libraries.py` | The HDL libraries: derives each project's `cfg/libraries.json` from its HDL, resolves a target's libraries into its ordered file list, and prints the registry Bazel reads |
-| `src/<project>/BUILD.bazel` | One call, `hdl_project(name = "<project>")` |
+| `src/<project>/BUILD.bazel` | One `hdl_project()` call, plus its `unit_tests()` and board images |
 
 ## Repositories
 
@@ -25,7 +25,7 @@ How the build meets its [requirements](prd.md). How agents use it day to day is 
 
 ## Targets of a project
 
-`hdl_project(name)` in `src/<name>/BUILD.bazel` makes, for each target of the project's registry:
+`hdl_project(name, python_deps = [])` in `src/<name>/BUILD.bazel` makes, for each target of the project's registry:
 
 | Target | What it is |
 |---|---|
@@ -35,7 +35,7 @@ How the build meets its [requirements](prd.md). How agents use it day to day is 
 | `//src/<name>:<target>.formal` | A formal target's test, tagged with its level |
 | `//src/<name>:<top>.lint` | The Verilator lint of one of the project's lint tops, tagged `L0` and `lint` ([lint spec](../lint/spec.md#verilator-lint)) |
 
-It also makes `:python` (the project's Python, with every non-HDL file as data), `:headers` (its `.svh` and `.vh` files), `:all_files`, and exports every file, so another project's target can name it as a source.
+It also makes `:python` (the project's Python, with every non-HDL file as data, depending on the pip packages in `python_deps`, as `requirement()` labels, that the project's own Python imports), `:headers` (its `.svh` and `.vh` files), `:all_files`, and exports every file, so another project's target can name it as a source.
 
 Two cocotb targets share a model when their top, sources, parameters and public depth are equal. The model action reads `<first>.model.json`, which holds only those build fields, so editing a test-only field (`max_cycles`, `testcase`, the description) reruns the tests but rebuilds no model. A native target gets its own model, since its binary is named after it.
 
