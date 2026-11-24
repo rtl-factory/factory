@@ -13,56 +13,40 @@ from cocotb.triggers import FallingEdge, RisingEdge, Timer, with_timeout
 from src.common.dv.uart.uart_wire import UartWire
 from src.nand2doom.dv.memory.sdram_pin_model import WRITE, SdramPinModel
 from src.common.scripts.uart_mem import uart_mem as um
+from src.nand2doom.dv.core.rv32_asm import (
+    NOP, X0, X5, X6, X7, X8, X9, X10, addi, assemble, j, li, lui, sw,
+)
 
 PATTERN = (0x0403_0201, 0x0807_0605)
 COLOR = 0x56C
 COUNTER = 0x100
 SCREEN, PALETTE = 0x1002_0000, 0x1003_0000
-
-
-def _u(opcode, rd, imm20):
-    return ((imm20 & 0xFFFFF) << 12) | (rd << 7) | opcode
-
-
-def _i(opcode, rd, funct3, rs1, imm):
-    return ((imm & 0xFFF) << 20) | (rs1 << 15) | (funct3 << 12) | (rd << 7) | opcode
-
-
-def _s(rs2, rs1, imm):
-    return (((imm >> 5) & 0x7F) << 25) | (rs2 << 20) | (rs1 << 15) | (2 << 12) | \
-        ((imm & 0x1F) << 7) | 0x23
-
-
-def _jal(offset):
-    imm = offset & 0x1FFFFF
-    return (((imm >> 20) & 1) << 31) | (((imm >> 1) & 0x3FF) << 21) | \
-        (((imm >> 11) & 1) << 20) | (((imm >> 12) & 0xFF) << 12) | 0x6F
+CPU_BACK_BANK, CPU_PALETTE, VIDEO_CONTROL = 0x1000_0000, 0x1001_0000, 0x2000_1000
 
 
 # Why: palette entry 0 and two back-bank words, then one palette commit plus
 # swap (video control +8 = 3); afterwards an endless loop counts at COUNTER
 # in SDRAM and keeps writing the back bank, so the live reads below contend
-# with a running CPU.
-PROGRAM = (
-    _u(0x37, 7, 0x10010),            # lui  x7, palette
-    _i(0x13, 6, 0, 0, COLOR),        # addi x6, x0, COLOR
-    _s(6, 7, 0),                     # sw   x6, 0(x7)
-    _u(0x37, 5, 0x10000),            # lui  x5, framebuffer back bank
-    _u(0x37, 6, 0x04030),            # lui  x6, 0x04030
-    _i(0x13, 6, 0, 6, 0x201),        # addi x6, x6, 0x201
-    _s(6, 5, 0),                     # sw   x6, 0(x5)
-    _u(0x37, 6, 0x08070),            # lui  x6, 0x08070
-    _i(0x13, 6, 0, 6, 0x605),        # addi x6, x6, 0x605
-    _s(6, 5, 4),                     # sw   x6, 4(x5)
-    _u(0x37, 8, 0x20001),            # lui  x8, video control
-    _i(0x13, 9, 0, 0, 3),            # addi x9, x0, 3: swap and commit
-    _s(9, 8, 8),                     # sw   x9, 8(x8)
-    _i(0x13, 10, 0, 10, 1),          # loop: addi x10, x10, 1
-    _s(10, 0, COUNTER),              # sw   x10, COUNTER(x0)
-    _s(10, 5, 64),                   # sw   x10, 64(x5): back bank
-    _jal(-12),                       # j    loop
-    0x0000_0013,                     # nop (whole-word padding)
-)
+# with a running CPU. The trailing NOP only pads the image.
+PROGRAM = tuple(assemble([
+    lui(X7, CPU_PALETTE >> 12),
+    addi(X6, X0, COLOR),
+    sw(X6, 0, X7),
+    lui(X5, CPU_BACK_BANK >> 12),
+    *li(X6, PATTERN[0]),
+    sw(X6, 0, X5),
+    *li(X6, PATTERN[1]),
+    sw(X6, 4, X5),
+    lui(X8, VIDEO_CONTROL >> 12),
+    addi(X9, X0, 3),
+    sw(X9, 8, X8),
+    "loop:",
+    addi(X10, X10, 1),
+    sw(X10, COUNTER, X0),
+    sw(X10, 64, X5),
+    j("loop"),
+    NOP,
+]))
 IMAGE = b"".join(word.to_bytes(4, "little") for word in PROGRAM)
 
 

@@ -61,7 +61,9 @@ class De2Tests(unittest.TestCase):
         simulation = [s for s in simulation_sources(targets['n2m_de2_115']) if '/dv/' not in s]
         # Why: the dv/ stand-in of the vendor primitive is simulation-only and both lists
         # bind the common n2a_jtag_virtual, so they match once dv/ is dropped.
-        synthesis = [s.replace('_intel.sv', '_portable.sv') for s in self.config['sources']]
+        # Why: n2a_sync_ram's portable file has no suffix.
+        synthesis = [s.replace('n2a_sync_ram_intel.sv', 'n2a_sync_ram.sv').replace('_intel.sv', '_portable.sv')
+                     for s in self.config['sources']]
         self.assertEqual(simulation, synthesis)
         self.assertEqual('EP4CE115F29C7', self.config['device'])
         self.assertEqual('Cyclone IV E', self.config['family'])

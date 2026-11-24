@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from .rv32_asm import X0, X1, X2, X3, X4, X5, X6, add, addi, beq, bne, lw, sub, sw
+
 
 MASK32 = 0xFFFF_FFFF
 
@@ -16,70 +18,22 @@ def _sign_extend(value: int, width: int) -> int:
     return ((value & (sign - 1)) - (value & sign)) & MASK32
 
 
-def encode_i(immediate: int, rs1: int, funct3: int, rd: int, opcode: int = 0x13) -> int:
-    return (
-        ((immediate & 0xFFF) << 20)
-        | ((rs1 & 0x1F) << 15)
-        | ((funct3 & 0x7) << 12)
-        | ((rd & 0x1F) << 7)
-        | opcode
-    )
-
-
-def encode_r(funct7: int, rs2: int, rs1: int, funct3: int, rd: int) -> int:
-    return (
-        ((funct7 & 0x7F) << 25)
-        | ((rs2 & 0x1F) << 20)
-        | ((rs1 & 0x1F) << 15)
-        | ((funct3 & 0x7) << 12)
-        | ((rd & 0x1F) << 7)
-        | 0x33
-    )
-
-
-def encode_s(immediate: int, rs2: int, rs1: int, funct3: int = 0b010) -> int:
-    encoded = immediate & 0xFFF
-    return (
-        (((encoded >> 5) & 0x7F) << 25)
-        | ((rs2 & 0x1F) << 20)
-        | ((rs1 & 0x1F) << 15)
-        | ((funct3 & 0x7) << 12)
-        | ((encoded & 0x1F) << 7)
-        | 0x23
-    )
-
-
-def encode_b(immediate: int, rs2: int, rs1: int, funct3: int) -> int:
-    assert immediate % 2 == 0
-    encoded = immediate & 0x1FFF
-    return (
-        (((encoded >> 12) & 1) << 31)
-        | (((encoded >> 5) & 0x3F) << 25)
-        | ((rs2 & 0x1F) << 20)
-        | ((rs1 & 0x1F) << 15)
-        | ((funct3 & 0x7) << 12)
-        | (((encoded >> 1) & 0xF) << 8)
-        | (((encoded >> 11) & 1) << 7)
-        | 0x63
-    )
-
-
 def smoke_program() -> tuple[int, ...]:
     return (
         # Why: the signature 36 at memory[1] needs every step (x1 = 7, x2 = 5, x3 =
         # x4 = 12, x5 = 7, x6 = 36), so a wrong ALU result, a broken load-use, a
         # wrong branch or a retired poison word all change it.
-        encode_i(7, 0, 0b000, 1),              # x1 = 7
-        encode_i(5, 0, 0b000, 2),              # x2 = 5
-        encode_r(0, 2, 1, 0b000, 3),           # x3 = 12
-        encode_s(0, 3, 0),                     # memory[0] = 12
-        encode_i(0, 0, 0b010, 4, opcode=0x03), # x4 = memory[0]
-        encode_b(8, 3, 4, 0b000),              # taken, skip poison
-        encode_i(-1, 0, 0b000, 5),             # must not retire
-        encode_r(0x20, 2, 4, 0b000, 5),        # x5 = 7
-        encode_b(8, 1, 5, 0b001),              # not taken
-        encode_i(29, 5, 0b000, 6),             # x6 = 36
-        encode_s(4, 6, 0),                     # signature memory[1] = 36
+        addi(X1, X0, 7),
+        addi(X2, X0, 5),
+        add(X3, X1, X2),
+        sw(X3, 0, X0),
+        lw(X4, 0, X0),
+        beq(X4, X3, 8),
+        addi(X5, X0, -1),
+        sub(X5, X4, X2),
+        bne(X5, X1, 8),
+        addi(X6, X5, 29),
+        sw(X6, 4, X0),
     )
 
 

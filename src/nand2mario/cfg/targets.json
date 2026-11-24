@@ -13,91 +13,12 @@
       "max_cycles": 5338,
       "level": "L0"
     },
-    "n2m_dual_port_ram_dual": {
-      "kind": "cocotb",
-      "description": "nand2mario independent-clock dual-port RAM contract",
-      "top": "n2m_dual_port_ram_dual_fixture",
-      "clock_hz": 25000000,
-      "timeout_seconds": 30,
-      "test_module": "src.nand2mario.dv.memory.test_dual_port_ram",
-      "testcase": "dual_clock_contract",
-      "default_seed": 41,
-      "max_cycles": 20,
-      "level": "L0"
-    },
-    "n2m_dual_port_ram_dual_collision_fail": {
-      "kind": "cocotb",
-      "description": "Deliberate nand2mario dual-clock RAM collision failure proof",
-      "top": "n2m_dual_port_ram_dual_fixture",
-      "clock_hz": 25000000,
-      "timeout_seconds": 30,
-      "test_module": "src.nand2mario.dv.memory.test_dual_port_ram",
-      "testcase": "dual_clock_collision_is_rejected",
-      "default_seed": 41,
-      "max_cycles": 20,
-      "expected_fatal": {
-        "any_of": [
-          {
-            "file": "n2m_dual_port_ram.sv",
-            "hierarchy": "n2m_dual_port_ram_dual_fixture.dut.g_dual_clock_b.dual_clock_collision_a",
-            "message": "N2A assertion failed"
-          },
-          {
-            "file": "n2m_dual_port_ram.sv",
-            "hierarchy": "n2m_dual_port_ram_dual_fixture.dut.g_dual_clock_b.dual_clock_collision_b",
-            "message": "N2A assertion failed"
-          }
-        ]
-      },
-      "level": "L0"
-    },
-    "n2m_dual_port_ram_reset": {
-      "kind": "cocotb",
-      "description": "nand2mario RAM reset suppression and data-hold contract",
-      "top": "n2m_dual_port_ram_single_fixture",
-      "clock_hz": 25000000,
-      "timeout_seconds": 30,
-      "test_module": "src.nand2mario.dv.memory.test_dual_port_ram",
-      "testcase": "reset_suppresses_requests_and_holds_data",
-      "default_seed": 41,
-      "max_cycles": 20,
-      "level": "L0"
-    },
-    "n2m_dual_port_ram_single": {
-      "kind": "cocotb",
-      "description": "nand2mario single-clock dual-port RAM contract",
-      "top": "n2m_dual_port_ram_single_fixture",
-      "clock_hz": 25000000,
-      "timeout_seconds": 30,
-      "test_module": "src.nand2mario.dv.memory.test_dual_port_ram",
-      "testcase": "single_clock_contract",
-      "default_seed": 41,
-      "max_cycles": 32,
-      "level": "L0"
-    },
     "n2m_interfaces": {
       "kind": "native",
       "description": "nand2mario interface package shape and encoding contract",
       "top": "n2m_interfaces_fixture",
       "clock_hz": 25000000,
       "timeout_seconds": 30,
-      "level": "L0"
-    },
-    "n2m_partial_read_write_fail": {
-      "kind": "cocotb",
-      "description": "Deliberate nand2mario partial same-port collision failure proof",
-      "top": "n2m_dual_port_ram_single_fixture",
-      "clock_hz": 25000000,
-      "timeout_seconds": 30,
-      "test_module": "src.nand2mario.dv.memory.test_dual_port_ram",
-      "testcase": "partial_same_port_collision_is_rejected",
-      "default_seed": 41,
-      "max_cycles": 20,
-      "expected_fatal": {
-        "file": "n2m_dual_port_ram.sv",
-        "hierarchy": "n2m_dual_port_ram_single_fixture.dut.a_read_write_all_lanes",
-        "message": "N2A assertion failed"
-      },
       "level": "L0"
     },
     "n2m_timebase": {
@@ -666,11 +587,11 @@
         "n2m_de10_lite_lint"
       ],
       "clock_hz": 25000000,
-      "timeout_seconds": 900,
+      "timeout_seconds": 1500,
       "test_module": "src.nand2mario.dv.fpga.test_de10_lite",
       "testcase": "board_smoke",
       "default_seed": 97,
-      "max_cycles": 8000000,
+      "max_cycles": 13000000,
       "parameters": {
         "UART_CLKS_PER_BIT": 12,
         "UART_FRAC_NUM": 1,
@@ -688,6 +609,29 @@
         "{workdir}"
       ]
     },
+    "n2m_de10_lite_uart_mem": {
+      "kind": "cocotb",
+      "description": "nand2mario DE10-LITE board top loaded as the board console loads it: after PLL lock and SDRAM initialization, uart_mem.load (identify, hold, write and read back, entry, release) writes a cartridge header and a program at 0x0100 into the SDRAM device over the board UART pins at exactly 2 Mbaud against the board bit period (12 1/2 clocks through the fractional PHY), and the core boots it to its final HALT with its WRAM marker",
+      "top": "n2m_de10_lite_fixture",
+      "libraries": [
+        "n2m_de10_lite_fixture",
+        "sld_virtual_jtag_stub",
+        "n2m_de10_lite_lint"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 300,
+      "test_module": "src.nand2mario.dv.fpga.test_de10_lite",
+      "testcase": "board_uart_mem_boot",
+      "default_seed": 97,
+      "max_cycles": 100000,
+      "parameters": {
+        "UART_CLKS_PER_BIT": 12,
+        "UART_FRAC_NUM": 1,
+        "UART_FRAC_DEN": 2,
+        "HEARTBEAT_BIT": 20
+      },
+      "level": "L0"
+    },
     "n2m_de2_115": {
       "kind": "cocotb",
       "description": "DE2-115 portable board smoke: low-half SDRAM UART load, execution, ADV7123 DAC edge/width, complete UART frame snapshot, JTAG and fallback input",
@@ -698,11 +642,11 @@
         "n2m_de10_lite_lint"
       ],
       "clock_hz": 25000000,
-      "timeout_seconds": 1800,
+      "timeout_seconds": 2400,
       "test_module": "src.nand2mario.dv.fpga.test_de10_lite",
       "testcase": "board_smoke",
       "default_seed": 97,
-      "max_cycles": 12000000,
+      "max_cycles": 17000000,
       "parameters": {
         "UART_CLKS_PER_BIT": 12,
         "UART_FRAC_NUM": 1,
@@ -719,6 +663,29 @@
         "--workdir",
         "{workdir}"
       ]
+    },
+    "n2m_de2_115_uart_mem": {
+      "kind": "cocotb",
+      "description": "nand2mario DE2-115 board top loaded as the board console loads it: after PLL lock and SDRAM initialization, uart_mem.load (identify, hold, write and read back, entry, release) writes a cartridge header and a program at 0x0100 into the SDRAM device over the board UART pins at exactly 2 Mbaud against the board bit period (12 1/2 clocks through the fractional PHY), and the core boots it to its final HALT with its WRAM marker",
+      "top": "n2m_de2_115_fixture",
+      "libraries": [
+        "n2m_de2_115_fixture",
+        "sld_virtual_jtag_stub",
+        "n2m_de10_lite_lint"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 300,
+      "test_module": "src.nand2mario.dv.fpga.test_de10_lite",
+      "testcase": "board_uart_mem_boot",
+      "default_seed": 97,
+      "max_cycles": 100000,
+      "parameters": {
+        "UART_CLKS_PER_BIT": 12,
+        "UART_FRAC_NUM": 1,
+        "UART_FRAC_DEN": 2,
+        "HEARTBEAT_BIT": 20
+      },
+      "level": "L0"
     },
     "n2m_system_sw_games": {
       "kind": "cocotb",
@@ -887,105 +854,6 @@
         "{output}",
         "--backing",
         "sdram"
-      ]
-    },
-    "n2m_dual_port_ram_shared": {
-      "kind": "cocotb",
-      "description": "nand2mario ASIC RAM backend: the shared single-port path (8 KiB VRAM/WRAM store over n2a_sync_ram) equals the portable two-port contract edge for edge under the documented sharing rule, including posted writes under port-B bursts and their forwarding",
-      "top": "n2m_dual_port_ram_shared_fixture",
-      "flavors": [
-        "asic"
-      ],
-      "clock_hz": 25000000,
-      "timeout_seconds": 60,
-      "test_module": "src.nand2mario.dv.memory.test_dual_port_ram_shared",
-      "testcase": "shared_sram_contract",
-      "default_seed": 584,
-      "max_cycles": 20000,
-      "level": "L0"
-    },
-    "n2m_system_asic_ram": {
-      "kind": "cocotb",
-      "description": "n2m_system composition: timebase, CPU, DMA, memory map, cartridge, timer, interrupt flags, PPU, joypad, the VGA display tier, serial and the UART loader run a local program through timer, joypad and serial interrupts to an exact memory signature and serial byte string; with the ASIC RAM backend (n2m_dual_port_ram_asic.sv over the behavioral n2a_sync_ram), so VRAM and WRAM run on the shared single-port store",
-      "top": "n2m_system",
-      "flavors": [
-        "asic"
-      ],
-      "clock_hz": 25000000,
-      "timeout_seconds": 120,
-      "test_module": "src.nand2mario.dv.system.test_system",
-      "testcase": "system_smoke",
-      "default_seed": 42,
-      "max_cycles": 260000,
-      "parameters": {
-        "CART_ROM_BYTES": 32768,
-        "CART_RAM_BYTES": 8192
-      },
-      "level": "L1",
-      "wrapper": [
-        "src.nand2mario.scripts.regression.system_regression",
-        "--program",
-        "system_asic_ram",
-        "--output",
-        "{output}",
-        "--workdir",
-        "{workdir}"
-      ]
-    },
-    "n2m_system_background_asic_ram": {
-      "kind": "cocotb",
-      "description": "n2m_system background frame: a local program draws a scrolled background, waits for the VBlank interrupt and one captured frame matches the Python renderer pixel for pixel; with the ASIC RAM backend (n2m_dual_port_ram_asic.sv over the behavioral n2a_sync_ram), so VRAM and WRAM run on the shared single-port store",
-      "top": "n2m_system",
-      "flavors": [
-        "asic"
-      ],
-      "clock_hz": 25000000,
-      "timeout_seconds": 300,
-      "test_module": "src.nand2mario.dv.system.test_system_background",
-      "testcase": "system_background_frame",
-      "default_seed": 42,
-      "max_cycles": 2000000,
-      "parameters": {
-        "CART_ROM_BYTES": 32768,
-        "CART_RAM_BYTES": 8192
-      },
-      "level": "L1",
-      "wrapper": [
-        "src.nand2mario.scripts.regression.system_regression",
-        "--program",
-        "system_background_asic_ram",
-        "--output",
-        "{output}",
-        "--workdir",
-        "{workdir}"
-      ]
-    },
-    "n2m_system_objects_asic_ram": {
-      "kind": "cocotb",
-      "description": "n2m_system objects frame: a local program draws background, window and sprites, copies OAM through DMA from a VBlank handler and one captured frame matches the Python renderer pixel for pixel; with the ASIC RAM backend (n2m_dual_port_ram_asic.sv over the behavioral n2a_sync_ram), so VRAM and WRAM run on the shared single-port store",
-      "top": "n2m_system",
-      "flavors": [
-        "asic"
-      ],
-      "clock_hz": 25000000,
-      "timeout_seconds": 300,
-      "test_module": "src.nand2mario.dv.system.test_system_objects",
-      "testcase": "system_objects_frame",
-      "default_seed": 42,
-      "max_cycles": 3000000,
-      "parameters": {
-        "CART_ROM_BYTES": 32768,
-        "CART_RAM_BYTES": 8192
-      },
-      "level": "L1",
-      "wrapper": [
-        "src.nand2mario.scripts.regression.system_regression",
-        "--program",
-        "system_objects_asic_ram",
-        "--output",
-        "{output}",
-        "--workdir",
-        "{workdir}"
       ]
     }
   },

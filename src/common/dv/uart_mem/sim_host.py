@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Callable, TypeVar
 
+import cocotb
 from cocotb.task import bridge, resume
 from cocotb.triggers import Timer
 from cocotb.utils import get_sim_time
@@ -29,12 +30,25 @@ class SimTransport:
     """uart_mem.Transport on a bench UartWire: write sends the bytes on the
     DUT's rx pin, read returns what the background receiver collected from
     its tx pin, polling every poll_ps until something arrives or the
-    simulated deadline passes."""
+    simulated deadline passes. A malformed received frame is raised from
+    the next read, in the library call, so the test fails with it there."""
 
     def __init__(self, wire: UartWire, poll_ps: int):
         self.wire = wire
         self.poll_ps = poll_ps
-        self.received = wire.start_receiver()
+        self.received = bytearray()
+        self.error: AssertionError | None = None
+        cocotb.start_soon(self._receive())
+
+    async def _receive(self) -> None:
+        # Why: a receiver task that failed on its own would end the test while
+        # the bridge thread waits in a read, and cocotb then reports the
+        # cancelled read as a second, misleading error.
+        try:
+            while True:
+                self.received.append(await self.wire.receive_byte())
+        except AssertionError as error:
+            self.error = error
 
     def write(self, data: bytes) -> None:
         resume(self.wire.send)(data)
@@ -43,8 +57,10 @@ class SimTransport:
         return resume(self._read)(size, deadline)
 
     async def _read(self, size: int, deadline: float) -> bytes:
-        while not self.received and sim_seconds() < deadline:
+        while not self.received and self.error is None and sim_seconds() < deadline:
             await Timer(self.poll_ps, unit="ps")
+        if self.error is not None:
+            raise self.error
         out = bytes(self.received[:size])
         del self.received[:len(out)]
         return out
