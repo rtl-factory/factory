@@ -132,6 +132,20 @@ def test_a_waiver_closed_for_every_rule_is_narrow(tmp_path):
     assert rules(tmp_path, text) == []
 
 
+def test_an_asynchronous_reset_needs_a_why_directly_above(tmp_path):
+    flop = "    `DFF_ARST_VAL(count_q, count_d, clk_i, reset_i, '0)"
+    bare = CLEAN.replace("    `DFF_RST(count_q, count_d, clk_i, reset_i)", flop)
+    line = bare.splitlines().index(flop) + 1
+    assert rules(tmp_path, bare) == [(line, "arst-why")]
+    why = bare.replace(flop, "    // Why: the clock may be stopped while reset is held.\n    // A second line.\n" + flop)
+    assert rules(tmp_path, why) == []
+    run = why.replace(flop, flop + "\n    `DFF_ARST_VAL(spare, 1'b1, clk_i, reset_i, 1'b0)")
+    assert rules(tmp_path, run) == []
+    apart = bare.replace(flop, "    // Why: unrelated.\n    assign spare = 1'b0;\n" + flop)
+    assert (line + 2, "arst-why") in rules(tmp_path, apart)
+    assert rules(tmp_path, bare.replace(flop, flop + "  // Why: the clock may be stopped.")) == []
+
+
 def test_the_shared_macros_may_hold_flops_and_initial_blocks(tmp_path):
     macros = "`define DFF(Q, D, CLK) \\\n    always_ff @(posedge (CLK)) Q <= D;\n`define INIT \\\n    initial $display(1);\n"
     assert rules(tmp_path, macros, "src/common/rtl/pkg/macros.vh") == []

@@ -359,7 +359,7 @@ class ReportGateTests(unittest.TestCase):
                 n2m_quartus.sdram_timing(directory, self.config, SYSTEM_CLOCK)
 
     def test_sdram_write_sources(self):
-        reset = n2m_quartus.SDRAM_RESET_SOURCE + "stages_q[1]"
+        reset = n2m_quartus.SDRAM_RESET_SOURCE + "reset_q"
         self.assertTrue(n2m_quartus.sdram_write_source(self.config, reset, "DRAM_CKE"))
         self.assertTrue(n2m_quartus.sdram_write_source(self.config, reset, "DRAM_CS_N"))
         self.assertFalse(n2m_quartus.sdram_write_source(self.config, reset, "DRAM_ADDR[4]"))

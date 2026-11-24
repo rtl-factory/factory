@@ -532,8 +532,10 @@ def verify_reports(output: Path, config: dict) -> dict:
                                         system_clock, config)
     required = {(corner, kind, system_clock) for corner in config["timing_corners"]
                 for kind in ("Setup", "Hold", "Minimum Pulse Width")}
-    # Why: the JTAG scan domain holds the only asynchronous resets
-    # (wiki/bkm/rtl.md, Rules: reset and clocks), so recovery and removal are timed on TCK.
+    # Why: outside the reset synchronizers, whose asynchronous inputs are untimed
+    # (a board pin, PLL lock, or a crossing the SDC cuts), only the JTAG scan domain
+    # resets asynchronously (wiki/bkm/rtl.md, Rules: reset and clocks), so recovery
+    # and removal are required on TCK.
     required |= {(corner, kind, "jtag_tck") for corner in config["timing_corners"]
                  for kind in ("Setup", "Hold", "Recovery", "Removal", "Minimum Pulse Width")}
     required |= {(corner, "Minimum Pulse Width", "reference") for corner in config["timing_corners"]}
