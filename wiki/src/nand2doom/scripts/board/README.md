@@ -1,6 +1,6 @@
 # Board build
 
-Builds and gates nand2doom's Quartus image for either board, and analyzes a board's timing at other system clocks. Code: `src/nand2doom/scripts/board/` (`quartus.py` is the build and report gate; `n2d_timing.py` is the timing analysis, which reuses its staging and runner).
+nand2doom's Quartus manifest tests and its timing analysis at other system clocks. The image itself is built and gated by the shared [Quartus build tool](../../../../tools/quartus/README.md). Code: `src/nand2doom/scripts/board/` (`n2d_timing.py`, which reuses the tool's staging and runner).
 
 - [Requirements](prd.md)
 - [Spec](spec.md)

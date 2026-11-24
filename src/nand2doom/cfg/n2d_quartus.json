@@ -89,10 +89,10 @@
     ]}
   },
   "pins": [
-    "MAX10_CLK1_50", "VGA_HS", "VGA_VS", "DRAM_CAS_N", "DRAM_CKE", "DRAM_CLK", "DRAM_CS_N", "DRAM_LDQM",
+    "MAX10_CLK1_50", "RESET_N=KEY[0]", "UART_RXD=ARDUINO_IO[0]", "UART_TXD=ARDUINO_IO[1]", "PS2_CLK=GPIO[0]",
+    "PS2_DAT=GPIO[1]", "VGA_HS", "VGA_VS", "DRAM_CAS_N", "DRAM_CKE", "DRAM_CLK", "DRAM_CS_N", "DRAM_LDQM",
     "DRAM_RAS_N", "DRAM_UDQM", "DRAM_WE_N", "VGA_R[3:0]", "VGA_G[3:0]", "VGA_B[3:0]", "LEDR[3:0]",
-    "DRAM_ADDR[12:0]", "DRAM_BA[1:0]", "DRAM_DQ[15:0]", "RESET_N=KEY[0]", "UART_RXD=ARDUINO_IO[0]",
-    "UART_TXD=ARDUINO_IO[1]", "PS2_CLK=GPIO[0]", "PS2_DAT=GPIO[1]"
+    "DRAM_ADDR[12:0]", "DRAM_BA[1:0]", "DRAM_DQ[15:0]"
   ],
   "boards": {
     "de2_115": {
@@ -230,11 +230,11 @@
         "logiclock_count": 1
       },
       "pins": [
-        "CLOCK_50", "KEY[0]", "PS2_CLK", "PS2_DAT", "VGA_R[7:0]", "VGA_G[7:0]", "VGA_B[7:0]", "VGA_HS",
-        "VGA_VS", "VGA_CLK", "VGA_BLANK_N", "VGA_SYNC_N", "LEDR[17:0]", "LEDG[8:0]", "HEX0[6:0]", "HEX1[6:0]",
-        "HEX2[6:0]", "HEX3[6:0]", "HEX4[6:0]", "HEX5[6:0]", "HEX6[6:0]", "HEX7[6:0]", "DRAM_ADDR[12:0]",
-        "DRAM_BA[1:0]", "DRAM_CAS_N", "DRAM_CKE", "DRAM_CLK", "DRAM_CS_N", "DRAM_DQ[15:0]", "DRAM_DQM[3:0]",
-        "DRAM_RAS_N", "DRAM_WE_N", "UART_RX=GPIO[0]", "UART_TX=GPIO[1]"
+        "CLOCK_50", "KEY[0]", "UART_RX=GPIO[0]", "UART_TX=GPIO[1]", "PS2_CLK", "PS2_DAT", "VGA_R[7:0]",
+        "VGA_G[7:0]", "VGA_B[7:0]", "VGA_HS", "VGA_VS", "VGA_CLK", "VGA_BLANK_N", "VGA_SYNC_N", "LEDR[17:0]",
+        "LEDG[8:0]", "HEX0[6:0]", "HEX1[6:0]", "HEX2[6:0]", "HEX3[6:0]", "HEX4[6:0]", "HEX5[6:0]",
+        "HEX6[6:0]", "HEX7[6:0]", "DRAM_ADDR[12:0]", "DRAM_BA[1:0]", "DRAM_CAS_N", "DRAM_CKE", "DRAM_CLK",
+        "DRAM_CS_N", "DRAM_DQ[15:0]", "DRAM_DQM[3:0]", "DRAM_RAS_N", "DRAM_WE_N"
       ]
     }
   }

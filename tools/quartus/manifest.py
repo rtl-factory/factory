@@ -269,7 +269,10 @@ def validate_warnings(root: Path, config: dict) -> None:
         if not isinstance(pattern, str) or (isinstance(entry, dict) and (
                 set(entry) != {"pattern", "count"} or type(entry["count"]) is not int or entry["count"] < 0)):
             raise ValueError(f"invalid reviewed warning pattern: {entry}")
-        re.compile(pattern)
+        try:
+            re.compile(pattern)
+        except re.error as error:
+            raise ValueError(f"invalid reviewed warning pattern: {entry}: {error}") from error
 
 
 def validate(config: dict, root: Path) -> dict:
@@ -315,7 +318,10 @@ def validate(config: dict, root: Path) -> dict:
         if "from_ports" in group and not re.fullmatch(r"[\w*\[\]]+", group["from_ports"]):
             raise ValueError(f"invalid timing path ports: {name}")
         for endpoint in group["endpoints"]:
-            re.compile(endpoint["from"]), re.compile(endpoint["to"])
+            try:
+                re.compile(endpoint["from"]), re.compile(endpoint["to"])
+            except (re.error, TypeError) as error:
+                raise ValueError(f"invalid timing path endpoint: {name}: {error}") from error
     for requirement in config["ram_requirements"]:
         named = {"name"} if "name" in requirement else {"prefix", "array"}
         if (set(requirement) != named | {"count", "depth", "width", "m9ks_each", "mode"}

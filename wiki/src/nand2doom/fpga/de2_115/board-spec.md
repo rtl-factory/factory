@@ -23,7 +23,7 @@ why the shared contracts live on the DE10-Lite page are in the
 `n2a_de2_115_clock_portable.sv` in Verilator. The composition, the vendor
 primitives and their simulation stand-ins and the RAM mapping are shared with
 the DE10-Lite ([composition](../de10_lite/board-spec.md#composition), [vendor primitives](../de10_lite/board-spec.md#vendor-primitives),
-[memory implementation](../de10_lite/board-spec.md#memory-implementation)). The Quartus script
+[memory implementation](../de10_lite/board-spec.md#memory-implementation)). The Quartus tool
 resolves the DE2-115 from the shared manifest by swapping the clock backend
 and the board top.
 
@@ -31,8 +31,9 @@ and the board top.
 
 ### Electrical interfaces
 
-`boards.de2_115` in `n2d_quartus.json` owns every DE2-115 pin, standard and
-file swap. Pins equal the [nand2linux DE2-115 assignments](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/nand2linux/fpga/DE2-115.md#pins);
+`boards.de2_115` in `n2d_quartus.json` names every DE2-115 pin the top uses and
+owns the file swap; locations and standards come from
+`src/common/fpga/de2_115/pins.json`. Pins equal the [nand2linux DE2-115 assignments](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/nand2linux/fpga/DE2-115.md#pins);
 a unit test compares every shared pin and standard.
 
 | Signal | Pin | Standard |
@@ -96,8 +97,8 @@ DE10-Lite's.
 ## Build and program
 
 ```sh
-python3 src/nand2doom/scripts/board/quartus.py --board de2_115
-python3 src/nand2doom/scripts/board/quartus.py --board de2_115 --elaborate-only
+python3 tools/quartus/quartus.py --manifest src/nand2doom/cfg/n2d_quartus.json --board de2_115
+python3 tools/quartus/quartus.py --manifest src/nand2doom/cfg/n2d_quartus.json --board de2_115 --elaborate-only
 ```
 
 The full build must pass the shared [report gate](../de10_lite/board-spec.md#report-gate), whose

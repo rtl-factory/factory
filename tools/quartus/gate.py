@@ -347,8 +347,12 @@ def warning_rules(config: dict, *, elaboration: bool = False) -> list[dict]:
     return rules
 
 
-def generated_warning(line: str, map_report: Path) -> dict | None:
-    """Bind a 12125 generated-file warning to an actual generated, read design file."""
+def generated_warning(line: str, map_report: Path | None) -> dict | None:
+    """Bind a 12125 generated-file warning to an actual generated, read design file.
+
+    Without the map report (evidence checked away from its build) only the
+    warning's identity is parsed.
+    """
     match = re.fullmatch(
         r"Warning \(12125\): Using design file (?P<file>db/(?P<entity>(?P<family>altpll|altsyncram|decode|mux)_"
         r"[A-Za-z0-9]+)\.tdf), which is not specified as a design file for the current project, "
@@ -356,6 +360,10 @@ def generated_warning(line: str, map_report: Path) -> dict | None:
     if not match:
         return None
     filename, entity, family = match["file"], match["entity"], match["family"]
+    rule = {"code": 12125, "category": "generated_ip", "identity": {"file": filename, "family": family},
+            "minimum": 0, "maximum": 1, "count": 1}
+    if map_report is None:
+        return rule
     path = map_report.parent.parent / filename
     rows = [[cell.strip() for cell in row.split(";")[1:-1]]
             for row in read(map_report).splitlines() if row.startswith(";")]
@@ -369,8 +377,7 @@ def generated_warning(line: str, map_report: Path) -> dict | None:
     if (not text.startswith("--" + primitive + " ") or
             re.findall(r"^SUBDESIGN\s+(\w+)\s*$", text, re.M) != [entity]):
         raise RuntimeError(f"unreviewed generated IP identity: {filename}")
-    return {"code": 12125, "category": "generated_ip", "identity": {"file": filename, "family": family},
-            "minimum": 0, "maximum": 1, "count": 1}
+    return rule
 
 
 def standard_key(standard: str) -> str:
@@ -411,15 +418,9 @@ def electrical_warnings(report: str, config: dict) -> list[dict]:
             for pin, pad, key in observed]
 
 
-def reviewed_warnings(warnings: list[str], map_report: Path, config: dict, *,
-                      elaboration: bool = False, fit_report: Path | None = None) -> dict:
-    """Fail closed on identity, multiplicity, completeness and supporting evidence."""
-    connectivity = connectivity_warnings(read(map_report), config)
-    aggregates = [line for line in warnings if line == CONNECTIVITY_AGGREGATE]
-    if aggregates and (not connectivity or len(aggregates) != 1):
-        raise RuntimeError("missing or duplicate reviewed connectivity evidence")
-    if connectivity and not aggregates:
-        raise RuntimeError("connectivity warnings without their aggregate diagnostic")
+def tally(warnings: list[str], config: dict, *, elaboration: bool = False,
+          map_report: Path | None = None) -> list[dict]:
+    """Each reviewed rule with its observed count; fails on any unreviewed, ambiguous or miscounted warning."""
     rules = warning_rules(config, elaboration=elaboration)
     for rule in rules:
         rule["count"] = 0
@@ -447,13 +448,31 @@ def reviewed_warnings(warnings: list[str], map_report: Path, config: dict, *,
         count = sum(rule["identity"]["family"] == family for rule in generated.values())
         if count > limits.get(family, 0):
             raise RuntimeError(f"too many generated IP warnings: {family} {count} > {limits.get(family, 0)}")
+    return [*rules, *generated.values()]
+
+
+def check_aggregate(warnings: list[str], connectivity: list) -> None:
+    """The connectivity aggregate appears once exactly when connectivity rows warn."""
+    aggregates = [line for line in warnings if line == CONNECTIVITY_AGGREGATE]
+    if aggregates and (not connectivity or len(aggregates) != 1):
+        raise RuntimeError("missing or duplicate reviewed connectivity evidence")
+    if connectivity and not aggregates:
+        raise RuntimeError("connectivity warnings without their aggregate diagnostic")
+
+
+def reviewed_warnings(warnings: list[str], map_report: Path, config: dict, *,
+                      elaboration: bool = False, fit_report: Path | None = None) -> dict:
+    """Fail closed on identity, multiplicity, completeness and supporting evidence."""
+    connectivity = connectivity_warnings(read(map_report), config)
+    check_aggregate(warnings, connectivity)
+    rules = tally(warnings, config, elaboration=elaboration, map_report=map_report)
     electrical = []
     if not elaboration and "electrical_pins" in config["reviewed_warnings"]:
         if fit_report is None:
             raise RuntimeError("missing electrical advisory fitter evidence")
         electrical = electrical_warnings(read(fit_report), config)
     entries = [{key: (None if value == math.inf else value) for key, value in rule.items() if key != "pattern"}
-               for rule in [*rules, *generated.values()]]
+               for rule in rules]
     by_code, by_category = {}, {}
     for rule in entries:
         by_code[str(rule["code"])] = by_code.get(str(rule["code"]), 0) + rule["count"]
@@ -481,6 +500,142 @@ def check_staged_inputs(output: Path, config: dict) -> None:
             raise RuntimeError(f"staged input changed after compilation: {name}")
 
 
+TIMING_KINDS = ("Setup", "Hold", "Recovery", "Removal", "Minimum Pulse Width")
+EVIDENCE_FIELDS = {"schema", "gate", "stage", "project", "board", "top", "device", "connectivity_warnings",
+                   "electrical_advisory", "warning_summary", "minimum_slack_ns", "clocks_ns", "timing", "fmax",
+                   "timing_paths", "check_timing", "clock_relationships", "resources", "reviewed_warnings"}
+
+
+def required_timing(config: dict, system_clock: str, clocks: dict) -> set:
+    """The (corner, check, clock) rows the timing summary must hold."""
+    corners = config["timing_corners"]
+    required = {(corner, kind, system_clock) for corner in corners for kind in TIMING_KINDS}
+    required |= {(corner, kind, clock) for corner in corners
+                 for kind in ("Setup", "Hold") for clock in config["forwarded_clocks"]}
+    required |= {(corner, "Minimum Pulse Width", "reference") for corner in corners}
+    if JTAG_CLOCK["name"] in clocks:
+        required |= {(corner, kind, JTAG_CLOCK["name"]) for corner in corners
+                     for kind in ("Setup", "Hold", "Minimum Pulse Width")}
+    return required
+
+
+def expected_check_timing(config: dict) -> dict:
+    """Every check_timing category with its reviewed count."""
+    # Why: the PLL lock synchronizer has no clock of its own and no virtual clock is
+    # defined; each forwarded clock pin is its generated clock's target, not a data
+    # output that needs set_output_delay.
+    allowed = {"no_clock": 1, "virtual_clock": 1, "no_output_delay": len(config["forwarded_clocks"])}
+    return {name: str(allowed.get(name, 0)) for name in CHECK_TIMING_CATEGORIES}
+
+
+def nonnegative(value) -> bool:
+    return type(value) in (int, float) and math.isfinite(value) and value >= 0
+
+
+def require(condition: bool, detail: str) -> None:
+    if not condition:
+        raise ValueError("invalid gate evidence: " + detail)
+
+
+def check_evidence(e: dict, config: dict) -> None:
+    """Recheck, from evidence.json alone, every gate obligation it records for this config.
+
+    It proves the evidence describes a passing gate of this config; it does not
+    prove where the evidence came from (the image receipt's hashes bind that).
+    """
+    try:
+        require(isinstance(e, dict) and set(e) == EVIDENCE_FIELDS, "fields")
+        require((e["schema"], e["gate"], e["stage"]) == (EVIDENCE_SCHEMA, "passed", "full_compile"), "schema")
+        require((e["project"], e["board"], e["top"], e["device"]) ==
+                (config["project"], config["board"], config["top"], config["device"]), "board identity")
+        require(e["check_timing"] == expected_check_timing(config), "check_timing findings")
+        clocks = e["clock_relationships"]
+        require(isinstance(clocks, dict) and all(isinstance(row, dict) and all(isinstance(v, str) for v in row.values())
+                                                for row in clocks.values()), "clock relationship fields")
+        systems = [name for name in clocks if SYSTEM_CLOCK_NAME.fullmatch(name)]
+        require(len(systems) == 1, "system clock")
+        system = systems[0]
+        try:
+            check_clocks(clocks, system, config)
+        except RuntimeError as error:
+            require(False, str(error))
+        require(set(e["clocks_ns"]) == set(clocks) and all(
+            math.isfinite(float(e["clocks_ns"][name])) and float(e["clocks_ns"][name]) == float(row["Period"])
+            for name, row in clocks.items()), "clock periods")
+        corners, observed = set(config["timing_corners"]), set()
+        require(isinstance(e["timing"], list) and bool(e["timing"]), "timing rows")
+        for row in e["timing"]:
+            require(set(row) == {"corner", "check", "clock", "slack_ns", "tns_ns"}, "timing row fields")
+            key = (row["corner"], row["check"], row["clock"])
+            require(key not in observed and key[0] in corners and key[1] in TIMING_KINDS and key[2] in clocks,
+                    "timing coverage")
+            require(nonnegative(row["slack_ns"]) and row["tns_ns"] == 0, "negative/nonfinite slack or nonzero TNS")
+            observed.add(key)
+        require(required_timing(config, system, clocks) <= observed, "timing coverage")
+        require(e["minimum_slack_ns"] == min(row["slack_ns"] for row in e["timing"]), "timing minimum")
+        require(isinstance(e["fmax"], dict) and set(e["fmax"]) == corners, "Fmax corners")
+        for values in e["fmax"].values():
+            require(set(values) == {"fmax_mhz", "restricted_fmax_mhz"} and all(nonnegative(v) for v in values.values())
+                    and config["clock_hz"] / 1e6 <= values["restricted_fmax_mhz"] <= values["fmax_mhz"], "Fmax")
+        resources = e["resources"]
+        require(isinstance(resources, dict) and set(resources) == set(RESOURCES) | {"ram_summary"}, "resource fields")
+        for name in RESOURCES:
+            values = resources[name]
+            require(set(values) == {"used", "available", "remaining"} and all(
+                type(v) is int and v >= 0 for v in values.values()) and values["available"] > 0
+                and values["used"] + values["remaining"] == values["available"], "resource capacity")
+        require(resources["Total PLLs"]["used"] == 1, "PLL count")
+        require(isinstance(resources["ram_summary"], list) and all(
+            isinstance(row, dict) and set(row) == set(RAM_FIELDS) and all(isinstance(v, str) for v in row.values())
+            for row in resources["ram_summary"]), "RAM summary fields")
+        try:
+            check_rams(resources["ram_summary"], config, resources["M9Ks"]["used"])
+        except RuntimeError as error:
+            require(False, str(error))
+        groups = e["timing_paths"]
+        require(isinstance(groups, dict) and set(groups) == set(config["timing_paths"]), "timing path groups")
+        names = {SYSTEM_CLOCK: system}
+        for name, group in config["timing_paths"].items():
+            paths, seen = groups[name].get("paths"), set()
+            require(set(groups[name]) == {"paths", "worst_margin_ns"} and isinstance(paths, list), "path group fields")
+            for path in paths:
+                key = (path.get("corner"), path.get("check"))
+                require(key[0] in corners and key[1] in ("setup", "hold") and key not in seen, "path coverage")
+                require(set(path) == {"report", "corner", "check", "slack_ns", "From Node", "To Node",
+                                      "Launch Clock", "Latch Clock", "Slack"}, "path fields")
+                require(nonnegative(path["slack_ns"]) and isinstance(path["Slack"], str)
+                        and float(path["Slack"]) == path["slack_ns"], "path margin")
+                require(path["Launch Clock"] == names.get(group["launch"], group["launch"])
+                        and path["Latch Clock"] == names.get(group["latch"], group["latch"])
+                        and any(re.fullmatch(end["from"], path["From Node"]) and re.fullmatch(end["to"], path["To Node"])
+                                for end in group["endpoints"]), "path endpoints/clocks")
+                seen.add(key)
+            require(seen == {(c, k) for c in corners for k in ("setup", "hold")}, f"missing {name} paths")
+            require(groups[name]["worst_margin_ns"] == {k: min(p["slack_ns"] for p in paths if p["check"] == k)
+                                                       for k in ("setup", "hold")}, f"{name} worst margins")
+        warnings = e["reviewed_warnings"]
+        require(isinstance(warnings, list) and all(isinstance(w, str) for w in warnings), "warning list")
+        try:
+            tally(warnings, config)
+        except RuntimeError as error:
+            require(False, str(error))
+        contract = config["reviewed_warnings"].get("connectivity")
+        expected = [] if contract is None else sorted(
+            ({"hierarchy": contract["hierarchy"], "port": port, "type": "Output", "severity": "Warning",
+              "details": CONNECTIVITY_DETAIL} for port in contract["unused_outputs"]), key=lambda r: r["port"])
+        connectivity = e["connectivity_warnings"]
+        require(isinstance(connectivity, list) and (not connectivity or sorted(
+            connectivity, key=lambda r: r["port"]) == expected), "connectivity warnings")
+        try:
+            check_aggregate(warnings, connectivity)
+        except RuntimeError as error:
+            require(False, str(error))
+    except (KeyError, TypeError, AttributeError, ValueError, OverflowError) as error:
+        if isinstance(error, ValueError) and str(error).startswith("invalid gate evidence"):
+            raise
+        raise ValueError(f"invalid gate evidence: {error!r}") from error
+
+
 def verify_reports(output: Path, config: dict) -> dict:
     """The full report gate of one compiled and audited build; writes evidence.json on a pass."""
     check_staged_inputs(output, config)
@@ -506,26 +661,13 @@ def verify_reports(output: Path, config: dict) -> dict:
         raise RuntimeError("ambiguous timing summary")
     system_clock = next(iter(system_clocks))
     clock_relationships = fitted_clocks(read(reports / f"{project}.sta.rpt"), system_clock, config)
-    corners = config["timing_corners"]
-    required = {(corner, kind, system_clock) for corner in corners
-                for kind in ("Setup", "Hold", "Recovery", "Removal", "Minimum Pulse Width")}
-    required |= {(corner, kind, clock) for corner in corners
-                 for kind in ("Setup", "Hold") for clock in config["forwarded_clocks"]}
-    required |= {(corner, "Minimum Pulse Width", "reference") for corner in corners}
-    if JTAG_CLOCK["name"] in clock_relationships:
-        required |= {(corner, kind, JTAG_CLOCK["name"]) for corner in corners
-                     for kind in ("Setup", "Hold", "Minimum Pulse Width")}
+    required = required_timing(config, system_clock, clock_relationships)
     if not required <= keys:
         raise RuntimeError(f"incomplete timing summary: {sorted(required - keys)}")
     check = read(reports / "check_timing.rpt")
     counts = dict(re.findall(r";\s*([a-z_]+)\s*;\s*(\d+)\s*;", check))
     forwarded_ports = config["forwarded_clocks"].values()
-    # Why: the PLL lock synchronizer has no clock of its own and no virtual clock is
-    # defined; each forwarded clock pin is its generated clock's target, not a data
-    # output that needs set_output_delay.
-    allowed = {"no_clock": 1, "virtual_clock": 1, "no_output_delay": len(forwarded_ports)}
-    if (set(counts) != CHECK_TIMING_CATEGORIES or
-            any(int(count) != allowed.get(name, 0) for name, count in counts.items()) or
+    if (counts != expected_check_timing(config) or
             not all(re.search(r";\s*" + re.escape(port) + r"\s*;\s*No output delay was set on output port\. "
                               r"This port has clock assignments\.\s*;", check) for port in forwarded_ports) or
             not re.search(r";\s*" + re.escape(config["clock_module"]) + r":u_clock\|altpll:u_pll\|altpll_[A-Za-z0-9]+:"
@@ -559,6 +701,7 @@ def verify_reports(output: Path, config: dict) -> dict:
               "fmax": fmax, "timing_paths": paths, "check_timing": counts,
               "clock_relationships": clock_relationships, "resources": resources,
               "reviewed_warnings": warnings}
+    check_evidence(json.loads(json.dumps(result)), config)
     (output / "evidence.json").write_text(json.dumps(result, indent=2) + "\n")
     return result
 

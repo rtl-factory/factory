@@ -17,6 +17,7 @@ import signal
 import subprocess
 import sys
 
+
 @contextmanager
 def build_lock(root: Path, output: Path):
     """Keep concurrent invocations from deleting a live project's database."""

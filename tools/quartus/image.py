@@ -13,6 +13,8 @@ import json
 from pathlib import Path
 import re
 
+from tools.quartus import build, gate
+
 RECEIPT_SCHEMA = "quartus-sof/1"
 RECEIPT_FIELDS = {"schema", "project", "board", "device", "source_sha", "source_dirty", "quartus_version",
                   "sha256", "inputs_sha256", "evidence_sha256"}
@@ -72,7 +74,10 @@ def verify_image(sof: Path, config: dict) -> dict:
     # pins, constraints or warning policy differ from the checkout's.
     if not isinstance(inputs, dict) or inputs.get("config") != json.loads(json.dumps(config)):
         raise ValueError("SOF inputs differ from the selected manifest; rebuild the image")
-    if (not isinstance(evidence, dict) or evidence.get("gate") != "passed" or evidence.get("stage") != "full_compile"
-            or (evidence.get("project"), evidence.get("device")) != (config["project"], config["device"])):
-        raise ValueError("SOF evidence is not a passing full-compile gate of this project")
+    hashes = inputs.get("sha256")
+    if (set(inputs) != {"config", "sha256"} or not isinstance(hashes, dict)
+            or set(hashes) != set(build.staged_files(config))
+            or any(not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value) for value in hashes.values())):
+        raise ValueError("malformed transferred inputs: fields or source hashes")
+    gate.check_evidence(evidence, config)
     return identity

@@ -1,6 +1,5 @@
 """Project target compatibility and product source-closure checks."""
 from pathlib import Path
-import importlib.util
 import sys
 import unittest
 
@@ -8,10 +7,7 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "tools/sim"))
 import sim  # noqa: E402
-
-_spec = importlib.util.spec_from_file_location("quartus", REPO_ROOT / "src/nand2doom/scripts/board/quartus.py")
-quartus = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(quartus)
+from tools.quartus import manifest  # noqa: E402
 
 
 class ProjectTargetTests(unittest.TestCase):
@@ -38,7 +34,7 @@ class ProjectTargetTests(unittest.TestCase):
         consumers = {source for target in targets.values() for source in target.sources}
         # Why: Intel backends are consumed only by a board's Quartus source list, so
         # that list counts as their consumer.
-        quartus_sources = {source for board in quartus.BOARDS for source in quartus.load_config(
+        quartus_sources = {source for board in ("de10_lite", "de2_115") for source in manifest.load(
             REPO_ROOT, "src/nand2doom/cfg/n2d_quartus.json", board)["sources"]}
         for source in files:
             relative = source.relative_to(REPO_ROOT).as_posix()

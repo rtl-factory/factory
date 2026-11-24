@@ -161,6 +161,8 @@
     "VGA_B[3:0]",
     "VGA_HS",
     "VGA_VS",
+    "UART_RXD=ARDUINO_IO[0]",
+    "UART_TXD=ARDUINO_IO[1]",
     "DRAM_CAS_N",
     "DRAM_CKE",
     "DRAM_CLK",
@@ -171,9 +173,7 @@
     "DRAM_WE_N",
     "DRAM_ADDR[12:0]",
     "DRAM_BA[1:0]",
-    "DRAM_DQ[15:0]",
-    "UART_RXD=ARDUINO_IO[0]",
-    "UART_TXD=ARDUINO_IO[1]"
+    "DRAM_DQ[15:0]"
   ],
   "require_clean_source": true
 }

@@ -26,7 +26,7 @@ Two backend files define the module and are never compiled together; the board t
 
 ## Pins and I/O
 
-None here: pins live in each project's Quartus manifest (`src/<project>/cfg/`).
+`src/common/fpga/de2_115/pins.json` holds every DE2-115 pin a project uses, by its name in the board manual, with its I/O standard (or `null` where the project's settings fragment sets it), and the board's family, device, reference clock and clock module. A project's Quartus manifest (`src/<project>/cfg/`) names the pins its top uses and may wire a port to a pin of another name; the [Quartus tool](../../../../tools/quartus/spec.md#board-pin-maps) resolves them.
 
 ## Clocks and constraints
 

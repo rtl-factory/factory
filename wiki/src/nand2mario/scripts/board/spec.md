@@ -7,20 +7,16 @@ How the board flow meets its [requirements](prd.md). Code: `src/nand2mario/scrip
 | Part | Role |
 |---|---|
 | `n2m_board.py` | The command: `compile`, `program`, `load`, `snapshot`, `joypad`. Each subcommand without `--yes` is a dry run |
-| `n2m_quartus.py` | Stages the Quartus project from the board config, runs the build and a separate timing audit, applies the report gate, writes `evidence.json` and the image identity |
 | `cart_loader.py` | Host side of the UART loader protocol: frame codec, CRC, and a `Session` with bounded stop-and-wait retries over any byte transport |
 | `frame_snapshot.py` | Frame snapshot: `plan`, `capture`, `decode`, `gif` |
 
 ## Configs
 
-The board configs are `src/nand2mario/cfg/n2m_quartus.json` (DE10-Lite), `src/nand2mario/cfg/n2m_de2_115_quartus.json` (DE2-115) and `src/nand2mario/cfg/n2m_library_quartus_profile.json` (the game-library profile, which holds only parameters, RAM requirements and reviewed warnings). Each board manifest holds project, top, family, device, clock, timeout, timing corners, the top library and its `intel` flavor (resolved into the sources and headers, [Bazel spec, Libraries](../../../../tools/bazel/spec.md#libraries)), pins and I/O standards, reviewed warnings and expected RAM geometry. `validate_config` rejects a config missing any required key before anything is staged.
+The Quartus manifests are `src/nand2mario/cfg/n2m_quartus.json` (DE10-Lite), `src/nand2mario/cfg/n2m_de2_115_quartus.json` (DE2-115) and the profile `src/nand2mario/cfg/n2m_library_quartus_profile.json` (the game-library image: `CART_LIBRARY=1`, its active-cartridge RAM and the exact save-RAM removal warnings). Each manifest names its board, project, top, clock, timeout, timing corners, the top library and its `intel` flavor, the pins its top uses (locations and standards from `src/common/fpga/<board>/pins.json`; `UART_RXD`/`UART_TXD` are wired to `ARDUINO_IO[0]`/`[1]` on the DE10-Lite and `GPIO[0]`/`[1]` on the DE2-115), forwarded clocks, timing path groups, RAM requirements and reviewed warnings, and sets `require_clean_source` ([Quartus tool spec, Manifests](../../../../tools/quartus/spec.md#manifests)).
 
 ## Build and gate
 
-1. Take the build lock and stage the project under `workdir/quartus/<project>/`; every output path is confined below `workdir/`.
-2. Run `quartus_sh` compile, then a separate timing audit.
-3. Gate the reports: fitted resources and RAM geometry against the config; the system clock name and frequency; `check_timing` categories (exactly one `no_clock`, one `virtual_clock` and one `no_output_delay`, or two `no_output_delay` on the DE2-115; any other count or category fails); unconstrained and illegal clocks and ports (UCP); setup and hold slack at every corner, including the SDRAM and DAC paths (an SDRAM write path starts in the SDRAM controller, or in the board reset synchronizer for `DRAM_CKE` and `DRAM_CS_N`, which follow reset); and every warning, which must be listed as reviewed (the one known connectivity warning is matched exactly).
-4. Write `evidence.json` (schema, project, device, resources, slack per corner, Fmax, clocks, warnings, Quartus version, source commit) and the SOF's identity sidecar. `program` refuses an SOF whose identity does not match its board.
+`compile` runs `tools/quartus/quartus.py` on the selected board's manifest, with the library profile for `--library` (DE2-115 only); `--plan` and `--quartus` pass through. The tool stages `workdir/quartus/<project>/`, compiles, audits timing and applies the [report gate](../../../../tools/quartus/spec.md#report-gate), including the path groups: `sdram_read` (from `DRAM_DQ[*]` to the controller's `regs_q.read_data`), `sdram_write` (to the `sdram_clock` pin, from the SDRAM controller, or from the board reset synchronizer for `DRAM_CKE` and `DRAM_CS_N`, which follow reset) and, on the DE2-115, `dac` (to the `vga_dac_clock` pin). A passing build binds the SOF to its commit ([image identity](../../../../tools/quartus/spec.md#image-identity)); `program` calls `verify_image` with the selected board's manifest and profile and refuses an image that fails it.
 
 ## Loader protocol
 
