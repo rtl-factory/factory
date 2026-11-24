@@ -12,5 +12,6 @@ The tools: code any project can use unchanged. Each has its code in `tools/<tool
 | [sim](sim/README.md) | Runs every project's simulation targets on Verilator and cocotb |
 | [toolchain](toolchain/README.md) | Pins, installs and checks the host tools |
 | [tracker](tracker/README.md) | Publishes status, regression and metric pages on the site |
+| [worktree](worktree/README.md) | Cleans up a finished worktree: expunges its Bazel output base, removes it and its landed branch; removes orphaned output bases |
 
 Tools we use but do not build (Verilator, cocotb, the OSS CAD Suite with Yosys and SymbiYosys, Quartus Prime Lite) are chosen in ADR 0009 and installed by the toolchain tool, which pins their versions and checks each host.

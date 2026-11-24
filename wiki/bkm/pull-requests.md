@@ -84,6 +84,7 @@ How a reviewer crewmate reviews a pull request and decides whether to pass it ([
 
 - You must not review a pull request you, or a crewmate sharing your context, authored. Why: the author is the worst judge of its own blind spots ([running the crew](first-mate.md#running-the-crew)).
 - Review read-only: do not commit, push or edit the issue branch; keep repros in your own scratch worktree. Why: the author fixes; a reviewer that edits stops being a fresh pair of eyes.
+- When the review is posted, remove your review worktree with the worktree tool (`python3 tools/worktree/worktree.py remove <worktree>`; an unlanded scratch branch is kept). Why: each review worktree leaves a Bazel output base and server behind otherwise ([flow step 10](flow.md#steps)).
 - Review on three axes and report them separately: **Spec** (the issue's acceptance criteria and the block's spec), **Standards** (BKMs and principles whose triggers match), **Breakage** (what the change breaks beyond the files it touches). Why: a change can pass one axis and fail another, and merging them lets one mask the other.
 - Post a finding as blocker or should only when you proved it by running something; what you only reasoned about is a nit or a question. Why: a review that sounds right reads the same whether or not it is true.
 - Give every finding a severity, a `file:line`, the concrete failure (input, seed or trace, what happened, what the issue or spec requires) and the smallest fix. Why: the author must be able to reproduce it without asking you.
