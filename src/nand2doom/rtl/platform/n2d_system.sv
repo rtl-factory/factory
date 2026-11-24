@@ -1,9 +1,5 @@
 `include "src/common/rtl/pkg/macros.vh"
 
-/* The UART/PS2 PHYs require asynchronous assertion while product datapaths use
- * synchronous reset. The platform deliberately shares the externally
- * asserted level and synchronizes board release outside this boundary. */
-/* verilator lint_off SYNCASYNCNET */
 module n2d_system
     import n2d_pkg::*;
 #(
@@ -930,4 +926,3 @@ module n2d_system
         dcache_maintenance_done && dcache_maintenance_error,
         !cache_maintenance_done, "failed D-cache maintenance exposed debug")
 endmodule
-/* verilator lint_on SYNCASYNCNET */

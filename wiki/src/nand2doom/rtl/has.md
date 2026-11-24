@@ -87,7 +87,7 @@ cacheability, boot and error policy stay thin nand2doom integration.
 | --- | --- |
 | UART byte PHY | Common RX/TX; Doom keeps the debug parser, transactions, bulk routing, timeouts and framing. |
 | VGA timing | Common timing generator; Doom keeps the framebuffer, palette, MMIO and scanout. |
-| Reset and CDC | Common reset and bit synchronizers; keep asynchronous PHY reset, synchronized release and 25 MHz. |
+| Reset and CDC | Common reset and bit synchronizers; keep synchronized release and 25 MHz. |
 | Register file and staging RAM | Common RV32 register file and RAMs; keep reset, old-data latency, masks and capacity. |
 | PS/2 | Doom combines filtering, receive, FIFO and injection; a common receiver needs its own contract and consumer tests. |
 | SDRAM | Doom owns its controller. Linux also uses burst-eight CAS-two lines, but Doom's open-row policy, bank map, refresh reserve and capture differ; the Linux BL8 controller is not a drop-in backend. |
@@ -126,8 +126,8 @@ palette view at `0x1003_0000` that the CPU map does not have
   through the common `n2a_reset_sync`, which releases it on a 25 MHz edge;
   `n2d_system` stays in reset until the SDRAM controller reports
   initialization done (≥200 µs) (PLAT-R2, [board requirements](../fpga/de10_lite/board-spec.md#requirements)).
-  Inside `n2d_system` the UART and PS/2 PHYs use the reset level
-  asynchronously, the datapaths synchronously ([platform MAS](platform/mas.md#clocks-and-resets)).
+  Inside `n2d_system` every block uses the reset synchronously
+  ([platform MAS](platform/mas.md#clocks-and-resets)).
 - **Crossings.** UART RX, the PS/2 pins and the reset key are asynchronous
   inputs into synchronizers: the PS/2 pins each pass an `n2a_cdc_bit_sync`
   ([io MAS](io/mas.md#ps2-keyboard-receiver)). The JTAG TCK to system crossing
@@ -194,8 +194,8 @@ in this repository they live under `src/nand2doom/rtl/{core,memory,video,io,plat
 Product RTL writes no clocked process of its own: each register group is a
 packed struct (or a few scalars) computed in a blocking `always_comb` from
 `_q` values and registered through one canonical
-[common register macro](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/clock_reset/HAS.md); asynchronous-reset
-blocks use the asynchronous forms. Flop arrays use the common array and
+[common register macro](https://github.com/amichai-bd/nand2anything/blob/aeebe92/wiki/src/common/clock_reset/HAS.md) with synchronous reset
+([RTL coding](../../../bkm/rtl.md#rules-reset-and-clocks)). Flop arrays use the common array and
 indexed-write macros; RAMs use `n2a_sync_ram`/`n2a_sdp_ram`/`n2a_tdp_ram`.
 Nets are `logic` with separate `assign`s; `DRAM_DQ` is the only `tri`.
 Assertions use the common clocked, property, initial and parameter forms; no

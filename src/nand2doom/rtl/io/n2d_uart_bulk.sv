@@ -353,14 +353,14 @@ module n2d_uart_bulk
         end
     end
 
-    `DFF_ARST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
-    `DFF_ARST_VAL(gap_q, gap_d, clk_i, reset_i, '0)
-    `DFF_ARST_VAL(frame_cycles_q, frame_cycles_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
+    `DFF_RST_VAL(gap_q, gap_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(frame_cycles_q, frame_cycles_d, clk_i, reset_i, '0)
 
-    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, regs_q.state != BULK_IDLE,
+    `ASSERT_CLOCKED_FATAL_WHEN(clk_i, reset_i, regs_q.state != BULK_IDLE,
         ({3'b0, regs_q.completed} <= regs_q.length && regs_q.completed[1:0] == 0),
         "bulk completed prefix escaped request")
-    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, regs_q.state != BULK_IDLE,
+    `ASSERT_CLOCKED_FATAL_WHEN(clk_i, reset_i, regs_q.state != BULK_IDLE,
         !(engine_rx_valid_o && regs_q.state != BULK_SEND_ENGINE),
         "bulk residue reached legacy engine")
 

@@ -77,7 +77,7 @@ plus `clk_i`, `reset_i`, `uart_rx_i`, `uart_tx_o` and the scalar
 and the pure CRC-8, CRC-32, range and command helpers. Engine-only constants
 are exempt from unused-parameter lint because the bulk-router fixture
 elaborates the framer alone. Parser, discard parser and executor state are
-packed structs in `n2d_types_pkg` with asynchronous reset; parameter-sized
+packed structs in `n2d_types_pkg` with synchronous reset; parameter-sized
 fields (payload images sized by `MAX_WORDS`, indices, timeout counters) are
 separate registers. The response-start bundle is last in the executor's
 next-state block, so it wins over the serializer advance.
@@ -134,7 +134,7 @@ addresses are rejected.
    emits `txn_abort` and waits for `txn_done` (discard or reverse rollback)
    before the error response.
 
-Assertions (`ASSERT_CLOCKED_ARST_FATAL*`) reject memory traffic outside
+Assertions (`ASSERT_CLOCKED_FATAL*`) reject memory traffic outside
 halt and grant, simultaneous commit and abort, unknown PHY busy state and
 resume invalidation while halted; the bulk framer's two history properties use
 `ASSERT_AFTER_RESET`.
@@ -357,7 +357,7 @@ bytes through four routers in fixed order: the common
 [stream session](#streaming-load-session), the
 [bulk framer](#bulk-wire-extension) and the version-1 engine
 (`n2d_uart_debug_engine`). No software UART, GDB protocol or board policy.
-Reset is asynchronous active high: it clears packet and transaction state and
+Reset is synchronous active high: it clears packet and transaction state and
 asserts `halt_req`. Everything else advances on `clk_i`.
 
 ### Parser and bounded progress
@@ -437,13 +437,14 @@ constrain the hub TCK and mailbox buses ([FPGA timing](../../fpga/de10_lite/boar
 
 ## Clocks and resets
 
-One clock, `clk_i` (25 MHz). The UART bridge reset is asynchronous and active
-high and asserts `halt_req` ([UART bridge](#uart-bridge)); everything else
-advances on `clk_i`. The PS/2 pins each pass an `n2a_cdc_bit_sync` inside the
+One clock, `clk_i` (25 MHz). Every block here resets synchronously on the
+active-high `reset_i`; the UART bridge reset asserts `halt_req`
+([UART bridge](#uart-bridge)). The PS/2 pins each pass an `n2a_cdc_bit_sync` inside the
 common receiver, and the
 JTAG TCK to system crossings are inside the common `n2a_jtag_keyboard`
-([JTAG keyboard composition](#jtag-keyboard-composition)); the scan domain
-stays in reset where the scan ports are tied idle.
+([JTAG keyboard composition](#jtag-keyboard-composition)); its scan domain alone
+resets asynchronously, because TCK runs only during a scan, and stays in reset
+where the scan ports are tied idle.
 
 ## Design choices
 

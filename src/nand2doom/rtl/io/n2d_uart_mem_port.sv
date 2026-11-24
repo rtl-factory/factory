@@ -96,7 +96,7 @@ module n2d_uart_mem_port
         endcase
     end
 
-    `DFF_ARST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
+    `DFF_RST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
 
     assign busy_o = (regs_q.state != MEM_PORT_IDLE);
     assign txn_req_o = '{
@@ -115,6 +115,6 @@ module n2d_uart_mem_port
     assign ep_rsp_rdata_o = regs_q.rdata;
     assign ep_rsp_error_o = regs_q.error;
 
-    `ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, !(regs_q.txn_commit && regs_q.txn_abort),
+    `ASSERT_CLOCKED_FATAL(clk_i, reset_i, !(regs_q.txn_commit && regs_q.txn_abort),
         "endpoint port commit and abort overlap")
 endmodule

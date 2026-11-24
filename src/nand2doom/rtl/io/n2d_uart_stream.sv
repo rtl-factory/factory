@@ -456,19 +456,19 @@ module n2d_uart_stream
         end
     end
 
-    `DFF_ARST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
-    `DFF_ARST_VAL(gap_q, gap_d, clk_i, reset_i, '0)
-    `DFF_ARST_VAL(idle_q, idle_d, clk_i, reset_i, '0)
-    `DFF_ARST_VAL(op_counter_q, op_counter_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(regs_q, regs_d, clk_i, reset_i, REGS_RESET)
+    `DFF_RST_VAL(gap_q, gap_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(idle_q, idle_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(op_counter_q, op_counter_d, clk_i, reset_i, '0)
 
-    `ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, regs_q.count <= 2'd2,
+    `ASSERT_CLOCKED_FATAL(clk_i, reset_i, regs_q.count <= 2'd2,
         "stream queue overflow")
-    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, regs_q.session,
+    `ASSERT_CLOCKED_FATAL_WHEN(clk_i, reset_i, regs_q.session,
         (!down_rx_valid_o && !down_rx_error_o), "stream byte reached legacy path")
-    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, mem_req_o.valid,
+    `ASSERT_CLOCKED_FATAL_WHEN(clk_i, reset_i, mem_req_o.valid,
         (halted && regs_q.session), "stream memory access outside maintained halt")
-    `ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i,
+    `ASSERT_CLOCKED_FATAL(clk_i, reset_i,
         !(regs_q.txn_commit && regs_q.txn_abort), "stream commit and abort overlap")
-    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, ram_write,
+    `ASSERT_CLOCKED_FATAL_WHEN(clk_i, reset_i, ram_write,
         (regs_q.count != 2'd2), "stream wrote an occupied slot")
 endmodule

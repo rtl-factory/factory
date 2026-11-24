@@ -230,7 +230,7 @@ module n2d_ps2_keyboard #(
         if (ps2_errors.timeout) rx_d.timeout_error = 1'b1;
     end
 
-    `DFF_ARST_VAL(rx_q, rx_d, clk_i, reset_i, RX_RESET)
+    `DFF_RST_VAL(rx_q, rx_d, clk_i, reset_i, RX_RESET)
 
     always_comb begin
         fifo_d = fifo_q;
@@ -256,13 +256,14 @@ module n2d_ps2_keyboard #(
         if (clear_diagnostics) fifo_d.overflow_error = 1'b0;
     end
 
-    `DFF_ARST_VAL(fifo_q, fifo_d, clk_i, reset_i, FIFO_RESET)
-    // Why: the storage is never reset so it can infer RAM; its entry write shares
-    // the FIFO bookkeeping's asynchronous-reset event control so reset still
-    // inhibits the write.
+    `DFF_RST_VAL(fifo_q, fifo_d, clk_i, reset_i, FIFO_RESET)
+    // Why: the storage is never reset so it can infer RAM; reset only inhibits
+    // the entry write, as it holds the FIFO bookkeeping.
     logic [2:0] fifo_write_address;
+    logic fifo_write_enable;
     assign fifo_write_address = fifo_q.fifo_write_pointer;
-    `MEM_WRITE_ARST_GATED(fifo_memory, clk_i, reset_i, fifo_write, fifo_write_address, fifo_push_data)
+    assign fifo_write_enable = fifo_write && !reset_i;
+    `MEM_WRITE(fifo_memory, clk_i, fifo_write_enable, fifo_write_address, fifo_push_data)
 
     always_comb begin
         mmio_response_valid_d = mmio_response_valid_q;
@@ -277,27 +278,27 @@ module n2d_ps2_keyboard #(
         end
     end
 
-    `DFF_ARST_VAL(mmio_response_valid_q, mmio_response_valid_d, clk_i, reset_i, 1'b0)
-    `DFF_ARST_VAL(mmio_response_read_data_q, mmio_response_read_data_d, clk_i, reset_i, 32'b0)
-    `DFF_ARST_VAL(mmio_response_error_q, mmio_response_error_d, clk_i, reset_i, 1'b0)
+    `DFF_RST_VAL(mmio_response_valid_q, mmio_response_valid_d, clk_i, reset_i, 1'b0)
+    `DFF_RST_VAL(mmio_response_read_data_q, mmio_response_read_data_d, clk_i, reset_i, 32'b0)
+    `DFF_RST_VAL(mmio_response_error_q, mmio_response_error_d, clk_i, reset_i, 1'b0)
 
-    // Why: previous-edge flops stand in for $stable, which yosys-slang rejects in an
-    // asynchronous-reset process (wiki/tools/fv/spec.md).
+    // Why: previous-edge flops stand in for $stable, so the unguarded check needs
+    // no sampled-value function in synthesis.
     logic response_stalled_q_next;
     assign response_stalled_q_next = mmio_response_valid_q && !mmio_response_ready_i;
-    `DFF_ARST_VAL(response_stalled_q, response_stalled_q_next, clk_i, reset_i, 1'b0)
+    `DFF_RST_VAL(response_stalled_q, response_stalled_q_next, clk_i, reset_i, 1'b0)
     logic [31:0] response_read_data_previous_q;
     logic response_error_previous_q;
-    `DFF_ARST_VAL(response_read_data_previous_q, mmio_response_read_data_q, clk_i, reset_i, 32'b0)
-    `DFF_ARST_VAL(response_error_previous_q, mmio_response_error_q, clk_i, reset_i, 1'b0)
-    `ASSERT_CLOCKED_ARST_FATAL_UNGUARDED(clk_i, reset_i,
+    `DFF_RST_VAL(response_read_data_previous_q, mmio_response_read_data_q, clk_i, reset_i, 32'b0)
+    `DFF_RST_VAL(response_error_previous_q, mmio_response_error_q, clk_i, reset_i, 1'b0)
+    `ASSERT_CLOCKED_FATAL_UNGUARDED(clk_i, reset_i,
         fifo_q.fifo_count <= FIFO_COUNT_LIMIT,
         "n2d_ps2_keyboard FIFO count exceeded depth")
-    `ASSERT_CLOCKED_ARST_FATAL_UNGUARDED(clk_i, reset_i,
+    `ASSERT_CLOCKED_FATAL_UNGUARDED(clk_i, reset_i,
         ($onehot0({physical_push_accept, uart_push_accept, mmio_inject_accept,
                    scan_inject_accept})),
         "n2d_ps2_keyboard accepted multiple event sources")
-    `ASSERT_CLOCKED_ARST_FATAL_WHEN_UNGUARDED(clk_i, reset_i, response_stalled_q,
+    `ASSERT_CLOCKED_FATAL_WHEN_UNGUARDED(clk_i, reset_i, response_stalled_q,
         (mmio_response_read_data_q == response_read_data_previous_q) &&
         (mmio_response_error_q == response_error_previous_q),
         "n2d_ps2_keyboard response changed under backpressure")

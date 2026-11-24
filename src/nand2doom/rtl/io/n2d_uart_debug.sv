@@ -193,14 +193,14 @@ module n2d_uart_debug
 
     `ASSERT_CLOCKED_FATAL(clk_i, reset_i, (!$isunknown({rx_busy, tx_busy})),
         "UART PHY busy status is unknown")
-    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, stream_session,
+    `ASSERT_CLOCKED_FATAL_WHEN(clk_i, reset_i, stream_session,
         ((engine_txn_req == '0) && !engine_mem_req.valid),
         "legacy engine requested memory during a stream session")
-    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, port_busy,
+    `ASSERT_CLOCKED_FATAL_WHEN(clk_i, reset_i, port_busy,
         ((engine_txn_req == '0) && !engine_mem_req.valid && !stream_session),
         "another path requested memory while the endpoint port is busy")
-    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, ep_owner, !rx_valid && !rx_error,
+    `ASSERT_CLOCKED_FATAL_WHEN(clk_i, reset_i, ep_owner, !rx_valid && !rx_error,
         "a byte reached the n2d routers during an endpoint frame")
-    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, ep_release,
+    `ASSERT_CLOCKED_FATAL_WHEN(clk_i, reset_i, ep_release,
         engine_idle && engine_frame_idle, "endpoint release while the engine owns a frame")
 endmodule

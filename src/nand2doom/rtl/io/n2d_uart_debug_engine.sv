@@ -292,11 +292,11 @@ module n2d_uart_debug_engine
         end
     end
 
-    `DFF_ARST_VAL(rx_q, rx_d, clk_i, reset_i, RX_RESET)
-    `DFF_ARST_VAL(rx_payload_index_q, rx_payload_index_d, clk_i, reset_i, '0)
-    `DFF_ARST_VAL(rx_payload_length_q, rx_payload_length_d, clk_i, reset_i, '0)
-    `DFF_ARST_VAL(interbyte_counter_q, interbyte_counter_d, clk_i, reset_i, '0)
-    `DFF_ARST_VAL(req_payload_q, req_payload_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(rx_q, rx_d, clk_i, reset_i, RX_RESET)
+    `DFF_RST_VAL(rx_payload_index_q, rx_payload_index_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(rx_payload_length_q, rx_payload_length_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(interbyte_counter_q, interbyte_counter_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(req_payload_q, req_payload_d, clk_i, reset_i, '0)
 
     // Why: a second, discard-only parser takes frames that arrive while service
     // is occupied, so the active request registers are preserved. One complete
@@ -374,8 +374,8 @@ module n2d_uart_debug_engine
         end
     end
 
-    `DFF_ARST_VAL(busy_q, busy_d, clk_i, reset_i, BUSY_RESET)
-    `DFF_ARST_VAL(busy_interbyte_counter_q, busy_interbyte_counter_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(busy_q, busy_d, clk_i, reset_i, BUSY_RESET)
+    `DFF_RST_VAL(busy_interbyte_counter_q, busy_interbyte_counter_d, clk_i, reset_i, '0)
 
     always_comb begin
         exec_d = exec_q;
@@ -680,20 +680,20 @@ module n2d_uart_debug_engine
         end
     end
 
-    `DFF_ARST_VAL(exec_q, exec_d, clk_i, reset_i, EXEC_RESET)
-    `DFF_ARST_VAL(op_counter_q, op_counter_d, clk_i, reset_i, '0)
-    `DFF_ARST_VAL(halt_counter_q, halt_counter_d, clk_i, reset_i, '0)
-    `DFF_ARST_VAL(word_index_q, word_index_d, clk_i, reset_i, '0)
-    `DFF_ARST_VAL(response_index_q, response_index_d, clk_i, reset_i, '0)
-    `DFF_ARST_VAL(response_payload_bytes_q, response_payload_bytes_d, clk_i, reset_i, '0)
-    `DFF_ARST_VAL(response_payload_q, response_payload_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(exec_q, exec_d, clk_i, reset_i, EXEC_RESET)
+    `DFF_RST_VAL(op_counter_q, op_counter_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(halt_counter_q, halt_counter_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(word_index_q, word_index_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(response_index_q, response_index_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(response_payload_bytes_q, response_payload_bytes_d, clk_i, reset_i, '0)
+    `DFF_RST_VAL(response_payload_q, response_payload_d, clk_i, reset_i, '0)
 
-    `ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, !(mem_txn_commit && mem_txn_abort),
+    `ASSERT_CLOCKED_FATAL(clk_i, reset_i, !(mem_txn_commit && mem_txn_abort),
         "debug memory transaction commit and abort overlap")
-    `ASSERT_CLOCKED_ARST_FATAL_WHEN(clk_i, reset_i, mem_req_valid,
+    `ASSERT_CLOCKED_FATAL_WHEN(clk_i, reset_i, mem_req_valid,
         debug_status_i.halt_ack && debug_status_i.cache_maint_done && txn_status_i.arb_grant,
         "debug memory request escaped halt/grant boundary")
-    `ASSERT_CLOCKED_ARST_FATAL(clk_i, reset_i, !(exec_q.cache_invalidate && exec_q.halt_req),
+    `ASSERT_CLOCKED_FATAL(clk_i, reset_i, !(exec_q.cache_invalidate && exec_q.halt_req),
         "resume invalidation overlaps asserted halt request")
 
     `ASSERT_PARAM(g_invalid_max_words, (MAX_WORDS != 0) && (MAX_WORDS <= 63),
