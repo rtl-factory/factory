@@ -41,8 +41,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check the toolchain
-        run: python3 tools/toolchain/check.py --tool oss-cad-suite
+      - name: Install the OSS CAD Suite (formal tools)
+        # Why: the self-hosted runner keeps its install; reinstall only when it misses the pin.
+        run: |
+          python3 tools/toolchain/check.py --tool oss-cad-suite && exit 0
+          read -r url sum < <(python3 -I -c 'import json; v = json.load(open("cfg/toolchain.json"))["oss_cad_suite"]; print(v["url"], v["sha256"])')
+          curl -fsSL --retry 4 -o "$RUNNER_TEMP/oss-cad-suite.tgz" "$url"
+          echo "$sum  $RUNNER_TEMP/oss-cad-suite.tgz" | sha256sum -c -
+          # Why: unpack beside the old install and swap only once it is complete.
+          mkdir -p "$RUNNER_TEMP/oss-cad-suite"
+          tar -xzf "$RUNNER_TEMP/oss-cad-suite.tgz" -C "$RUNNER_TEMP/oss-cad-suite" --strip-components=1
+          rm -rf "$HOME/oss-cad-suite"
+          mv "$RUNNER_TEMP/oss-cad-suite" "$HOME/oss-cad-suite"
+          rm "$RUNNER_TEMP/oss-cad-suite.tgz"
+          python3 tools/toolchain/check.py --tool oss-cad-suite
 
       - name: Regression tests
         run: bazel test --config=ci --config="$LEVEL" //...
