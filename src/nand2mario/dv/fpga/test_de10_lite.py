@@ -178,7 +178,7 @@ async def board_smoke(dut):
                 unit='ns')
     await ReadOnly()
     assert int(dut.LEDR.value) & LED_RESET, 'the VRAM sweep outlasts the SDRAM initialization'
-    await Timer(max(0, int(release_ns + (VRAM_BYTES + 4) * CLOCK_PERIOD_NS - get_sim_time(unit='ns'))) + 1,
+    await Timer(max(0, int(release_ns + (VRAM_BYTES + 8) * CLOCK_PERIOD_NS - get_sim_time(unit='ns'))) + 1,
                 unit='ns')
     await ReadOnly()
     assert not int(dut.LEDR.value) & LED_RESET, 'the core runs once the SDRAM is initialized and VRAM swept'

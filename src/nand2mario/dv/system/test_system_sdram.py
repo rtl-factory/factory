@@ -129,7 +129,7 @@ async def system_sdram_boot(dut):
         await RisingEdge(dut.clk_i)
     await ReadOnly()
     assert int(dut.core_reset_o.value) == 1, 'the VRAM sweep outlasts the SDRAM initialization'
-    while host.clock < VRAM_BYTES:
+    while host.clock < VRAM_BYTES + 2:
         await RisingEdge(dut.clk_i)
     await ReadOnly()
     assert int(dut.core_reset_o.value) == 0, 'the core runs once the backing is initialized and VRAM swept'

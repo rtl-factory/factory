@@ -147,7 +147,8 @@ def garbage_headers(system, rng):
 async def system_direct_preload(dut):
     """On-chip backing: the direct preload starts on the first edge after
     reset (the backing is ready at once), while the boot VRAM sweep still
-    holds the core after the short reset; the core starts on zeroed VRAM."""
+    holds the core after the short reset, whatever its power-up state; the
+    core starts on zeroed VRAM."""
     seed = int(os.environ['DV_SEED'])
     assert int(os.environ['DV_CLOCK_HZ']) == 25_000_000
     cocotb.log.info('n2m_system direct preload (on-chip) seed=%d (directed)', seed)
@@ -163,19 +164,24 @@ async def system_direct_preload(dut):
     dut.rom_load_write_i.value = 0
     dut.rom_load_address_i.value = 0
     dut.rom_load_data_i.value = 0
+    # Why: the sweep state has no power-up value either; a counter near its end
+    # and a finished sweep must not let the core start on uncleared VRAM.
+    dut.vram_clear_q.value = 8100
+    dut.vram_swept_q.value = 1
+    dut.vram_hold_q.value = 0
     cocotb.start_soon(Clock(dut.clk_i, CLOCK_PERIOD_NS, unit='ns').start())
-    release = cocotb.start_soon(vram_at_core_release(dut, dut))
     for _ in range(3):
         await RisingEdge(dut.clk_i)
     await FallingEdge(dut.clk_i)
     dut.reset_i.value = 0
+    release = cocotb.start_soon(vram_at_core_release(dut, dut))
     cocotb.start_soon(host.ticker())
     cocotb.start_soon(host.receiver())
     await ReadOnly()
     assert int(dut.core_reset_o.value) == 1, 'the VRAM sweep outlasts a short reset'
     fields = await preload_and_interleave(dut, dut, host, image, rng, onchip=True)
     release_clocks, vram = release.result()
-    # Why: one byte per edge from the first reset edge; the bound allows the clock phase.
+    # Why: one byte per edge from the end of the system reset; the bound allows the clock phase.
     assert VRAM_BYTES - 2 <= release_clocks <= VRAM_BYTES + 2, release_clocks
     assert vram == bytes(VRAM_BYTES), 'the core left reset before VRAM was zeroed'
     cocotb.log.info('n2m_system direct preload (on-chip) passed: preload_clocks=%d retirements=%d run_clocks=%d '

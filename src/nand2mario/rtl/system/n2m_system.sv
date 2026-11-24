@@ -185,8 +185,9 @@ module n2m_system #(
     n2m_snapshot_pkg::t_snapshot_response display_snapshot_response;
 
     // Why: no boot ROM is modelled, so the core reset sweeps $00 over all of
-    // VRAM, one byte per edge, and outlasts a shorter request until the sweep
-    // ends (wiki/src/nand2mario/rtl/has.md#clocks-and-resets).
+    // VRAM, one byte per edge from address 0 (the system reset holds it at
+    // the start), and outlasts a shorter request until the sweep ends
+    // (wiki/src/nand2mario/rtl/has.md#clocks-and-resets).
     logic        core_reset_request, vram_swept_q, vram_swept_d, vram_hold_q, vram_hold_d;
     logic [12:0] vram_clear_q, vram_clear_d;
     assign core_reset_request = reset_i || loader_hold || !backing_initialized || library_hold;
@@ -195,9 +196,9 @@ module n2m_system #(
     assign vram_clear_d = core_reset ? vram_clear_q + 13'd1 : 13'd0;
     assign vram_swept_d = core_reset && (vram_swept_q || (vram_clear_q == '1));
     assign vram_hold_d = (core_reset_request || vram_hold_q) && !vram_swept_d;
-    `DFF(vram_clear_q, vram_clear_d, clk_i)
-    `DFF(vram_swept_q, vram_swept_d, clk_i)
-    `DFF(vram_hold_q, vram_hold_d, clk_i)
+    `DFF_RST(vram_clear_q, vram_clear_d, clk_i, reset_i)
+    `DFF_RST(vram_swept_q, vram_swept_d, clk_i, reset_i)
+    `DFF_RST_VAL(vram_hold_q, vram_hold_d, clk_i, reset_i, 1'b1)
 
     n2m_timebase u_timebase (
         .clk_i                  (clk_i),

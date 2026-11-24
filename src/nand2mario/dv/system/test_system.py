@@ -84,6 +84,19 @@ def store_array(ram):
     raise AttributeError(f'no storage array under {ram._path}')
 
 
+async def await_core_release(dut):
+    """Edges until the core leaves reset (the VRAM sweep outlasts a system
+    reset); returns at the falling edge before the first edge it runs on."""
+    edges = 0
+    while True:
+        await RisingEdge(dut.clk_i)
+        edges += 1
+        await ReadOnly()
+        if not int(dut.core_reset_o.value):
+            await FallingEdge(dut.clk_i)
+            return edges
+
+
 def store_bytes(array):
     return bytes(int(array[index].value) for index in range(len(array)))
 
@@ -175,10 +188,11 @@ async def system_smoke(dut):
     dut.rom_load_write_i.value = 0
     await RisingEdge(dut.clk_i)
     await FallingEdge(dut.clk_i)
-    # Ref: Pan Docs "Power Up Sequence": the DMG boot ROM leaves VRAM zeroed, so the reset
-    # held over the 32 KiB load must sweep the garbage-filled VRAM to zero.
-    assert store_bytes(store_array(dut.u_memory.u_vram)) == bytes(VRAM_BYTES), 'VRAM not cleared during reset'
     dut.reset_i.value = 0
+    cycles += await await_core_release(dut)
+    # Ref: Pan Docs "Power Up Sequence": the DMG boot ROM leaves VRAM zeroed, so the
+    # core must start on garbage-filled VRAM swept to zero.
+    assert store_bytes(store_array(dut.u_memory.u_vram)) == bytes(VRAM_BYTES), 'VRAM not cleared at core release'
     release_edge = cycles
 
     peripherals = Peripherals()
