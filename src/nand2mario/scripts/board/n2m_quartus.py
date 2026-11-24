@@ -531,9 +531,11 @@ def verify_reports(output: Path, config: dict) -> dict:
     clock_relationships = fitted_clocks((reports / f"{project}.sta.rpt").read_text(encoding="latin-1"),
                                         system_clock, config)
     required = {(corner, kind, system_clock) for corner in config["timing_corners"]
-                for kind in ("Setup", "Hold", "Recovery", "Removal", "Minimum Pulse Width")}
+                for kind in ("Setup", "Hold", "Minimum Pulse Width")}
+    # Why: the JTAG scan domain holds the only asynchronous resets
+    # (wiki/bkm/rtl.md, Rules: reset and clocks), so recovery and removal are timed on TCK.
     required |= {(corner, kind, "jtag_tck") for corner in config["timing_corners"]
-                 for kind in ("Setup", "Hold", "Minimum Pulse Width")}
+                 for kind in ("Setup", "Hold", "Recovery", "Removal", "Minimum Pulse Width")}
     required |= {(corner, "Minimum Pulse Width", "reference") for corner in config["timing_corners"]}
     required |= {(corner, kind, SDRAM_CLOCK) for corner in config["timing_corners"] for kind in ("Setup", "Hold")}
     if not required <= keys:
@@ -672,8 +674,8 @@ def validate_fit_evidence(e: dict, config: dict) -> None:
         math.isfinite(float(e["clocks_ns"][name])) and float(e["clocks_ns"][name]) == float(row["Period"])
         for name, row in clocks.items()), "clock periods")
     corners = set(config["timing_corners"])
-    required = {(c, k, system) for c in corners for k in ("Setup", "Hold", "Recovery", "Removal", "Minimum Pulse Width")}
-    required |= {(c, k, "jtag_tck") for c in corners for k in ("Setup", "Hold", "Minimum Pulse Width")}
+    required = {(c, k, system) for c in corners for k in ("Setup", "Hold", "Minimum Pulse Width")}
+    required |= {(c, k, "jtag_tck") for c in corners for k in ("Setup", "Hold", "Recovery", "Removal", "Minimum Pulse Width")}
     required |= {(c, "Minimum Pulse Width", "reference") for c in corners}
     required |= {(c, k, clock) for c in corners for k in ("Setup", "Hold")
                  for clock in ({SDRAM_CLOCK, "vga_dac_clock"} if de2 else {SDRAM_CLOCK})}

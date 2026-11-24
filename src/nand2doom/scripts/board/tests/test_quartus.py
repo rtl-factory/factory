@@ -843,7 +843,8 @@ class QuartusTests(unittest.TestCase):
         timing = []
         for corner in config["timing_corners"]:
             for clock, kinds in (("u_clock|u_pll|auto_generated|pll1|clk[0]",
-                                   ("Setup", "Hold", "Recovery", "Removal", "Minimum Pulse Width")),
+                                   ("Setup", "Hold", "Minimum Pulse Width")),
+                                  ("jtag_tck", ("Recovery", "Removal")),
                                   *((name, ("Setup", "Hold")) for name in config["forwarded_clocks"]),
                                   ("reference", ("Minimum Pulse Width",))):
                 for kind in kinds:

@@ -633,7 +633,11 @@ def verify_reports(output: Path, config: dict) -> dict:
     clock_relationships = fitted_clocks((reports / f"{project}.sta.rpt").read_text(encoding="latin-1"),
                                         system_clock, config)
     required = {(corner, kind, system_clock) for corner in config["timing_corners"]
-                for kind in ("Setup", "Hold", "Recovery", "Removal", "Minimum Pulse Width")}
+                for kind in ("Setup", "Hold", "Minimum Pulse Width")}
+    # Why: the JTAG scan domain holds the only asynchronous resets
+    # (wiki/bkm/rtl.md, Rules: reset and clocks), so recovery and removal are timed on TCK.
+    required |= {(corner, kind, "jtag_tck") for corner in config["timing_corners"]
+                 for kind in ("Recovery", "Removal")}
     required |= {(corner, kind, clock) for corner in config["timing_corners"]
                  for kind in ("Setup", "Hold") for clock in config["forwarded_clocks"]}
     required |= {(corner, "Minimum Pulse Width", "reference") for corner in config["timing_corners"]}

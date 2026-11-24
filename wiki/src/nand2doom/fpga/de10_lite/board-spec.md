@@ -413,7 +413,8 @@ or the aggregate without its validated rows, fails.
 
 Timing gate, at Slow 1200 mV 85 C, Slow 1200 mV 0 C and Fast 1200 mV 0 C:
 
-- system clock setup/hold/recovery/removal and minimum pulse width,
+- system clock setup/hold and minimum pulse width, `jtag_tck`
+  recovery/removal (the scan domain holds the only asynchronous resets),
   forwarded SDRAM (and DE2-115 VGA) clock setup/hold, reference minimum pulse
   width; missing, negative or truncated results fail; no ignored SDC;
 - `check_timing` allows only the forwarded-clock output-with-clock entries,

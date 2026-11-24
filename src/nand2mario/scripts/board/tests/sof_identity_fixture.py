@@ -19,8 +19,8 @@ def passing_evidence(config):
                         'Inverted': 'true', 'Master': SYSTEM, 'Source': SYSTEM, 'Targets': port}
     timing, paths, dac = [], [], []
     for corner in config['timing_corners']:
-        for clock, checks in [(SYSTEM, ['Setup', 'Hold', 'Recovery', 'Removal', 'Minimum Pulse Width']),
-                              ('reference', ['Minimum Pulse Width']), ('jtag_tck', ['Setup', 'Hold', 'Minimum Pulse Width']),
+        for clock, checks in [(SYSTEM, ['Setup', 'Hold', 'Minimum Pulse Width']),
+                              ('reference', ['Minimum Pulse Width']), ('jtag_tck', ['Setup', 'Hold', 'Recovery', 'Removal', 'Minimum Pulse Width']),
                               ('sdram_clock', ['Setup', 'Hold'])] + ([('vga_dac_clock', ['Setup', 'Hold'])] if de2 else []):
             timing += [dict(corner=corner, clock=clock, check=kind, slack_ns=1.0, tns_ns=0.0) for kind in checks]
         for kind in ['setup', 'hold']:
