@@ -51,4 +51,5 @@ py_library(
     visibility = ["//visibility:public"],
 )
 
-unit_tests()
+# Why: the board image action's test runs its entry point as Bazel builds it.
+unit_tests(data = [":quartus_image"])
