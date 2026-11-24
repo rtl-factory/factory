@@ -416,6 +416,12 @@ class N2dDoomToolTests(unittest.TestCase):
             )
 
     def test_output_is_confined_before_prepare_or_build(self) -> None:
+        # Why: under bazel test the test's scratch is an allowed output and holds tempfile's folders.
+        environment = mock.patch.dict(os.environ)
+        environment.start()
+        self.addCleanup(environment.stop)
+        for name in ("TEST_UNDECLARED_OUTPUTS_DIR", "TEST_TMPDIR"):
+            os.environ.pop(name, None)
         accepted = self.root / "workdir/software/confined-doom"
         self.assertEqual(
             accepted.resolve(), n2d_doom._confined_output(self.root, accepted)
@@ -438,6 +444,27 @@ class N2dDoomToolTests(unittest.TestCase):
             self.assertNotEqual(0, result.returncode)
             self.assertIn("output must be below", result.stderr)
             self.assertFalse(escaped.exists())
+
+    def test_output_may_be_in_the_bazel_test_scratch(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary, \
+                mock.patch.dict(os.environ, {"TEST_UNDECLARED_OUTPUTS_DIR": temporary}):
+            inside = Path(temporary) / "software/doom"
+            self.assertEqual(inside.resolve(), n2d_doom._confined_output(self.root, inside))
+
+    def test_a_read_only_download_cache_is_not_filled(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "source.bin"
+            source.write_bytes(b"nand2doom\n")
+            # Why: a cache below a file cannot be created, even by root, like the
+            # checkout's cache inside Bazel's read-only sandbox.
+            blocker = Path(temporary) / "blocker"
+            blocker.write_bytes(b"")
+            cache = blocker / "cache"
+            destination = Path(temporary) / "out/source.bin"
+            n2d_doom._download(source.as_uri(), destination,
+                               "f599639a6bfa1989af748f66d7f61f8708add23b8aa574098670c791f2e5abf4", cache)
+            self.assertEqual(b"nand2doom\n", destination.read_bytes())
+            self.assertFalse(cache.exists())
 
     def test_output_rejects_existing_symlink_component(self) -> None:
         with tempfile.TemporaryDirectory(dir=self.root / "workdir") as temporary:

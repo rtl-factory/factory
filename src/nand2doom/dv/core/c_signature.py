@@ -8,6 +8,8 @@ import re
 import shutil
 import subprocess
 
+from src.nand2doom.scripts.sw_build.n2d_image import _requested_tool
+
 
 def compile_signature_program() -> tuple[tuple[int, ...], str]:
     """Compile the owned freestanding C source and return little-endian words."""
@@ -31,7 +33,7 @@ def compile_c_program(
         os.environ.get("N2D_RISCV_GCC", "riscv64-unknown-elf-gcc")
     )
     objcopy = shutil.which(
-        os.environ.get("N2D_RISCV_OBJCOPY", "riscv64-unknown-elf-objcopy")
+        _requested_tool("N2D_RISCV_OBJCOPY", "riscv64-unknown-elf-objcopy")
     )
     if compiler is None or objcopy is None:
         raise RuntimeError(

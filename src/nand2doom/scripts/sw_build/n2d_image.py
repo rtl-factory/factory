@@ -34,8 +34,24 @@ def repository_root() -> Path:
     return Path(__file__).resolve().parents[4]
 
 
+def _requested_tool(environment_name: str, default: str) -> str:
+    """The tool named by environment_name, else a sibling of N2D_RISCV_GCC, else default.
+
+    Why: a host whose RV32 toolchain is off Bazel's PATH sets only N2D_RISCV_GCC
+    (wiki/bkm/flow.md, Runners); each binutil sits beside it with the same prefix.
+    """
+    requested = os.environ.get(environment_name)
+    if requested:
+        return requested
+    gcc = os.environ.get("N2D_RISCV_GCC", "")
+    if environment_name.startswith("N2D_RISCV_") and environment_name != "N2D_RISCV_GCC" \
+            and gcc.endswith("gcc"):
+        return gcc[:-len("gcc")] + environment_name[len("N2D_RISCV_"):].lower()
+    return default
+
+
 def _tool(environment_name: str, default: str) -> str:
-    requested = os.environ.get(environment_name, default)
+    requested = _requested_tool(environment_name, default)
     resolved = shutil.which(requested)
     if resolved is None:
         raise ImageBuildError(
@@ -53,6 +69,18 @@ def _scratch_roots(root: Path) -> list[Path]:
     bazel = [Path(os.environ[name]) for name in ("TEST_UNDECLARED_OUTPUTS_DIR", "TEST_TMPDIR")
              if os.environ.get(name)]
     return [workdir] + bazel
+
+
+def scratch_path(relative: str, root: Path | None = None) -> Path:
+    """Where a test or build writes relative: the Bazel test's undeclared outputs when
+    one is running, else the repository workdir.
+
+    Why: Bazel's sandbox mounts the checkout read-only (wiki/bkm/flow.md, Build).
+    """
+    outputs = os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR")
+    if outputs:
+        return Path(outputs) / relative
+    return (root or repository_root()) / "workdir" / relative
 
 
 def _confined_output(output: Path, root: Path) -> Path:
@@ -264,8 +292,8 @@ def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
         output = root / output
     try:
         output = _confined_output(output, root)
-        gcc = os.environ.get("N2D_RISCV_GCC", "riscv64-unknown-elf-gcc")
-        objcopy = os.environ.get("N2D_RISCV_OBJCOPY", "riscv64-unknown-elf-objcopy")
+        gcc = _requested_tool("N2D_RISCV_GCC", "riscv64-unknown-elf-gcc")
+        objcopy = _requested_tool("N2D_RISCV_OBJCOPY", "riscv64-unknown-elf-objcopy")
         print(f"architecture: {ARCH}")
         print(f"abi: {ABI}")
         print(f"output: {output.relative_to(root)}")

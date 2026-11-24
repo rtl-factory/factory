@@ -31,6 +31,7 @@ from src.nand2doom.dv.software.input_witness import InputABI, InputWitness
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 from src.nand2doom.scripts.sw_build.n2d_doom import build as build_doom
+from src.nand2doom.scripts.sw_build.n2d_image import scratch_path
 
 CLOCK_PERIOD_NS = 40
 FRAME_BYTES = 320 * 200
@@ -108,7 +109,7 @@ async def _capture_vga_crc(dut, artifact_name: str) -> tuple[int, int, int, int]
                            ((rgb >> 4) & 0xf) * 17,
                            (rgb & 0xf) * 17))
     assert len(pixels) == 640 * 480 * 3
-    artifact = REPO_ROOT / f"workdir/cocotb/n2d_doom_system/{artifact_name}"
+    artifact = scratch_path(f"cocotb/n2d_doom_system/{artifact_name}", REPO_ROOT)
     artifact.write_bytes(b"P6\n640 480\n255\n" + pixels)
     return crc & 0xffffffff, len(colors), nonblack_pixels, len(nonblack_rows)
 
@@ -123,7 +124,7 @@ async def _observe_gameplay_frames(dut, trace: GameplayTrace, armed: Event) -> N
         await _gameplay_frame_loop(dut, trace, armed)
     except Exception as error:
         trace.failure = repr(error)
-        trace.save(REPO_ROOT / "workdir/cocotb/n2d_doom_system/gameplay-trace.json")
+        trace.save(scratch_path("cocotb/n2d_doom_system/gameplay-trace.json", REPO_ROOT))
         raise
 
 
@@ -149,7 +150,7 @@ async def _gameplay_frame_loop(dut, trace: GameplayTrace, armed: Event) -> None:
                 assert last_write is not None and all(written), "incomplete gameplay frame"
                 crc = zlib.crc32(framebuffer) & 0xffffffff
                 trace.frame(last_write, int(dut.system_tick_o.value), crc)
-                artifact = REPO_ROOT / "workdir/cocotb/n2d_doom_system"
+                artifact = scratch_path("cocotb/n2d_doom_system", REPO_ROOT)
                 (artifact / f"gameplay-frame-{len(trace.frames):03d}.bin").write_bytes(framebuffer)
                 cocotb.log.info("gameplay frame=%s angles=%s barriers=%s",
                                 trace.frames[-1], trace.angles, trace.barriers)
@@ -210,7 +211,7 @@ async def _shadow_cycle_monitor(dut, state: dict[str, object],
 @cocotb.test(timeout_time=3_600_000, timeout_unit="ms")
 async def doom_boot_render_contract(dut) -> None:
     evidence = {}
-    artifact = REPO_ROOT / "workdir/cocotb/n2d_doom_system/gameplay-trace.json"
+    artifact = scratch_path("cocotb/n2d_doom_system/gameplay-trace.json", REPO_ROOT)
     artifact.parent.mkdir(parents=True, exist_ok=True)
     try:
         await _run_doom_contract(dut, evidence, artifact)
@@ -230,7 +231,7 @@ async def _run_doom_contract(dut, evidence, artifact) -> None:
     # and NetUpdate. The production profile (-O2, engine LTO) inlines them, so
     # this gate builds the production variant with the -Os, no-LTO engine
     # profile, as render verification does, into its own output (#100).
-    output = REPO_ROOT / "workdir/software/n2d_doom_gameplay"
+    output = scratch_path("software/n2d_doom_gameplay", REPO_ROOT)
     manifest = build_doom(output, REPO_ROOT, None, engine_opt="Os", engine_lto=False)
     assert json.loads((output / "manifest.json").read_text()) == manifest
     gameplay = GameplayTrace(elf_symbols(output / "n2d_doom.elf"))
@@ -451,7 +452,7 @@ async def _run_doom_contract(dut, evidence, artifact) -> None:
     earlier_crcs = [frame["crc"] for frame in gameplay.frames[:gameplay.frames.index(settled)]]
     assert before_uart_crc in earlier_crcs
     assert later_crc not in earlier_crcs, "UART gameplay turn repeated an earlier rendered frame"
-    settled_image = (REPO_ROOT / "workdir/cocotb/n2d_doom_system"
+    settled_image = (scratch_path("cocotb/n2d_doom_system", REPO_ROOT)
                      / f"gameplay-frame-{len(earlier_crcs) + 1:03d}.bin").read_bytes()
     assert len(settled_image) == FRAME_BYTES
     assert zlib.crc32(settled_image) & 0xffffffff == later_crc, "settled frame artifact mismatch"

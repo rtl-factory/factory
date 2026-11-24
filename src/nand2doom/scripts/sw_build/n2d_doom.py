@@ -20,6 +20,12 @@ import tarfile
 import urllib.request
 import zipfile
 
+try:
+    from . import n2d_image
+except ImportError:
+    # Why: run as a script, this folder is on sys.path but is not a package.
+    import n2d_image
+
 
 ENGINE_REVISION = "dcb7a8dbc7a16ce3dda29382ac9aae9d77d21284"
 ENGINE_URL = f"https://github.com/ozkl/doomgeneric/archive/{ENGINE_REVISION}.tar.gz"
@@ -123,13 +129,20 @@ def _sha256(path: Path) -> str:
 
 def _confined_output(repository: Path, requested: Path) -> Path:
     repository = repository.resolve()
-    root = (repository / "workdir").resolve()
     candidate = requested if requested.is_absolute() else repository / requested
     candidate = Path(os.path.abspath(candidate))
-    try:
-        relative = candidate.relative_to(root)
-    except ValueError as error:
-        raise ValueError(f"output must be below {root}") from error
+    # Why: under bazel test the checkout is read-only, so the test's scratch is allowed too.
+    roots = [(repository / "workdir").resolve()] + [
+        Path(os.environ[name]).resolve()
+        for name in ("TEST_UNDECLARED_OUTPUTS_DIR", "TEST_TMPDIR") if os.environ.get(name)]
+    for root in roots:
+        try:
+            relative = candidate.relative_to(root)
+            break
+        except ValueError:
+            continue
+    else:
+        raise ValueError(f"output must be below {roots[0]}")
     current = root
     for component in relative.parts:
         current = current / component
@@ -195,10 +208,13 @@ def _download(url: str, destination: Path, expected: str, cache: Path | None = N
         if _sha256(temporary) != expected:
             raise RuntimeError(f"digest mismatch for {url}")
         if not local.exists() and local != destination:
-            cache.mkdir(parents=True, exist_ok=True)
-            vendored = _temporary_beside(local)
-            shutil.copyfile(temporary, vendored)
-            vendored.replace(local)
+            try:
+                cache.mkdir(parents=True, exist_ok=True)
+                vendored = _temporary_beside(local)
+                shutil.copyfile(temporary, vendored)
+                vendored.replace(local)
+            except OSError:
+                pass  # Why: under bazel test the checkout's cache is read-only; the fetch still counts.
         temporary.replace(destination)
     finally:
         temporary.unlink(missing_ok=True)
@@ -1067,10 +1083,8 @@ def build(output: Path, repository: Path,
         )
     build_dir = output / "build"
     build_dir.mkdir(parents=True, exist_ok=True)
-    gcc = shutil.which("riscv64-unknown-elf-gcc")
-    objcopy = shutil.which("riscv64-unknown-elf-objcopy")
-    if gcc is None or objcopy is None:
-        raise RuntimeError("riscv64-unknown-elf GCC/binutils are required")
+    gcc = n2d_image._tool("N2D_RISCV_GCC", "riscv64-unknown-elf-gcc")
+    objcopy = n2d_image._tool("N2D_RISCV_OBJCOPY", "riscv64-unknown-elf-objcopy")
     common = _compiler_flags(
         gcc, engine, include, output, repository, upstream=False,
         engine_opt=engine_opt, engine_lto=engine_lto
