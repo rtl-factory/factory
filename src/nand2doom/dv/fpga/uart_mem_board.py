@@ -1,9 +1,11 @@
 """UART memory endpoint through a real nand2doom board top (wiki/src/nand2doom/dv/io/dv-plan.md).
 
-Load transaction (identify, hold, write and verify, entry, release) of a
-small program over the board UART, then live reads of the front framebuffer
+Load transaction (identify, hold, write and verify by readback and by
+Digest, entry, release) of a small program over the board UART, then live reads of the front framebuffer
 view and the scanned palette while the program keeps running and writing
 the framebuffer port. The host side is the bench library codec."""
+import zlib
+
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import FallingEdge, RisingEdge, Timer, with_timeout
@@ -178,10 +180,14 @@ async def endpoint_load_and_readback(link, half_width=False):
     assert [(w.base, w.size, w.attributes) for w in identity.windows] == [
         (0, 0x0400_0000, 3), (SCREEN, 64000, 6), (PALETTE, 0x400, 6)]
     assert identity.held, "the engine holds the CPU from reset"
+    assert identity.digest, "the endpoint advertises Digest"
 
     await exchange(link, um.HOLD)
     await exchange(link, um.WRITE, 0, len(IMAGE), IMAGE)
     assert await exchange(link, um.READ, 0, len(IMAGE)) == IMAGE
+    # Ref: wiki/src/common/scripts/uart_mem/spec.md "Commands": the load verifies by Digest.
+    stored = int.from_bytes(await exchange(link, um.DIGEST, 0, len(IMAGE)), "little")
+    assert stored == zlib.crc32(IMAGE), f"SDRAM digest 0x{stored:08x}"
     await exchange(link, um.ENTRY, 0)
     await exchange(link, um.RELEASE)
     running = um.parse_identity(await exchange(link, um.IDENTIFY))

@@ -20,6 +20,7 @@ package n2a_uart_mem_pkg;
     localparam logic [7:0] UART_MEM_CMD_ENTRY    = 8'h04;
     localparam logic [7:0] UART_MEM_CMD_WRITE    = 8'h10;
     localparam logic [7:0] UART_MEM_CMD_READ     = 8'h11;
+    localparam logic [7:0] UART_MEM_CMD_DIGEST   = 8'h12;
 
     // Statuses.
     localparam logic [7:0] UART_MEM_ST_OK        = 8'h00;
@@ -33,6 +34,9 @@ package n2a_uart_mem_pkg;
     localparam logic [7:0] UART_MEM_ST_TIMEOUT   = 8'h08;
     localparam logic [7:0] UART_MEM_ST_MEMORY    = 8'h09;
     localparam logic [7:0] UART_MEM_ST_OVERRUN   = 8'h0a;
+
+    // Identify word 2 capability bit: the endpoint answers Digest.
+    localparam logic [31:0] UART_MEM_CAP_DIGEST = 32'h4;
 
     // Window attribute bits.
     localparam logic [31:0] UART_MEM_ATTR_WRITE     = 32'h1;
@@ -60,6 +64,16 @@ package n2a_uart_mem_pkg;
         return value;
     endfunction
 
+    // Four reflected CRC-32 steps over one little-endian word.
+    function automatic logic [31:0] uart_mem_crc32_word(input logic [31:0] crc,
+                                                        input logic [31:0] data);
+        logic [31:0] value;
+        value = crc;
+        for (int lane = 0; lane < 4; lane++)
+            value = uart_mem_crc32(value, data[8 * lane +: 8]);
+        return value;
+    endfunction
+
     // Endpoint link phase.
     typedef enum logic [2:0] {
         UART_MEM_IDLE,     // not owning the link: bytes pass to the project
@@ -81,7 +95,7 @@ package n2a_uart_mem_pkg;
         logic [31:0] address;
         logic [15:0] length;
         logic [7:0]  crc8;
-        logic [31:0] crc32;        // running payload (RX) or response (TX) CRC
+        logic [31:0] crc32;        // running payload (RX), Digest (EXEC) or response (TX) CRC
         logic [31:0] rx_crc;       // received payload CRC-32
         logic [7:0]  status;
         logic        reject;       // header rejected: no memory effect

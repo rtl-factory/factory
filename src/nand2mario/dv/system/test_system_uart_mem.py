@@ -5,9 +5,9 @@ The bench is the host on the system's serial pins at exactly 2 Mbaud (500 ns
 bits, time form), while the system's UART runs the board configuration: 12
 1/2 clocks a bit at 25 MHz through the common PHY's fractional accumulator.
 The host side is the library itself: uart_mem.load (identify and project
-check, one hold, write and read back each segment, entry, one release) runs
-in a cocotb bridge thread over the common simulated transport
-(src/common/dv/uart_mem/sim_host.py). The segments are a cartridge header
+check, one hold, write each segment and verify it by Digest, entry, one
+release) runs in a cocotb bridge thread over the common simulated
+transport (src/common/dv/uart_mem/sim_host.py). The segments are a cartridge header
 (ROM only, no RAM) and a short program at the entry point, 0x0100, over a
 ROM filled with garbage: the program can only run if the load landed. It
 clears IE, stores a marker in WRAM and halts; the bench requires the CPU to
@@ -89,8 +89,9 @@ async def load_and_boot(system, rx, tx, bound):
     wire = UartWire(rx=rx, tx=tx, bit_ps=BIT_PS, sample_window_ps=SAMPLE_WINDOW_PS)
     client = sim_host.client(wire, poll_ps=10 * BIT_PS, timeout_s=0.005)
     identity = await sim_host.run(client.identify)
-    assert identity.project == 'n2m ' and identity.entry == ENTRY, identity
-    await sim_host.run(um.load, client, [HEADER, PROGRAM], ENTRY, PROJECT)
+    assert identity.project == 'n2m ' and identity.entry == ENTRY and identity.digest, identity
+    outcomes = await sim_host.run(um.load, client, [HEADER, PROGRAM], ENTRY, PROJECT)
+    assert outcomes == [um.WRITTEN, um.WRITTEN], outcomes
     cocotb.log.info('loaded through uart_mem.load by edge %d', edge_now())
     assert not int(system.core_reset_o.value), 'release must start the core'
     while not (pcs and int(system.halted_o.value) and int(system.u_memory.interrupt_enable_o.value) == 0):
