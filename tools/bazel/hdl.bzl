@@ -291,12 +291,11 @@ def _wrapped_test(target_name, project, tags, timeout, python):
         timeout = "eternal",
     )
 
-def unit_tests(deps = [], data = []):
+def unit_tests(deps = []):
     """One pytest test, `<folder>.unit`, per tests/ folder in this package.
 
     Args:
       deps: Python libraries the tests import besides every project's and the tools'.
-      data: targets the tests run, found in their runfiles.
     """
     for folder in native.glob(["**/tests"], exclude_directories = 0, allow_empty = True):
         if not folder.endswith("tests"):
@@ -307,7 +306,7 @@ def unit_tests(deps = [], data = []):
             srcs = ["//tools/bazel:pytest_main.py"],
             main = "//tools/bazel:pytest_main.py",
             args = [native.package_name() + "/" + folder],
-            data = native.glob([folder + "/**"]) + ["@verilator//:verilator"] + data,
+            data = native.glob([folder + "/**"]) + ["@verilator//:verilator"],
             env = {"UNIT_PATH_PREPEND": "$(rootpaths @verilator//:verilator)"},
             deps = deps + ["//src/%s:python" % p for p in PROJECTS] + SIM_PYTHON + [
                 "//tools:python",

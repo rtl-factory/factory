@@ -48,7 +48,7 @@ def clear_stale_lock(lock: Path) -> None:
         pass
 
 
-RUNFILES_BOOTSTRAP_ENV = ("PYTHONPATH", "PYTHONSAFEPATH", "RUNFILES_DIR", "RUNFILES_MANIFEST_FILE")
+BOOTSTRAP_PYTHON_ENV = ("PYTHONPATH", "PYTHONSAFEPATH")
 
 
 def tool_command(script: Path, args: list[str], environ: dict) -> tuple[list[str], dict]:
@@ -58,7 +58,7 @@ def tool_command(script: Path, args: list[str], environ: dict) -> tuple[list[str
     # package and wins over the checkout's tools/ namespace, so `tools.quartus`
     # fails to import (#214). The base interpreter has no such site init.
     python = getattr(sys, "_base_executable", None) or sys.executable
-    env = {k: v for k, v in environ.items() if k not in RUNFILES_BOOTSTRAP_ENV}
+    env = {k: v for k, v in environ.items() if k not in BOOTSTRAP_PYTHON_ENV and not k.startswith("RUNFILES_")}
     return [python, "-B", str(script), *args], env
 
 
