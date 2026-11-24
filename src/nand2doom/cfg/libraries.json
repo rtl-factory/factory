@@ -379,7 +379,9 @@
     "n2d_ps2_keyboard": {
       "deps": [
         "macros",
-        "n2a_cdc_bit_sync",
+        "n2a_ps2_decoder",
+        "n2a_ps2_pkg",
+        "n2a_ps2_receiver",
         "n2d_types_pkg"
       ],
       "srcs": [

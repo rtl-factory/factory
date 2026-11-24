@@ -7,7 +7,6 @@
  "src/nand2doom/dv/io/test_n2d_ps2_keyboard.py": 4,
  "src/nand2doom/dv/platform/test_n2d_video_control.py": 14,
  "src/nand2mario/dv/menu/fixture.py": 4,
- "src/nand2mario/fpga/board_io/n2m_scancode_buttons.sv": 8,
  "src/nand2mario/rtl/core/n2m_cpu_execute.sv": 10,
  "src/nand2mario/rtl/video/n2m_snapshot_pkg.sv": 2
 }

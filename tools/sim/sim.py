@@ -267,6 +267,9 @@ def prepend_tool_paths() -> None:
 
 def main(argv=None) -> int:
     prepend_tool_paths()
+    # Why: a Verilator configured where ccache was on PATH names it in verilated.mk
+    # (OBJCACHE ?= ccache); an empty OBJCACHE keeps every model build off it.
+    os.environ.setdefault("OBJCACHE", "")
     # Why: rules_python sets this for its own interpreter; children that run a script
     # by path (a wrapper's program build) need their own folder on sys.path.
     os.environ.pop("PYTHONSAFEPATH", None)

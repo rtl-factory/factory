@@ -20,6 +20,11 @@ import sys
 import tokenize
 from typing import NamedTuple
 
+try:
+    from tools.lint import baseline as baseline_counts
+except ImportError:  # Why: run as a script, tools/ is not a package on the path.
+    import baseline as baseline_counts  # type: ignore[no-redef]
+
 ROOT = Path(__file__).resolve().parents[2]
 BASELINE = ROOT / "tools" / "lint" / "comment_baseline.json"
 SCANNED_DIRS = ("src/", "tools/")
@@ -215,44 +220,21 @@ def tracked_files(root: Path) -> list[str]:
 
 
 def count(found: list[Violation]) -> dict[str, int]:
-    counts: dict[str, int] = {}
-    for v in found:
-        counts[v.path] = counts.get(v.path, 0) + 1
-    return dict(sorted(counts.items()))
+    return baseline_counts.count([v.path for v in found])
 
 
 def check(found: list[Violation], baseline: dict[str, int], files: list[str]) -> list[str]:
     """Error lines: files over their baseline, and baseline entries that are
     now too high (stale) for a file in this run."""
-    errors: list[str] = []
-    counts = count(found)
-    for path in files:
-        have, allowed_count = counts.get(path, 0), baseline.get(path, 0)
-        if have > allowed_count:
-            errors.append(f"{path}: {have} comment violations, baseline allows {allowed_count}; {FIX}")
-            errors.extend(f"  {v.path}:{v.line}: {v.text}" for v in found if v.path == path)
-        elif have < allowed_count:
-            errors.append(f"{path}: {have} comment violations, below its baseline of {allowed_count}; "
-                          "run python3 tools/lint/comment_lint.py --update-baseline and commit it")
-    return errors
+    details = {path: [f"  {v.path}:{v.line}: {v.text}" for v in found if v.path == path] for path in files}
+    return baseline_counts.check(count(found), baseline, files, "comment violations", FIX,
+                                 "python3 tools/lint/comment_lint.py --update-baseline", details)
 
 
 def raised(baseline: dict[str, int], base: dict[str, int]) -> list[str]:
-    """Error lines for a baseline that grew against the base branch's: any
-    entry above its base value, a higher total, or new entries holding more
-    than the entries that disappeared (a rename moves counts; a new file
-    brings none)."""
-    errors = [f"{path}: baseline raised from {base[path]} to {n}; clean the new comments instead"
-              for path, n in sorted(baseline.items()) if path in base and n > base[path]]
-    if sum(baseline.values()) > sum(base.values()):
-        errors.append(f"baseline total raised from {sum(base.values())} to {sum(baseline.values())}; "
-                      "new files must have no comment violations")
-    added = sum(n for path, n in baseline.items() if path not in base)
-    moved = sum(n for path, n in base.items() if path not in baseline)
-    if added > moved:
-        errors.append(f"new baseline entries hold {added} violations but only {moved} moved from removed "
-                      "files; new files must have no comment violations")
-    return errors
+    """Error lines for a baseline that grew against the base branch's
+    (baseline.raised)."""
+    return baseline_counts.raised(baseline, base, "comment violations", "clean the new comments")
 
 
 def relative(arg: str) -> str:
