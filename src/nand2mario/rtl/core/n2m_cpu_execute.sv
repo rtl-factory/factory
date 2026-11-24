@@ -52,37 +52,37 @@ module n2m_cpu_execute (
                 alu_value = ~alu_lhs;
                 alu_flags = {request.registers.f[7], 2'b11, request.registers.f[4], 4'b0};
             end
-            n2m_cpu_pkg::ALU_SCF: alu_flags = {request.registers.f[7], 2'b00, 1'b1, 4'b0}; // SCF
-            n2m_cpu_pkg::ALU_CCF: alu_flags = {request.registers.f[7], 2'b00, ~request.registers.f[4], 4'b0}; // CCF
-            n2m_cpu_pkg::ALU_RLCA, n2m_cpu_pkg::ALU_RLC: begin // RLCA, RLC
+            n2m_cpu_pkg::ALU_SCF: alu_flags = {request.registers.f[7], 2'b00, 1'b1, 4'b0};
+            n2m_cpu_pkg::ALU_CCF: alu_flags = {request.registers.f[7], 2'b00, ~request.registers.f[4], 4'b0};
+            n2m_cpu_pkg::ALU_RLCA, n2m_cpu_pkg::ALU_RLC: begin
                 alu_value = {alu_lhs[6:0], alu_lhs[7]};
                 alu_flags = {(alu_operation == n2m_cpu_pkg::ALU_RLC) && alu_value == 0, 2'b00, alu_lhs[7], 4'b0};
             end
-            n2m_cpu_pkg::ALU_RRCA, n2m_cpu_pkg::ALU_RRC: begin // RRCA, RRC
+            n2m_cpu_pkg::ALU_RRCA, n2m_cpu_pkg::ALU_RRC: begin
                 alu_value = {alu_lhs[0], alu_lhs[7:1]};
                 alu_flags = {(alu_operation == n2m_cpu_pkg::ALU_RRC) && alu_value == 0, 2'b00, alu_lhs[0], 4'b0};
             end
-            n2m_cpu_pkg::ALU_RLA, n2m_cpu_pkg::ALU_RL: begin // RLA, RL
+            n2m_cpu_pkg::ALU_RLA, n2m_cpu_pkg::ALU_RL: begin
                 alu_value = {alu_lhs[6:0], request.registers.f[4]};
                 alu_flags = {(alu_operation == n2m_cpu_pkg::ALU_RL) && alu_value == 0, 2'b00, alu_lhs[7], 4'b0};
             end
-            n2m_cpu_pkg::ALU_RRA, n2m_cpu_pkg::ALU_RR: begin // RRA, RR
+            n2m_cpu_pkg::ALU_RRA, n2m_cpu_pkg::ALU_RR: begin
                 alu_value = {request.registers.f[4], alu_lhs[7:1]};
                 alu_flags = {(alu_operation == n2m_cpu_pkg::ALU_RR) && alu_value == 0, 2'b00, alu_lhs[0], 4'b0};
             end
-            n2m_cpu_pkg::ALU_SLA: begin // SLA
+            n2m_cpu_pkg::ALU_SLA: begin
                 alu_value = {alu_lhs[6:0], 1'b0};
                 alu_flags = {alu_value == 0, 2'b00, alu_lhs[7], 4'b0};
             end
-            n2m_cpu_pkg::ALU_SRA: begin // SRA
+            n2m_cpu_pkg::ALU_SRA: begin
                 alu_value = {alu_lhs[7], alu_lhs[7:1]};
                 alu_flags = {alu_value == 0, 2'b00, alu_lhs[0], 4'b0};
             end
-            n2m_cpu_pkg::ALU_SWAP: begin // SWAP
+            n2m_cpu_pkg::ALU_SWAP: begin
                 alu_value = {alu_lhs[3:0], alu_lhs[7:4]};
                 alu_flags = {alu_value == 0, 7'b0};
             end
-            n2m_cpu_pkg::ALU_SRL: begin // SRL
+            n2m_cpu_pkg::ALU_SRL: begin
                 alu_value = {1'b0, alu_lhs[7:1]};
                 alu_flags = {alu_value == 0, 2'b00, alu_lhs[0], 4'b0};
             end

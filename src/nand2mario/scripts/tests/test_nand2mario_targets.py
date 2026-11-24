@@ -90,7 +90,7 @@ class ProjectTargetTests(unittest.TestCase):
         self.assertEqual(("src.nand2mario.dv.system.test_system_snapshot", "system_frame_snapshot"),
                          (targets["n2m_system_snapshot"].test_module, targets["n2m_system_snapshot"].testcase))
 
-    def test_interfaces_and_ram_targets(self):
+    def test_interfaces_target(self):
         targets = sim.target_views()
         self.assertEqual("native", targets["n2m_interfaces"].kind)
         self.assertEqual("n2m_interfaces_fixture", targets["n2m_interfaces"].top)
@@ -99,30 +99,6 @@ class ProjectTargetTests(unittest.TestCase):
              "src/nand2mario/dv/core/n2m_interfaces_fixture.sv"),
             targets["n2m_interfaces"].sources,
         )
-        self.assertEqual("cocotb", targets["n2m_dual_port_ram_single"].kind)
-        self.assertEqual(41, targets["n2m_dual_port_ram_single"].default_seed)
-        self.assertEqual(20, targets["n2m_dual_port_ram_dual"].max_cycles)
-        self.assertEqual(
-            "dual_clock_collision_is_rejected",
-            targets["n2m_dual_port_ram_dual_collision_fail"].testcase,
-        )
-        self.assertEqual(
-            "partial_same_port_collision_is_rejected",
-            targets["n2m_partial_read_write_fail"].testcase,
-        )
-        for name in (
-            "n2m_dual_port_ram_single", "n2m_dual_port_ram_dual",
-            "n2m_dual_port_ram_dual_collision_fail", "n2m_partial_read_write_fail",
-            "n2m_dual_port_ram_reset",
-        ):
-            with self.subTest(target=name):
-                target = targets[name]
-                self.assertEqual("src.nand2mario.dv.memory.test_dual_port_ram",
-                                 target.test_module)
-                self.assertEqual("src/nand2mario/rtl/memory/n2m_dual_port_ram.sv",
-                                 target.sources[0])
-                self.assertTrue(Path(target.sources[1]).is_relative_to(
-                    Path("src/nand2mario/dv/memory")))
 
     def test_cartridge_targets(self):
         targets = sim.target_views()
@@ -137,7 +113,7 @@ class ProjectTargetTests(unittest.TestCase):
             self.assertEqual(("n2m_cartridge_backing", "src.nand2mario.dv.cartridge.test_cartridge_backing"),
                              (target.top, target.test_module))
             self.assertEqual("src/nand2mario/rtl/cartridge/n2m_cartridge_backing.sv", target.sources[-1])
-            self.assertIn("src/nand2mario/rtl/memory/n2m_dual_port_ram.sv", target.sources)
+            self.assertIn("src/common/rtl/memory/n2a_tdp_ram_enabled.sv", target.sources)
             self.assertEqual((("RAM_BYTES", 16384), ("ROM_BYTES", 65536)), tuple(sorted(target.parameters)))
         self.assertEqual(("backing_contract", "rom_write_is_rejected"), (backing.testcase, negative.testcase))
         cartridge = [s for s in mapper.sources if s.startswith("src/nand2mario/rtl/cartridge/")]
@@ -283,7 +259,7 @@ class ProjectTargetTests(unittest.TestCase):
                          (loader.top, loader.test_module, loader.testcase, loader.default_seed))
         self.assertEqual((("CLKS_PER_BIT", 8), ("RX_TIMEOUT_CLOCKS", 4000)), loader.parameters)
         for source in ("src/common/rtl/uart/n2a_uart_rx.sv", "src/common/rtl/uart/n2a_uart_tx.sv",
-                       "src/nand2mario/rtl/memory/n2m_dual_port_ram.sv", "src/nand2mario/rtl/uart/n2m_loader_pkg.sv"):
+                       "src/common/rtl/memory/n2a_sync_ram_enabled.sv", "src/nand2mario/rtl/uart/n2m_loader_pkg.sv"):
             self.assertIn(source, loader.sources)
         self.assertEqual("src/nand2mario/dv/uart/n2m_uart_loader_fixture.sv", loader.sources[-1])
         sdram = targets["n2m_system_sdram"]
