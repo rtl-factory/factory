@@ -13,6 +13,7 @@ The files are derived from the RTL itself, never written by hand:
     python3 tools/bazel/hdl_libraries.py check      # fail if one is stale (L0)
     python3 tools/bazel/hdl_libraries.py files <library>... [--flavor F] [--define D] [--headers]
     python3 tools/bazel/hdl_libraries.py registry   # the targets as Bazel reads them
+    python3 tools/bazel/hdl_libraries.py lint-tops  # the tops the L0 Verilator lint checks
 """
 from __future__ import annotations
 
@@ -263,8 +264,52 @@ def parse_sby(path: Path) -> dict:
     return fields
 
 
+def _needs(entry: dict) -> set[str]:
+    """Every library an entry (any variant, any define) may need."""
+    needed = set()
+    for variant in entry.get("variants", {"default": entry}).values():
+        for dep in variant.get("deps", []):
+            needed.update([dep] if isinstance(dep, str) else dep["deps"])
+    return needed
+
+
+def lint_tops(root: Path = ROOT, libraries: dict | None = None) -> dict:
+    """The tops the Verilator lint checks, by project, each with its files resolved.
+
+    Derived from the libraries: every design module (rtl/ or fpga/) that no other
+    design library needs (the project tops), and every module of src/common/rtl
+    and src/common/fpga (the common blocks, at their default parameters). The
+    optional "lint" object of a project's targets.json adds `libraries` or
+    `flavors` to a top, such as a vendor primitive's stand-in, or names one more top.
+    """
+    libraries = load(root) if libraries is None else libraries
+
+    def default_src(entry: dict) -> str | None:
+        srcs = entry.get("variants", {}).get("default", entry).get("srcs", [])
+        return srcs[0] if srcs else None
+
+    design = {name: src for name, entry in libraries.items()
+              if (src := default_src(entry)) and src.split("/")[2] in DESIGN_AREAS}
+    needed = set().union(*(_needs(libraries[name]) for name in design))
+    modules = {name for name, src in design.items()
+               if re.search(rf"^\s*module\s+{name}\b", _strip_comments((root / src).read_text(errors="replace")), re.M)}
+    tops = {name: {} for name in modules
+            if name not in needed or design[name].startswith(("src/common/rtl/", "src/common/fpga/"))}
+    for path in sorted(root.glob("src/*/cfg/targets.json")):
+        for name, extra in json.loads(path.read_text()).get("lint", {}).items():
+            tops[name] = extra
+    out = {}
+    for name, extra in sorted(tops.items()):
+        if name not in libraries:
+            raise ValueError(f"lint top {name} is not a library")
+        target = resolve_target({"top": name, **extra}, libraries)
+        src = default_src(libraries[name])
+        out.setdefault(src.split("/")[1], {})[name] = {"sources": target["sources"], "headers": target["headers"]}
+    return out
+
+
 def registry(root: Path = ROOT) -> dict:
-    """Every simulation and formal target with its files resolved, and the files read."""
+    """Every simulation, formal and lint target with its files resolved, and the files read."""
     libraries = load(root)
     sim, formal, inputs = {}, {}, sorted(str(p.relative_to(root)) for p in root.glob("src/*/cfg/libraries.json"))
     for path in sorted(root.glob("src/*/cfg/targets.json")):
@@ -281,7 +326,7 @@ def registry(root: Path = ROOT) -> dict:
         formal.setdefault(path.parts[-4], {})[path.stem] = {
             "level": target["level"], "timeout_seconds": target["timeout_seconds"], "sby": sby,
             "files": target["headers"] + target["sources"]}
-    return {"sim": sim, "formal": formal, "inputs": inputs}
+    return {"sim": sim, "formal": formal, "lint": lint_tops(root, libraries), "inputs": inputs}
 
 
 def main(argv=None) -> int:
@@ -296,6 +341,7 @@ def main(argv=None) -> int:
     files.add_argument("--define", action="append", default=[])
     files.add_argument("--headers", action="store_true", help="list the include files instead")
     sub.add_parser("registry", help="print every target with its files resolved, as JSON")
+    sub.add_parser("lint-tops", help="print the tops the Verilator lint checks, with their files, as JSON")
     args = parser.parse_args(argv)
     root = args.root.resolve()
     if args.command == "update":
@@ -310,6 +356,9 @@ def main(argv=None) -> int:
     if args.command == "files":
         sources, headers = resolve(load(root), args.libraries, args.flavor, args.define)
         print("\n".join(headers if args.headers else sources))
+        return 0
+    if args.command == "lint-tops":
+        print(json.dumps(lint_tops(root), indent=1))
         return 0
     print(json.dumps(registry(root)))
     return 0

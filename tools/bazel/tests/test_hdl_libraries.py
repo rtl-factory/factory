@@ -125,3 +125,26 @@ def test_a_formal_target_without_a_library_fails_clearly(tmp_path):
 
 def test_the_libraries_match_the_hdl():
     assert h.stale() == [], "run python3 tools/bazel/hdl_libraries.py update"
+
+
+def test_lint_tops_are_the_design_roots_and_every_common_block(tmp_path):
+    def write(path, text):
+        (tmp_path / path).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / path).write_text(text)
+
+    write("src/common/rtl/blk/n2a_leaf.sv", "module n2a_leaf;\nendmodule\n")
+    write("src/common/rtl/pkg/n2a_pkg.sv", "package n2a_pkg;\nendpackage\n")
+    write("src/p/rtl/core/p_core.sv", "module p_core;\n    n2a_leaf u_leaf ();\n    p_alu u_alu ();\nendmodule\n")
+    write("src/p/rtl/core/p_alu.sv", "module p_alu;\nendmodule\n")
+    write("src/p/fpga/board/p_board.sv", "module p_board;\n    p_core u_core ();\n    vendor_pll u_pll ();\nendmodule\n")
+    write("src/p/dv/board/vendor_pll_stub.sv", "module vendor_pll;\nendmodule\n")
+    write("src/p/dv/board/p_tb.sv", "module p_tb;\n    p_board u_board ();\nendmodule\n")
+    for project, libraries in h.derive(tmp_path).items():
+        write(f"src/{project}/cfg/libraries.json", h.render(libraries))
+    tops = h.lint_tops(tmp_path)
+    assert {p: sorted(t) for p, t in tops.items()} == {"common": ["n2a_leaf"], "p": ["p_board"]}
+    write("src/p/cfg/targets.json", '{"targets": {}, "lint": {"p_board": {"libraries": ["p_board", "vendor_pll_stub"]}}}')
+    board = h.lint_tops(tmp_path)["p"]["p_board"]
+    assert "src/p/dv/board/vendor_pll_stub.sv" in board["sources"]
+    assert "src/p/fpga/board/p_board.sv" in board["sources"]
+    assert h.registry(tmp_path)["lint"]["p"]["p_board"] == board

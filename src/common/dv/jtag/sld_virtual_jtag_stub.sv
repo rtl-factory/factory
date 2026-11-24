@@ -9,7 +9,10 @@
 // hub (src/common/dv/jtag/vjtag_stub_host.py). Never a synthesis input.
 /* verilator lint_off UNUSEDPARAM */
 /* verilator lint_off UNUSEDSIGNAL */
+// Why: the stand-in keeps the vendor module name, so its file name cannot match.
+/* verilator lint_off DECLFILENAME */
 module sld_virtual_jtag #(
+/* verilator lint_on DECLFILENAME */
     parameter string sld_auto_instance_index = "YES",
     parameter int    sld_instance_index      = 0,
     parameter int    sld_ir_width            = 1
