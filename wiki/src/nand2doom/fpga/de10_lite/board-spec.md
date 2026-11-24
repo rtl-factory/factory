@@ -18,8 +18,9 @@ differ. This page is the DE10-Lite board spec and owns the contracts both boards
 
 ### Why this page holds the shared contracts
 
-Both board tops share one source closure, one Quartus script (`quartus.py`)
-with one report gate, and one config, `cfg/n2d_quartus.json`, in which the
+Both board tops share one source closure, one Quartus build (the shared
+[Quartus tool](../../../../tools/quartus/README.md)) with one report gate, and one
+manifest, `cfg/n2d_quartus.json`, in which the
 DE10-Lite is the base board and the DE2-115 a set of overrides under
 `boards.de2_115`. The shared contracts (the requirements, the board contracts
 table, the composition, the memory implementation, the constraints both SDCs
@@ -30,7 +31,7 @@ only the DE2-115 has (its pins and electrical rules, its SDC differences, its
 budget and its bring-up) and links here for the rest. The script tests also
 read the FPGA timing tables from this page (`src/nand2doom/scripts/tests/test_n2d_timing.py`).
 
-<!-- wiki-budget: the Quartus report gate (warning, RAM, clock and timing contract) and recorded fits are acceptance criteria the Quartus script and tests enforce -->
+<!-- wiki-budget: the Quartus report gate (warning, RAM, clock and timing contract) and recorded fits are acceptance criteria the Quartus tool and tests enforce -->
 
 ### Requirements
 
@@ -84,7 +85,7 @@ to the board pins.
   `DRAM_DQ` the single resolved `tri` bus, driven only while output enable is
   high. No pin adapter module. Controller states and mapping follow the
   [memory contract](../../rtl/memory/mas.md#sdram-controller).
-- The Quartus script resolves the DE2-115 from the shared manifest by swapping
+- The Quartus tool resolves the DE2-115 from the shared manifest by swapping
   the clock backend and the board top.
 
 ### Vendor primitives
@@ -152,7 +153,8 @@ registers, 2,114 → 2,013 LABs, 317 M9Ks, setup 6.341 → 6.759 ns, hold 0.125 
 | --- | --- |
 | `src/nand2doom/fpga/de10_lite/n2d_de10_lite.sv`, `src/nand2doom/fpga/de2_115/n2d_de2_115.sv` | Board tops |
 | `src/common/fpga/de10_lite/n2a_de10_lite_clock_{intel,portable}.sv`, `src/common/fpga/de2_115/n2a_de2_115_clock_{intel,portable}.sv` | Clock backends (common, [DE10-Lite](../../../common/fpga/de10_lite/board-spec.md), [DE2-115](../../../common/fpga/de2_115/board-spec.md)) |
-| `src/nand2doom/cfg/n2d_quartus.json` | Pins, sources, RAM requirements, reviewed diagnostics |
+| `src/nand2doom/cfg/n2d_quartus.json` | Pins used, sources, RAM requirements, timing paths, reviewed diagnostics |
+| `src/common/fpga/de10_lite/pins.json`, `src/common/fpga/de2_115/pins.json` | Each board's pin locations and I/O standards |
 | `src/nand2doom/fpga/de10_lite/de10_lite.sdc`, `src/nand2doom/fpga/de2_115/n2d_de2_115.sdc` | Constraints |
 
 ## Pins and I/O
@@ -160,7 +162,8 @@ registers, 2,114 → 2,013 LABs, 317 M9Ks, setup 6.341 → 6.759 ns, hold 0.125 
 ### DE10-Lite electrical interfaces
 
 The top level of `n2d_quartus.json`
-owns every DE10-Lite pin and the source manifest. UART and PS/2 are **3.3 V
+names every DE10-Lite pin the top uses (locations and standards from
+`src/common/fpga/de10_lite/pins.json`) and the source manifest. UART and PS/2 are **3.3 V
 logic**; a 5 V keyboard needs level conversion; the board has no native PS/2
 connector or USB-UART. RX and PS/2 inputs have weak pull-ups. KEY0 uses
 Schmitt trigger, other pins 3.3-V LVTTL. SDRAM and VGA outputs 8 mA; UART TX
@@ -229,7 +232,7 @@ The earlier fits of both boards, from nand2anything, follow.
 
 ### Fitted results
 
-Built by `quartus.py --board de2_115|de10_lite`, Quartus Prime 25.1std.0
+Built by the since-removed `quartus.py --board de2_115|de10_lite`, Quartus Prime 25.1std.0
 Build 1129 Lite, fitter seed 1, 25 MHz, full gate passed. Sources: DE2-115
 `c506a56`, DE10-Lite `939c653` (byte-identical RTL, constraints, settings).
 `n2d_timing.py --board BOARD --mhz 25 --sta-only --build-dir workdir/quartus/n2d_BOARD`
@@ -333,8 +336,8 @@ budgets.
 ## Build and program
 
 ```sh
-python3 src/nand2doom/scripts/board/quartus.py --board de10_lite
-python3 src/nand2doom/scripts/board/quartus.py --board de10_lite --elaborate-only
+python3 tools/quartus/quartus.py --manifest src/nand2doom/cfg/n2d_quartus.json
+python3 tools/quartus/quartus.py --manifest src/nand2doom/cfg/n2d_quartus.json --elaborate-only
 ```
 
 The full build must pass the [report gate](#report-gate) (FPGA-R6); the
@@ -351,7 +354,7 @@ inside a generate block may not size itself from a generate-local parameter
 (use plain sized signals); parameter checks use `ASSERT_INITIAL`, not an
 elaboration `$error` in a generate block; enum membership uses equality/OR.
 Verilator accepts violations, so every nand2doom RTL change runs
-`quartus.py --board de10_lite|de2_115 --elaborate-only` (analysis and
+`tools/quartus/quartus.py --elaborate-only` on each board (analysis and
 elaboration, ~25 s and 0.8 GB each), registered as level1 entries
 `check:doom:quartus-elaborate:de10-lite` and `check:doom:quartus-elaborate:de2-115`.
 Its gate allows each reviewed unread object, the exact connectivity aggregate
@@ -413,8 +416,9 @@ or the aggregate without its validated rows, fails.
 
 Timing gate, at Slow 1200 mV 85 C, Slow 1200 mV 0 C and Fast 1200 mV 0 C:
 
-- system clock setup/hold and minimum pulse width, `jtag_tck`
-  recovery/removal (the scan domain holds the only asynchronous resets),
+- system clock setup/hold and minimum pulse width, `jtag_tck` setup/hold,
+  recovery/removal and minimum pulse width (outside the reset synchronizers,
+  the scan domain holds the only asynchronous resets),
   forwarded SDRAM (and DE2-115 VGA) clock setup/hold, reference minimum pulse
   width; missing, negative or truncated results fail; no ignored SDC;
 - `check_timing` allows only the forwarded-clock output-with-clock entries,

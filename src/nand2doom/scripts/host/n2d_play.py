@@ -378,7 +378,8 @@ def validate(args, p):
         sof = args.sof or newest_sof(args.board, checkout_roots())
         if sof is None:
             p.error(f"no {board['project']}.sof under workdir/quartus; build with "
-                    f"`bin/n2d_quartus --board {args.board}` or pass --sof")
+                    "`python3 tools/quartus/quartus.py --manifest src/nand2doom/cfg/n2d_quartus.json "
+                    f"--board {args.board}` or pass --sof")
         if not Path(sof).is_file():
             p.error(f"SOF not found: {sof}")
         sof = Path(sof).resolve()

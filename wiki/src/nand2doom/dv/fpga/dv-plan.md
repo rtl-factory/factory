@@ -3,7 +3,7 @@
 ## Scope
 
 The two board tops (`n2d_de10_lite`, `n2d_de2_115`) in simulation, and the
-Quartus build and report gate of the script `quartus.py`, checked against the
+Quartus build and report gate of the [Quartus tool](../../../../tools/quartus/README.md), checked against the
 [DE10-Lite board spec](../../fpga/de10_lite/board-spec.md) (which holds the
 FPGA-R requirements both boards share) and the
 [DE2-115 board spec](../../fpga/de2_115/board-spec.md). The blocks inside the

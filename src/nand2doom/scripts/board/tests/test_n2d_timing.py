@@ -184,7 +184,7 @@ class TimingTests(unittest.TestCase):
                 (cwd / "output_files" / "timing.tsv").write_text(TSV)
 
             config = {"project": "n2d_de2_115", "timeout_seconds": 10}
-            with mock.patch.object(timing.quartus, "run", side_effect=fake_sta):
+            with mock.patch.object(timing.build, "run", side_effect=fake_sta):
                 with self.assertRaisesRegex(ValueError, "analyzed system clock is 25 MHz"):
                     timing.analyze(config, output, 50, 20, "/q/quartus_sh", sta_only=True)
                 self.assertFalse((output / "timing.json").exists())

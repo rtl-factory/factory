@@ -5,12 +5,11 @@ Analysis only: this never gates or programs a board. The shipped 25 MHz
 constraints are staged unchanged; any other --mhz value adds a scratch
 override of the PLL system-clock period to the staged copy below workdir/.
 --sta-only --build-dir analyzes an existing compiled project instead, for
-example the quartus.py hardware build, without compiling again.
+example the tools/quartus hardware build, without compiling again.
 
 Spec: wiki/src/nand2doom/scripts/board/spec.md#timing-analysis.
 """
 import argparse
-import importlib.util
 import json
 import os
 from pathlib import Path
@@ -19,11 +18,12 @@ import shutil
 import subprocess
 import sys
 
-HERE = Path(__file__).resolve().parent
-_spec = importlib.util.spec_from_file_location("n2d_quartus", HERE / "quartus.py")
-quartus = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(quartus)
-ROOT = quartus.ROOT
+ROOT = Path(__file__).resolve().parents[4]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from tools.quartus import build, manifest  # noqa: E402
+
+BOARDS = ("de10_lite", "de2_115")
 BOARD_MHZ = 25
 REFERENCE_MHZ = 50
 
@@ -211,22 +211,22 @@ def markdown(result: dict, mhz: int) -> str:
 
 
 def analyze(config: dict, output: Path, mhz: int, paths: int, executable: str, sta_only: bool) -> dict:
-    with quartus.build_lock(ROOT, output):
-        quartus.confined(ROOT, output)
+    with build.build_lock(ROOT, output):
+        build.confined(ROOT, output)
         if not sta_only:
             if output.exists():
                 shutil.rmtree(output)
-            quartus.stage(ROOT, output, config)
+            build.stage(ROOT, output, config)
             if mhz != BOARD_MHZ:
                 staged = output / config["constraints"]
                 staged.write_text(what_if_sdc(staged.read_text(), mhz))
-            quartus.run([executable, "--flow", "compile", config["project"]], output,
+            build.run([executable, "--flow", "compile", config["project"]], output,
                         "compile.log", config["timeout_seconds"])
         elif not (output / "db").is_dir():
             raise ValueError(f"no compiled project in {output}")
         (output / "timing.tcl").write_text(TCL.format(project=config["project"], paths=paths))
         sta = str(Path(executable).with_name("quartus_sta"))
-        quartus.run([sta, "-t", "timing.tcl"], output, "timing.log", config["timeout_seconds"])
+        build.run([sta, "-t", "timing.tcl"], output, "timing.log", config["timeout_seconds"])
         result = parse((output / "output_files" / "timing.tsv").read_text(encoding="latin-1"))
         check_clock(result, mhz)
         result["mhz"] = mhz
@@ -238,8 +238,8 @@ def analyze(config: dict, output: Path, mhz: int, paths: int, executable: str, s
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default="src/nand2doom/cfg/n2d_quartus.json")
-    parser.add_argument("--board", choices=quartus.BOARDS, default=quartus.BASE_BOARD,
-                        help=f"board to analyze (default {quartus.BASE_BOARD})")
+    parser.add_argument("--board", choices=BOARDS, default=BOARDS[0],
+                        help=f"board to analyze (default {BOARDS[0]})")
     parser.add_argument("--quartus", help="quartus_sh executable (or QUARTUS_SH/PATH)")
     parser.add_argument("--mhz", type=int, nargs="+", default=[BOARD_MHZ, 50],
                         help="system clocks to analyze (default: 25 50)")
@@ -252,7 +252,7 @@ def main(argv=None) -> int:
     parser.add_argument("--plan", action="store_true", help="validate and show outputs without writing")
     args = parser.parse_args(argv)
     try:
-        config = quartus.load_config(ROOT, args.config, args.board)
+        config = manifest.load(ROOT, args.config, args.board)
         if not 1 <= args.paths <= 200:
             raise ValueError("--paths must be 1..200")
         outputs = {mhz: ROOT / "workdir" / "timing" / f'{config["project"]}_{mhz}mhz'
@@ -260,7 +260,7 @@ def main(argv=None) -> int:
         if args.build_dir:
             if not args.sta_only or len(outputs) != 1:
                 raise ValueError("--build-dir requires --sta-only and exactly one --mhz")
-            outputs = {mhz: quartus.confined(ROOT, (ROOT / args.build_dir).resolve())
+            outputs = {mhz: build.confined(ROOT, (ROOT / args.build_dir).resolve())
                        for mhz in outputs}
         sdc = (ROOT / config["constraints"]).read_text()
         for mhz, output in outputs.items():

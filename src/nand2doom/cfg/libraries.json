@@ -340,6 +340,9 @@
       ]
     },
     "n2d_pkg": {
+      "deps": [
+        "n2a_uart_pkg"
+      ],
       "srcs": [
         "src/nand2doom/rtl/platform/n2d_pkg.sv"
       ]

@@ -395,6 +395,11 @@
         "src/common/rtl/uart_mem/n2a_uart_mem_pkg.sv"
       ]
     },
+    "n2a_uart_pkg": {
+      "srcs": [
+        "src/common/rtl/uart/n2a_uart_pkg.sv"
+      ]
+    },
     "n2a_uart_rx": {
       "deps": [
         "macros",

@@ -8,6 +8,7 @@ The tools: code any project can use unchanged. Each has its code in `tools/<tool
 | [board](board/README.md) | Programs any project's SOF, loads its program and types on its JTAG keyboard, on either board |
 | [fv](fv/README.md) | Runs every project's formal proofs and covers with SymbiYosys |
 | [lint](lint/README.md) | Checks every Python and SystemVerilog comment against the keep list, and every wiki path cited outside the wiki |
+| [quartus](quartus/README.md) | Builds any project's board image with Quartus from its manifest, gates the reports and binds the SOF to its commit |
 | [pages](pages/README.md) | Builds the wiki into the GitHub Pages site |
 | [sim](sim/README.md) | Runs every project's simulation targets on Verilator and cocotb |
 | [toolchain](toolchain/README.md) | Pins, installs and checks the host tools |

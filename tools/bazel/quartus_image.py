@@ -1,14 +1,14 @@
-"""Run a project's Quartus build script and keep its image and gate evidence as Bazel outputs.
+"""Run the Quartus build tool on a project's manifest and keep its image and gate evidence as Bazel outputs.
 
 Spec: wiki/tools/bazel/spec.md (Board images). Called by the quartus_image rule
 as a local action:
 
-    quartus_image.py --script <script> --project <name> --out <dir> -- <script args>
+    quartus_image.py --script tools/quartus/quartus.py --project <name> --out <dir> -- <tool args>
 
-The script builds in the checkout's workdir/quartus/<name>/ (it refuses any
+The tool builds in the checkout's workdir/quartus/<name>/ (it refuses any
 other place) and runs its timing and warning gate; this copies the SOF, its
 identity files, the gate's evidence and the logs and reports into <dir>, and
-fails when the script passed but left no SOF.
+fails when the tool passed but left no SOF.
 """
 import argparse
 import json
