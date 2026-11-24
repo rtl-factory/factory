@@ -37,10 +37,11 @@ class BoardRateTests(unittest.TestCase):
     def test_board_tops_take_the_package_rate(self):
         for top in ("src/nand2mario/fpga/de10_lite/n2m_de10_lite.sv",
                     "src/nand2mario/fpga/de2_115/n2m_de2_115.sv"):
-            text = (ROOT / top).read_text()
+            text = " ".join((ROOT / top).read_text().split())
             with self.subTest(top=top):
                 for function in ("clks_per_bit", "frac_num", "frac_den"):
-                    self.assertIn(f"n2a_uart_{function}(25_000_000, N2A_UART_BOARD_BAUD)", text)
+                    self.assertIn(f"n2a_uart_pkg::n2a_uart_{function}( 25_000_000, "
+                                  "n2a_uart_pkg::N2A_UART_BOARD_BAUD)", text)
         self.assertIn("N2D_UART_BOARD_BAUD     = n2a_uart_pkg::N2A_UART_BOARD_BAUD",
                       (ROOT / "src/nand2doom/rtl/platform/n2d_pkg.sv").read_text())
         for top in ("src/nand2doom/fpga/de10_lite/n2d_de10_lite.sv",

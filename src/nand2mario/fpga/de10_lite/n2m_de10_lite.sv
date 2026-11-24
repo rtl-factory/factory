@@ -19,15 +19,16 @@
 // 5. VGA: the display tier's 4:4:4 RGB and syncs go straight to the
 //    resistor DAC pins.
 // 6. Status: LEDR[9:0] and HEX5..HEX0 (last retired PC, last serial byte).
-module n2m_de10_lite
-    import n2a_uart_pkg::*;
-#(
+module n2m_de10_lite #(
     // Loader UART bit period in system clocks: the factory board rate at
     // 25 MHz, 12 1/2 clocks through the PHY's fractional accumulator
     // (wiki/src/common/rtl/uart/mas.md).
-    parameter int unsigned UART_CLKS_PER_BIT = n2a_uart_clks_per_bit(25_000_000, N2A_UART_BOARD_BAUD),
-    parameter int unsigned UART_FRAC_NUM = n2a_uart_frac_num(25_000_000, N2A_UART_BOARD_BAUD),
-    parameter int unsigned UART_FRAC_DEN = n2a_uart_frac_den(25_000_000, N2A_UART_BOARD_BAUD),
+    parameter int unsigned UART_CLKS_PER_BIT = n2a_uart_pkg::n2a_uart_clks_per_bit(
+        25_000_000, n2a_uart_pkg::N2A_UART_BOARD_BAUD),
+    parameter int unsigned UART_FRAC_NUM = n2a_uart_pkg::n2a_uart_frac_num(
+        25_000_000, n2a_uart_pkg::N2A_UART_BOARD_BAUD),
+    parameter int unsigned UART_FRAC_DEN = n2a_uart_pkg::n2a_uart_frac_den(
+        25_000_000, n2a_uart_pkg::N2A_UART_BOARD_BAUD),
     // LEDR7 shows this bit of the free-running system-clock counter: 24 is a
     // 0.67 s toggle on the board; the board smoke shortens it to observe it.
     parameter int unsigned HEARTBEAT_BIT = 24
