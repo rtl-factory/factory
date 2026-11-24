@@ -1173,6 +1173,10 @@ def build(output: Path, repository: Path,
     capture_symbols = {}
     for line in symbols.splitlines():
         fields = line.split()
+        if fields and fields[-1].startswith("__emutls_v.") and fields[-1] != "__emutls_v.errno":
+            # Why: errno_tls.S answers only errno; another emulated thread-local
+            # would trap at its first access on the board.
+            raise RuntimeError(f"unsupported emulated thread-local: {fields[-1]}")
         if len(fields) == 4 and fields[3] in ("n2d_capture", "n2d_capture_identity"):
             address, size, kind, name = fields
             if name in capture_symbols:
