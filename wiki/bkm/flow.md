@@ -81,8 +81,9 @@ These workflows run outside the levels; they are workflow rules, not regression 
 | Level | Job | What it runs |
 |---|---|---|
 | L0 | `l0` (`.github/workflows/l0.yml`), on every pull request into `main` or an epic branch and every merge to `main` | one `bazel test --config=ci --config=l0 //...`: the comment lint (`//tools:comment_lint`), the wiki reference check (`//tools:wiki_refs`), the RTL lint gate (the coding-rule checker `//tools:rtl_lint` and Verilator `--lint-only -Wall` on every project top and common block, `//src/<project>:<top>.lint`), the unit tests of every project's scripts and of the tools, and every L0 simulation and formal target |
+| L2, L3, L4 | `regression` (`.github/workflows/regression.yml`), on `main` on a schedule (UTC): L2 at :17 every hour, L3 at :37 every 6 hours, L4 at 23:07 nightly; or by hand with a chosen level | one `bazel test --config=ci --config=l<n> //...` on the self-hosted runner; a failing level opens one `priority:P0` issue, `<level> regression fails on main`, or comments on the open one |
 
-L1 to L4 have no job yet: until the L1 job exists, a pull request into `main` runs only L0 in CI.
+L1 has no job yet: until it exists, a pull request into `main` runs only L0 in CI, and L1 targets run only inside the scheduled levels.
 
 ### Rules
 
@@ -94,7 +95,8 @@ L1 to L4 have no job yet: until the L1 job exists, a pull request into `main` ru
 ### Open
 
 - Runtime budget per level is not yet set.
-- L1 to L4 have no CI job yet; they will run on the self-hosted runner ([Runners](#runners)).
+- L1 has no CI job yet; it will run on the self-hosted runner ([Runners](#runners)).
+- A scheduled run waits in the queue while the self-hosted runner is offline (GitHub drops it after 24 hours); runs queued meanwhile collapse to at most two per level.
 
 ## Runners
 
@@ -125,7 +127,7 @@ On a host set up per the steps above, as the user that owns the toolchain:
 2. Download the latest `actions-runner-linux-x64-<version>.tar.gz` from `actions/runner` releases and unpack it into `~/actions-runners/rtl-factory/`.
 3. Register it: `./config.sh --unattended --url https://github.com/rtl-factory/factory --token <token> --name <host> --labels rtl-factory --work _work`. Add `quartus` to the labels when Quartus passes the readiness check.
 4. Check that `~/actions-runners/rtl-factory/.path` holds the `PATH` the checks need (it is the shell's `PATH` at registration, including `~/.local/bin` for Bazelisk).
-5. Install it as a systemd user service that starts at boot without a login: write `~/.config/systemd/user/actions-runner-rtl-factory.service` with `WorkingDirectory=%h/actions-runners/rtl-factory`, `ExecStart=%h/actions-runners/rtl-factory/run.sh`, `KillMode=process`, `Restart=always` and `WantedBy=default.target`; run `loginctl enable-linger $USER` (once per host) and `systemctl --user enable --now actions-runner-rtl-factory`. Why a user service and not `svc.sh`: it needs no root, and the runner keeps the toolchain user's home.
+5. Install it as a systemd user service that starts at boot without a login: write `~/.config/systemd/user/actions-runner-rtl-factory.service` with `WorkingDirectory=%h/actions-runners/rtl-factory`, `ExecStart=%h/actions-runners/rtl-factory/run.sh`, `KillMode=process`, `Restart=always`, `RestartSec=15`, `StartLimitIntervalSec=0` (under `[Unit]`) and `WantedBy=default.target`; run `loginctl enable-linger $USER` (once per host) and `systemctl --user enable --now actions-runner-rtl-factory`. Why a user service and not `svc.sh`: it needs no root, and the runner keeps the toolchain user's home. Why no start limit: a burst of quick failures, such as no network at boot, would otherwise leave the service failed for good.
 6. Check that the runner is online: `gh api repos/rtl-factory/factory/actions/runners --jq '.runners[] | {name, status}'`. Its log is `journalctl --user -u actions-runner-rtl-factory`.
 
 To remove a runner: `systemctl --user disable --now actions-runner-rtl-factory`, then `./config.sh remove --token <token>` with a token from `gh api -X POST repos/rtl-factory/factory/actions/runners/remove-token --jq .token`.
