@@ -37,6 +37,7 @@ ROOT = Path(__file__).resolve().parents[4]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from tools.board import jtag_chain  # noqa: E402
+from src.common.scripts.uart_mem import uart_mem as um  # noqa: E402
 
 DEFAULT_SOF = "workdir/quartus/n2m_de10_lite/output_files/n2m_de10_lite.sof"
 # Ref: board spec "Joypad": button to the Set-2 host key bytes the board decodes.
@@ -233,14 +234,14 @@ def parser() -> argparse.ArgumentParser:
     lo = sub.add_parser("load", help="load a cartridge image over the UART loader (dry-run dump without --yes)")
     lo.add_argument("image", help="cartridge image file")
     lo.add_argument("--port", help="serial device of the 3.3 V USB-to-UART adapter (pyserial)")
-    lo.add_argument("--baud", type=int, default=2_000_000, help="board loader rate (default 2000000)")
+    lo.add_argument("--baud", type=int, default=um.BOARD_BAUD, help=f"board loader rate (default {um.BOARD_BAUD})")
     lo.add_argument("--dump", default="workdir/n2m_board/load_frames.bin",
                     help="dry-run frame dump below workdir (default workdir/n2m_board/load_frames.bin)")
     lo.add_argument("--no-verify", action="store_true", help="skip the readback comparison")
     lo.add_argument("--yes", action="store_true", help="open the port and load; without it only the dump is written")
     sn = sub.add_parser("snapshot", help="read back the displayed frame over the UART loader (dry run without --yes)")
     sn.add_argument("--port", help="serial device of the 3.3 V USB-to-UART adapter (pyserial)")
-    sn.add_argument("--baud", type=int, default=2_000_000, help="board loader rate (default 2000000)")
+    sn.add_argument("--baud", type=int, default=um.BOARD_BAUD, help=f"board loader rate (default {um.BOARD_BAUD})")
     sn.add_argument("--out", default="workdir/n2m_board/snapshot",
                     help="capture stem below workdir, .bin and .json (default workdir/n2m_board/snapshot)")
     sn.add_argument("--plan-file", default="workdir/n2m_board/snapshot_frames.bin",

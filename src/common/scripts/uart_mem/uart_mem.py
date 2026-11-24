@@ -17,6 +17,8 @@ import zlib
 from dataclasses import dataclass, field
 from typing import Callable, Protocol, Sequence
 
+# Ref: wiki/src/common/rtl/uart/mas.md "Board rate": n2a_uart_pkg::N2A_UART_BOARD_BAUD.
+BOARD_BAUD = 2_000_000
 REQUEST_SOF = 0xA8
 RESPONSE_SOF = 0x8A
 VERSION = 0x01

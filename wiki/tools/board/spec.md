@@ -40,10 +40,10 @@ The declared loaders today:
 
 | Project | Loader | Rates |
 |---|---|---|
-| nand2doom | `n2d_play.py --skip-program --controls none`: Ping and Halt, stream load with digest skip, reset PC and Resume | 2 Mbaud on both |
-| nand2mario | `uart_mem_load.py --project 'n2m ' --yes` ([common UART memory host](../../src/common/scripts/uart_mem/spec.md#load-script)): identify, hold, write and verify the cartridge, entry, release | 2 Mbaud on both |
+| nand2doom | `uart_mem_load.py MANIFEST --project 'n2d ' --skip-unchanged --yes`: identify, hold, write and verify each manifest segment (unchanged data segments skipped by Digest; the program segment always written), entry, release | 2 Mbaud on both |
+| nand2mario | `uart_mem_load.py CARTRIDGE --project 'n2m ' --yes`: identify, hold, write and verify the cartridge, entry, release | 2 Mbaud on both |
 
-Both projects run the factory board rate, 2 Mbaud on every board, and both board UARTs answer the common UART memory endpoint (issue #129). nand2doom's declaration keeps `n2d_play.py` because its load also drives the Doom debug protocol.
+Every project loads through the one [common UART memory loader](../../src/common/scripts/uart_mem/spec.md#load-script), at the factory [board rate](../../src/common/rtl/uart/mas.md#board-rate), 2 Mbaud on every board (issue #129); `tools/board/tests` fails if a declaration names another loader. Project protocols (nand2doom's N2D1 streaming, nand2mario's frame snapshot) stay beside the common endpoint for their own tools.
 
 ## JTAG chain
 

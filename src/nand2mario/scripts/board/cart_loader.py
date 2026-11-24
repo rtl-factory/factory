@@ -20,6 +20,12 @@ from pathlib import Path
 import sys
 import time
 
+ROOT = Path(__file__).resolve().parents[4]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from src.common.scripts.uart_mem import uart_mem as um  # noqa: E402
+
 SYNC = 0xA5
 CRC_INIT, CRC_POLY = 0xFFFF, 0x1021
 CMD_PING, CMD_HOLD, CMD_RELEASE, CMD_WRITE, CMD_READ = 0x01, 0x02, 0x03, 0x04, 0x05
@@ -43,7 +49,7 @@ ROM_BYTES, RAM_BYTES = 1 << 21, 1 << 15
 MAX_PAYLOAD = 256
 HEADER_BYTES = 7                 # Ref: board spec "Loader protocol": SYNC, status, command, 24-bit address, length minus one.
 CRC_BYTES = 2
-DEFAULT_BAUD = 2_000_000   # Ref: wiki/src/nand2mario/rtl/has.md: the factory board rate, 12 1/2 clocks at 25 MHz
+DEFAULT_BAUD = um.BOARD_BAUD   # Ref: wiki/src/common/rtl/uart/mas.md "Board rate"
 # Why: each recovery loop (the SYNC search, the stale-frame discard, the drain
 # before a retry) is bounded, so a noisy or stuck link ends in an error, not a hang.
 RESYNC_LIMIT = 2 * (HEADER_BYTES + MAX_PAYLOAD + CRC_BYTES)
