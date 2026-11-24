@@ -82,32 +82,42 @@ async def _memory_model(
     controls: dict[str, object],
     stats: dict[str, int],
 ) -> None:
+    # Why: this runs every clock of every UART test, and per-edge handle lookups and
+    # rewrites of unchanged inputs were most of a bulk test's wall time (#230); handles
+    # are bound once and an input is written only when its value changes.
+    clock = dut.clk_i
+    req_ready, rsp_valid = dut.mem_req_ready_i, dut.mem_rsp_valid_i
+    rsp_rdata, rsp_error = dut.mem_rsp_rdata_i, dut.mem_rsp_error_i
+    txn_done, txn_error = dut.mem_txn_done_i, dut.mem_txn_error_i
+    txn_begin, txn_abort, txn_commit = dut.mem_txn_begin_o, dut.mem_txn_abort_o, dut.mem_txn_commit_o
+    req_valid, req_write = dut.mem_req_valid_o, dut.mem_req_write_o
+    req_addr, req_wdata, req_wstrb = dut.mem_req_addr_o, dut.mem_req_wdata_o, dut.mem_req_wstrb_o
     staged: dict[int, tuple[int, int]] = {}
     pending: tuple[bool, int, int, int] | None = None
-    dut.mem_req_ready_i.value = 1
-    dut.mem_rsp_valid_i.value = 0
-    dut.mem_rsp_rdata_i.value = 0
-    dut.mem_rsp_error_i.value = 0
-    dut.mem_txn_done_i.value = 0
-    dut.mem_txn_error_i.value = 0
+    inputs = [req_ready, rsp_valid, rsp_error, txn_done, txn_error]
+    driven = [1, 0, 0, 0, 0]
+    for handle, value in zip(inputs, driven):
+        handle.value = value
+    rsp_rdata.value = 0
+    edge = RisingEdge(clock)
 
     while True:
-        await RisingEdge(dut.clk_i)
-        dut.mem_req_ready_i.value = int(controls["ready"])
-        dut.mem_rsp_valid_i.value = 0
-        dut.mem_rsp_error_i.value = 0
-        dut.mem_txn_done_i.value = 0
-        dut.mem_txn_error_i.value = 0
+        await edge
+        # Why: writes land after this edge, so the handshake uses the ready the
+        # DUT saw at this edge, the value driven on the previous one.
+        ready_at_edge = driven[0]
+        ready = int(controls["ready"])
+        valid = error = done = 0
 
-        if int(dut.mem_txn_begin_o.value):
+        if int(txn_begin.value):
             staged = {}
             stats["begin"] += 1
-        if int(dut.mem_txn_abort_o.value):
+        if int(txn_abort.value):
             staged = {}
             pending = None
             stats["abort"] += 1
-            dut.mem_txn_done_i.value = 1
-        if int(dut.mem_txn_commit_o.value):
+            done = 1
+        if int(txn_commit.value):
             for address, (data, strobes) in staged.items():
                 original = memory.get(address, 0)
                 merged = original
@@ -118,7 +128,7 @@ async def _memory_model(
                 memory[address] = merged
             staged = {}
             stats["commit"] += 1
-            dut.mem_txn_done_i.value = 1
+            done = 1
 
         if (
             pending is not None
@@ -126,26 +136,27 @@ async def _memory_model(
             and pending[1] != controls["stall_address"]
         ):
             write, address, data, strobes = pending
-            dut.mem_rsp_valid_i.value = 1
+            valid = 1
             if controls["error"] or address == controls["error_address"]:
-                dut.mem_rsp_error_i.value = 1
+                error = 1
             elif write:
                 staged[address] = (data, strobes)
                 stats["staged"] += 1
             else:
-                dut.mem_rsp_rdata_i.value = memory.get(address, 0)
+                rsp_rdata.value = memory.get(address, 0)
             pending = None
-        elif (
-            int(dut.mem_req_valid_o.value)
-            and int(dut.mem_req_ready_i.value)
-            and pending is None
-        ):
+        elif ready_at_edge and pending is None and int(req_valid.value):
             pending = (
-                bool(dut.mem_req_write_o.value),
-                int(dut.mem_req_addr_o.value),
-                int(dut.mem_req_wdata_o.value),
-                int(dut.mem_req_wstrb_o.value),
+                bool(req_write.value),
+                int(req_addr.value),
+                int(req_wdata.value),
+                int(req_wstrb.value),
             )
+
+        for index, value in enumerate((ready, valid, error, done, 0)):
+            if driven[index] != value:
+                inputs[index].value = value
+                driven[index] = value
 
 
 @cocotb.test()
