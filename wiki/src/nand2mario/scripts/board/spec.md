@@ -34,6 +34,10 @@ A snapshot record is the displayed 160x144 frame read from the frame store: an e
 
 Without `--yes`, `program` prints the exact `quartus_pgm` command, and `load` and `snapshot` write their planned request frames to `workdir/`; no port or cable is opened. Every board operation has a deadline, and a transport error, timeout or interrupt releases the console and the frame pin before the command exits.
 
+## Tests
+
+The tests in `tests/` need no Quartus, cable or port. `n2m_board.py` and `frame_snapshot.py` resolve every path against a checkout root they take as `root` (default: this checkout); the tests pass a [scratch checkout](../../../../tools/bazel/spec.md#unit-tests), so they write nothing into the checkout's `workdir/` and pass whatever it holds, such as a stale image under `workdir/quartus/`.
+
 ## Origin
 
 Ported from the captain's nand2anything repository with the design (issue #67), where these were one board tool; regrouped into this folder in issue #74.

@@ -4,8 +4,6 @@ import importlib.util
 import io
 from pathlib import Path
 import re
-import shutil
-import tempfile
 import unittest
 from unittest import mock
 
@@ -18,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[5]
 spec = importlib.util.spec_from_file_location("n2d_timing", ROOT / "src/nand2doom/scripts/board/n2d_timing.py")
 timing = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(timing)
+from tools.bazel import scratch  # noqa: E402
 SDC = (ROOT / "src/nand2doom/fpga/de10_lite/de10_lite.sdc").read_text()
 CLOCK = "u_clock|u_pll|auto_generated|pll1|clk[0]"
 SLOW, FAST = "Slow 1200mV 85C Model", "Fast 1200mV 0C Model"
@@ -173,25 +172,23 @@ class TimingTests(unittest.TestCase):
                       "a half-cycle relationship</td>", rendered)
 
     def test_sta_only_refuses_a_clock_other_than_the_analyzed_one(self):
-        workdir = ROOT / "workdir"
-        workdir.mkdir(exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=workdir) as scratch:
-            output = Path(scratch) / "fitted"
-            (output / "db").mkdir(parents=True)
+        root = scratch.checkout(self)
+        output = root / "workdir" / "fitted"
+        (output / "db").mkdir(parents=True)
 
-            def fake_sta(command, cwd, log, timeout):
-                (cwd / "output_files").mkdir(exist_ok=True)
-                (cwd / "output_files" / "timing.tsv").write_text(TSV)
+        def fake_sta(command, cwd, log, timeout):
+            (cwd / "output_files").mkdir(exist_ok=True)
+            (cwd / "output_files" / "timing.tsv").write_text(TSV)
 
-            config = {"project": "n2d_de2_115", "timeout_seconds": 10}
-            with mock.patch.object(timing.build, "run", side_effect=fake_sta):
-                with self.assertRaisesRegex(ValueError, "analyzed system clock is 25 MHz"):
-                    timing.analyze(config, output, 50, 20, "/q/quartus_sh", sta_only=True)
-                self.assertFalse((output / "timing.json").exists())
-                self.assertFalse((output / "timing.md").exists())
-                result = timing.analyze(config, output, 25, 20, "/q/quartus_sh", sta_only=True)
-            self.assertEqual({"name": CLOCK, "period_ns": 40.0}, result["clock"])
-            self.assertTrue((output / "timing.md").read_text().startswith("System clock 25 MHz."))
+        config = {"project": "n2d_de2_115", "timeout_seconds": 10}
+        with mock.patch.object(timing.build, "run", side_effect=fake_sta):
+            with self.assertRaisesRegex(ValueError, "analyzed system clock is 25 MHz"):
+                timing.analyze(config, output, 50, 20, "/q/quartus_sh", sta_only=True, root=root)
+            self.assertFalse((output / "timing.json").exists())
+            self.assertFalse((output / "timing.md").exists())
+            result = timing.analyze(config, output, 25, 20, "/q/quartus_sh", sta_only=True, root=root)
+        self.assertEqual({"name": CLOCK, "period_ns": 40.0}, result["clock"])
+        self.assertTrue((output / "timing.md").read_text().startswith("System clock 25 MHz."))
 
     def test_parse_rejects_unknown_or_incomplete_records(self):
         with self.assertRaises(ValueError):
@@ -204,32 +201,32 @@ class TimingTests(unittest.TestCase):
             timing.parse(TSV + record("clock", FAST, CLOCK, "20.000") + "\n")
 
     def test_plan_writes_nothing_and_needs_no_tool(self):
-        before = sorted((ROOT / "workdir").rglob("timing.tcl")) if (ROOT / "workdir").exists() else []
+        root = scratch.checkout(self)
         with contextlib.redirect_stdout(io.StringIO()) as stdout:
-            self.assertEqual(0, timing.main(["--plan", "--quartus", "/nonexistent/quartus_sh"]))
+            self.assertEqual(0, timing.main(["--plan", "--quartus", "/nonexistent/quartus_sh"], root=root))
         self.assertIn("50 MHz: workdir/timing/n2d_de10_lite_50mhz", stdout.getvalue())
-        after = sorted((ROOT / "workdir").rglob("timing.tcl")) if (ROOT / "workdir").exists() else []
-        self.assertEqual(before, after)
+        self.assertEqual([], list((root / "workdir").iterdir()))
 
     def test_board_selection_and_build_dir(self):
+        root = scratch.checkout(self)
         de2_115 = (ROOT / "src/nand2doom/fpga/de2_115/n2d_de2_115.sdc").read_text()
         self.assertIn("-multiply_by 50 -divide_by 50", timing.what_if_sdc(de2_115, 50))
         with contextlib.redirect_stdout(io.StringIO()) as stdout:
-            self.assertEqual(0, timing.main(["--plan", "--board", "de2_115", "--mhz", "25"]))
+            self.assertEqual(0, timing.main(["--plan", "--board", "de2_115", "--mhz", "25"], root=root))
         self.assertIn("25 MHz: workdir/timing/n2d_de2_115_25mhz", stdout.getvalue())
         with contextlib.redirect_stdout(io.StringIO()) as stdout:
             self.assertEqual(0, timing.main(["--plan", "--board", "de2_115", "--mhz", "25", "--sta-only",
-                                             "--build-dir", "workdir/quartus/n2d_de2_115"]))
+                                             "--build-dir", "workdir/quartus/n2d_de2_115"], root=root))
         self.assertIn("25 MHz: workdir/quartus/n2d_de2_115", stdout.getvalue())
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             # Why: the build directory is analysis input only, so each plan needs one clock,
             # no compile, and a path inside workdir.
             self.assertEqual(1, timing.main(["--plan", "--board", "de2_115", "--sta-only",
-                                             "--build-dir", "workdir/quartus/n2d_de2_115"]))
+                                             "--build-dir", "workdir/quartus/n2d_de2_115"], root=root))
             self.assertEqual(1, timing.main(["--plan", "--mhz", "25",
-                                             "--build-dir", "workdir/quartus/n2d_de2_115"]))
+                                             "--build-dir", "workdir/quartus/n2d_de2_115"], root=root))
             self.assertEqual(1, timing.main(["--plan", "--mhz", "25", "--sta-only",
-                                             "--build-dir", "src/nand2doom"]))
+                                             "--build-dir", "src/nand2doom"], root=root))
 
 
 if __name__ == "__main__":

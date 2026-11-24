@@ -308,7 +308,9 @@ def unit_tests(deps = []):
             args = [native.package_name() + "/" + folder],
             data = native.glob([folder + "/**"]) + ["@verilator//:verilator"],
             env = {"UNIT_PATH_PREPEND": "$(rootpaths @verilator//:verilator)"},
-            deps = deps + ["//src/%s:python" % p for p in PROJECTS] + ["//tools:python"] + SIM_PYTHON + [
+            deps = deps + ["//src/%s:python" % p for p in PROJECTS] + SIM_PYTHON + [
+                "//tools:python",
+                "//tools/bazel:scratch",
                 requirement("pillow"),
                 requirement("pytest"),
             ],

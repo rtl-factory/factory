@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[5]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from src.nand2mario.scripts.board import n2m_board as board  # noqa: E402
+from tools.bazel import scratch  # noqa: E402
 from tools.quartus import build, gate, manifest  # noqa: E402
 
 GOLDEN = Path(__file__).resolve().parent / "qsf"
@@ -156,13 +157,14 @@ class N2mQuartusTests(unittest.TestCase):
                 self.assertFalse(exact(lines))
 
     def test_compile_plans_through_the_tool_and_refuses_the_library_on_de10_lite(self):
+        root = scratch.checkout(self)
         with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(io.StringIO()), \
                 patch.object(build, "run", side_effect=AssertionError("plan invoked Quartus")), \
                 patch.object(build, "stage", side_effect=AssertionError("plan staged files")):
-            self.assertEqual(board.main(["compile", "--plan"]), 0)
-            self.assertEqual(board.main(["compile", "--board", "de2_115", "--library", "--plan"]), 0)
-            self.assertNotEqual(board.main(["compile", "--board", "de10_lite", "--library", "--plan"]), 0)
-            self.assertNotEqual(board.main(["program", "--board", "de10_lite", "--library"]), 0)
+            self.assertEqual(board.main(["compile", "--plan"], root=root), 0)
+            self.assertEqual(board.main(["compile", "--board", "de2_115", "--library", "--plan"], root=root), 0)
+            self.assertNotEqual(board.main(["compile", "--board", "de10_lite", "--library", "--plan"], root=root), 0)
+            self.assertNotEqual(board.main(["program", "--board", "de10_lite", "--library"], root=root), 0)
         self.assertIn("de10_lite n2m_de10_lite: 10M50DAF484C7G, 25000000 Hz", stdout.getvalue())
         self.assertIn("de2_115 n2m_de2_115: EP4CE115F29C7, 25000000 Hz, CART_LIBRARY=1", stdout.getvalue())
 

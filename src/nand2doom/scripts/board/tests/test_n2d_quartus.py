@@ -15,6 +15,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[5]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+from tools.bazel import scratch  # noqa: E402
 from tools.quartus import build, manifest, quartus  # noqa: E402
 
 MANIFEST = "src/nand2doom/cfg/n2d_quartus.json"
@@ -113,8 +114,9 @@ class N2dQuartusTests(unittest.TestCase):
         self.assertFalse(allowed("n2d_memory_controller:u_memory|n2a_sdram_ctrl:u_sdram|x", "DRAM_CLK"))
 
     def test_plan_through_the_tool(self):
+        root = scratch.checkout(self)
         with contextlib.redirect_stdout(io.StringIO()) as stdout:
-            self.assertEqual(quartus.main(["--manifest", MANIFEST, "--board", "de2_115", "--plan"]), 0)
+            self.assertEqual(quartus.main(["--manifest", MANIFEST, "--board", "de2_115", "--plan"], root=root), 0)
         self.assertIn("de2_115 n2d_de2_115: EP4CE115F29C7, 25000000 Hz", stdout.getvalue())
         self.assertIn("timeout 5400 s per invocation; output workdir/quartus/n2d_de2_115", stdout.getvalue())
 

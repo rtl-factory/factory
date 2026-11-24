@@ -48,7 +48,7 @@ python3 src/nand2doom/scripts/board/n2d_timing.py [--board B] [--config PATH] [-
 python3 -m pytest src/nand2doom/scripts/board
 ```
 
-The tests need no Quartus. `test_n2d_quartus.py` checks the manifest: every top port bit has one pin, the Quartus closure is the board simulation's with the Intel backends, the SDRAM path rules, and the generated `.qsf` of both boards against `tests/qsf/`, the files the former `quartus.py` generated. The vendor-stub lint test needs Verilator and is skipped without it. Two timing tests also check that the board spec's timing tables keep their shape.
+The tests need no Quartus. `test_n2d_quartus.py` checks the manifest: every top port bit has one pin, the Quartus closure is the board simulation's with the Intel backends, the SDRAM path rules, and the generated `.qsf` of both boards against `tests/qsf/`, the files the former `quartus.py` generated. The vendor-stub lint test needs Verilator and is skipped without it. Two timing tests also check that the board spec's timing tables keep their shape. Every test that runs `n2d_timing.py` or the Quartus tool passes them a [scratch checkout](../../../../tools/bazel/spec.md#unit-tests) as `root`, so the tests write nothing into the checkout's `workdir/` and pass whatever it holds.
 
 ## Origin
 

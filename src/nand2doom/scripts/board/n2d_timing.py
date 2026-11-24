@@ -210,13 +210,14 @@ def markdown(result: dict, mhz: int) -> str:
     return "\n".join(lines) + "\n"
 
 
-def analyze(config: dict, output: Path, mhz: int, paths: int, executable: str, sta_only: bool) -> dict:
-    with build.build_lock(ROOT, output):
-        build.confined(ROOT, output)
+def analyze(config: dict, output: Path, mhz: int, paths: int, executable: str, sta_only: bool,
+            root: Path = ROOT) -> dict:
+    with build.build_lock(root, output):
+        build.confined(root, output)
         if not sta_only:
             if output.exists():
                 shutil.rmtree(output)
-            build.stage(ROOT, output, config)
+            build.stage(root, output, config)
             if mhz != BOARD_MHZ:
                 staged = output / config["constraints"]
                 staged.write_text(what_if_sdc(staged.read_text(), mhz))
@@ -235,7 +236,7 @@ def analyze(config: dict, output: Path, mhz: int, paths: int, executable: str, s
         return result
 
 
-def main(argv=None) -> int:
+def main(argv=None, root: Path = ROOT) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default="src/nand2doom/cfg/n2d_quartus.json")
     parser.add_argument("--board", choices=BOARDS, default=BOARDS[0],
@@ -252,28 +253,28 @@ def main(argv=None) -> int:
     parser.add_argument("--plan", action="store_true", help="validate and show outputs without writing")
     args = parser.parse_args(argv)
     try:
-        config = manifest.load(ROOT, args.config, args.board)
+        config = manifest.load(root, args.config, args.board)
         if not 1 <= args.paths <= 200:
             raise ValueError("--paths must be 1..200")
-        outputs = {mhz: ROOT / "workdir" / "timing" / f'{config["project"]}_{mhz}mhz'
+        outputs = {mhz: root / "workdir" / "timing" / f'{config["project"]}_{mhz}mhz'
                    for mhz in dict.fromkeys(args.mhz)}
         if args.build_dir:
             if not args.sta_only or len(outputs) != 1:
                 raise ValueError("--build-dir requires --sta-only and exactly one --mhz")
-            outputs = {mhz: build.confined(ROOT, (ROOT / args.build_dir).resolve())
+            outputs = {mhz: build.confined(root, (root / args.build_dir).resolve())
                        for mhz in outputs}
-        sdc = (ROOT / config["constraints"]).read_text()
+        sdc = (root / config["constraints"]).read_text()
         for mhz, output in outputs.items():
             if mhz != BOARD_MHZ:
                 what_if_sdc(sdc, mhz)
-            print(f"{mhz} MHz: {output.relative_to(ROOT)}")
+            print(f"{mhz} MHz: {output.relative_to(root)}")
         if args.plan:
             return 0
         executable = shutil.which(args.quartus or os.environ.get("QUARTUS_SH", "quartus_sh"))
         if not executable:
             raise ValueError("Quartus not found; pass --quartus or set QUARTUS_SH")
         for mhz, output in outputs.items():
-            analyze(config, output, mhz, args.paths, executable, args.sta_only)
+            analyze(config, output, mhz, args.paths, executable, args.sta_only, root)
             print((output / "timing.md").read_text())
         return 0
     except (OSError, ValueError, KeyError, RuntimeError, subprocess.TimeoutExpired) as error:
