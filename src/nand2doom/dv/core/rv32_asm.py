@@ -61,6 +61,13 @@ Deferred = Callable[[int, dict], int]
 Target = Union[int, str]
 
 
+def _check_signed(imm: int, bits: int, what: str) -> None:
+    """Refuse an immediate outside the field's signed range, as GNU as does,
+    instead of masking it to a different value."""
+    limit = 1 << (bits - 1)
+    assert -limit <= imm < limit, f"{what} immediate {imm} outside {-limit}..{limit - 1}"
+
+
 def encode_r(funct7: int, rs2: int, rs1: int, funct3: int, rd: int) -> int:
     return (
         ((funct7 & 0x7F) << 25)
@@ -73,10 +80,12 @@ def encode_r(funct7: int, rs2: int, rs1: int, funct3: int, rd: int) -> int:
 
 
 def encode_i(imm: int, rs1: int, funct3: int, rd: int, opcode: int = OPCODE_OP_IMM) -> int:
+    _check_signed(imm, 12, "I-type")
     return ((imm & 0xFFF) << 20) | ((rs1 & 31) << 15) | ((funct3 & 7) << 12) | ((rd & 31) << 7) | opcode
 
 
 def encode_s(imm: int, rs2: int, rs1: int, funct3: int) -> int:
+    _check_signed(imm, 12, "S-type")
     value = imm & 0xFFF
     return (
         (((value >> 5) & 0x7F) << 25)
@@ -89,6 +98,7 @@ def encode_s(imm: int, rs2: int, rs1: int, funct3: int) -> int:
 
 
 def encode_b(imm: int, rs2: int, rs1: int, funct3: int) -> int:
+    _check_signed(imm, 13, "branch")
     assert imm % 2 == 0
     value = imm & 0x1FFF
     return (
@@ -109,6 +119,7 @@ def encode_u(imm: int, rd: int, opcode: int) -> int:
 
 
 def encode_j(imm: int, rd: int) -> int:
+    _check_signed(imm, 21, "jal")
     assert imm % 2 == 0
     value = imm & 0x1FFFFF
     return (
@@ -233,20 +244,27 @@ def csrw(csr: int, rs1: int) -> int:
     return csrrw(X0, csr, rs1)
 
 
-def li(rd: int, value: int) -> list[int]:
-    """``addi`` alone when the value fits 12 signed bits, else ``lui`` + ``addi``."""
+def _split_hi_lo(value: int) -> tuple[int, int]:
+    """The ``%hi``/``%lo`` split of a 32-bit value: the upper part rounds up
+    when the low 12 bits are negative, so ``upper + lower`` is ``value``."""
     value &= MASK32
     upper = (value + 0x800) & 0xFFFFF000
-    lower = _signed32(value - upper)
+    return upper, _signed32(value - upper)
+
+
+def li(rd: int, value: int) -> list[int]:
+    """``addi`` alone when the value fits 12 signed bits, else ``lui`` + ``addi``."""
+    upper, lower = _split_hi_lo(value)
     if upper == 0:
         return [addi(rd, X0, lower)]
     return [lui(rd, upper >> 12), addi(rd, rd, lower)]
 
 
 def la(rd: int, label: str) -> list[Deferred]:
-    """rd = the address of ``label``: ``auipc`` + ``addi``, both relative to the ``auipc``."""
-    return [lambda pc, labels: auipc(rd, 0),
-            lambda pc, labels: addi(rd, rd, labels[label] - (pc - 4))]
+    """rd = the address of ``label``: ``auipc`` + ``addi``, both relative to the
+    ``auipc``, split with ``%pcrel_hi``/``%pcrel_lo`` as GNU as splits it."""
+    return [lambda pc, labels: auipc(rd, _split_hi_lo(labels[label] - pc)[0] >> 12),
+            lambda pc, labels: addi(rd, rd, _split_hi_lo(labels[label] - (pc - 4))[1])]
 
 
 def assemble(lines: list, base: int = 0) -> list[int]:

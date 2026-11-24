@@ -178,6 +178,44 @@ class PseudoInstructionTests(unittest.TestCase):
         words = assemble([NOP, *la(X8, "data"), NOP, "data:", 0], base=0x100)
         self.assertEqual(words[1:3], [auipc(X8, 0), addi(X8, X8, 12)])
 
+    def test_la_splits_a_far_offset_as_gnu_as_does(self):
+        # Why: the words are GNU as's ``la`` (``.option norelax``) to a label
+        # this many bytes from the auipc, so the auipc must carry the rounded
+        # upper part and the addi the signed low part.
+        for offset, expected in (
+            (2408, (0x0000_1417, 0x9684_0413)),
+            (2044, (0x0000_0417, 0x7FC4_0413)),
+            (2048, (0x0000_1417, 0x8004_0413)),
+            (-2048, (0x0000_0417, 0x8004_0413)),
+            (-2052, (0xFFFF_F417, 0x7FC4_0413)),
+            (0x5_0800, (0x0005_1417, 0x8004_0413)),
+        ):
+            with self.subTest(offset):
+                if offset > 0:
+                    lines = [*la(X8, "data"), *[0] * ((offset - 8) // 4), "data:", 0]
+                    words = assemble(lines)[:2]
+                else:
+                    lines = ["data:", *[0] * (-offset // 4), *la(X8, "data")]
+                    words = assemble(lines)[-2:]
+                self.assertEqual([f"{w:08x}" for w in words], [f"{w:08x}" for w in expected])
+
+    def test_out_of_range_immediates_are_refused(self):
+        refused = {
+            "addi 2048": lambda: addi(X1, X1, 2048),
+            "lw -2049": lambda: lw(X1, -2049, X2),
+            "sw 2048": lambda: sw(X1, 2048, X2),
+            "beq 8192": lambda: beq(X1, X2, 8192),
+            "beq 4096": lambda: beq(X1, X2, 4096),
+            "bne -4098": lambda: bne(X1, X2, -4098),
+            "jal 1 MiB": lambda: jal(X1, 1 << 20),
+            "jal -1 MiB - 2": lambda: jal(X1, -(1 << 20) - 2),
+            "label branch": lambda: assemble([beqz(X1, "far"), *[NOP] * 1024, "far:"]),
+            "label jump": lambda: assemble(["top:", *[NOP] * ((1 << 18) + 1), j("top")]),
+        }
+        for name, encode in refused.items():
+            with self.subTest(name), self.assertRaises(AssertionError):
+                encode()
+
     def test_out_of_range_operands_are_refused(self):
         with self.assertRaises(AssertionError):
             lui(X1, 1 << 20)
