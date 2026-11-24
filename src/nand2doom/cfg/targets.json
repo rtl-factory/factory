@@ -942,23 +942,6 @@
       "max_cycles": 24,
       "level": "L0"
     },
-    "common_sync_ram_invalid_addr_width": {
-      "kind": "native",
-      "description": "Common synchronous RAM address-width rejection",
-      "top": "n2a_sync_ram_invalid_addr_width_fixture",
-      "clock_hz": 25000000,
-      "timeout_seconds": 30,
-      "level": "L0",
-      "expected_fatal": {
-        "any_of": [
-          {
-            "file": "n2a_sync_ram.sv",
-            "hierarchy": "n2a_sync_ram_invalid_addr_width_fixture.dut.g_invalid_addr_width",
-            "message": "n2a_sync_ram ADDR_WIDTH must equal $clog2(DEPTH)"
-          }
-        ]
-      }
-    },
     "common_sync_ram_invalid_data_width": {
       "kind": "native",
       "description": "Common synchronous RAM zero data-width rejection",
@@ -1072,23 +1055,6 @@
       "max_cycles": 26,
       "level": "L0"
     },
-    "common_tdp_ram_invalid_addr_width": {
-      "kind": "native",
-      "description": "Common true-dual-port RAM address-width rejection",
-      "top": "n2a_tdp_ram_invalid_addr_width_fixture",
-      "clock_hz": 25000000,
-      "timeout_seconds": 30,
-      "level": "L0",
-      "expected_fatal": {
-        "any_of": [
-          {
-            "file": "n2a_tdp_ram_portable.sv",
-            "hierarchy": "n2a_tdp_ram_invalid_addr_width_fixture.dut.g_invalid_addr_width",
-            "message": "n2a_tdp_ram ADDR_WIDTH must equal $clog2(DEPTH)"
-          }
-        ]
-      }
-    },
     "common_tdp_ram_invalid_data_width": {
       "kind": "native",
       "description": "Common true-dual-port RAM zero data-width rejection",
@@ -1146,6 +1112,20 @@
       "default_seed": 20,
       "max_cycles": 16,
       "level": "L0"
+    }
+  },
+  "lint": {
+    "n2d_de10_lite": {
+      "libraries": [
+        "n2d_de10_lite",
+        "sld_virtual_jtag_stub"
+      ]
+    },
+    "n2d_de2_115": {
+      "libraries": [
+        "n2d_de2_115",
+        "sld_virtual_jtag_stub"
+      ]
     }
   }
 }

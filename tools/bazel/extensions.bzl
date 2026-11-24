@@ -1,9 +1,10 @@
 """Repositories the factory's HDL rules need (wiki/tools/bazel/spec.md).
 
 hdl_registry: the simulation targets of every src/<project>/cfg/targets.json and
-the formal targets of every src/<project>/fv/<block>/<target>.sby, with their
-libraries resolved into files by tools/bazel/hdl_libraries.py, as Starlark data
-the project packages turn into Bazel targets.
+the formal targets of every src/<project>/fv/<block>/<target>.sby and the lint
+tops derived from every src/<project>/cfg/libraries.json, with their libraries
+resolved into files by tools/bazel/hdl_libraries.py, as Starlark data the project
+packages turn into Bazel targets.
 verilator: the Verilator install the toolchain pinned (cfg/toolchain.json),
 found on PATH or under ~/verilator, version-checked and fingerprinted.
 oss_cad_suite: the OSS CAD Suite install the toolchain pinned, found under its
@@ -33,8 +34,8 @@ def _registry_impl(rctx):
                 if block.is_dir:
                     block.readdir(watch = "yes")
     rctx.file("BUILD.bazel", "")
-    rctx.file("targets.bzl", "SIM_TARGETS = json.decode(%r)\nFV_TARGETS = json.decode(%r)\n" %
-                             (json.encode(registry["sim"]), json.encode(registry["formal"])))
+    rctx.file("targets.bzl", "SIM_TARGETS = json.decode(%r)\nFV_TARGETS = json.decode(%r)\nLINT_TARGETS = json.decode(%r)\n" %
+                             (json.encode(registry["sim"]), json.encode(registry["formal"]), json.encode(registry["lint"])))
 
 hdl_registry = repository_rule(implementation = _registry_impl)
 

@@ -988,5 +988,19 @@
         "{workdir}"
       ]
     }
+  },
+  "lint": {
+    "n2m_de10_lite": {
+      "libraries": [
+        "n2m_de10_lite",
+        "sld_virtual_jtag_stub"
+      ]
+    },
+    "n2m_de2_115": {
+      "libraries": [
+        "n2m_de2_115",
+        "sld_virtual_jtag_stub"
+      ]
+    }
   }
 }

@@ -18,7 +18,7 @@ How the build meets its [requirements](prd.md). How agents use it day to day is 
 
 ## Repositories
 
-- `@hdl_registry` runs `tools/bazel/hdl_libraries.py registry` with the host's `python3`. It reads every `src/<project>/cfg/targets.json` and exposes them as `SIM_TARGETS`, a dictionary from project to its targets with their libraries resolved into `sources` and `headers`, and every `src/<project>/fv/<block>/<target>.sby` as `FV_TARGETS`: its header's level and timeout, and the files of its library. Bazel watches the files and folders it read, so editing a registry, a library list or a `.sby` file, or adding one, re-reads it. The formats are the runners' ([simulation](../sim/spec.md), [formal](../fv/spec.md)); nothing else lists targets.
+- `@hdl_registry` runs `tools/bazel/hdl_libraries.py registry` with the host's `python3`. It reads every `src/<project>/cfg/targets.json` and exposes them as `SIM_TARGETS`, a dictionary from project to its targets with their libraries resolved into `sources` and `headers`, every `src/<project>/fv/<block>/<target>.sby` as `FV_TARGETS`: its header's level and timeout, and the files of its library, and the lint tops (`hdl_libraries.py lint_tops`, with the `lint` objects of the registries) as `LINT_TARGETS`: each top's sources and headers. Bazel watches the files and folders it read, so editing a registry, a library list or a `.sby` file, or adding one, re-reads it. The formats are the runners' ([simulation](../sim/spec.md), [formal](../fv/spec.md)); nothing else lists targets.
 - `@oss_cad_suite` checks the `VERSION` stamp in the suite's install directory (`$OSS_CAD_SUITE`, else `install_dir` in `cfg/toolchain.json`) against the pin and links its `bin/` folder; the stamp is an input of every formal test. Without the pinned suite it provides an `sby` that prints the fix and fails, so only the formal tests fail.
 - `@verilator` finds the Verilator install (`$VERILATOR`, then `PATH`, then `~/verilator/bin`), checks `verilator --version` against `cfg/toolchain.json`, and links its executables into the repository. They are inputs of every model action, so a different binary rebuilds every model.
 
@@ -32,6 +32,7 @@ How the build meets its [requirements](prd.md). How agents use it day to day is 
 | `//src/<name>:<target>.spec` | The target's registry entry as JSON: the one input the runner reads |
 | `//src/<name>:<first>.model` | The Verilator model, named after the first target (in name order) that builds it |
 | `//src/<name>:<target>.formal` | A formal target's test, tagged with its level |
+| `//src/<name>:<top>.lint` | The Verilator lint of one of the project's lint tops, tagged `L0` and `lint` ([lint spec](../lint/spec.md#verilator-lint)) |
 
 It also makes `:python` (the project's Python, with every non-HDL file as data), `:headers` (its `.svh` and `.vh` files), `:all_files`, and exports every file, so another project's target can name it as a source.
 
@@ -39,7 +40,7 @@ Two cocotb targets share a model when their top, sources, parameters and public 
 
 ## Model action
 
-`verilator_model` runs `tools/sim/sim.py build-model --spec <spec> --out <dir>` in the sandbox, with only the target's sources, both projects' headers, the spec and Verilator as inputs, `SIM_ROOT=.` so the runner reads the sandbox rather than the checkout, and a fixed `PATH`. The runner builds the model as it always has (cocotb's Verilator flow, or `verilator --binary` for a native target) and deletes everything but the executable, so a cached model holds no object files. Each action reserves two CPUs; Bazel runs as many as fit.
+`verilator_model` runs `tools/sim/sim.py build-model --spec <spec> --out <dir>` in the sandbox, with only the target's sources, both projects' headers, the spec and Verilator as inputs, `SIM_ROOT=.` so the runner reads the sandbox rather than the checkout, a fixed `PATH`, and an empty `OBJCACHE`: a Verilator configured where `ccache` was on `PATH` names it in its `verilated.mk` (`OBJCACHE ?= ccache`), and the model build must not depend on it (`sim.py` sets the same default for builds outside Bazel). The runner builds the model as it always has (cocotb's Verilator flow, or `verilator --binary` for a native target) and deletes everything but the executable, so a cached model holds no object files. Each action reserves two CPUs; Bazel runs as many as fit.
 
 ## Test
 
@@ -59,7 +60,7 @@ A formal test runs `tools/fv/fv.py run <target>` with `FV_ROOT` set to its runfi
 
 `unit_tests()` (called in every project package, `//tools`, `//tools/sim` and `//tools/fv`) makes one test per `tests/` folder of its package, named after the folder's owner (`//src/nand2mario:scripts_board.unit`, `//tools:lint.unit`, `//tools/sim:sim.unit`): `tools/bazel/pytest_main.py` runs pytest on that folder with every project's and the tools' Python and the locked packages. Unit tests are tagged `L0`, `unit`, `no-sandbox` and `external`: they read the checkout (registries, wiki pages, programs), some write its `workdir/` or download pinned inputs, and the whole set takes seconds, so they always run rather than being cached. A new `tests/` folder in a package that calls `unit_tests()` becomes a test with no edit; a new package with tests must call it. The strict action PATH has no Verilator, so each unit test gets Bazel's `@verilator` and `pytest_main.py` puts it first on PATH (`UNIT_PATH_PREPEND`).
 
-`//tools:comment_lint` runs the comment lint as an L0 test, tagged `external` and `no-sandbox` because it lists the checkout's tracked files with git. It reads the base branch's baseline from `workdir/lint/base-baseline.json` when that file exists; the L0 job writes it from the pull request's base branch before `bazel test`. `//tools:wiki_refs` runs the wiki reference check the same way, with the same tags.
+`//tools:comment_lint` runs the comment lint as an L0 test, tagged `external` and `no-sandbox` because it lists the checkout's tracked files with git. It reads the base branch's baseline from `workdir/lint/base-baseline.json` when that file exists; the L0 job writes it from the pull request's base branch before `bazel test`. `//tools:wiki_refs` runs the wiki reference check the same way, with the same tags. `//tools:rtl_lint` runs the RTL rule checker the same way, against `workdir/lint/base-rtl-baseline.json`; the Verilator half of the RTL lint is the sandboxed, cached `<top>.lint` tests of the projects.
 
 ## Wrapped targets
 
@@ -85,7 +86,7 @@ Resolving lists every library after the libraries it needs, each once, so packag
 
 ## Levels and CI
 
-`--config=l<N>` filters tests by tag to levels L0…LN (`.bazelrc`). The L0 job fetches the base branch's comment baseline and runs `bazel test --config=ci --config=l0 //...`. On the self-hosted runner ([Runners](../../bkm/flow.md#runners)) the toolchain, Bazel and the disk cache stay on the host between runs. On a GitHub-hosted runner (pull requests from forks) it first installs Verilator and the OSS CAD Suite, sets up Bazel with `bazel-contrib/setup-bazel` (which keeps Bazelisk and the repository cache), restores the disk cache from the GitHub Actions cache under a key per commit, falling back to the newest earlier one, saves it again after the run, and adds `--config=ci-hosted` to cap that cache at what the Actions cache holds.
+`--config=l<N>` filters tests by tag to levels L0…LN (`.bazelrc`). The L0 job fetches the base branch's comment and RTL baselines and runs `bazel test --config=ci --config=l0 //...`. On the self-hosted runner ([Runners](../../bkm/flow.md#runners)) the toolchain, Bazel and the disk cache stay on the host between runs. On a GitHub-hosted runner (pull requests from forks) it first installs Verilator and the OSS CAD Suite, sets up Bazel with `bazel-contrib/setup-bazel` (which keeps Bazelisk and the repository cache), restores the disk cache from the GitHub Actions cache under a key per commit, falling back to the newest earlier one, saves it again after the run, and adds `--config=ci-hosted` to cap that cache at what the Actions cache holds.
 
 ## Hermeticity
 

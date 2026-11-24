@@ -18,7 +18,6 @@
 module n2a_sdp_ram_enabled #(
     parameter int unsigned DATA_WIDTH = 32,
     parameter int unsigned DEPTH = 256,
-    parameter int unsigned ADDR_WIDTH = $clog2(DEPTH),
     // Vendor selection facts. The DE10-Lite consumers use the defaults; another
     // Intel board wrapper may override them without changing the contract.
     parameter INTEL_DEVICE_FAMILY = "MAX 10",
@@ -27,15 +26,16 @@ module n2a_sdp_ram_enabled #(
     input  logic                                             clk_i,
     input  logic                                             read_enable_i,
     input  logic                                             write_enable_i,
-    input  logic [((ADDR_WIDTH < 1) ? 1 : ADDR_WIDTH)-1:0]  write_address_i,
+    input  logic [((DEPTH < 2) ? 1 : $clog2(DEPTH))-1:0]    write_address_i,
     input  logic [((DATA_WIDTH < 1) ? 1 : DATA_WIDTH)-1:0]  write_data_i,
-    input  logic [((ADDR_WIDTH < 1) ? 1 : ADDR_WIDTH)-1:0]  read_address_i,
+    input  logic [((DEPTH < 2) ? 1 : $clog2(DEPTH))-1:0]    read_address_i,
     output logic [((DATA_WIDTH < 1) ? 1 : DATA_WIDTH)-1:0]  read_data_o
 );
+    // Why: Quartus Lite rejects a localparam in the parameter port list, so
+    // the address ports derive their width from DEPTH and this reads it back.
+    localparam int unsigned ADDR_WIDTH = $bits(write_address_i);
     localparam int unsigned IMPLEMENTATION_DATA_WIDTH =
         (DATA_WIDTH < 1) ? 1 : DATA_WIDTH;
-    localparam int unsigned REQUIRED_ADDR_WIDTH =
-        (DEPTH < 2) ? 1 : $clog2(DEPTH);
     localparam bit DEPTH_IS_POWER_OF_TWO =
         (DEPTH >= 2) && ((DEPTH & (DEPTH - 1)) == 0);
 
@@ -43,8 +43,6 @@ module n2a_sdp_ram_enabled #(
         "n2a_sdp_ram DATA_WIDTH must be at least 1")
     `ASSERT_PARAM(g_invalid_depth, DEPTH_IS_POWER_OF_TWO,
         "n2a_sdp_ram DEPTH must be a power of two and at least 2")
-    `ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
-        "n2a_sdp_ram ADDR_WIDTH must equal $clog2(DEPTH)")
 
     // Why: pins that do not exist in DUAL_PORT mode stay unconnected, exactly as
     // Intel-generated wrappers leave them: the port-B write data input data_b
@@ -58,12 +56,12 @@ module n2a_sdp_ram_enabled #(
         .ram_block_type(INTEL_RAM_BLOCK_TYPE),
         .lpm_type("altsyncram"),
         .width_a(IMPLEMENTATION_DATA_WIDTH),
-        .widthad_a(REQUIRED_ADDR_WIDTH),
+        .widthad_a(ADDR_WIDTH),
         .numwords_a(DEPTH),
         .width_byteena_a(1),
         .outdata_reg_a("UNREGISTERED"),
         .width_b(IMPLEMENTATION_DATA_WIDTH),
-        .widthad_b(REQUIRED_ADDR_WIDTH),
+        .widthad_b(ADDR_WIDTH),
         .numwords_b(DEPTH),
         .address_reg_b("CLOCK0"),
         .rdcontrol_reg_b("CLOCK0"),
@@ -105,19 +103,18 @@ endmodule
 module n2a_sdp_ram #(
     parameter int unsigned DATA_WIDTH = 32,
     parameter int unsigned DEPTH = 256,
-    parameter int unsigned ADDR_WIDTH = $clog2(DEPTH),
     parameter INTEL_DEVICE_FAMILY = "MAX 10",
     parameter INTEL_RAM_BLOCK_TYPE = "M9K"
 ) (
     input logic clk_i,
     input logic write_enable_i,
-    input logic [((ADDR_WIDTH < 1) ? 1 : ADDR_WIDTH)-1:0] write_address_i,
+    input logic [((DEPTH < 2) ? 1 : $clog2(DEPTH))-1:0] write_address_i,
     input logic [((DATA_WIDTH < 1) ? 1 : DATA_WIDTH)-1:0] write_data_i,
-    input logic [((ADDR_WIDTH < 1) ? 1 : ADDR_WIDTH)-1:0] read_address_i,
+    input logic [((DEPTH < 2) ? 1 : $clog2(DEPTH))-1:0] read_address_i,
     output logic [((DATA_WIDTH < 1) ? 1 : DATA_WIDTH)-1:0] read_data_o
 );
     n2a_sdp_ram_enabled #(
-        .DATA_WIDTH(DATA_WIDTH), .DEPTH(DEPTH), .ADDR_WIDTH(ADDR_WIDTH),
+        .DATA_WIDTH(DATA_WIDTH), .DEPTH(DEPTH),
         .INTEL_DEVICE_FAMILY(INTEL_DEVICE_FAMILY),
         .INTEL_RAM_BLOCK_TYPE(INTEL_RAM_BLOCK_TYPE)
     ) u_enabled (

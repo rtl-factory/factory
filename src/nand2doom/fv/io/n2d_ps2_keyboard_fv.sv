@@ -161,8 +161,8 @@ module n2d_ps2_keyboard_fv (
         // Why: helper invariants, proven like any property, only narrow the reachable state for the proof.
         h_count_matches: assert (dut.fifo_q.fifo_count == ref_count_q);
         h_read_pointer_matches: assert (dut.fifo_q.fifo_read_pointer == ref_head_q);
-        h_extended_matches: assert (dut.scan_inject_q.extended_prefix == scan_extended_q);
-        h_break_matches: assert (dut.scan_inject_q.break_prefix == scan_break_q);
+        h_extended_matches: assert (dut.u_scan_decoder.pending_q.extended == scan_extended_q);
+        h_break_matches: assert (dut.u_scan_decoder.pending_q.key_break == scan_break_q);
         h_count_in_range: assert (ref_count_q <= 4'd8);
     end
     for (genvar j = 0; j < 8; j++) begin : g_slot

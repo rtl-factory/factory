@@ -23,6 +23,8 @@ Each project lists its targets in `src/<project>/cfg/targets.json`:
 | `wrapper` | Optional: module and arguments that prepare the program image and then run the target with `--direct`; `{output}` and `{workdir}` are filled in |
 | `expected_fatal` | Optional: makes it a negative test; `file`, `hierarchy`, `message` (or `any_of` a list of them) must appear in the log |
 
+The file's `targets` object holds the targets; its optional `lint` object belongs to the RTL lint, not the simulator ([lint spec](../lint/spec.md#verilator-lint)).
+
 Tests that check a registry read it through `sim.target_views(root)`: every target as a read-only object, with the fields above that a target leaves out filled with their defaults (`kind` `cocotb`, empty `parameters` and `defines`, no `test_module`, `testcase`, `default_seed` or `max_cycles`), lists as tuples and dictionaries as sorted item tuples. Project target tests use it instead of their own copy.
 
 ## Command line

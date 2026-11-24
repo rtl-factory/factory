@@ -1,8 +1,9 @@
-# L0 regression (wiki/bkm/flow.md CI levels): the comment lint, then one
-# `bazel test --config=l0 //...` for the scripts' and tools' unit tests, every L0
-# simulation target and every L0 formal target (cached between runs), on
-# Verilator, cocotb and the OSS CAD Suite at the versions pinned in
-# cfg/toolchain.json, tools/sim/requirements_lock.txt and .bazelversion.
+# L0 regression (wiki/bkm/flow.md CI levels): one `bazel test --config=l0 //...`
+# for the comment and RTL lints, the Verilator lint of every lint top, the scripts'
+# and tools' unit tests, every L0 simulation target and every L0 formal target
+# (cached between runs), on Verilator, cocotb and the OSS CAD Suite at the
+# versions pinned in cfg/toolchain.json, tools/sim/requirements_lock.txt and
+# .bazelversion.
 # Runs on the factory's self-hosted runner, which has the toolchain installed;
 # pull requests from forks run on a GitHub-hosted runner, which installs it
 # (wiki/bkm/flow.md, Runners).
@@ -32,15 +33,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch the base branch's comment baseline
-        # Why: //tools:comment_lint fails if this change raises the base's baseline.
+      - name: Fetch the base branch's lint baselines
+        # Why: //tools:comment_lint and //tools:rtl_lint fail if this change raises the base's baselines.
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
           mkdir -p workdir/lint
+          rm -f workdir/lint/base-baseline.json workdir/lint/base-rtl-baseline.json
           if [ -n "$BASE_REF" ] && git fetch -q --depth=1 origin "$BASE_REF"; then
             git show FETCH_HEAD:tools/lint/comment_baseline.json > workdir/lint/base-baseline.json 2>/dev/null \
               || rm -f workdir/lint/base-baseline.json
+            git show FETCH_HEAD:tools/lint/rtl_baseline.json > workdir/lint/base-rtl-baseline.json 2>/dev/null \
+              || rm -f workdir/lint/base-rtl-baseline.json
           fi
 
       - name: Read the Verilator pin
@@ -55,7 +59,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/verilator
-          key: verilator-${{ steps.pin.outputs.tag }}-${{ runner.os }}-ubuntu-24.04
+          key: verilator-${{ steps.pin.outputs.tag }}-${{ steps.pin.outputs.commit }}-${{ runner.os }}-ubuntu-24.04
 
       - name: Build Verilator
         if: runner.environment == 'github-hosted' && steps.cache.outputs.cache-hit != 'true'
@@ -67,7 +71,8 @@ jobs:
           # Why: a tag can be moved; the pinned commit is the checksum of the source.
           test "$(git rev-parse HEAD)" = "${{ steps.pin.outputs.commit }}" || { echo "v${{ steps.pin.outputs.version }} is not commit ${{ steps.pin.outputs.commit }}"; exit 1; }
           autoconf
-          ./configure --prefix="$HOME/verilator"
+          # Why: a ccache found here would be baked into verilated.mk (spec: Install (Verilator)).
+          ac_cv_prog_OBJCACHE= ./configure --prefix="$HOME/verilator"
           make -j"$(nproc)"
           make install
 
