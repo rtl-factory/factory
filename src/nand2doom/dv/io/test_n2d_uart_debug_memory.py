@@ -6,6 +6,8 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge
 
+from src.common.dv.driven_inputs import DrivenInputs
+
 from src.nand2doom.scripts.host.n2d_uart_debug_host import CMD_LOAD, CMD_PEEK, ST_MEMORY, ST_OK, request
 from .test_n2d_uart_debug import _exchange
 
@@ -35,12 +37,12 @@ async def serial_commit_rollback_contract(dut):
                "done_seen": False, "grant_held": True, "premature_tx": False}
 
     async def line_model():
+        pins = DrivenInputs(dut, line_response_valid_i=0, line_response_error_i=0)
         pending = None
         delay = 0
         while True:
             await RisingEdge(dut.clk_i)
-            dut.line_response_valid_i.value = 0
-            dut.line_response_error_i.value = 0
+            pins.drive(line_response_valid_i=0, line_response_error_i=0)
             if int(dut.transaction_commit_o.value):
                 control["commit_seen"] = True
             if control["commit_seen"] and not control["done_seen"]:
@@ -53,12 +55,12 @@ async def serial_commit_rollback_contract(dut):
                     delay -= 1
                 else:
                     write, address, data, enables = pending
-                    dut.line_response_valid_i.value = 1
+                    pins.drive(line_response_valid_i=1)
                     dut.line_response_data_i.value = memory.get(address, 0)
                     if write:
                         control["write_count"] += 1
                         if control["write_count"] == control["fail_write"]:
-                            dut.line_response_error_i.value = 1
+                            pins.drive(line_response_error_i=1)
                             control["fail_write"] = -1
                         else:
                             value = memory.get(address, 0)

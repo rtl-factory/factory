@@ -2,6 +2,8 @@
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge
+
+from src.common.dv.driven_inputs import DrivenInputs
 from .test_n2d_uart_bulk import exchange
 from .test_n2d_uart_debug import _uart_send
 from src.nand2doom.scripts.host.n2d_uart_debug_host import request, CMD_RESUME
@@ -26,6 +28,7 @@ async def bulk_partial_commit_rollback(dut):
     stats = dict(commits=0, completions=0, errors=0, refresh_stalls=0)
 
     async def model():
+        pins = DrivenInputs(dut, line_request_ready_i=1, line_response_valid_i=0, line_response_error_i=0)
         pending = None
         delay = 0
         cycle = 0
@@ -38,9 +41,8 @@ async def bulk_partial_commit_rollback(dut):
             # responses vary independently, without stalls long enough to trip
             # the RTL operation watchdog.
             ready = cycle % 47 >= 9
-            dut.line_request_ready_i.value = ready
-            dut.line_response_valid_i.value = 0
-            dut.line_response_error_i.value = 0
+            pins.drive(line_request_ready_i=ready)
+            pins.drive(line_response_valid_i=0, line_response_error_i=0)
             stats["refresh_stalls"] += not ready
             if int(dut.transaction_commit_o.value):
                 committing = True
@@ -57,7 +59,7 @@ async def bulk_partial_commit_rollback(dut):
                     delay -= 1
                 else:
                     write, address, data, mask = pending
-                    dut.line_response_valid_i.value = 1
+                    pins.drive(line_response_valid_i=1)
                     dut.line_response_data_i.value = memory.get(address, 0)
                     if write:
                         writes.append((address, data, mask))
@@ -66,7 +68,7 @@ async def bulk_partial_commit_rollback(dut):
                         # reached memory checks that a partial chunk is
                         # reported as failed.
                         if len(writes) == 10 and not failed:
-                            dut.line_response_error_i.value = 1
+                            pins.drive(line_response_error_i=1)
                             failed = True
                         else:
                             value = memory.get(address, 0)
