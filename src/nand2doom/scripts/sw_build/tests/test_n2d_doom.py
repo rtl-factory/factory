@@ -22,12 +22,6 @@ from src.nand2doom.scripts.sw_build import n2d_doom  # noqa: E402
 from tools.bazel import scratch  # noqa: E402
 
 
-def _ar_member(name: str, payload: bytes) -> bytes:
-    header = (f"{name:<16}{0:<12}{0:<6}{0:<6}{100644:<8}"
-              f"{len(payload):<10}").encode("ascii") + b"`\n"
-    return header + payload + (b"\n" if len(payload) & 1 else b"")
-
-
 def _tarball(entries: dict[str, bytes]) -> bytes:
     stream = io.BytesIO()
     with tarfile.open(fileobj=stream, mode="w") as archive:
@@ -326,7 +320,6 @@ class N2dDoomToolTests(unittest.TestCase):
         self.assertEqual(recipe["compiler_options"]["engine_flags"], ["-O2", "-flto=1"])
         self.assertEqual(recipe["compiler_options"]["platform_flags"], ["-Os", "-fno-lto"])
         self.assertIn("capture.c", recipe["platform_sources"])
-        self.assertIn("errno_tls.S", recipe["platform_sources"])
         self.assertEqual(recipe["identity_object"], "capture_identity.o")
         self.assertEqual(recipe["defines"], ["-DN2D_DETERMINISTIC_TIME=1"])
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
@@ -500,96 +493,27 @@ class N2dDoomToolTests(unittest.TestCase):
                     n2d_doom.prepare(output, self.root)
                 download.assert_not_called()
 
-    def test_picolibc_override_requires_pinned_consumed_artifacts(self) -> None:
+    def test_picolibc_verification_hashes_consumed_artifacts_and_rejects_tls(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             prefix = Path(temporary)
-            relative = "lib/picolibc/lib/rv32im/ilp32/libc.a"
-            artifact = prefix / relative
-            artifact.parent.mkdir(parents=True)
-            artifact.write_bytes(b"pinned libc fixture\n")
-            expected = n2d_doom._sha256(artifact)
-            include = prefix / "include"
-            (include / "sys").mkdir(parents=True)
-            (include / "stdio.h").write_bytes(b"stdio fixture\n")
-            transitive = include / "sys/types.h"
-            transitive.write_bytes(b"types fixture\n")
-            include_digest = n2d_doom._tree_sha256(include)
-            with (mock.patch.object(
-                    n2d_doom, "PICOLIBC_ARTIFACT_SHA256", {relative: expected}),
-                  mock.patch.object(n2d_doom, "PICOLIBC_INCLUDE_ROOT", "include"),
-                  mock.patch.object(
-                      n2d_doom, "PICOLIBC_INCLUDE_TREE_SHA256", include_digest
-                  )):
-                self.assertEqual(
-                    {relative: expected, "include/": include_digest},
-                    n2d_doom._verify_picolibc(prefix),
-                )
-                transitive.write_bytes(b"mutated transitive header\n")
-                with self.assertRaisesRegex(RuntimeError, "include tree digest"):
-                    n2d_doom._verify_picolibc(prefix)
-
-    def test_deb_extraction_needs_no_host_package_tools(self) -> None:
-        # Why: xz exercises the ar walk, member selection and extraction filter on
-        # every supported Python; zstd decoding has its own test below.
-        package_root = self.enterContext(tempfile.TemporaryDirectory())
-        root = Path(package_root)
-        package = root / "fixture.deb"
-        package.write_bytes(
-            b"!<arch>\n" + _ar_member("debian-binary", b"2.0\n")
-            + _ar_member("control.tar.xz",
-                         lzma.compress(_tarball({"control": b"x"})))
-            + _ar_member("data.tar.xz", lzma.compress(
-                _tarball({"./usr/lib/odd.a": b"odd", "./usr/share/c": b"c"})))
-        )
-        with mock.patch.object(n2d_doom.subprocess, "run") as run:
-            n2d_doom._extract_deb_data(package, root / "out")
-            run.assert_not_called()
-        self.assertEqual((root / "out/usr/lib/odd.a").read_bytes(), b"odd")
-        self.assertEqual((root / "out/usr/share/c").read_bytes(), b"c")
-        self.assertFalse((root / "out/control").exists())
-
-        package.write_bytes(b"!<arch>\n" + _ar_member(
-            "data.tar.xz", lzma.compress(_tarball({"../outside": b"x"}))))
-        with self.assertRaises(tarfile.FilterError):
-            n2d_doom._extract_deb_data(package, root / "escape")
-        self.assertFalse((root / "outside").exists())
-        package.write_bytes(b"!<arch>\n" + _ar_member("data.tar.bz2", b"x"))
-        with self.assertRaisesRegex(RuntimeError, "unsupported package data"):
-            n2d_doom._extract_deb_data(package, root / "none")
-        package.write_bytes(b"!<arch>\n" + _ar_member("control.tar.zst", b"x"))
-        with self.assertRaisesRegex(RuntimeError, "no data member"):
-            n2d_doom._extract_deb_data(package, root / "none")
-        package.write_bytes(b"not an archive")
-        with self.assertRaisesRegex(RuntimeError, "not an ar archive"):
-            n2d_doom._extract_deb_data(package, root / "none")
-
-    def test_deb_zstd_data_member_extracts(self) -> None:
-        try:
-            zstd = n2d_doom._zstd("data.tar.zst", Path("fixture.deb"))
-        except RuntimeError:
-            self.skipTest("neither compression.zstd nor backports.zstd is installed")
-        package_root = self.enterContext(tempfile.TemporaryDirectory())
-        root = Path(package_root)
-        package = root / "fixture.deb"
-        package.write_bytes(b"!<arch>\n" + _ar_member(
-            "data.tar.zst", zstd.compress(_tarball({"./usr/lib/odd.a": b"odd"}))))
-        with mock.patch.object(n2d_doom.subprocess, "run") as run:
-            n2d_doom._extract_deb_data(package, root / "out")
-            run.assert_not_called()
-        self.assertEqual((root / "out/usr/lib/odd.a").read_bytes(), b"odd")
-
-    def test_deb_zstd_without_any_zstd_module_names_both(self) -> None:
-        package_root = self.enterContext(tempfile.TemporaryDirectory())
-        package = Path(package_root) / "fixture.deb"
-        package.write_bytes(b"!<arch>\n" + _ar_member("data.tar.zst", b"x"))
-        # Why: a None entry makes the import raise ModuleNotFoundError on any Python, so
-        # the test runs everywhere.
-        with mock.patch.dict(sys.modules,
-                             {"compression": None, "compression.zstd": None,
-                              "backports": None, "backports.zstd": None}):
-            with self.assertRaisesRegex(
-                    RuntimeError, "needs compression.zstd"):
-                n2d_doom._extract_deb_data(package, Path(package_root) / "out")
+            for relative in (*n2d_doom.PICOLIBC_CONSUMED, n2d_doom.PICOLIBC_COPYRIGHT_PATH):
+                (prefix / relative).parent.mkdir(parents=True, exist_ok=True)
+                (prefix / relative).write_bytes(relative.encode())
+            config = prefix / "include/picolibc.h"
+            config.parent.mkdir(parents=True)
+            config.write_text("#undef NEWLIB_TLS\n#undef PICOLIBC_TLS\n#define TINY_STDIO\n")
+            hashes = n2d_doom._verify_picolibc(prefix)
+            self.assertEqual(n2d_doom._sha256(prefix / "lib/libc.a"), hashes["lib/libc.a"])
+            self.assertEqual(n2d_doom._tree_sha256(prefix / "include"), hashes["include/"])
+            config.write_text("#define PICOLIBC_TLS\n")
+            with self.assertRaisesRegex(RuntimeError, "thread-local storage"):
+                n2d_doom._verify_picolibc(prefix)
+            config.unlink()
+            with self.assertRaisesRegex(RuntimeError, "configuration header missing"):
+                n2d_doom._verify_picolibc(prefix)
+            (prefix / "lib/libdummyhost.a").unlink()
+            with self.assertRaisesRegex(RuntimeError, "artifact missing"):
+                n2d_doom._verify_picolibc(prefix)
 
     def test_warning_exceptions_apply_only_to_upstream_sources(self) -> None:
         arguments = ("gcc", Path("engine"), Path("include"), Path("output"),
@@ -837,31 +761,72 @@ class N2dDoomToolTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             repository = Path(temporary)
             source = repository / n2d_doom.VARIANTS["production"]["output"]
-            partial = source / "toolchain/usr/include/stdio.h"
+            partial = source / "toolchain/picolibc/include/stdio.h"
             partial.parent.mkdir(parents=True)
             partial.write_bytes(b"production")
             target = (repository / n2d_doom.VARIANTS["deterministic"]["output"]).resolve()
             n2d_doom._seed_inputs(target, repository)
             self.assertFalse((target / "toolchain").exists())
-            # Why: a partial tree that shares a link must be re-extracted from scratch: the
+            # Why: a partial tree that shares a link must be rebuilt from scratch: the
             # link is removed, never written through.
-            shared = target / "toolchain/usr/include/stdio.h"
+            shared = target / "toolchain/picolibc/include/stdio.h"
             shared.parent.mkdir(parents=True)
             os.link(partial, shared)
-            package = target / "downloads" / f"picolibc-{n2d_doom.PICOLIBC_VERSION}.deb"
-
-            def extract(_package, root):
-                (root / "usr/include").mkdir(parents=True)
-                (root / "usr/include/stdio.h").write_bytes(b"extracted")
-                (root / n2d_doom.TOOLCHAIN_LIBC).parent.mkdir(parents=True)
-                (root / n2d_doom.TOOLCHAIN_LIBC).write_bytes(b"libc")
-
-            with mock.patch.object(n2d_doom, "_download"), \
-                 mock.patch.object(n2d_doom, "_extract_deb_data", side_effect=extract):
-                n2d_doom._picolibc(target, None)
-            self.assertFalse(package.exists())  # Why: the download is mocked, so no package file appears
-            self.assertEqual(shared.read_bytes(), b"extracted")
+            runs = self._fake_picolibc_source(target)
+            with self._fake_picolibc_build(runs):
+                n2d_doom._picolibc(target, None, "gcc")
+            self.assertEqual(shared.read_bytes(), b"built")
             self.assertEqual(partial.read_bytes(), b"production")
+
+    def test_picolibc_build_is_reused_until_its_recipe_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary)
+            runs = self._fake_picolibc_source(output)
+            with self._fake_picolibc_build(runs):
+                prefix = n2d_doom._picolibc(output, None, "gcc")
+                self.assertEqual(2, len(runs))  # Why: meson setup, then meson install
+                setup = runs[0]
+                self.assertIn("-Dthread-local-storage=false", setup)
+                cross = Path(next(a for a in setup if a.startswith("--cross-file="))
+                             .split("=", 1)[1]).read_text()
+                self.assertIn("-msave-restore", cross)
+                self.assertEqual(b"license", (prefix / "COPYING.picolibc").read_bytes())
+                n2d_doom._picolibc(output, None, "gcc")
+                self.assertEqual(2, len(runs))
+            with self._fake_picolibc_build(runs, version="gcc 2"):
+                n2d_doom._picolibc(output, None, "gcc")
+                self.assertEqual(4, len(runs))
+            self.assertEqual(Path("/override"),
+                             n2d_doom._picolibc(output, Path("/override"), "gcc"))
+
+    @staticmethod
+    def _fake_picolibc_source(output: Path) -> list:
+        source = output / "downloads" / f"picolibc-{n2d_doom.PICOLIBC_VERSION}.tar.xz"
+        source.parent.mkdir(parents=True, exist_ok=True)
+        tree = f"picolibc-{n2d_doom.PICOLIBC_VERSION}/"
+        source.write_bytes(lzma.compress(_tarball({tree + "COPYING.picolibc": b"license",
+                                                   tree + "meson.build": b""})))
+        return []
+
+    @staticmethod
+    @contextlib.contextmanager
+    def _fake_picolibc_build(runs: list, version: str = "gcc 1"):
+        def run(command, **_):
+            runs.append(command)
+            if "install" in command:
+                prefix = Path(next(a for a in runs[-2] if a.startswith("--prefix="))
+                              .split("=", 1)[1])
+                (prefix / "include").mkdir(parents=True)
+                (prefix / "include/stdio.h").write_bytes(b"built")
+                (prefix / "lib").mkdir()
+                (prefix / "lib/libc.a").write_bytes(b"libc")
+                Path(command[command.index("-C") + 1]).mkdir(exist_ok=True)
+
+        with mock.patch.object(n2d_doom, "_download"), \
+             mock.patch.object(n2d_doom, "_version", return_value=version), \
+             mock.patch.object(n2d_doom.n2d_image, "_tool", side_effect=lambda _n, d: d), \
+             mock.patch.object(n2d_doom.subprocess, "run", side_effect=run):
+            yield
 
     @staticmethod
     def _guarded(source: str, line: str) -> bool:

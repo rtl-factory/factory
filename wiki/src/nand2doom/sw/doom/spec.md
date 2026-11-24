@@ -17,7 +17,8 @@ file whose digest is recorded outside source history.
 
 ## Doom image
 
-- **Libraries.** Pinned Picolibc 1.8.6 with fail-closed host calls; `_sbrk`
+- **Libraries.** Picolibc 1.8.6 built from its pinned source with the pinned
+  GCC, without thread-local storage, with fail-closed host calls; `_sbrk`
   exposes only the linker-bounded heap. `-msmall-data-limit=0`, explicit
   RV32IM libgcc, non-PIC, no relaxation.
 - **Layout.** Text, data, TLS and BSS below the libc heap end `0x0070_0000`; a
@@ -27,9 +28,8 @@ file whose digest is recorded outside source history.
   accepts only `freedoom1.wad` and bounds every read.
 - **TLS.** `.tdata`/`.tbss` precede BSS; startup points `tp` at the TLS block
   and zeroes TLS and BSS; a pre-engine self-check proves `errno` and heap
-  sentinels independent, else publishes a distinct failure marker. The pinned
-  GCC has no native TLS, so `errno_tls.S` answers its emulated-TLS `errno`
-  accesses with Picolibc's real TLS `errno`.
+  sentinels independent, else publishes a distinct failure marker. Picolibc
+  is built without TLS, so `errno` is a plain global and the block is empty.
 - **Networking** is out of scope: the adapter returns the zero WAD-directory
   checksum instead of peer hashing.
 

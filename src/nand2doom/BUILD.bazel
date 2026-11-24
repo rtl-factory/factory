@@ -5,8 +5,8 @@ load("//tools/bazel:hdl.bzl", "hdl_project", "quartus_image", "unit_tests")
 # (wiki/tools/bazel/spec.md).
 hdl_project(
     name = "nand2doom",
-    # Why: the Doom build unpacks the Picolibc .zst package under Python 3.12 (#224).
-    python_deps = [requirement("backports.zstd")],
+    # Why: the Doom build builds Picolibc from its pinned source with Meson and Ninja (#231).
+    python_deps = [requirement("meson"), requirement("ninja")],
     # Why: the C-program tests build with the pinned RV32 GCC, not the host's (#226).
     rv32_gcc = True,
 )

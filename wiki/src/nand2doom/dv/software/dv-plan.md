@@ -59,10 +59,9 @@ CPU/cache/device path. The input witness matches fixed call sites in
 profile inlines, so this gate uses the `-Os` profile, as render verification
 does (#100). A passing run takes about 25 minutes (1,494 s of `sim.py` wall
 time, 1,476 s in cocotb; Verilator 5.052). The build runs inside the cocotb
-process and cannot take `--picolibc-prefix`: extracting the Picolibc package
-needs cocotb's Python at 3.14 (`compression.zstd`), unless a complete extracted
-toolchain is already at `workdir/software/n2d_doom/toolchain/`, which the build
-seeds from (#100 shows how to extract it by hand).
+process and cannot take `--picolibc-prefix`: it builds Picolibc from source with
+the pinned GCC (about a minute), unless a complete matching build is already at
+`workdir/software/n2d_doom/toolchain/`, which the build seeds from.
 
 - **Scene.** Trap-free boot, runtime/TLS self-check, engine boot marker, all
   64,000 bytes, the `D_Display` completed-scene marker (an intermediate wipe

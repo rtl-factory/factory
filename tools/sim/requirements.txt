@@ -7,5 +7,6 @@ pytest==9.1.1
 pillow==12.3.0
 # The board console's terminal app (wiki/tools/board/spec.md).
 textual==8.2.8
-# zstd for the nand2doom Doom build's Picolibc package under Python 3.12 (#224).
-backports.zstd==1.0.0
+# Meson and Ninja build Picolibc for the nand2doom Doom image from its pinned source (#231).
+meson==1.6.1
+ninja==1.11.1.4

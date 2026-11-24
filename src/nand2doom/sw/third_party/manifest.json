@@ -17,10 +17,10 @@
       "license": "BSD-3-Clause"
     },
     {
-      "file": "workdir/downloads/nand2doom/picolibc-1.8.6-2.deb",
-      "sha256": "9563bbe39bbdf4eda1970ced8c54e5df47a112d91427fc4fc38100428fd23a9b",
-      "bytes": 157988340,
-      "origin": "http://archive.ubuntu.com/ubuntu/pool/universe/p/picolibc/picolibc-riscv64-unknown-elf_1.8.6-2_all.deb",
+      "file": "workdir/downloads/nand2doom/picolibc-1.8.6.tar.xz",
+      "sha256": "9549aac02bef6b2761af124392a7ffc6bbc8dfc8541b698ac032567b516c9b34",
+      "bytes": 3136540,
+      "origin": "https://github.com/picolibc/picolibc/releases/download/1.8.6/picolibc-1.8.6.tar.xz",
       "license": "See PICOLIBC-COPYRIGHT; component-specific licenses"
     }
   ],

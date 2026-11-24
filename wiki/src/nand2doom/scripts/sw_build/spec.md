@@ -48,11 +48,13 @@ python3 src/nand2doom/scripts/sw_build/n2d_doom.py build [--variant production|d
 |---|---|
 | DoomGeneric | `ozkl/doomgeneric` at `dcb7a8db…`, archive SHA-256 pinned, GPL-2.0-or-later |
 | Freedoom Phase 1 | v0.13.0 release ZIP, its SHA-256 and the `freedoom1.wad` SHA-256 and length (28,795,076 bytes) pinned, BSD-3-Clause |
-| Picolibc | `picolibc-riscv64-unknown-elf` 1.8.6-2 Ubuntu package, its SHA-256, the SHA-256 of each consumed library and the copyright file, and the include tree's SHA-256 pinned |
+| Picolibc | 1.8.6 source release, its SHA-256 pinned; built by the Doom build (below), BSD-family |
 
 Each download lands in `<output>/downloads/`. A file already there with the pinned digest is kept. Otherwise the copy in `workdir/downloads/nand2doom/` is used if present; it must be a regular file with the pinned digest, else the build stops ("cached input changed"). With no cached copy the input is fetched from its URL (60 s timeout) and, once its digest checks, copied into the cache when the cache can be written (under `bazel test` it cannot, and the fetch is still used). A destination or temporary that is a link is refused. Another variant's output first hard-links (or copies) the production output's `downloads/` and complete `toolchain/` trees, and every file is checked again.
 
-`--picolibc-prefix` uses an installed Picolibc instead of the package; it must hold the pinned consumed artifacts and include tree. The package is unpacked in Python (`ar`, then `data.tar`, `.gz`, `.xz` or `.zst`, the last through Python 3.14's `compression.zstd` or the pinned `backports.zstd`), with no host package manager.
+Picolibc is built from its source with the same GCC that builds Doom (the pinned one under Bazel), using the pinned Meson and Ninja packages (`tools/sim/requirements.txt`): its default configuration with `-Dmultilib=false -Dthread-local-storage=false`, compiled `-march=rv32im -mabi=ilp32 -msave-restore`, installed into `<output>/toolchain/picolibc/` (`include/`, `lib/`, `COPYING.picolibc`). Why: the pinned GCC has no thread-local storage, so libc keeps `errno` a plain global and Doom and libc share it (#231). `toolchain/picolibc.stamp` records the source digest, compiler version and options; the build is reused while they match and redone from scratch otherwise.
+
+`--picolibc-prefix` uses another install with the same layout. Either way the build requires `lib/libc.a`, `lib/libm.a`, `lib/libdummyhost.a`, `COPYING.picolibc` and `include/picolibc.h`, refuses a `picolibc.h` that defines `PICOLIBC_TLS` or `NEWLIB_TLS`, and records the digests of those files and of the include tree.
 
 ### Prepare
 
@@ -60,7 +62,7 @@ Each download lands in `<output>/downloads/`. A file already there with the pinn
 
 ### Build
 
-`build` prepares, gets and checks Picolibc, then:
+`build` prepares, builds (or reuses) and checks Picolibc, then:
 
 1. Computes the identity inputs before linking: the SHA-256 of every file in `src/nand2doom/sw/doom/`, of this script (key `src/nand2doom/scripts/sw_build/n2d_doom.py`), of the adapted engine tree, the libc artifacts, the compiler version, the engine archive and WAD digests, the compiler options and any variant defines. Their canonical JSON's SHA-256 is compiled into `capture_identity.c` as `n2d_capture_identity`.
 2. Compiles the identity, the engine objects (upstream flags plus the reviewed warning exceptions) and the platform sources with `-march=rv32im -mabi=ilp32 -ffreestanding -fno-builtin -fno-pic -fno-pie -mno-relax -msmall-data-limit=0 -Wall -Wextra -Werror`, links with the Doom linker script against Picolibc and libgcc, and converts the ELF to `n2d_doom.bin`.

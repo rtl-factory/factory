@@ -9,13 +9,13 @@ from __future__ import annotations
 import argparse
 import errno
 import hashlib
-import io
 import json
 import os
 from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import tarfile
 import urllib.request
@@ -43,32 +43,25 @@ WAD_ADDRESS = 0x02000000
 WAD_BYTE_LENGTH = 28_795_076
 WAD_END_ADDRESS = WAD_ADDRESS + WAD_BYTE_LENGTH
 MEMORY_MAP_REVISION = "n2d-platform-v1"
-PICOLIBC_VERSION = "1.8.6-2"
+PICOLIBC_VERSION = "1.8.6"
 # Why: the pinned public inputs (sw/third_party/manifest.json) are not committed
 # to the factory: the first build fetches each one from its pinned origin,
 # checks its SHA-256 and keeps it here for later builds.
 USER_AGENT = "rtl-factory-n2d-build/1"
 VENDORED_DOWNLOADS = Path(__file__).resolve().parents[4] / "workdir/downloads/nand2doom"
 PICOLIBC_URL = (
-    "http://archive.ubuntu.com/ubuntu/pool/universe/p/picolibc/"
-    "picolibc-riscv64-unknown-elf_1.8.6-2_all.deb"
+    "https://github.com/picolibc/picolibc/releases/download/1.8.6/picolibc-1.8.6.tar.xz"
 )
-PICOLIBC_SHA256 = "9563bbe39bbdf4eda1970ced8c54e5df47a112d91427fc4fc38100428fd23a9b"
-PICOLIBC_ARTIFACT_SHA256 = {
-    "lib/picolibc/riscv64-unknown-elf/lib/rv32im/ilp32/libc.a":
-        "91a855bfce24342c2dce4bf5ad3f6a4f7bd573b4e29686bdb8fc84d54d491f53",
-    "lib/picolibc/riscv64-unknown-elf/lib/rv32im/ilp32/libm.a":
-        "8448849dbd49b2d6da85f2ead81e06b07de7a230e48fea4804f80fe498a6a673",
-    "lib/picolibc/riscv64-unknown-elf/lib/rv32im/ilp32/libdummyhost.a":
-        "49e93f26a014367e3b57b6ac0c78aa257e04777e4b26c2df6cd1f22ec5a5c914",
-    "share/doc/picolibc-riscv64-unknown-elf/copyright":
-        "73879138376be7ab8ccdb4eb116f11d215ff70210ca2ab5183b2b6a7276e52a5",
-}
-PICOLIBC_INCLUDE_ROOT = "lib/picolibc/riscv64-unknown-elf/include"
-PICOLIBC_COPYRIGHT_PATH = "share/doc/picolibc-riscv64-unknown-elf/copyright"
-PICOLIBC_INCLUDE_TREE_SHA256 = (
-    "cd4d0ba9175675b6cf8c62f527502304cd0bc0c58a89e685360877c17f96ee1d"
-)
+PICOLIBC_SHA256 = "9549aac02bef6b2761af124392a7ffc6bbc8dfc8541b698ac032567b516c9b34"
+# Why: Picolibc is built from source with the compiler that builds Doom, so the two
+# agree on thread-local storage: the pinned GCC has none, and errno is a plain global
+# (#231). The rest is Picolibc's default configuration, which the Ubuntu package
+# used before had, with -msave-restore from its RISC-V cross file.
+PICOLIBC_MESON_OPTIONS = ("-Dmultilib=false", "-Dthread-local-storage=false",
+                          "-Dtests=false", "-Dincludedir=include", "-Dlibdir=lib")
+PICOLIBC_C_ARGS = ("-march=rv32im", "-mabi=ilp32", "-msave-restore")
+PICOLIBC_CONSUMED = ("lib/libc.a", "lib/libm.a", "lib/libdummyhost.a")
+PICOLIBC_COPYRIGHT_PATH = "COPYING.picolibc"
 # Ref: wiki/src/nand2doom/sw/doom/spec.md "Doom time contract", "Engine compiler
 # experiments" and "Deterministic-time verification build": production keeps
 # the real-time cycle clock; the verification-only deterministic variant
@@ -202,7 +195,7 @@ def _download(url: str, destination: Path, expected: str, cache: Path | None = N
         if local.exists():
             shutil.copyfile(local, temporary)
         else:
-            # Why: archive.ubuntu.com answers 403 to urllib's default Python-urllib agent.
+            # Why: some origins answer 403 to urllib's default Python-urllib agent.
             request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
             with urllib.request.urlopen(request, timeout=60) as response, temporary.open("wb") as out:
                 shutil.copyfileobj(response, out)
@@ -906,97 +899,94 @@ def _version(tool: str) -> str:
     return lines[0]
 
 
-TOOLCHAIN_LIBC = "usr/lib/picolibc/riscv64-unknown-elf/lib/rv32im/ilp32/libc.a"
+TOOLCHAIN_LIBC = "picolibc/lib/libc.a"
+PICOLIBC_STAMP = "picolibc.stamp"
 
 
-def _picolibc(output: Path, override: Path | None) -> Path:
+def _picolibc_recipe(gcc: str) -> str:
+    """The identity of a Picolibc build: its pinned source, compiler and options."""
+    return json.dumps({"source_sha256": PICOLIBC_SHA256, "compiler": _version(gcc),
+                       "meson_options": list(PICOLIBC_MESON_OPTIONS),
+                       "c_args": list(PICOLIBC_C_ARGS)}, sort_keys=True)
+
+
+def _picolibc(output: Path, override: Path | None, gcc: str) -> Path:
+    """The Picolibc install prefix (include/, lib/): override, or built from the pinned
+    source with gcc and kept under output/toolchain while its recipe is unchanged."""
     if override is not None:
         return override
-    package = output / "downloads" / f"picolibc-{PICOLIBC_VERSION}.deb"
-    _download(PICOLIBC_URL, package, PICOLIBC_SHA256)
+    source = output / "downloads" / f"picolibc-{PICOLIBC_VERSION}.tar.xz"
+    _download(PICOLIBC_URL, source, PICOLIBC_SHA256)
     root = output / "toolchain"
-    if not (root / TOOLCHAIN_LIBC).is_file():
-        # Why: a partial tree is re-extracted from scratch; removing it only unlinks
-        # these names, so files hard-linked from another output are never overwritten
-        # in place.
-        if root.exists():
-            shutil.rmtree(root)
-        root.mkdir(parents=True)
-        _extract_deb_data(package, root)
-    return root / "usr"
+    recipe = _picolibc_recipe(gcc)
+    stamp = root / PICOLIBC_STAMP
+    if (root / TOOLCHAIN_LIBC).is_file() and stamp.is_file() \
+            and stamp.read_text(encoding="utf-8") == recipe:
+        return root / "picolibc"
+    # Why: a partial or stale tree is rebuilt from scratch; removing it only unlinks
+    # these names, so files hard-linked from another output are never overwritten in place.
+    if root.exists():
+        shutil.rmtree(root)
+    root.mkdir(parents=True)
+    with tarfile.open(source) as archive:
+        archive.extractall(root / "source", filter="data")
+    tree = root / "source" / f"picolibc-{PICOLIBC_VERSION}"
+    prefix = root / "picolibc"
+    tools = {name: n2d_image._tool(f"N2D_RISCV_{name.upper()}", f"riscv64-unknown-elf-{name}")
+             for name in ("ar", "as", "strip", "nm")}
+    cross = root / "cross.txt"
+    cross.write_text("\n".join([
+        "[binaries]",
+        f"c = {[gcc, '-nostdlib', *PICOLIBC_C_ARGS]!r}",
+        *(f"{name} = {path!r}" for name, path in tools.items()),
+        "[host_machine]",
+        "system = 'unknown'", "cpu_family = 'riscv32'", "cpu = 'riscv'", "endian = 'little'",
+        "[properties]",
+        "skip_sanity_check = true",
+    ]) + "\n", encoding="utf-8")
+    meson = [sys.executable, "-m", "mesonbuild.mesonmain"]
+    # Why: under Bazel the pinned meson and ninja packages are on this interpreter's
+    # sys.path, not on the child's default one.
+    environment = dict(os.environ, PYTHONPATH=os.pathsep.join(sys.path),
+                       PATH=os.pathsep.join(filter(None, [_ninja_directory(),
+                                                          os.environ.get("PATH")])))
+    build = root / "build"
+    subprocess.run([*meson, "setup", f"--cross-file={cross}", f"--prefix={prefix}",
+                    *PICOLIBC_MESON_OPTIONS, str(build), str(tree)],
+                   check=True, env=environment)
+    subprocess.run([*meson, "install", "-C", str(build), "--quiet"], check=True, env=environment)
+    shutil.copyfile(tree / PICOLIBC_COPYRIGHT_PATH, prefix / PICOLIBC_COPYRIGHT_PATH)
+    shutil.rmtree(root / "source")
+    shutil.rmtree(build)
+    stamp.write_text(recipe, encoding="utf-8")
+    return prefix
 
 
-def _zstd(name: str, package: Path):
-    """Python 3.14's compression.zstd, or the same API from the pinned backports.zstd.
-
-    Why: Bazel's hermetic Python is 3.12 (MODULE.bazel; #224).
-    """
+def _ninja_directory() -> str | None:
+    """The folder of the pinned ninja wheel's binary (tools/sim/requirements.txt), if installed."""
     try:
-        from compression import zstd
-        return zstd
+        import ninja
     except ModuleNotFoundError:
-        pass
-    try:
-        from backports import zstd
-        return zstd
-    except ModuleNotFoundError as error:
-        raise RuntimeError(
-            f"{name} needs compression.zstd (Python 3.14) or backports.zstd "
-            f"(tools/sim/requirements.txt), or pass --picolibc-prefix: {package}") from error
-
-
-def _extract_deb_data(package: Path, root: Path) -> None:
-    """Extract a Debian package's data tarball without host packaging tools.
-
-    A .deb is a common-format ar archive whose data member is a tarball. The
-    pinned package digest is verified before this runs; extraction uses the
-    tarfile "data" filter so no member can escape ``root``.
-    """
-    archive = package.read_bytes()
-    if not archive.startswith(b"!<arch>\n"):
-        raise RuntimeError(f"not an ar archive: {package}")
-    offset = 8
-    while offset + 60 <= len(archive):
-        header = archive[offset:offset + 60]
-        if header[58:60] != b"`\n":
-            raise RuntimeError(f"malformed ar member header: {package}")
-        name = header[:16].decode("ascii").strip().rstrip("/")
-        size = int(header[48:58].decode("ascii").strip())
-        start = offset + 60
-        if start + size > len(archive):
-            raise RuntimeError(f"truncated ar member {name}: {package}")
-        if name.startswith("data.tar"):
-            payload = archive[start:start + size]
-            if name.endswith(".zst"):
-                payload = _zstd(name, package).decompress(payload)
-            elif name not in ("data.tar", "data.tar.gz", "data.tar.xz"):
-                raise RuntimeError(f"unsupported package data member {name}")
-            with tarfile.open(fileobj=io.BytesIO(payload)) as data:
-                data.extractall(root, filter="data")
-            return
-        offset = start + size + (size & 1)
-    raise RuntimeError(f"package has no data member: {package}")
+        return None
+    return str(ninja.BIN_DIR)
 
 
 def _verify_picolibc(prefix: Path) -> dict[str, str]:
+    """Digests of the consumed Picolibc artifacts and include tree; the install must
+    keep errno out of thread-local storage, which the pinned GCC does not have."""
     hashes: dict[str, str] = {}
-    for relative, expected in PICOLIBC_ARTIFACT_SHA256.items():
+    for relative in (*PICOLIBC_CONSUMED, PICOLIBC_COPYRIGHT_PATH):
         artifact = prefix / relative
         if not artifact.is_file():
-            raise RuntimeError(f"pinned Picolibc artifact missing: {artifact}")
-        observed = _sha256(artifact)
-        if observed != expected:
-            raise RuntimeError(
-                f"pinned Picolibc artifact digest mismatch: {artifact}"
-            )
-        hashes[relative] = observed
-    include_root = prefix / PICOLIBC_INCLUDE_ROOT
-    include_digest = _tree_sha256(include_root)
-    if include_digest != PICOLIBC_INCLUDE_TREE_SHA256:
-        raise RuntimeError(
-            f"pinned Picolibc include tree digest mismatch: {include_root}"
-        )
-    hashes[f"{PICOLIBC_INCLUDE_ROOT}/"] = include_digest
+            raise RuntimeError(f"Picolibc artifact missing: {artifact}")
+        hashes[relative] = _sha256(artifact)
+    config = prefix / "include" / "picolibc.h"
+    if not config.is_file():
+        raise RuntimeError(f"Picolibc configuration header missing: {config}")
+    if re.search(r"^#define\s+(PICOLIBC_TLS|NEWLIB_TLS)\b", config.read_text(encoding="utf-8"),
+                 re.MULTILINE):
+        raise RuntimeError(f"Picolibc built with thread-local storage: {config}")
+    hashes["include/"] = _tree_sha256(prefix / "include")
     return hashes
 
 
@@ -1019,7 +1009,7 @@ def _tree_sha256(root: Path) -> str:
 
 ENGINE_OPT_LEVELS = ("Os", "O2", "O3")
 PLATFORM_SOURCES = ("w_file_stdc.c", "crt0.S", "fast_memory.c", "platform.c",
-                    "syscalls.c", "errno_tls.S", "clock.c", "capture.c")
+                    "syscalls.c", "clock.c", "capture.c")
 
 
 def variant_compiler_options(variant: str, engine_opt: str | None = None,
@@ -1085,23 +1075,20 @@ def build(output: Path, repository: Path,
     _seed_inputs(output, repository)
     inputs = prepare(output, repository)
     _validate_output_tree(output)
-    picolibc_prefix = _picolibc(output, picolibc_override)
+    gcc = n2d_image._tool("N2D_RISCV_GCC", "riscv64-unknown-elf-gcc")
+    picolibc_prefix = _picolibc(output, picolibc_override, gcc)
     picolibc_hashes = _verify_picolibc(picolibc_prefix)
     picolibc_notice = output / "PICOLIBC-COPYRIGHT.txt"
     picolibc_notice.write_bytes(
         (picolibc_prefix / PICOLIBC_COPYRIGHT_PATH).read_bytes()
     )
     engine = output / "source" / f"doomgeneric-{ENGINE_REVISION}" / "doomgeneric"
-    include = picolibc_prefix / "lib/picolibc/riscv64-unknown-elf/include"
-    library = picolibc_prefix / "lib/picolibc/riscv64-unknown-elf/lib/rv32im/ilp32"
-    if not (include / "stdio.h").is_file() or not (library / "libc.a").is_file():
-        raise RuntimeError(
-            "picolibc RV32IM/ILP32 not found; install picolibc-riscv64-unknown-elf "
-            "or pass --picolibc-prefix"
-        )
+    include = picolibc_prefix / "include"
+    library = picolibc_prefix / "lib"
+    if not (include / "stdio.h").is_file():
+        raise RuntimeError(f"Picolibc headers not found under {include}")
     build_dir = output / "build"
     build_dir.mkdir(parents=True, exist_ok=True)
-    gcc = n2d_image._tool("N2D_RISCV_GCC", "riscv64-unknown-elf-gcc")
     objcopy = n2d_image._tool("N2D_RISCV_OBJCOPY", "riscv64-unknown-elf-objcopy")
     common = _compiler_flags(
         gcc, engine, include, output, repository, upstream=False,
@@ -1173,10 +1160,6 @@ def build(output: Path, repository: Path,
     capture_symbols = {}
     for line in symbols.splitlines():
         fields = line.split()
-        if fields and fields[-1].startswith("__emutls_v.") and fields[-1] != "__emutls_v.errno":
-            # Why: errno_tls.S answers only errno; another emulated thread-local
-            # would trap at its first access on the board.
-            raise RuntimeError(f"unsupported emulated thread-local: {fields[-1]}")
         if len(fields) == 4 and fields[3] in ("n2d_capture", "n2d_capture_identity"):
             address, size, kind, name = fields
             if name in capture_symbols:
@@ -1213,12 +1196,14 @@ def build(output: Path, repository: Path,
             "objcopy": _version(objcopy),
         },
         "libc": {
-            "name": "picolibc-riscv64-unknown-elf",
+            "name": "picolibc",
             "version": PICOLIBC_VERSION,
-            "package_sha256": PICOLIBC_SHA256,
+            "source_sha256": PICOLIBC_SHA256,
             "url": PICOLIBC_URL,
-            "source": ("verified_override" if picolibc_override is not None
-                       else "pinned_package"),
+            "meson_options": list(PICOLIBC_MESON_OPTIONS),
+            "c_args": list(PICOLIBC_C_ARGS),
+            "source": ("override" if picolibc_override is not None
+                       else "built_from_pinned_source"),
             "licenses": "BSD-family",
             "license_notice": {
                 "path": picolibc_notice.name,
