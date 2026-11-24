@@ -32,33 +32,18 @@ module n2d_ps2_keyboard #(
     import n2d_types_pkg::*;
 
     localparam int unsigned FIFO_DEPTH = 8;
-    localparam int unsigned TIMEOUT_WIDTH = $clog2(FRAME_TIMEOUT_CYCLES);
     localparam logic [3:0] FIFO_COUNT_LIMIT = 4'd8;
-    localparam logic [TIMEOUT_WIDTH-1:0] FRAME_TIMEOUT_LIMIT =
-        TIMEOUT_WIDTH'(FRAME_TIMEOUT_CYCLES - 1);
     localparam logic [11:0] DATA_ADDRESS = 12'h000;
     localparam logic [11:0] STATUS_ADDRESS = 12'h004;
     localparam logic [11:0] CONTROL_ADDRESS = 12'h008;
     localparam logic [11:0] INJECT_ADDRESS = 12'h00c;
 
-    logic ps2_clk_sync;
-    logic ps2_data_sync;
     localparam t_ps2_rx RX_RESET = '{
-        ps2_clk_previous: 1'b1,
         receiver_enable: 1'b1,
-        frame_active: 1'b0,
-        frame_bit_index: 4'b0,
-        frame_data: 8'b0,
-        frame_parity: 1'b0,
-        extended_prefix: 1'b0,
-        break_prefix: 1'b0,
         parity_error: 1'b0,
         frame_error: 1'b0,
         timeout_error: 1'b0};
     t_ps2_rx rx_q, rx_d;
-    // Why: the frame timeout counter's width follows FRAME_TIMEOUT_CYCLES, so it
-    // is a register of its own beside the packaged receiver record.
-    logic [TIMEOUT_WIDTH-1:0] frame_timeout_q, frame_timeout_d;
     logic [9:0] fifo_memory [0:FIFO_DEPTH-1];
     localparam t_ps2_fifo FIFO_RESET = '{
         fifo_read_pointer: 3'b0,
@@ -66,8 +51,6 @@ module n2d_ps2_keyboard #(
         fifo_count: 4'b0,
         overflow_error: 1'b0};
     t_ps2_fifo fifo_q, fifo_d;
-    localparam t_ps2_scan_inject SCAN_INJECT_RESET = '{extended_prefix: 1'b0, break_prefix: 1'b0};
-    t_ps2_scan_inject scan_inject_q, scan_inject_d;
     logic fifo_write;
     logic mmio_response_valid_q;
     logic [31:0] mmio_response_read_data_q;
@@ -76,11 +59,10 @@ module n2d_ps2_keyboard #(
     logic [31:0] mmio_response_read_data_d;
     logic mmio_response_error_d;
     logic response_stalled_q;
-    logic ps2_falling_edge;
-    logic completed_frame;
-    logic completed_parity_ok;
-    logic completed_stop_ok;
-    logic completed_byte_valid;
+    logic ps2_byte_valid;
+    logic [7:0] ps2_byte;
+    n2a_ps2_pkg::t_ps2_rx_errors ps2_errors;
+    logic physical_byte_ready;
     logic physical_event_push;
     logic [9:0] physical_event_data;
     logic request_accept;
@@ -93,7 +75,8 @@ module n2d_ps2_keyboard #(
     logic mmio_inject_request;
     logic mmio_inject_legal;
     logic mmio_inject_accept;
-    logic scan_inject_prefix;
+    logic scan_event_valid;
+    logic scan_event_ready;
     logic scan_inject_accept;
     logic [9:0] scan_inject_event;
     logic fifo_push_accept;
@@ -105,30 +88,33 @@ module n2d_ps2_keyboard #(
     logic [31:0] request_read_data;
     logic request_error;
 
-    n2a_cdc_bit_sync #(.STAGES(2), .RESET_VALUE(1'b1)) u_ps2_clock_sync (
-        .clk_i(clk_i), .reset_i(reset_i), .async_i(ps2_clk_i),
-        .sync_o(ps2_clk_sync)
+    // Why: a CONTROL write is a receive boundary: it abandons the frame in
+    // progress and every discard, like it, drops the pending prefixes.
+    n2a_ps2_receiver #(.FRAME_TIMEOUT_CYCLES(FRAME_TIMEOUT_CYCLES)) u_receiver (
+        .clk_i        (clk_i),
+        .reset_i      (reset_i),
+        .ps2_clk_i    (ps2_clk_i),
+        .ps2_data_i   (ps2_data_i),
+        .enable_i     (rx_q.receiver_enable),
+        .abort_i      (control_write_accept),
+        .byte_valid_o (ps2_byte_valid),
+        .byte_o       (ps2_byte),
+        .errors_o     (ps2_errors)
     );
-    n2a_cdc_bit_sync #(.STAGES(2), .RESET_VALUE(1'b1)) u_ps2_data_sync (
-        .clk_i(clk_i), .reset_i(reset_i), .async_i(ps2_data_i),
-        .sync_o(ps2_data_sync)
+    // Why: the physical source has no handshake, so its decoder never waits;
+    // an event dropped by a full FIFO still completes its prefixes.
+    n2a_ps2_decoder u_physical_decoder (
+        .clk_i         (clk_i),
+        .reset_i       (reset_i),
+        .byte_valid_i  (ps2_byte_valid),
+        .byte_i        (ps2_byte),
+        .byte_ready_o  (physical_byte_ready),
+        .clear_i       (control_write_accept || (ps2_errors != '0)),
+        .event_valid_o (physical_event_push),
+        .event_o       (physical_event_data),
+        .event_ready_i (1'b1)
     );
-
-    `ASSERT_PARAM(g_invalid_frame_timeout, FRAME_TIMEOUT_CYCLES >= 2,
-        "n2d_ps2_keyboard FRAME_TIMEOUT_CYCLES must be at least 2")
-
-    assign ps2_falling_edge = rx_q.ps2_clk_previous && !ps2_clk_sync;
-    assign completed_frame = rx_q.receiver_enable && !control_write_accept &&
-                             rx_q.frame_active && ps2_falling_edge &&
-                             (rx_q.frame_bit_index == 4'd9);
-    assign completed_parity_ok = ^{rx_q.frame_data, rx_q.frame_parity};
-    assign completed_stop_ok = ps2_data_sync;
-    assign completed_byte_valid = completed_frame && completed_parity_ok &&
-                                  completed_stop_ok;
-    assign physical_event_push = completed_byte_valid &&
-                                 (rx_q.frame_data != 8'he0) &&
-                                 (rx_q.frame_data != 8'hf0);
-    assign physical_event_data = {rx_q.extended_prefix, rx_q.break_prefix, rx_q.frame_data};
+    `UNUSED_BITS(physical_byte_ready_unused, physical_byte_ready)
 
     assign mmio_inject_request = mmio_request_valid_i &&
                                  mmio_request_write_i &&
@@ -162,20 +148,25 @@ module n2d_ps2_keyboard #(
     assign uart_push_accept = inject_valid_i && inject_ready_o;
     assign mmio_inject_accept = request_accept && mmio_inject_request &&
                                 mmio_inject_legal;
-    // Why: the byte stream is the lowest-priority producer: a prefix byte only
-    // updates its qualifiers and is always taken; a completing byte owns a slot
-    // only when no other source pushes on this edge, so it never displaces a
-    // physical or UART event.
-    assign scan_inject_prefix = (scan_inject_byte_i == 8'he0) ||
-                                (scan_inject_byte_i == 8'hf0);
-    assign scan_inject_ready_o = scan_inject_prefix ||
-                                 (!control_write_accept && !physical_event_push &&
-                                  !inject_valid_i && !mmio_inject_accept &&
-                                  fifo_has_push_space);
-    assign scan_inject_accept = scan_inject_valid_i && scan_inject_ready_o &&
-                                !scan_inject_prefix;
-    assign scan_inject_event = {scan_inject_q.extended_prefix,
-                                scan_inject_q.break_prefix, scan_inject_byte_i};
+    // Why: the byte stream is the lowest-priority producer: its decoder takes
+    // a prefix byte at once; a completing byte owns a slot only when no other
+    // source pushes on this edge, so it never displaces a physical or UART
+    // event. Its qualifiers are its own: CONTROL and receive errors keep them.
+    assign scan_event_ready = !control_write_accept && !physical_event_push &&
+                              !inject_valid_i && !mmio_inject_accept &&
+                              fifo_has_push_space;
+    n2a_ps2_decoder u_scan_decoder (
+        .clk_i         (clk_i),
+        .reset_i       (reset_i),
+        .byte_valid_i  (scan_inject_valid_i),
+        .byte_i        (scan_inject_byte_i),
+        .byte_ready_o  (scan_inject_ready_o),
+        .clear_i       (1'b0),
+        .event_valid_o (scan_event_valid),
+        .event_o       (scan_inject_event),
+        .event_ready_i (scan_event_ready)
+    );
+    assign scan_inject_accept = scan_event_valid && scan_event_ready;
     assign fifo_push_accept = physical_push_accept || uart_push_accept ||
                               mmio_inject_accept || scan_inject_accept;
     assign fifo_push_data = physical_push_accept ? physical_event_data :
@@ -228,87 +219,18 @@ module n2d_ps2_keyboard #(
 
     always_comb begin
         rx_d = rx_q;
-        frame_timeout_d = frame_timeout_q;
-        rx_d.ps2_clk_previous = ps2_clk_sync;
         if (clear_diagnostics) begin
             rx_d.parity_error = 1'b0;
             rx_d.frame_error = 1'b0;
             rx_d.timeout_error = 1'b0;
         end
-        if (control_write_accept) begin
-            rx_d.receiver_enable = mmio_request_write_data_i[0];
-            // Why: a control write is an explicit receive-boundary operation. Discard
-            // any partial frame and prefix state so a coincident pin edge cannot
-            // survive the priority operation and later report a ghost timeout.
-            rx_d.frame_active = 1'b0;
-            rx_d.frame_bit_index = 4'b0;
-            frame_timeout_d = '0;
-            rx_d.extended_prefix = 1'b0;
-            rx_d.break_prefix = 1'b0;
-        end
-        if (rx_q.receiver_enable && !control_write_accept) begin
-            if (rx_q.frame_active) begin
-                if (ps2_falling_edge) begin
-                    frame_timeout_d = '0;
-                    if (rx_q.frame_bit_index < 4'd8) begin
-                        rx_d.frame_data[rx_q.frame_bit_index[2:0]] = ps2_data_sync;
-                        rx_d.frame_bit_index = rx_q.frame_bit_index + 1'b1;
-                    end else if (rx_q.frame_bit_index == 4'd8) begin
-                        rx_d.frame_parity = ps2_data_sync;
-                        rx_d.frame_bit_index = 4'd9;
-                    end else begin
-                        rx_d.frame_active = 1'b0;
-                        rx_d.frame_bit_index = 4'b0;
-                        if (!completed_parity_ok) rx_d.parity_error = 1'b1;
-                        if (!completed_stop_ok) rx_d.frame_error = 1'b1;
-                        if (completed_byte_valid) begin
-                            if (rx_q.frame_data == 8'he0) rx_d.extended_prefix = 1'b1;
-                            else if (rx_q.frame_data == 8'hf0) rx_d.break_prefix = 1'b1;
-                            else begin
-                                rx_d.extended_prefix = 1'b0;
-                                rx_d.break_prefix = 1'b0;
-                            end
-                        end else begin
-                            rx_d.extended_prefix = 1'b0;
-                            rx_d.break_prefix = 1'b0;
-                        end
-                    end
-                end else if (frame_timeout_q == FRAME_TIMEOUT_LIMIT) begin
-                    rx_d.frame_active = 1'b0;
-                    rx_d.frame_bit_index = 4'b0;
-                    frame_timeout_d = '0;
-                    rx_d.extended_prefix = 1'b0;
-                    rx_d.break_prefix = 1'b0;
-                    rx_d.timeout_error = 1'b1;
-                end else frame_timeout_d = frame_timeout_q + 1'b1;
-            end else if (ps2_falling_edge) begin
-                if (!ps2_data_sync) begin
-                    rx_d.frame_active = 1'b1;
-                    rx_d.frame_bit_index = 4'b0;
-                    frame_timeout_d = '0;
-                end else begin
-                    rx_d.frame_error = 1'b1;
-                    rx_d.extended_prefix = 1'b0;
-                    rx_d.break_prefix = 1'b0;
-                end
-            end
-        end
+        if (control_write_accept) rx_d.receiver_enable = mmio_request_write_data_i[0];
+        if (ps2_errors.parity) rx_d.parity_error = 1'b1;
+        if (ps2_errors.frame) rx_d.frame_error = 1'b1;
+        if (ps2_errors.timeout) rx_d.timeout_error = 1'b1;
     end
 
     `DFF_ARST_VAL(rx_q, rx_d, clk_i, reset_i, RX_RESET)
-    `DFF_ARST_VAL(frame_timeout_q, frame_timeout_d, clk_i, reset_i, '0)
-
-    always_comb begin
-        scan_inject_d = scan_inject_q;
-        if (scan_inject_valid_i && scan_inject_prefix) begin
-            if (scan_inject_byte_i == 8'he0) scan_inject_d.extended_prefix = 1'b1;
-            else scan_inject_d.break_prefix = 1'b1;
-        end else if (scan_inject_accept) begin
-            scan_inject_d = SCAN_INJECT_RESET;
-        end
-    end
-
-    `DFF_ARST_VAL(scan_inject_q, scan_inject_d, clk_i, reset_i, SCAN_INJECT_RESET)
 
     always_comb begin
         fifo_d = fifo_q;

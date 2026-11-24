@@ -11,7 +11,9 @@ src/<project>/cfg/targets.json into:
                     test-only registry change does not rebuild the model
 
 and every formal target of its src/<project>/fv/<block>/<target>.sby into a test
-<target>.formal, whose inputs are the .sby file and the files it copies.
+<target>.formal, whose inputs are the .sby file and the files it copies, and every
+lint top of the project (hdl_libraries.py lint_tops) into a test <top>.lint:
+Verilator --lint-only -Wall on exactly the files the top resolves to.
 
 unit_tests() makes one L0 test per tests/ folder of a package: pytest on that folder.
 
@@ -24,7 +26,7 @@ until its program builds become Bazel actions.
 """
 
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
-load("@hdl_registry//:targets.bzl", "FV_TARGETS", "SIM_TARGETS")
+load("@hdl_registry//:targets.bzl", "FV_TARGETS", "LINT_TARGETS", "SIM_TARGETS")
 load("@pypi//:requirements.bzl", "requirement")
 load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
@@ -161,6 +163,7 @@ def hdl_project(name):
     python = ["//src/%s:python" % p for p in PROJECTS] + ["//tools:python"]
     headers = [":headers"] if name == "common" else [":headers", "//src/common:headers"]
     _formal_tests(name)
+    _lint_tests(name)
     models = {}
     for target_name, target in sorted(SIM_TARGETS.get(name, {}).items()):
         tags = _tags(target)
@@ -243,6 +246,20 @@ def _formal_tests(project):
             },
             tags = _tags(target),
             timeout = _timeout(target["timeout_seconds"]),
+        )
+
+def _lint_tests(project):
+    for top, files in sorted(LINT_TARGETS.get(project, {}).items()):
+        py_test(
+            name = top + ".lint",
+            srcs = ["//tools:lint/rtl_lint.py", "//tools:lint/baseline.py"],
+            main = "//tools:lint/rtl_lint.py",
+            args = ["verilator", top, "--baseline", "tools/lint/rtl_baseline.json"] + files["sources"],
+            data = [_source_label(f) for f in files["headers"] + files["sources"]] +
+                   ["//tools:lint/rtl_baseline.json", "@verilator//:verilator"],
+            env = {"LINT_PATH_PREPEND": "$(rootpaths @verilator//:verilator)"},
+            tags = ["L0", "lint"],
+            timeout = "short",
         )
 
 def _wrapped_test(target_name, project, tags, timeout, python):
