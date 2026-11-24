@@ -21,7 +21,7 @@ def removed_ram_warnings():
                'Warning (14285): Synthesized away the following RAM node(s):']
     return headers + [
         'Warning (14320): Synthesized away node "n2m_system:u_system|n2m_library:g_library.u_library|'
-        'n2m_cartridge_backing:u_active|n2m_dual_port_ram:u_ram|altsyncram:memory_rtl_0|'
+        'n2m_cartridge_backing:u_active|n2a_sync_ram_enabled:u_ram|n2a_sync_ram:u_ram|altsyncram:u_ram|'
         f'altsyncram_4g71:auto_generated|ram_block1a{i}" File: /mock/db/altsyncram_4g71.tdf Line: {36 + 21*i}'
         for i in range(8)]
 
@@ -65,7 +65,7 @@ class LibraryProfileTests(unittest.TestCase):
         self.assertEqual(self.library['ram_requirements'][:-1], self.ordinary['ram_requirements'])
         active = self.library['ram_requirements'][-1]
         self.assertEqual((active['count'], active['depth'], active['width'], active['m9ks_each'], active['mode']),
-                         (1, 65536, 8, 64, 'Simple Dual Port'))
+                         (1, 65536, 8, 64, 'True Dual Port'))
         source = (ROOT / 'src/nand2mario/fpga/de2_115/n2m_de2_115.sv').read_text()
         self.assertIn('parameter int unsigned CART_LIBRARY = 0', source)
         self.assertIn('.CART_LIBRARY      (CART_LIBRARY)', source)
@@ -75,7 +75,9 @@ class LibraryProfileTests(unittest.TestCase):
         simulation = [s for s in simulation_sources(targets['n2m_de2_115']) if '/dv/' not in s]
         # Why: the dv/ stand-in of the vendor primitive is simulation-only and both lists
         # bind the common n2a_jtag_virtual, so they match once dv/ is dropped.
-        synthesis = [s.replace('_intel.sv', '_portable.sv') for s in self.library['sources']]
+        # Why: n2a_sync_ram's portable file has no suffix.
+        synthesis = [s.replace('n2a_sync_ram_intel.sv', 'n2a_sync_ram.sv').replace('_intel.sv', '_portable.sv')
+                     for s in self.library['sources']]
         self.assertEqual(simulation, synthesis)
         with tempfile.TemporaryDirectory(dir=ROOT / 'workdir') as directory:
             output = Path(directory)

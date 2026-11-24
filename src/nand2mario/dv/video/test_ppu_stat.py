@@ -16,9 +16,9 @@ async def ppu_stat_contract(dut):
     b = Bench(dut, seed)
     b.idle()
     for index in range(8192):
-        dut.u_vram.memory[index].value = b.rng.randrange(1, 256)
+        dut.u_vram.u_ram.memory[index].value = b.rng.randrange(1, 256)
     for index in range(256):
-        dut.u_oam.memory[index].value = b.rng.randrange(1, 256)
+        dut.u_oam.u_ram.memory[index].value = b.rng.randrange(1, 256)
     Clock(dut.clk_i, 40, unit='ns', impl='gpi').start()
     cocotb.start_soon(b.monitor())
 

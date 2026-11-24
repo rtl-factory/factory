@@ -32,8 +32,9 @@
     "n2m_cartridge_backing": {
       "deps": [
         "macros",
-        "n2m_cartridge_pkg",
-        "n2m_dual_port_ram"
+        "n2a_sync_ram_enabled",
+        "n2a_tdp_ram_enabled",
+        "n2m_cartridge_pkg"
       ],
       "srcs": [
         "src/nand2mario/rtl/cartridge/n2m_cartridge_backing.sv"
@@ -224,51 +225,6 @@
         "src/nand2mario/rtl/dma/n2m_dma_pkg.sv"
       ]
     },
-    "n2m_dual_port_ram": {
-      "variants": {
-        "default": {
-          "deps": [
-            "macros"
-          ],
-          "srcs": [
-            "src/nand2mario/rtl/memory/n2m_dual_port_ram.sv"
-          ]
-        },
-        "asic": {
-          "deps": [
-            "macros",
-            "n2a_sync_ram_wt"
-          ],
-          "srcs": [
-            "src/nand2mario/rtl/memory/n2m_dual_port_ram_asic.sv"
-          ]
-        }
-      }
-    },
-    "n2m_dual_port_ram_dual_fixture": {
-      "deps": [
-        "n2m_dual_port_ram"
-      ],
-      "srcs": [
-        "src/nand2mario/dv/memory/n2m_dual_port_ram_dual_fixture.sv"
-      ]
-    },
-    "n2m_dual_port_ram_shared_fixture": {
-      "deps": [
-        "n2m_dual_port_ram"
-      ],
-      "srcs": [
-        "src/nand2mario/dv/memory/n2m_dual_port_ram_shared_fixture.sv"
-      ]
-    },
-    "n2m_dual_port_ram_single_fixture": {
-      "deps": [
-        "n2m_dual_port_ram"
-      ],
-      "srcs": [
-        "src/nand2mario/dv/memory/n2m_dual_port_ram_single_fixture.sv"
-      ]
-    },
     "n2m_frame_bridge": {
       "deps": [
         "macros",
@@ -366,7 +322,8 @@
     "n2m_memory": {
       "deps": [
         "macros",
-        "n2m_dual_port_ram",
+        "n2a_sync_ram_enabled",
+        "n2a_tdp_ram_enabled",
         "n2m_interfaces_pkg",
         "n2m_memory_decode",
         "n2m_memory_pkg"
@@ -417,7 +374,7 @@
     },
     "n2m_ppu_fixture": {
       "deps": [
-        "n2m_dual_port_ram",
+        "n2a_tdp_ram_enabled",
         "n2m_interfaces_pkg",
         "n2m_ppu",
         "n2m_ppu_pkg",
@@ -625,8 +582,8 @@
     "n2m_uart_loader": {
       "deps": [
         "macros",
+        "n2a_sync_ram_enabled",
         "n2m_cartridge_pkg",
-        "n2m_dual_port_ram",
         "n2m_loader_pkg",
         "n2m_snapshot_pkg"
       ],

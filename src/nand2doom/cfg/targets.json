@@ -1043,6 +1043,85 @@
       "max_cycles": 26,
       "level": "L0"
     },
+    "common_sync_ram_enabled": {
+      "kind": "cocotb",
+      "description": "Common single-port RAM with read enable, read-valid, hold and reset, over the portable store",
+      "top": "n2a_sync_ram_enabled",
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "test_module": "src.common.dv.memory.test_ram_enabled",
+      "testcase": "sync_ram_enabled_contract",
+      "default_seed": 24,
+      "max_cycles": 200,
+      "level": "L0"
+    },
+    "common_sync_ram_enabled_intel_stub": {
+      "kind": "cocotb",
+      "description": "Common single-port RAM with read requests over the Intel backend through the DV altsyncram port stub",
+      "top": "n2a_sync_ram_enabled",
+      "libraries": [
+        "n2a_sync_ram_enabled",
+        "n2a_altsyncram_port_stub"
+      ],
+      "flavors": [
+        "intel"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "test_module": "src.common.dv.memory.test_ram_enabled",
+      "testcase": "sync_ram_enabled_contract",
+      "default_seed": 24,
+      "max_cycles": 200,
+      "level": "L0"
+    },
+    "common_tdp_ram_enabled": {
+      "kind": "cocotb",
+      "description": "Common true-dual-port RAM with per-port read enable, read-valid, hold and reset, over the portable store",
+      "top": "n2a_tdp_ram_enabled",
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "test_module": "src.common.dv.memory.test_ram_enabled",
+      "testcase": "tdp_ram_enabled_contract",
+      "default_seed": 24,
+      "max_cycles": 200,
+      "level": "L0"
+    },
+    "common_tdp_ram_enabled_intel_stub": {
+      "kind": "cocotb",
+      "description": "Common true-dual-port RAM with read requests over the Intel backend through the DV altsyncram port stub",
+      "top": "n2a_tdp_ram_enabled",
+      "libraries": [
+        "n2a_tdp_ram_enabled",
+        "n2a_altsyncram_port_stub"
+      ],
+      "flavors": [
+        "intel"
+      ],
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "test_module": "src.common.dv.memory.test_ram_enabled",
+      "testcase": "tdp_ram_enabled_contract",
+      "default_seed": 24,
+      "max_cycles": 200,
+      "level": "L0"
+    },
+    "common_tdp_ram_enabled_write_collision_fail": {
+      "kind": "cocotb",
+      "description": "Deliberate two-port write to one word in one edge is rejected by the common true-dual-port RAM with read requests",
+      "top": "n2a_tdp_ram_enabled",
+      "clock_hz": 25000000,
+      "timeout_seconds": 30,
+      "test_module": "src.common.dv.memory.test_ram_enabled",
+      "testcase": "tdp_ram_enabled_write_collision_is_rejected",
+      "default_seed": 24,
+      "max_cycles": 4,
+      "expected_fatal": {
+        "file": "n2a_tdp_ram_enabled.sv",
+        "hierarchy": "n2a_tdp_ram_enabled.write_collision",
+        "message": "N2A assertion failed"
+      },
+      "level": "L0"
+    },
     "common_tdp_ram_invalid_data_width": {
       "kind": "native",
       "description": "Common true-dual-port RAM zero data-width rejection",
