@@ -1019,7 +1019,7 @@ def _tree_sha256(root: Path) -> str:
 
 ENGINE_OPT_LEVELS = ("Os", "O2", "O3")
 PLATFORM_SOURCES = ("w_file_stdc.c", "crt0.S", "fast_memory.c", "platform.c",
-                    "syscalls.c", "clock.c", "capture.c")
+                    "syscalls.c", "errno_tls.S", "clock.c", "capture.c")
 
 
 def variant_compiler_options(variant: str, engine_opt: str | None = None,
