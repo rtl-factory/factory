@@ -19,7 +19,6 @@
 module n2a_tdp_ram #(
     parameter int unsigned DATA_WIDTH = 32,
     parameter int unsigned DEPTH = 256,
-    parameter int unsigned ADDR_WIDTH = $clog2(DEPTH),
     // Vendor selection facts. The DE10-Lite consumers use the defaults; another
     // Intel board wrapper may override them without changing the contract.
     parameter INTEL_DEVICE_FAMILY = "MAX 10",
@@ -27,18 +26,19 @@ module n2a_tdp_ram #(
 ) (
     input  logic                                             clk_i,
     input  logic                                             a_write_enable_i,
-    input  logic [((ADDR_WIDTH < 1) ? 1 : ADDR_WIDTH)-1:0]  a_address_i,
+    input  logic [((DEPTH < 2) ? 1 : $clog2(DEPTH))-1:0]    a_address_i,
     input  logic [((DATA_WIDTH < 1) ? 1 : DATA_WIDTH)-1:0]  a_write_data_i,
     output logic [((DATA_WIDTH < 1) ? 1 : DATA_WIDTH)-1:0]  a_read_data_o,
     input  logic                                             b_write_enable_i,
-    input  logic [((ADDR_WIDTH < 1) ? 1 : ADDR_WIDTH)-1:0]  b_address_i,
+    input  logic [((DEPTH < 2) ? 1 : $clog2(DEPTH))-1:0]    b_address_i,
     input  logic [((DATA_WIDTH < 1) ? 1 : DATA_WIDTH)-1:0]  b_write_data_i,
     output logic [((DATA_WIDTH < 1) ? 1 : DATA_WIDTH)-1:0]  b_read_data_o
 );
+    // Why: Quartus Lite rejects a localparam in the parameter port list, so
+    // the address ports derive their width from DEPTH and this reads it back.
+    localparam int unsigned ADDR_WIDTH = $bits(a_address_i);
     localparam int unsigned IMPLEMENTATION_DATA_WIDTH =
         (DATA_WIDTH < 1) ? 1 : DATA_WIDTH;
-    localparam int unsigned REQUIRED_ADDR_WIDTH =
-        (DEPTH < 2) ? 1 : $clog2(DEPTH);
     localparam bit DEPTH_IS_POWER_OF_TWO =
         (DEPTH >= 2) && ((DEPTH & (DEPTH - 1)) == 0);
 
@@ -46,8 +46,6 @@ module n2a_tdp_ram #(
         "n2a_tdp_ram DATA_WIDTH must be at least 1")
     `ASSERT_PARAM(g_invalid_depth, DEPTH_IS_POWER_OF_TWO,
         "n2a_tdp_ram DEPTH must be a power of two and at least 2")
-    `ASSERT_PARAM(g_invalid_addr_width, ADDR_WIDTH == REQUIRED_ADDR_WIDTH,
-        "n2a_tdp_ram ADDR_WIDTH must equal $clog2(DEPTH)")
 
     // Why: the only pin left unconnected is the output eccstatus, exactly as
     // Intel-generated wrappers leave it; every functional BIDIR_DUAL_PORT pin is
@@ -59,13 +57,13 @@ module n2a_tdp_ram #(
         .ram_block_type(INTEL_RAM_BLOCK_TYPE),
         .lpm_type("altsyncram"),
         .width_a(IMPLEMENTATION_DATA_WIDTH),
-        .widthad_a(REQUIRED_ADDR_WIDTH),
+        .widthad_a(ADDR_WIDTH),
         .numwords_a(DEPTH),
         .width_byteena_a(1),
         .outdata_reg_a("UNREGISTERED"),
         .read_during_write_mode_port_a("OLD_DATA"),
         .width_b(IMPLEMENTATION_DATA_WIDTH),
-        .widthad_b(REQUIRED_ADDR_WIDTH),
+        .widthad_b(ADDR_WIDTH),
         .numwords_b(DEPTH),
         .width_byteena_b(1),
         .address_reg_b("CLOCK0"),

@@ -11,8 +11,7 @@ module n2a_tdp_ram_invalid_depth_fixture;
 
     n2a_tdp_ram #(
         .DATA_WIDTH(8),
-        .DEPTH(3),
-        .ADDR_WIDTH(2)
+        .DEPTH(3)
     ) dut (
         .clk_i(clk),
         .a_write_enable_i(a_write_enable),

@@ -205,14 +205,6 @@
         "src/common/dv/memory/n2a_sync_ram_512x141_fixture.sv"
       ]
     },
-    "n2a_sync_ram_invalid_addr_width_fixture": {
-      "deps": [
-        "n2a_sync_ram"
-      ],
-      "srcs": [
-        "src/common/dv/memory/n2a_sync_ram_invalid_addr_width_fixture.sv"
-      ]
-    },
     "n2a_sync_ram_invalid_data_width_fixture": {
       "deps": [
         "n2a_sync_ram"
@@ -287,14 +279,6 @@
       ],
       "srcs": [
         "src/common/dv/memory/n2a_tdp_ram_16384x8_fixture.sv"
-      ]
-    },
-    "n2a_tdp_ram_invalid_addr_width_fixture": {
-      "deps": [
-        "n2a_tdp_ram"
-      ],
-      "srcs": [
-        "src/common/dv/memory/n2a_tdp_ram_invalid_addr_width_fixture.sv"
       ]
     },
     "n2a_tdp_ram_invalid_data_width_fixture": {

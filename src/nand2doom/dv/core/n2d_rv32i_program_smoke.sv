@@ -58,8 +58,7 @@ module n2d_rv32i_program_smoke (
 
     n2a_sync_ram #(
         .DATA_WIDTH(32),
-        .DEPTH(64),
-        .ADDR_WIDTH(6)
+        .DEPTH(64)
     ) u_instruction_ram (
         .clk_i(clk_i),
         .write_enable_i(program_write_enable_i),
@@ -89,8 +88,7 @@ module n2d_rv32i_program_smoke (
 
     n2a_sync_ram #(
         .DATA_WIDTH(32),
-        .DEPTH(64),
-        .ADDR_WIDTH(6)
+        .DEPTH(64)
     ) u_data_ram (
         .clk_i(clk_i),
         .write_enable_i(data_ram_write_enable),
