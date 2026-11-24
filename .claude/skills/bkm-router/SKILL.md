@@ -12,7 +12,7 @@ Each row names a file and, after it, the section (its `##` heading) to follow.
 | doing any work on an issue, from alignment to landing, or deciding who may merge | `wiki/bkm/flow.md` Flow |
 | adding a tool, script, block or folder, moving one, or deciding where code or its documents go (tool or script, script or software, which discipline) | `wiki/bkm/layout.md` Repository layout |
 | the first mate: dispatching, supervising, pausing, handing over or landing crewmates' work, or running competing candidates on one issue | `wiki/bkm/first-mate.md` Running the crew |
-| working out what plays first mate and crewmate on a given agent platform, or adding a platform to that list | `wiki/bkm/first-mate.md` Platforms |
+| working out what plays first mate and crewmate on a given agent platform, adding a platform to that list, or choosing the folder an agent session starts in | `wiki/bkm/first-mate.md` Platforms |
 | opening any issue or pull request: which template, and what each section holds | `wiki/bkm/issues.md` Templates |
 | splitting a plan into issues or an epic, or triaging an issue | `wiki/bkm/issues.md` Issues and epics |
 | opening, labelling or dispatching an issue | `wiki/bkm/issues.md` Labels |
