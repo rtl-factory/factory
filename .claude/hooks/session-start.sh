@@ -110,6 +110,21 @@ set_remote_cache() {
 }
 
 # Download the pinned Bazel now, so the first bazel command does not.
+# Shared Bazel cache: on only when the cloud environment sets both secrets, the
+# bucket URL ($BAZEL_REMOTE_CACHE) and a service account key's JSON
+# ($BAZEL_REMOTE_CACHE_KEY). The key is written outside the repository, readable
+# by this user only.
+set_remote_cache() {
+  [[ -n "${BAZEL_REMOTE_CACHE:-}" && -n "${BAZEL_REMOTE_CACHE_KEY:-}" ]] || return 0
+  local key="$HOME/.config/rtl-factory/bazel-cache-key.json"
+  mkdir -p "$(dirname "$key")"
+  ( umask 077 && printf '%s' "$BAZEL_REMOTE_CACHE_KEY" > "$key" )
+  grep -q -- '--config=remote-cache' "$HOME/.bazelrc" 2>/dev/null && return 0
+  log "shared Bazel cache on: $BAZEL_REMOTE_CACHE (~/.bazelrc)"
+  printf 'build --config=remote-cache\nbuild --remote_cache=%s\nbuild --google_credentials=%s\n' \
+    "$BAZEL_REMOTE_CACHE" "$key" >> "$HOME/.bazelrc"
+}
+
 fetch_bazel() { ( cd "$ROOT" && PATH="$BAZELISK_DIR:$PATH" bazel --version >&2 ); }
 
 # OSS CAD Suite: a public, checksum-pinned release, unpacked outside the
