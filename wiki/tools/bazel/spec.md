@@ -23,7 +23,7 @@ How the build meets its [requirements](prd.md). How agents use it day to day is 
 - `@oss_cad_suite` checks the `VERSION` stamp in the suite's install directory (`$OSS_CAD_SUITE`, else `install_dir` in `cfg/toolchain.json`) against the pin and links its `bin/` folder; the stamp is an input of every formal test. Without the pinned suite it provides an `sby` that prints the fix and fails, so only the formal tests fail.
 - `@rv32_gcc` downloads the RV32 GCC pinned as `rv32_gcc` in `cfg/toolchain.json` and checks its SHA-256; `:all` is every file and `:gcc` the compiler. A project with `hdl_project(rv32_gcc = True)` and `unit_tests(rv32_gcc = True)` gives its tests both as data and the compiler's path as `N2D_RISCV_PINNED`.
 - `@host_abi` names the host's OS release, glibc and `g++` version (the compiler on the model action's fixed `PATH`) as one string, `HOST_ABI`, which every model action carries as its `host-abi` exec property ([Remote cache](#remote-cache)). It is refetched when `g++` or `/etc/os-release` changes.
-- `@verilator` finds the Verilator install (`$VERILATOR`, then `PATH`, then `~/verilator/bin`), checks `verilator --version` against `cfg/toolchain.json`, and links its executables into the repository. They are inputs of every model action, so a different binary rebuilds every model.
+- `@verilator` links the Verilator inside the OSS CAD Suite install (`$VERILATOR` overrides it; never `PATH`), checks `verilator --version` against the version and revision in `cfg/toolchain.json`, and links its executables and the suite's `VERSION` stamp into the repository. They are inputs of every model action, so another suite release rebuilds every model, and every host has the same inputs.
 
 ## Targets of a project
 

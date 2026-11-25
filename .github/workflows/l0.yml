@@ -47,48 +47,13 @@ jobs:
               || rm -f workdir/lint/base-rtl-baseline.json
           fi
 
-      - name: Read the Verilator pin
-        if: runner.environment == 'github-hosted'
-        id: pin
-        run: |
-          python3 -I -c 'import json; v = json.load(open("cfg/toolchain.json"))["verilator"]; [print(k + "=" + v[k]) for k in ("version", "tag", "commit", "repository")]' >> "$GITHUB_OUTPUT"
-
-      - name: Restore Verilator
-        if: runner.environment == 'github-hosted'
-        id: cache
-        uses: actions/cache@v4
-        with:
-          path: ~/verilator
-          key: verilator-${{ steps.pin.outputs.tag }}-${{ steps.pin.outputs.commit }}-${{ runner.os }}-ubuntu-24.04
-
-      - name: Build Verilator
-        if: runner.environment == 'github-hosted' && steps.cache.outputs.cache-hit != 'true'
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq bison flex libfl-dev help2man zlib1g-dev
-          git clone --depth 1 --branch "${{ steps.pin.outputs.tag }}" "${{ steps.pin.outputs.repository }}" "$RUNNER_TEMP/verilator-src"
-          cd "$RUNNER_TEMP/verilator-src"
-          # Why: a tag can be moved; the pinned commit is the checksum of the source.
-          test "$(git rev-parse HEAD)" = "${{ steps.pin.outputs.commit }}" || { echo "v${{ steps.pin.outputs.version }} is not commit ${{ steps.pin.outputs.commit }}"; exit 1; }
-          autoconf
-          # Why: a ccache found here would be baked into verilated.mk (spec: Install (Verilator)).
-          ac_cv_prog_OBJCACHE= ./configure --prefix="$HOME/verilator"
-          make -j"$(nproc)"
-          make install
-
-      - name: Put Verilator on PATH
-        if: runner.environment == 'github-hosted'
-        run: |
-          echo "$HOME/verilator/bin" >> "$GITHUB_PATH"
-          "$HOME/verilator/bin/verilator" --version
-
       - name: Install simulation host packages
         if: runner.environment == 'github-hosted'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq liblz4-dev gcc-riscv64-unknown-elf picolibc-riscv64-unknown-elf
 
-      - name: Install the OSS CAD Suite (formal tools)
+      - name: Install the OSS CAD Suite (formal tools and Verilator)
         # Why: the self-hosted runner keeps its install; reinstall only when it misses the pin.
         run: |
           python3 tools/toolchain/check.py --tool oss-cad-suite && exit 0

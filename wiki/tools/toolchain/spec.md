@@ -15,7 +15,7 @@ How the toolchain is built, against its [requirements](prd.md). Decisions: ADR 0
 
 | Tool | Version | Source and notes |
 |---|---|---|
-| Verilator | 5.052 | Built from the upstream tag; pinned in `cfg/toolchain.json` by tag and commit (`ea338be9…`, the source's checksum); cocotb needs 5.036 or newer; 5.054 is newer but unproven here |
+| Verilator | 5.053 devel, rev `v5.052-654-gdd8a7d5e4` | The one inside the pinned OSS CAD Suite (below), pinned in `cfg/toolchain.json` by version and revision; every host runs the same files, so Bazel cache keys match across hosts and nothing builds Verilator ([#237](https://github.com/rtl-factory/factory/issues/237)). It moves with the suite: a suite bump re-pins Verilator and reruns the full regression. cocotb needs 5.036 or newer |
 | Bazelisk | 1.25.0 | GitHub release binary `bazelisk-linux-amd64`, pinned by SHA-256 in `cfg/toolchain.json`; it runs the Bazel that `.bazelversion` pins |
 | cocotb | 2.1.0 | pip, pinned with the other simulation packages in `tools/sim/requirements.txt` |
 | cocotb-coverage | 2.0 | pip, pinned in `tools/sim/requirements.txt`: functional coverage (`CoverPoint`, `CoverCross`) for the cocotb testbenches; 2.0 is the release for cocotb 2.x (it requires `cocotb>=2.0`), proven here on cocotb 2.1.0 and Verilator 5.052 by `n2a_uart_wire`. Chosen over pyvsc (a constraint solver and covergroups not tied to cocotb, with a native solver dependency we do not need) and over an in-repo helper (cocotb-coverage is maintained and already the cocotb community's choice). Its `python-constraint` dependency is a source-only package that the Python rules build once. Reporting: [sim spec, Coverage](../sim/spec.md#coverage) |
@@ -43,14 +43,14 @@ Quartus files, downloaded in a browser from Altera's *Quartus Prime Lite 25.1 fo
 
 `.claude/hooks/session-start.sh` (registered in `.claude/settings.json`) runs at the start of every cloud agent session and does nothing elsewhere. It makes `bazel test --config=l0 //...` work in a fresh session with no manual setup. Each step runs the readiness check first and is skipped when it passes; a failed step is logged and does not stop the others; nothing is written inside the repository.
 
-1. Ubuntu packages: installs those listed under `packages` in `cfg/toolchain.json` that are missing (the Verilator build, FST waveforms, the nand2doom C programs), as root or with passwordless `sudo`; without either it logs the missing ones.
+1. Ubuntu packages: installs those listed under `packages` in `cfg/toolchain.json` that are missing (the compiler and `make` for Verilator models, FST waveforms, the nand2doom C programs), as root or with passwordless `sudo`; without either it logs the missing ones.
 2. Bazelisk, per Install (Bazelisk).
 3. Bazel mirror: when the session proxy blocks `releases.bazel.build`, it writes `BAZELISK_BASE_URL` (Bazel releases on GitHub) to `~/.bazeliskrc`; when it blocks `bcr.bazel.build`, it writes `common --registry=` (the registry's GitHub copy) to `~/.bazelrc`. Both URLs are in `cfg/toolchain.json`. These are machine-only files, never the repository's `.bazelrc`, and a setting already there is kept. Bazelisk then downloads the pinned Bazel.
 4. Shared Bazel cache: when the cloud environment sets both `BAZEL_REMOTE_CACHE` (the bucket URL, `https://storage.googleapis.com/<bucket>`) and `BAZEL_REMOTE_CACHE_KEY` (a service account key's JSON), it writes the key to `~/.config/rtl-factory/bazel-cache-key.json`, readable by the session user only, and adds `--config=remote-cache`, `--remote_cache` and `--google_credentials` to `~/.bazelrc` ([Bazel spec, Remote cache](../bazel/spec.md#remote-cache)). Without both it does nothing.
-5. Side by side: builds Verilator from the pinned tag into `~/verilator` (per Install (Verilator), with the commit check), installs the OSS CAD Suite (per Install (OSS CAD Suite)) and installs Quartus (Cloud sessions (Quartus) below).
-6. Adds `~/.local/bin` and `~/verilator/bin` (and Quartus's `bin`) to `PATH` through the session's environment file, then prints the full readiness check.
+5. Side by side: installs the OSS CAD Suite, which carries Verilator (per Install (OSS CAD Suite)), and installs Quartus (Cloud sessions (Quartus) below).
+6. Adds `~/.local/bin` (and Quartus's `bin`) to `PATH` through the session's environment file, then prints the full readiness check.
 
-In a fresh session the Verilator build sets the time: about 5 to 8 minutes on 4 idle cores, and much longer on a loaded machine, so the hook's timeout in `.claude/settings.json` is 30 minutes. A session whose tools pass the check starts in seconds.
+In a fresh session the downloads set the time: about a minute for the suite, longer for Quartus, so the hook's timeout in `.claude/settings.json` is 30 minutes. A session whose tools pass the check starts in seconds.
 
 ## Install (Bazelisk)
 
@@ -78,10 +78,10 @@ Known host issues: a `setlocale` warning needs an `en_US.UTF-8` locale; on Arch,
 
 1. Download `oss-cad-suite-linux-x64-20261101.tgz` from the `2026-11-01` release of `YosysHQ/oss-cad-suite-build` on GitHub (the URL is in `cfg/toolchain.json`; about 750 MB) and check it with `sha256sum` against the pin.
 2. Unpack it into the home directory: `tar -xzf oss-cad-suite-linux-x64-20261101.tgz -C ~` gives `~/oss-cad-suite/` (about 2.5 GB).
-3. Do not add `~/oss-cad-suite/bin` to `PATH`: the suite carries its own Verilator, Python and cocotb, which would shadow the pinned ones. The [formal runner](../fv/spec.md) calls `~/oss-cad-suite/bin/sby` directly, and the suite's wrappers find their own tools.
+3. Do not add `~/oss-cad-suite/bin` to `PATH`: the suite carries its own Python and cocotb, which would shadow the pinned ones; Bazel links its Verilator ([Install (Verilator)](#install-verilator)). The [formal runner](../fv/spec.md) calls `~/oss-cad-suite/bin/sby` directly, and the suite's wrappers find their own tools.
 4. `python3 tools/toolchain/check.py --tool oss-cad-suite` checks the release stamp (`~/oss-cad-suite/VERSION`), the Yosys version, `sby`, `yosys-smtbmc`, `yosys-abc` and `yices-smt2`, and that the `slang` plugin loads.
 
-The cloud session hook runs these steps when the check fails (about 45 s), beside the Verilator build and the Quartus steps; a failure is logged and does not stop the others. The `l0` CI job runs steps 1 and 2 when the check fails: on every GitHub-hosted run, and on the self-hosted runner only after a pin change.
+The cloud session hook runs these steps when the check fails (about 45 s), beside the Quartus steps; a failure is logged and does not stop the others. The `l0` CI job runs steps 1 and 2 when the check fails: on every GitHub-hosted run, and on the self-hosted runner only after a pin change.
 
 ## Install (RV32 GCC)
 
@@ -89,11 +89,9 @@ Nothing to install for `bazel test`: the `@rv32_gcc` repository downloads the pi
 
 ## Install (Verilator)
 
-On a GitHub-hosted runner, the `l0` CI job ([CI levels](../../bkm/flow.md#ci-levels)) builds Verilator from the pinned tag on Ubuntu 24.04 (`bison`, `flex`, `libfl-dev`, `help2man`, `zlib1g-dev`; `git clone --depth 1 --branch v5.052`, then `git rev-parse HEAD` must equal the pinned `commit` or the build stops; `autoconf`, `ac_cv_prog_OBJCACHE= ./configure --prefix=~/verilator`, `make`, `make install`) and caches the install by the pinned tag and commit, so only the first run after a pin change rebuilds it. The same steps install it on a Linux host. The job also installs `liblz4-dev` (FST waveform targets) and, for the nand2doom C-program targets, `gcc-riscv64-unknown-elf` and `picolibc-riscv64-unknown-elf` from Ubuntu's archive.
+Verilator comes with the OSS CAD Suite (Install (OSS CAD Suite)); nothing else installs it. Bazel's `@verilator` links `bin/verilator` and its tools from the suite's install directory (`$OSS_CAD_SUITE`, else `install_dir`), never from `PATH`, so a host's own Verilator cannot stand in for the pinned one; `$VERILATOR` overrides it for a one-off experiment. The suite's `bin/verilator_bin` is a wrapper that runs the bundled binary with the suite's own libraries, so it runs on any x86-64 Linux host. Models are still compiled by the host's `g++` and `make` ([Bazel spec, Remote cache](../bazel/spec.md)).
 
-Configure with `ac_cv_prog_OBJCACHE=` (`ac_cv_prog_OBJCACHE= ./configure --prefix=~/verilator`): otherwise a `ccache` found on `PATH` is baked into the installed `verilated.mk` (`OBJCACHE ?= ccache`), and any later model build where `ccache` is missing fails. Bazel's model builds pass an empty `OBJCACHE` anyway ([Bazel spec](../bazel/spec.md)); the readiness check still fails such an install.
-
-`python3 tools/toolchain/check.py --tool verilator` checks it: `verilator` from `VERILATOR`, `PATH` or `~/verilator/bin` (where Bazel's `@verilator` repository looks), its `--version` against the pin, `verilator_coverage` beside it for [coverage reports](../sim/spec.md#coverage), and that its `verilated.mk` names no compiler cache. The cloud session hook builds it with the same steps (checking the pinned commit) when the check fails.
+`python3 tools/toolchain/check.py --tool verilator` checks it: `verilator` from `VERILATOR` or the suite, its `--version` against the pinned version and revision, `verilator_coverage` beside it for [coverage reports](../sim/spec.md#coverage), and that its `verilated.mk` names no compiler cache.
 
 ## Install (Python packages)
 

@@ -5,8 +5,8 @@ the formal targets of every src/<project>/fv/<block>/<target>.sby and the lint
 tops derived from every src/<project>/cfg/libraries.json, with their libraries
 resolved into files by tools/bazel/hdl_libraries.py, as Starlark data the project
 packages turn into Bazel targets.
-verilator: the Verilator install the toolchain pinned (cfg/toolchain.json),
-found on PATH or under ~/verilator, version-checked and fingerprinted.
+verilator: the Verilator the toolchain pinned (cfg/toolchain.json), the one inside the
+OSS CAD Suite install, version-checked and fingerprinted.
 oss_cad_suite: the OSS CAD Suite install the toolchain pinned, found under its
 install directory, release-checked.
 rv32_gcc: the RV32 GCC the toolchain pinned, downloaded and checksum-checked.
@@ -45,40 +45,49 @@ hdl_registry = repository_rule(implementation = _registry_impl)
 # verilator_coverage is a Perl wrapper that runs the binary beside it.
 COVERAGE_TOOLS = ["verilator_coverage", "verilator_coverage_bin_dbg"]
 
-def _find_verilator(rctx):
+def _suite_root(rctx, toolchain):
+    home = rctx.getenv("HOME") or ""
+    return rctx.path(rctx.getenv("OSS_CAD_SUITE") or toolchain["oss_cad_suite"]["install_dir"].replace("~", home, 1))
+
+def _find_verilator(rctx, suite):
     explicit = rctx.getenv("VERILATOR")
     if explicit:
         return rctx.path(explicit)
-    on_path = rctx.which("verilator")
-    if on_path:
-        return on_path
-    home = rctx.getenv("HOME")
-    fallback = rctx.path(home + "/verilator/bin/verilator") if home else None
-    if fallback and fallback.exists:
-        return fallback
-    fail("verilator not found: install the version pinned in cfg/toolchain.json " +
-         "(wiki/tools/toolchain/spec.md), put it on PATH or set VERILATOR")
+    # Why: never PATH, so every host runs the suite's files and cache keys match across hosts.
+    exe = suite.get_child("bin").get_child("verilator")
+    if exe.exists:
+        return exe
+    fail("verilator not found in %s: install the pinned OSS CAD Suite, which carries the pinned " % suite +
+         "Verilator (wiki/tools/toolchain/spec.md), or set VERILATOR")
 
 def _verilator_impl(rctx):
-    pin = json.decode(rctx.read(rctx.attr.toolchain))["verilator"]["version"]
-    exe = _find_verilator(rctx)
-    # Why: a rebuilt or replaced binary at the same path must be checked again.
-    rctx.watch(exe.realpath)
+    toolchain = json.decode(rctx.read(rctx.attr.toolchain))
+    pin = toolchain["verilator"]
+    suite = _suite_root(rctx, toolchain)
+    exe = _find_verilator(rctx, suite)
     bindir = exe.realpath.dirname
-    if bindir.get_child("verilator_bin").exists:
-        rctx.watch(bindir.get_child("verilator_bin"))
+    stamp = bindir.dirname.get_child("VERSION")
+    # Why: the suite's bin/ holds wrappers that run libexec/; its release stamp names the
+    # binaries behind them, and a reinstall at the same path must be checked again.
+    for watched in [exe.realpath, stamp]:
+        rctx.watch(watched)
     version = rctx.execute([exe, "--version"]).stdout.strip()
-    if not version.startswith("Verilator %s " % pin) and version != "Verilator " + pin:
-        fail("%s is '%s'; cfg/toolchain.json pins Verilator %s" % (exe, version, pin))
+    want = "Verilator %s " % pin["version"]
+    if not version.startswith(want) or ("rev %s" % pin["revision"]) not in version:
+        fail("%s is '%s'; cfg/toolchain.json pins Verilator %s rev %s" % (exe, version, pin["version"], pin["revision"]))
     for tool in ["verilator", "verilator_bin", "verilator_includer"] + COVERAGE_TOOLS:
         if bindir.get_child(tool).exists:
             rctx.symlink(bindir.get_child(tool), "bin/" + tool)
+    if stamp.exists:
+        rctx.symlink(stamp, "VERSION")
+    else:
+        rctx.file("VERSION", version + "\n")
     rctx.file("BUILD.bazel", """\
-# Verilator {version} from {bindir}; its files are action inputs, so a different
-# binary invalidates every cached model.
+# Verilator {version} from {bindir}; its files and its suite's release stamp are action
+# inputs, so another release invalidates every cached model.
 filegroup(
     name = "verilator",
-    srcs = glob(["bin/*"], exclude = {coverage}),
+    srcs = glob(["bin/*"], exclude = {coverage}) + ["VERSION"],
     visibility = ["//visibility:public"],
 )
 
@@ -93,7 +102,7 @@ filegroup(
 verilator_repository = repository_rule(
     implementation = _verilator_impl,
     attrs = {"toolchain": attr.label(default = "//cfg:toolchain.json")},
-    environ = ["PATH", "VERILATOR", "HOME"],
+    environ = ["VERILATOR", "OSS_CAD_SUITE", "HOME"],
 )
 
 def _oss_cad_suite_impl(rctx):

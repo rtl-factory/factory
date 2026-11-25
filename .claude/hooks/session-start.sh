@@ -2,7 +2,7 @@
 # Cloud session hook: install the pinned toolchain at session start so that
 # `bazel test --config=l0 //...` runs with no manual setup: the Ubuntu packages,
 # Bazelisk (with the Bazel download mirror when the default hosts are blocked),
-# Verilator, the OSS CAD Suite (formal tools) and Quartus Prime Lite.
+# the OSS CAD Suite (formal tools and Verilator) and Quartus Prime Lite.
 # Spec: wiki/tools/toolchain/spec.md (Cloud session hook). Pins: cfg/toolchain.json.
 #
 # Every install is checked with tools/toolchain/check.py first and skipped when
@@ -31,10 +31,8 @@ home() { local p; p="$(pin "$@")"; echo "${p/#\~/$HOME}"; }
 ready() { python3 -I "$ROOT/tools/toolchain/check.py" --config "$CONFIG" "$@" >&2; }
 
 BAZELISK_DIR="$(home bazelisk install_dir)"
-# Where Bazel's @verilator looks after VERILATOR and PATH (tools/bazel/extensions.bzl).
-VERILATOR_DIR="$HOME/verilator"
 
-# Ubuntu packages for the Verilator build, FST waveforms and the nand2doom C
+# Ubuntu packages for Verilator's model builds, FST waveforms and the nand2doom C
 # programs. They need root: installed only as root or through passwordless
 # sudo; otherwise the missing ones are logged.
 install_packages() {
@@ -109,30 +107,10 @@ set_remote_cache() {
 
 fetch_bazel() { ( cd "$ROOT" && PATH="$BAZELISK_DIR:$PATH" bazel --version >&2 ); }
 
-# Verilator: built from the pinned tag and commit into ~/verilator (about 5 to 8 min
-# on 4 cores). PATH gets ~/verilator/bin first, so Bazel's @verilator uses it.
-build_verilator() {
-  local exe="$VERILATOR_DIR/bin/verilator" src="$CACHE/verilator-build"
-  VERILATOR="$exe" ready --tool verilator && return 0
-  log "building Verilator $(pin verilator tag) into $VERILATOR_DIR (log: $src/build.log)"
-  rm -rf "$src"; mkdir -p "$src"
-  git -c advice.detachedHead=false clone -q --depth 1 --branch "$(pin verilator tag)" "$(pin verilator repository)" "$src/verilator" >&2 \
-    || { log "Verilator clone failed"; return 1; }
-  # Why: a tag can be moved; the pinned commit is the checksum of the source.
-  [[ "$(git -C "$src/verilator" rev-parse HEAD)" == "$(pin verilator commit)" ]] \
-    || { log "Verilator $(pin verilator tag) is not commit $(pin verilator commit): not building"; return 1; }
-  # Why: configure bakes a ccache found on PATH into verilated.mk, and Bazel's
-  # sandboxed model builds then fail without it; the empty cached answer stops that.
-  ( cd "$src/verilator" && autoconf && ac_cv_prog_OBJCACHE= ./configure --prefix="$VERILATOR_DIR" \
-      && make -j"$(nproc)" && rm -rf "$VERILATOR_DIR" && make install ) > "$src/build.log" 2>&1 \
-    || { tail -n 20 "$src/build.log" >&2; log "Verilator build failed"; return 1; }
-  rm -rf "$src"
-  VERILATOR="$exe" ready --tool verilator
-}
-
 # OSS CAD Suite: a public, checksum-pinned release, unpacked outside the
-# repository. Its bin/ is not put on PATH (it carries its own Verilator and
-# Python); tools/fv/fv.py calls sby from the install directory.
+# repository. Its bin/ is not put on PATH (it carries its own Python, which would
+# shadow the host's); tools/fv/fv.py calls sby from the install directory and
+# Bazel's @verilator links the suite's Verilator.
 install_oss_cad_suite() {
   ready --tool oss-cad-suite && return 0
   local dir url sum cache="$CACHE/oss-cad-suite-download"
@@ -216,10 +194,9 @@ PY
   export_env
 )
 
-# Packages first (the Verilator build needs them), then the quick Bazel steps;
-# the Verilator build and the two downloads run side by side. Each runs as its
+# Packages first, then the quick Bazel steps; the two downloads run side by side. Each runs as its
 # own job, so errexit holds inside it and one failure does not stop the others.
-install_packages || log "packages missing: the Verilator build or some L0 targets may fail"
+install_packages || log "packages missing: some L0 targets may fail"
 if install_bazelisk; then
   set_mirror
   set_remote_cache
@@ -229,16 +206,14 @@ else
 fi
 
 # Why: written before the long steps, so a hook that times out still leaves the
-# session with bazel (and Verilator, once built) on PATH.
+# session with bazel on PATH.
 if [[ -n "${CLAUDE_ENV_FILE:-}" ]]; then
-  echo "export PATH=$BAZELISK_DIR:$VERILATOR_DIR/bin:\$PATH" >> "$CLAUDE_ENV_FILE"
+  echo "export PATH=$BAZELISK_DIR:\$PATH" >> "$CLAUDE_ENV_FILE"
 fi
 
-build_verilator & verilator_job=$!
 install_oss_cad_suite & suite_job=$!
 install_quartus & quartus_job=$!
-wait "$verilator_job" || log "Verilator not installed: simulation targets will fail until it is"
-wait "$suite_job" || log "OSS CAD Suite not installed: formal runs will fail until it is"
+wait "$suite_job" || log "OSS CAD Suite not installed: simulation, lint and formal runs will fail until it is"
 wait "$quartus_job" || log "Quartus not installed: FPGA images will fail until it is"
 
-PATH="$BAZELISK_DIR:$VERILATOR_DIR/bin:$PATH" ready || true
+PATH="$BAZELISK_DIR:$PATH" ready || true
