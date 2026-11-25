@@ -199,7 +199,13 @@ def _host_abi_impl(rctx):
     glibc = _probe(rctx, ["getconf", "GNU_LIBC_VERSION"]).replace("glibc ", "")
     cxx = _probe(rctx, ["g++", "-dumpfullversion"])
     abi = "%s_glibc-%s_gcc-%s" % (_os_release(rctx), glibc, cxx)
-    for tool in ["/usr/bin/g++", "/etc/os-release"]:
+    # Why: watch the g++ the probe ran, the first on MODEL_PATH, so upgrading it refetches.
+    watched = ["/etc/os-release"]
+    for folder in MODEL_PATH.split(":"):
+        if rctx.path(folder + "/g++").exists:
+            watched.append(folder + "/g++")
+            break
+    for tool in watched:
         if rctx.path(tool).exists:
             rctx.watch(rctx.path(tool).realpath)
     rctx.file("BUILD.bazel", "")
