@@ -91,7 +91,9 @@ Nothing to install for `bazel test`: the `@rv32_gcc` repository downloads the pi
 
 Verilator comes with the OSS CAD Suite (Install (OSS CAD Suite)); nothing else installs it. Bazel's `@verilator` links `bin/verilator` and its tools from the suite's install directory (`$OSS_CAD_SUITE`, else `install_dir`), never from `PATH`, so a host's own Verilator cannot stand in for the pinned one; `$VERILATOR` overrides it for a one-off experiment. The suite's `bin/verilator_bin` is a wrapper that runs the bundled binary with the suite's own libraries, so it runs on any x86-64 Linux host. Models are still compiled by the host's `g++` and `make` ([Bazel spec, Remote cache](../bazel/spec.md)).
 
-`python3 tools/toolchain/check.py --tool verilator` checks it: `verilator` from `VERILATOR` or the suite, its `--version` against the pinned version and revision, `verilator_coverage` beside it for [coverage reports](../sim/spec.md#coverage), and that its `verilated.mk` names no compiler cache.
+`python3 tools/toolchain/check.py --tool verilator` checks it: `verilator` from `VERILATOR` or the suite, its `--version` against the pinned version and revision, `verilator_coverage` beside it for [coverage reports](../sim/spec.md#coverage), that its `verilated.mk` exists and names no compiler cache, and that it lints a one-line module (which runs the binary behind the wrapper, not only the wrapper's `--version`).
+
+Runs outside Bazel use the same Verilator. `tools/sim/sim.py` and `tools/lint/rtl_lint.py` (including `--update-baseline`), when Bazel has not set their `SIM_PATH_PREPEND` or `LINT_PATH_PREPEND`, call `check.py`'s `pinned_verilator_dir()`: it runs the check above and returns `workdir/toolchain/verilator-bin/<revision>/`, a folder of links to the suite's `verilator*` executables only, which they put first on `PATH`. Never the suite's whole `bin/`, whose Python would shadow the host's. A host without the pinned suite gets the check's failure and fix instead of another Verilator. Unit tests take Bazel's Verilator through `UNIT_PATH_PREPEND`, which `tools/bazel/pytest_main.py` also passes to both runners.
 
 ## Install (Python packages)
 

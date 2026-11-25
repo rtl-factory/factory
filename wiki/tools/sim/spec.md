@@ -1,6 +1,6 @@
 # Simulation runner: spec
 
-How the runner works, against its [requirements](prd.md). The tool is `tools/sim/sim.py`; it needs Verilator and cocotb from the toolchain (`tools/toolchain/`) on `PATH`.
+How the runner works, against its [requirements](prd.md). The tool is `tools/sim/sim.py`; it needs cocotb from the toolchain (`tools/toolchain/`) and runs the pinned Verilator ([toolchain spec, Install (Verilator)](../toolchain/spec.md#install-verilator)) whatever is on `PATH`.
 
 ## Targets
 

@@ -18,6 +18,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = ROOT / "cfg" / "toolchain.json"
@@ -84,7 +85,8 @@ def find_verilator(suite_dir: str, which=shutil.which, is_file=os.path.isfile) -
 def check_verilator(pin: dict, suite_dir: str, *, runner=run, which=shutil.which, is_file=os.path.isfile,
                     read=None) -> dict:
     """The pinned Verilator (the OSS CAD Suite's), with verilator_coverage beside it for
-    coverage reports and no compiler cache baked into its verilated.mk."""
+    coverage reports, a verilated.mk with no compiler cache baked in, and a binary that
+    lints a one-line module."""
     want = f'{pin["version"]} rev {pin["revision"]}'
     result = {"tool": "verilator", "want": want}
     fix = f"install the pinned OSS CAD Suite per {FORMAL_SPEC} (it carries Verilator), or {HOOK}"
@@ -102,10 +104,43 @@ def check_verilator(pin: dict, suite_dir: str, *, runner=run, which=shutil.which
     # Why: configure bakes a ccache found on PATH into verilated.mk (OBJCACHE ?= ccache);
     # a build where it is missing then fails.
     makefile = Path(executable).resolve().parent.parent / "share" / "verilator" / "include" / "verilated.mk"
-    cache = re.search(r"^OBJCACHE\s*\?=[ \t]*(\S*)", (read or read_stamp)(makefile) or "", re.M)
+    text = (read or read_stamp)(makefile)
+    if text is None:
+        return dict(result, status="FAIL", found=f"{found}; missing {makefile}", fix=fix)
+    cache = re.search(r"^OBJCACHE\s*\?=[ \t]*(\S*)", text, re.M)
     if cache and cache.group(1):
         return dict(result, status="FAIL", found=f"{found}; {makefile} needs {cache.group(1)}", fix=fix)
+    # Why: --version is answered by the wrapper; a lint run proves the binary behind it
+    # loads its libraries and finds its include folder.
+    with tempfile.TemporaryDirectory() as tmp:
+        smoke = Path(tmp) / "smoke.sv"
+        smoke.write_text("module smoke; endmodule\n")
+        status, text = runner([executable, "--lint-only", "-Wall", str(smoke)])
+    if status != 0:
+        return dict(result, status="FAIL", found=f"{found}; lint smoke test failed: {text.strip()[-200:]}", fix=fix)
     return dict(result, status="PASS", found=found)
+
+
+def pinned_verilator_dir(config_path: Path = DEFAULT_CONFIG, links: Path | None = None) -> Path:
+    """A folder holding links to the pinned Verilator's executables only, for runs outside
+    Bazel to put first on PATH: the same Verilator Bazel's @verilator links, without the
+    suite's Python and other tools that its bin/ would also put on PATH."""
+    config = json.loads(Path(config_path).read_text())
+    result = check_verilator(config["verilator"], config["oss_cad_suite"]["install_dir"])
+    if result["status"] != "PASS":
+        raise SystemExit(f'pinned Verilator not ready: {result["found"]}; {result["fix"]}')
+    bindir = Path(result["path"]).resolve().parent
+    folder = (links or ROOT / "workdir" / "toolchain" / "verilator-bin") / config["verilator"]["revision"]
+    folder.mkdir(parents=True, exist_ok=True)
+    for tool in sorted(bindir.glob("verilator*")):
+        link = folder / tool.name
+        if not (link.is_symlink() and link.resolve() == tool.resolve()):
+            # Why: a unique temporary name renamed into place, so parallel runs never race.
+            temporary = folder / f".{tool.name}.{os.getpid()}"
+            temporary.unlink(missing_ok=True)
+            temporary.symlink_to(tool)
+            temporary.replace(link)
+    return folder
 
 
 def read_stamp(path: Path) -> str | None:

@@ -57,6 +57,16 @@ class BazelCommandTests(unittest.TestCase):
                 sim.prepend_tool_paths()
                 self.assertEqual([str(tool.parent), "/usr/bin"], os.environ["PATH"].split(os.pathsep))
 
+    def test_prepend_tool_paths_outside_bazel_names_the_pinned_verilator_first(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pinned = Path(tmp) / "pinned"
+            pinned.mkdir()
+            env = {"SIM_PATH_PREPEND": "", "PATH": f"{tmp}/other-verilator:/usr/bin"}
+            with unittest.mock.patch.dict("os.environ", env):
+                sim.prepend_tool_paths(pinned=lambda: pinned)
+                self.assertEqual(str(pinned), os.environ["PATH"].split(os.pathsep)[0])
+                self.assertEqual(str(pinned), os.environ["SIM_PATH_PREPEND"])
+
 
 if __name__ == "__main__":
     unittest.main()
