@@ -28,6 +28,7 @@ until its program builds become Bazel actions.
 
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@hdl_registry//:targets.bzl", "FV_TARGETS", "LINT_TARGETS", "SIM_TARGETS")
+load("@host_abi//:abi.bzl", "HOST_ABI")
 load("@pypi//:requirements.bzl", "requirement")
 load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
@@ -204,6 +205,9 @@ def hdl_project(name, python_deps = [], rv32_gcc = False):
             )
             verilator_model(
                 name = models[key],
+                # Why: the action key must name the host compiler and C++ runtime the
+                # model links against, or a shared cache hands it to a host it can't run on.
+                exec_properties = {"host-abi": HOST_ABI},
                 spec = models[key] + ".spec",
                 srcs = [_source_label(s) for s in target["sources"]],
                 headers = headers,

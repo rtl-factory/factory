@@ -92,6 +92,21 @@ set_mirror() {
 }
 
 # Download the pinned Bazel now, so the first bazel command does not.
+# Shared Bazel cache: on only when the cloud environment sets both secrets, the
+# bucket URL ($BAZEL_REMOTE_CACHE) and a service account key's JSON
+# ($BAZEL_REMOTE_CACHE_KEY). The key is written outside the repository, readable
+# by this user only.
+set_remote_cache() {
+  [[ -n "${BAZEL_REMOTE_CACHE:-}" && -n "${BAZEL_REMOTE_CACHE_KEY:-}" ]] || return 0
+  local key="$HOME/.config/rtl-factory/bazel-cache-key.json"
+  mkdir -p "$(dirname "$key")"
+  ( umask 077 && printf '%s' "$BAZEL_REMOTE_CACHE_KEY" > "$key" )
+  grep -q -- '--config=remote-cache' "$HOME/.bazelrc" 2>/dev/null && return 0
+  log "shared Bazel cache on: $BAZEL_REMOTE_CACHE (~/.bazelrc)"
+  printf 'build --config=remote-cache\nbuild --remote_cache=%s\nbuild --google_credentials=%s\n' \
+    "$BAZEL_REMOTE_CACHE" "$key" >> "$HOME/.bazelrc"
+}
+
 fetch_bazel() { ( cd "$ROOT" && PATH="$BAZELISK_DIR:$PATH" bazel --version >&2 ); }
 
 # Verilator: built from the pinned tag and commit into ~/verilator (about 5 to 8 min
@@ -207,6 +222,7 @@ PY
 install_packages || log "packages missing: the Verilator build or some L0 targets may fail"
 if install_bazelisk; then
   set_mirror
+  set_remote_cache
   fetch_bazel || log "Bazel $(cat "$ROOT/.bazelversion") not downloaded yet: the first bazel command will retry"
 else
   log "Bazelisk not installed: bazel commands will fail until it is"

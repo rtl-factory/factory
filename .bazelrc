@@ -28,4 +28,14 @@ build:ci --keep_going
 # keep their disk cache there, the self-hosted runner keeps its own on disk.
 build:ci-hosted --experimental_disk_cache_gc_max_size=3G
 
+# Shared remote cache (wiki/bkm/flow.md, Build): an HTTP cache in a Google Cloud
+# Storage bucket. A machine opts in from user.bazelrc or ~/.bazelrc with
+# --config=remote-cache, --remote_cache=https://storage.googleapis.com/<bucket> and
+# --google_credentials=<key file>; the cloud hook does it when the secrets are set.
+# Why HTTP: cloud sessions reach the internet only through a proxy, which Bazel's
+# gRPC cache client does not use.
+# Model actions carry the host's ABI (@host_abi) in their key, so hosts share lint,
+# formal and Python results while each host gets models built for it.
+build:remote-cache --remote_timeout=60
+
 try-import %workspace%/user.bazelrc

@@ -10,6 +10,8 @@ found on PATH or under ~/verilator, version-checked and fingerprinted.
 oss_cad_suite: the OSS CAD Suite install the toolchain pinned, found under its
 install directory, release-checked.
 rv32_gcc: the RV32 GCC the toolchain pinned, downloaded and checksum-checked.
+host_abi: the host's OS, glibc and C++ compiler as one string, the exec property that
+keeps models built on different hosts apart in a shared cache.
 """
 
 def _registry_impl(rctx):
@@ -163,11 +165,45 @@ rv32_gcc_repository = repository_rule(
     attrs = {"toolchain": attr.label(default = "//cfg:toolchain.json")},
 )
 
+# The PATH every model action runs with (hdl.bzl _model_impl), so the compiler probed
+# is the one Verilator's makefile calls.
+MODEL_PATH = "/usr/local/bin:/usr/bin:/bin"
+
+def _probe(rctx, argv):
+    result = rctx.execute(argv, environment = {"PATH": MODEL_PATH})
+    return result.stdout.strip() if result.return_code == 0 else "unknown"
+
+def _os_release(rctx):
+    path = rctx.path("/etc/os-release")
+    if not path.exists:
+        return "unknown"
+    fields = {}
+    for line in rctx.read(path).splitlines():
+        key, _, value = line.partition("=")
+        fields[key] = value.strip('"')
+    return "%s-%s" % (fields.get("ID", "unknown"), fields.get("VERSION_ID", "rolling"))
+
+def _host_abi_impl(rctx):
+    # Why: the host compiler and C++ runtime are not action inputs, and a model built
+    # against a newer glibc or libstdc++ fails to load on an older host; the string is
+    # part of every model's action key, so a shared cache never crosses hosts.
+    glibc = _probe(rctx, ["getconf", "GNU_LIBC_VERSION"]).replace("glibc ", "")
+    cxx = _probe(rctx, ["g++", "-dumpfullversion"])
+    abi = "%s_glibc-%s_gcc-%s" % (_os_release(rctx), glibc, cxx)
+    for tool in ["/usr/bin/g++", "/etc/os-release"]:
+        if rctx.path(tool).exists:
+            rctx.watch(rctx.path(tool).realpath)
+    rctx.file("BUILD.bazel", "")
+    rctx.file("abi.bzl", "HOST_ABI = %r\n" % abi)
+
+host_abi_repository = repository_rule(implementation = _host_abi_impl)
+
 def _hdl_impl(mctx):
     hdl_registry(name = "hdl_registry")
     verilator_repository(name = "verilator")
     oss_cad_suite_repository(name = "oss_cad_suite")
     rv32_gcc_repository(name = "rv32_gcc")
+    host_abi_repository(name = "host_abi")
     return mctx.extension_metadata(reproducible = False)
 
 hdl = module_extension(implementation = _hdl_impl)
