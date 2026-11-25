@@ -118,6 +118,7 @@ Where CI jobs run, and how to set up a host that runs the factory's checks local
 3. Install Bazelisk as `bazel` on `PATH`: download `bazelisk-linux-amd64` from `bazelbuild/bazelisk` releases into `~/.local/bin/bazelisk` and link `~/.local/bin/bazel` to it. It downloads the Bazel pinned in `.bazelversion`.
 4. Nothing to install for the nand2doom C-program targets under `bazel test`: Bazel fetches the RV32 GCC pinned in `cfg/toolchain.json` ([toolchain spec](../tools/toolchain/spec.md#install-rv32-gcc)), and it wins over any `N2D_RISCV_*` line in `~/.bazelrc`. Only a direct (non-Bazel) run uses a host toolchain: `riscv64-unknown-elf-gcc` on `PATH`, or `N2D_RISCV_GCC=<path>`, whose sibling binutils (`objcopy`, `readelf`, `nm`, `objdump`) are found by prefix.
 5. Run `python3 tools/toolchain/check.py` until it prints READY, then `bazel test --config=l0 //...`.
+6. Open agent sessions on this host at the clone's root (the folder holding `AGENTS.md`), never at a folder above it, per [Platforms](first-mate.md#platforms). Why: one folder up, the agent loads none of the factory's rules or skills.
 
 ### Steps: install the self-hosted runner
 

@@ -97,6 +97,7 @@ Examples of how the roles in [running the crew](#running-the-crew) map onto agen
 ### Rules
 
 - Follow [running the crew](#running-the-crew) on every platform; where a platform allows more (crewmates that spawn agents, a captain talking straight to a crewmate), the BKM wins. Why: the factory is platform-agnostic; the platform is only the transport.
+- Start every agent session, first mate or crewmate, with its working directory at the repository root or at one of its worktrees under `worktrees/`, never at a folder above it. On a platform that opens a host folder (a laptop project folder, a desktop app's folder), pick the clone's root. Why: at session start the harness loads `AGENTS.md`, the skills in `.claude/skills/` and the hooks in `.claude/settings.json` from the working directory and the folders above it, not from folders below it; checked 2026-11-24 on Claude Code 2.1.310, a session at the root had `AGENTS.md` and the skills in context, and a session one folder up had neither and nothing in the repo could tell it (#228).
 - Add a row only from the platform's official docs, with the date you checked and a link. Why: platforms change fast, and an undated row rots silently.
 - When a row turns out wrong, fix or delete it in its own pull request. Why: a stale hint is worse than none.
 
