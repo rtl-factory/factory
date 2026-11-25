@@ -46,8 +46,9 @@ Quartus files, downloaded in a browser from Altera's *Quartus Prime Lite 25.1 fo
 1. Ubuntu packages: installs those listed under `packages` in `cfg/toolchain.json` that are missing (the Verilator build, FST waveforms, the nand2doom C programs), as root or with passwordless `sudo`; without either it logs the missing ones.
 2. Bazelisk, per Install (Bazelisk).
 3. Bazel mirror: when the session proxy blocks `releases.bazel.build`, it writes `BAZELISK_BASE_URL` (Bazel releases on GitHub) to `~/.bazeliskrc`; when it blocks `bcr.bazel.build`, it writes `common --registry=` (the registry's GitHub copy) to `~/.bazelrc`. Both URLs are in `cfg/toolchain.json`. These are machine-only files, never the repository's `.bazelrc`, and a setting already there is kept. Bazelisk then downloads the pinned Bazel.
-4. Side by side: builds Verilator from the pinned tag into `~/verilator` (per Install (Verilator), with the commit check), installs the OSS CAD Suite (per Install (OSS CAD Suite)) and installs Quartus (Cloud sessions (Quartus) below).
-5. Adds `~/.local/bin` and `~/verilator/bin` (and Quartus's `bin`) to `PATH` through the session's environment file, then prints the full readiness check.
+4. Shared Bazel cache: when the cloud environment sets both `BAZEL_REMOTE_CACHE` (the bucket URL, `https://storage.googleapis.com/<bucket>`) and `BAZEL_REMOTE_CACHE_KEY` (a service account key's JSON), it writes the key to `~/.config/rtl-factory/bazel-cache-key.json`, readable by the session user only, and adds `--config=remote-cache`, `--remote_cache` and `--google_credentials` to `~/.bazelrc` ([Bazel spec, Remote cache](../bazel/spec.md#remote-cache)). Without both it does nothing.
+5. Side by side: builds Verilator from the pinned tag into `~/verilator` (per Install (Verilator), with the commit check), installs the OSS CAD Suite (per Install (OSS CAD Suite)) and installs Quartus (Cloud sessions (Quartus) below).
+6. Adds `~/.local/bin` and `~/verilator/bin` (and Quartus's `bin`) to `PATH` through the session's environment file, then prints the full readiness check.
 
 In a fresh session the Verilator build sets the time: about 5 to 8 minutes on 4 idle cores, and much longer on a loaded machine, so the hook's timeout in `.claude/settings.json` is 30 minutes. A session whose tools pass the check starts in seconds.
 
