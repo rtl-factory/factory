@@ -91,53 +91,70 @@ def test_tool_selection():
 
 
 VERILATOR = json.loads((check.DEFAULT_CONFIG).read_text())["verilator"]
+SUITE_DIR = "/opt/oss-cad-suite"
+PINNED = f'Verilator {VERILATOR["version"]} devel rev {VERILATOR["revision"]} (mod)\n'
 
 
-def verilator_runner(version=f'Verilator {VERILATOR["version"]} 2026-09-05 rev v{VERILATOR["version"]}\n'):
+def verilator_runner(version=PINNED):
     return lambda _command: (0, version)
 
 
-def on_path(name):
-    return "/opt/verilator/bin/verilator" if name == "verilator" else None
+def never(_name):
+    return None
 
 
-def test_verilator_pass_on_pinned_version(monkeypatch):
+def run_check(monkeypatch, *, version=PINNED, is_file=lambda _p: True, read=None):
     monkeypatch.delenv("VERILATOR", raising=False)
-    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=on_path, is_file=lambda _p: True)
-    assert r["status"] == "PASS" and r["found"] == VERILATOR["version"]
+    monkeypatch.delenv("OSS_CAD_SUITE", raising=False)
+    return check.check_verilator(VERILATOR, SUITE_DIR, runner=verilator_runner(version), which=never,
+                                 is_file=is_file, read=read)
+
+
+def test_verilator_pass_on_pinned_version_from_the_suite(monkeypatch):
+    r = run_check(monkeypatch)
+    assert r["status"] == "PASS" and r["path"] == f"{SUITE_DIR}/bin/verilator"
+    assert r["found"] == f'{VERILATOR["version"]} rev {VERILATOR["revision"]}'
+
+
+def test_verilator_ignores_path(monkeypatch):
+    monkeypatch.delenv("VERILATOR", raising=False)
+    monkeypatch.delenv("OSS_CAD_SUITE", raising=False)
+    found = check.find_verilator(SUITE_DIR, which=lambda _n: "/usr/bin/verilator", is_file=lambda _p: False)
+    assert found is None
+
+
+def test_verilator_explicit_override(monkeypatch):
+    monkeypatch.setenv("VERILATOR", "/x/verilator")
+    assert check.find_verilator(SUITE_DIR, which=lambda n: n, is_file=lambda _p: False) == "/x/verilator"
 
 
 def test_verilator_fail_on_other_version(monkeypatch):
-    monkeypatch.delenv("VERILATOR", raising=False)
-    r = check.check_verilator(VERILATOR, runner=verilator_runner("Verilator 5.030 2024-10-27\n"),
-                              which=on_path, is_file=lambda _p: True)
-    assert r["status"] == "FAIL" and r["found"] == "5.030" and VERILATOR["tag"] in r["fix"]
+    r = run_check(monkeypatch, version="Verilator 5.052 2026-09-05 rev v5.052\n")
+    assert r["status"] == "FAIL" and r["found"] == "5.052 rev v5.052" and "OSS CAD Suite" in r["fix"]
+
+
+def test_verilator_fail_on_other_revision(monkeypatch):
+    r = run_check(monkeypatch, version=f'Verilator {VERILATOR["version"]} devel rev v5.052-1-gabc\n')
+    assert r["status"] == "FAIL"
 
 
 def test_verilator_fail_without_coverage_tool(monkeypatch):
-    monkeypatch.delenv("VERILATOR", raising=False)
-    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=on_path, is_file=lambda _p: False)
+    r = run_check(monkeypatch, is_file=lambda p: p.endswith("/bin/verilator"))
     assert r["status"] == "FAIL" and "verilator_coverage" in r["found"]
 
 
 def test_verilator_fail_on_baked_in_ccache(monkeypatch):
-    monkeypatch.delenv("VERILATOR", raising=False)
-    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=on_path, is_file=lambda _p: True,
-                              read=lambda _p: "VERILATOR_ROOT ?= x\nOBJCACHE ?= ccache\n")
+    r = run_check(monkeypatch, read=lambda _p: "VERILATOR_ROOT ?= x\nOBJCACHE ?= ccache\n")
     assert r["status"] == "FAIL" and "ccache" in r["found"]
 
 
 def test_verilator_pass_on_empty_objcache(monkeypatch):
-    monkeypatch.delenv("VERILATOR", raising=False)
-    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=on_path, is_file=lambda _p: True,
-                              read=lambda _p: "OBJCACHE ?= \nCXX ?= g++\n")
+    r = run_check(monkeypatch, read=lambda _p: "OBJCACHE ?= \nCXX ?= g++\n")
     assert r["status"] == "PASS"
 
 
-def test_verilator_fail_when_missing(monkeypatch, tmp_path):
-    monkeypatch.delenv("VERILATOR", raising=False)
-    monkeypatch.setenv("HOME", str(tmp_path))
-    r = check.check_verilator(VERILATOR, runner=verilator_runner(), which=lambda _n: None)
+def test_verilator_fail_when_missing(monkeypatch):
+    r = run_check(monkeypatch, is_file=lambda _p: False)
     assert r["status"] == "FAIL" and r["fix"]
 
 

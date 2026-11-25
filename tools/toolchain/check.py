@@ -23,7 +23,6 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = ROOT / "cfg" / "toolchain.json"
 SPEC = "wiki/tools/toolchain/spec.md (Install, Quartus)"
 FORMAL_SPEC = "wiki/tools/toolchain/spec.md (Install, OSS CAD Suite)"
-SIM_SPEC = "wiki/tools/toolchain/spec.md (Install, Verilator)"
 BAZEL_SPEC = "wiki/tools/toolchain/spec.md (Install, Bazelisk)"
 HOOK = "rerun .claude/hooks/session-start.sh in a cloud session"
 
@@ -73,30 +72,30 @@ def check_quartus(pin: dict, *, runner=run, which=shutil.which) -> dict:
     return dict(result, status="PASS", found=f'{found} with {", ".join(pin["families"])}')
 
 
-def find_verilator(which=shutil.which) -> str | None:
-    """verilator from VERILATOR, PATH, then ~/verilator/bin: where Bazel looks (tools/bazel/extensions.bzl)."""
+def find_verilator(suite_dir: str, which=shutil.which, is_file=os.path.isfile) -> str | None:
+    """verilator from VERILATOR, else the OSS CAD Suite's bin/: where Bazel looks (tools/bazel/extensions.bzl).
+    Never PATH, so a host Verilator cannot stand in for the pinned one."""
     if os.environ.get("VERILATOR"):
         return which(os.environ["VERILATOR"])
-    found = which("verilator")
-    if found:
-        return found
-    candidate = Path("~/verilator/bin/verilator").expanduser()
-    return str(candidate) if candidate.is_file() else None
+    candidate = Path(os.environ.get("OSS_CAD_SUITE") or suite_dir).expanduser() / "bin" / "verilator"
+    return str(candidate) if is_file(str(candidate)) else None
 
 
-def check_verilator(pin: dict, *, runner=run, which=shutil.which, is_file=os.path.isfile, read=None) -> dict:
-    """The pinned Verilator, with verilator_coverage beside it for coverage reports
-    and no compiler cache baked into its verilated.mk."""
-    result = {"tool": "verilator", "want": pin["version"]}
-    fix = f'build Verilator {pin["tag"]} into ~/verilator per {SIM_SPEC}, or {HOOK}'
-    executable = find_verilator(which)
+def check_verilator(pin: dict, suite_dir: str, *, runner=run, which=shutil.which, is_file=os.path.isfile,
+                    read=None) -> dict:
+    """The pinned Verilator (the OSS CAD Suite's), with verilator_coverage beside it for
+    coverage reports and no compiler cache baked into its verilated.mk."""
+    want = f'{pin["version"]} rev {pin["revision"]}'
+    result = {"tool": "verilator", "want": want}
+    fix = f"install the pinned OSS CAD Suite per {FORMAL_SPEC} (it carries Verilator), or {HOOK}"
+    executable = find_verilator(suite_dir, which, is_file)
     if not executable:
         return dict(result, status="FAIL", found="verilator not found", fix=fix)
     result["path"] = executable
     status, text = runner([executable, "--version"])
-    match = re.search(r"Verilator\s+(\S+)", text)
-    found = match.group(1) if match else "unknown"
-    if status != 0 or found != pin["version"]:
+    match = re.search(r"Verilator\s+(\S+)(?:\s+\S+)*?\s+rev\s+(\S+)", text)
+    found = f"{match.group(1)} rev {match.group(2)}" if match else (text.strip().splitlines() or ["unknown"])[0]
+    if status != 0 or found != want:
         return dict(result, status="FAIL", found=found, fix=fix)
     if not is_file(str(Path(executable).resolve().parent / "verilator_coverage")):
         return dict(result, status="FAIL", found=f"{found}; missing verilator_coverage", fix=fix)
@@ -105,8 +104,7 @@ def check_verilator(pin: dict, *, runner=run, which=shutil.which, is_file=os.pat
     makefile = Path(executable).resolve().parent.parent / "share" / "verilator" / "include" / "verilated.mk"
     cache = re.search(r"^OBJCACHE\s*\?=[ \t]*(\S*)", (read or read_stamp)(makefile) or "", re.M)
     if cache and cache.group(1):
-        return dict(result, status="FAIL", found=f"{found}; {makefile} needs {cache.group(1)}",
-                    fix=f"rebuild with ac_cv_prog_OBJCACHE= ./configure per {SIM_SPEC}, or {HOOK}")
+        return dict(result, status="FAIL", found=f"{found}; {makefile} needs {cache.group(1)}", fix=fix)
     return dict(result, status="PASS", found=found)
 
 
@@ -176,7 +174,8 @@ TOOLS = ("verilator", "bazel", "oss-cad-suite", "quartus")
 def check(config: dict, *, runner=run, which=shutil.which, tools=TOOLS) -> list[dict]:
     results = []
     if "verilator" in tools:
-        results.append(check_verilator(config["verilator"], runner=runner, which=which))
+        results.append(check_verilator(config["verilator"], config["oss_cad_suite"]["install_dir"],
+                                      runner=runner, which=which))
     if "bazel" in tools:
         results.append(check_bazel(config["bazelisk"], which=which))
     if "oss-cad-suite" in tools:
