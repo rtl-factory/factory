@@ -14,6 +14,10 @@ if __name__ == "__main__":
     # Why: the strict action PATH has no Verilator; tests that lint with it find Bazel's.
     tools = [os.path.dirname(os.path.abspath(p)) for p in os.environ.get("UNIT_PATH_PREPEND", "").split()]
     os.environ["PATH"] = os.pathsep.join(dict.fromkeys(tools + [os.environ.get("PATH", "")]))
+    # Why: the runners code a test calls use Bazel's Verilator too, not the pinned-links
+    # folder they build for a direct run outside Bazel.
+    for runner in ["SIM_PATH_PREPEND", "LINT_PATH_PREPEND"]:
+        os.environ.setdefault(runner, os.environ.get("UNIT_PATH_PREPEND", ""))
     # Why: an unsandboxed test inherits the host's TMPDIR; pointing it at the test's own
     # folder keeps every tempfile (and scratch.checkout) inside what Bazel cleans up.
     if os.environ.get("TEST_TMPDIR"):

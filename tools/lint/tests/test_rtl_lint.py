@@ -1,6 +1,7 @@
 """RTL lint: flags the RTL coding rules a script can check, honours inline
 Verilator waivers, and keeps both baselines shrink-only."""
 import json
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -205,3 +206,22 @@ def test_verilator_errors_fail_whatever_the_baseline(tmp_path, monkeypatch):
     (tmp_path / "n2x_top.sv").write_text("module n2x_top;\n    n2x_missing u_missing ();\nendmodule\n")
     assert rtl_lint.main(["verilator", "n2x_top", "n2x_top.sv", "--baseline", "b.json"]) == 1
 
+
+
+def test_direct_runs_put_the_pinned_verilator_before_any_other(tmp_path, monkeypatch):
+    other = tmp_path / "other"
+    other.mkdir()
+    (other / "verilator").write_text("#!/bin/sh\n")
+    monkeypatch.setattr(rtl_lint, "_PREPENDED", [])
+    monkeypatch.delenv("LINT_PATH_PREPEND", raising=False)
+    monkeypatch.setenv("PATH", f"{other}:/usr/bin")
+    rtl_lint.prepend_path(pinned=lambda: tmp_path / "pinned")
+    assert os.environ["PATH"].split(os.pathsep)[0] == str(tmp_path / "pinned")
+
+
+def test_bazel_prepend_wins_over_the_pinned_folder(tmp_path, monkeypatch):
+    monkeypatch.setattr(rtl_lint, "_PREPENDED", [])
+    monkeypatch.setenv("LINT_PATH_PREPEND", str(tmp_path / "bazel" / "bin" / "verilator"))
+    monkeypatch.setenv("PATH", "/usr/bin")
+    rtl_lint.prepend_path(pinned=lambda: pytest.fail("a Bazel run must not build the pinned folder"))
+    assert os.environ["PATH"].split(os.pathsep)[0] == str(tmp_path / "bazel" / "bin")

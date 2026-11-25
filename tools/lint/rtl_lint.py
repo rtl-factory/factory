@@ -306,6 +306,7 @@ def lint_tops(root: Path) -> dict[str, dict]:
 
 def run_verilator(top: str, sources: list[str], cwd: Path) -> tuple[list[str], list[str]]:
     """Verilator's warnings (one line each) and errors for one top."""
+    prepend_path()
     if not shutil.which("verilator"):
         raise SystemExit("verilator not found on PATH: install the version pinned in cfg/toolchain.json")
     run = subprocess.run(["verilator", *VERILATOR_ARGS, "--top-module", top, *sources], cwd=cwd,
@@ -318,11 +319,27 @@ def run_verilator(top: str, sources: list[str], cwd: Path) -> tuple[list[str], l
     return warnings, errors
 
 
-def prepend_path() -> None:
-    """Put the directories of the LINT_PATH_PREPEND files (Bazel's Verilator) first on PATH."""
+def pinned_verilator_dir() -> Path:
+    """The pinned Verilator's links folder (tools/toolchain/check.py), for runs outside Bazel."""
+    spec = importlib.util.spec_from_file_location("toolchain_check", ROOT / "tools" / "toolchain" / "check.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.pinned_verilator_dir()
+
+
+_PREPENDED: list[str] = []
+
+
+def prepend_path(pinned=pinned_verilator_dir) -> None:
+    """Put the directories of the LINT_PATH_PREPEND files (Bazel's Verilator) first on PATH;
+    outside Bazel, the pinned Verilator's folder, so --update-baseline and direct runs lint
+    with the Verilator the Bazel lint tests use, never another one on PATH. Once per process."""
+    if _PREPENDED:
+        return
     dirs = [str(Path(p).absolute().parent) for p in os.environ.get("LINT_PATH_PREPEND", "").split()]
-    if dirs:
-        os.environ["PATH"] = os.pathsep.join(dict.fromkeys(dirs + [os.environ.get("PATH", "")]))
+    dirs = dirs or [str(pinned())]
+    _PREPENDED.extend(dirs)
+    os.environ["PATH"] = os.pathsep.join(dict.fromkeys(dirs + [os.environ.get("PATH", "")]))
 
 
 def verilator_main(argv: list[str]) -> int:

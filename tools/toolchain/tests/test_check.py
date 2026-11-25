@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 import sys
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import check  # noqa: E402
 
@@ -103,7 +105,7 @@ def never(_name):
     return None
 
 
-def run_check(monkeypatch, *, version=PINNED, is_file=lambda _p: True, read=None):
+def run_check(monkeypatch, *, version=PINNED, is_file=lambda _p: True, read=lambda _p: "OBJCACHE ?= \n"):
     monkeypatch.delenv("VERILATOR", raising=False)
     monkeypatch.delenv("OSS_CAD_SUITE", raising=False)
     return check.check_verilator(VERILATOR, SUITE_DIR, runner=verilator_runner(version), which=never,
@@ -156,6 +158,51 @@ def test_verilator_pass_on_empty_objcache(monkeypatch):
 def test_verilator_fail_when_missing(monkeypatch):
     r = run_check(monkeypatch, is_file=lambda _p: False)
     assert r["status"] == "FAIL" and r["fix"]
+
+
+def test_verilator_fail_without_makefile(monkeypatch):
+    r = run_check(monkeypatch, read=lambda _p: None)
+    assert r["status"] == "FAIL" and "verilated.mk" in r["found"]
+
+
+def test_verilator_fail_when_lint_smoke_test_fails(monkeypatch):
+    def runner(command):
+        return (0, PINNED) if "--version" in command else (1, "error while loading shared libraries")
+    monkeypatch.delenv("VERILATOR", raising=False)
+    monkeypatch.delenv("OSS_CAD_SUITE", raising=False)
+    r = check.check_verilator(VERILATOR, SUITE_DIR, runner=runner, which=never, is_file=lambda _p: True,
+                              read=lambda _p: "OBJCACHE ?= \n")
+    assert r["status"] == "FAIL" and "smoke" in r["found"]
+
+
+def fake_suite(root):
+    """A stand-in suite whose verilator prints the pinned version and lints anything."""
+    (root / "bin").mkdir(parents=True)
+    (root / "share" / "verilator" / "include").mkdir(parents=True)
+    (root / "share" / "verilator" / "include" / "verilated.mk").write_text("OBJCACHE ?= \n")
+    for tool, body in [("verilator", f"echo '{PINNED.strip()}'"), ("verilator_coverage", "true"),
+                       ("verilator_bin", "true")]:
+        (root / "bin" / tool).write_text(f"#!/bin/sh\n{body}\n")
+        (root / "bin" / tool).chmod(0o755)
+    (root / "bin" / "python3").write_text("#!/bin/sh\n")
+
+
+def test_pinned_verilator_dir_links_only_verilator_tools(monkeypatch, tmp_path):
+    fake_suite(tmp_path / "suite")
+    monkeypatch.delenv("VERILATOR", raising=False)
+    monkeypatch.setenv("OSS_CAD_SUITE", str(tmp_path / "suite"))
+    folder = check.pinned_verilator_dir(links=tmp_path / "links")
+    assert folder == tmp_path / "links" / VERILATOR["revision"]
+    assert sorted(p.name for p in folder.iterdir()) == ["verilator", "verilator_bin", "verilator_coverage"]
+    assert (folder / "verilator").resolve() == (tmp_path / "suite" / "bin" / "verilator").resolve()
+    assert check.pinned_verilator_dir(links=tmp_path / "links") == folder
+
+
+def test_pinned_verilator_dir_refuses_a_missing_suite(monkeypatch, tmp_path):
+    monkeypatch.delenv("VERILATOR", raising=False)
+    monkeypatch.setenv("OSS_CAD_SUITE", str(tmp_path / "nowhere"))
+    with pytest.raises(SystemExit, match="pinned Verilator not ready"):
+        check.pinned_verilator_dir(links=tmp_path / "links")
 
 
 BAZELISK = json.loads((check.DEFAULT_CONFIG).read_text())["bazelisk"]

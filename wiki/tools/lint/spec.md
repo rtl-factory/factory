@@ -60,7 +60,7 @@ python3 tools/lint/wiki_refs.py <files>   # check only these files
 python3 tools/lint/rtl_lint.py                         # check every tracked design file against the baseline
 python3 tools/lint/rtl_lint.py <files>                 # check only these files against the baseline
 python3 tools/lint/rtl_lint.py --all [<files>]         # list every rule violation, ignoring the baseline
-python3 tools/lint/rtl_lint.py --update-baseline       # rewrite both sections of the baseline (the pinned Verilator on PATH)
+python3 tools/lint/rtl_lint.py --update-baseline       # rewrite both sections of the baseline (with the pinned Verilator)
 python3 tools/lint/rtl_lint.py verilator <top> <files> # lint one top, as its Bazel test does
 python3 tools/bazel/hdl_libraries.py lint-tops         # list the lint tops and their files
 ```

@@ -255,8 +255,22 @@ def coverage_summary(test_dir: Path, expect_code: bool) -> list[str]:
     return sim_coverage.summarize(test_dir, ROOT, expect_code) if test_dir.is_dir() else []
 
 
-def prepend_tool_paths() -> None:
-    """Put the directories of the SIM_PATH_PREPEND files (Bazel's Verilator) first on PATH."""
+def pinned_verilator_dir() -> Path:
+    """The pinned Verilator's links folder (tools/toolchain/check.py), for runs outside Bazel."""
+    import importlib.util
+    path = Path(__file__).resolve().parents[2] / "tools" / "toolchain" / "check.py"
+    spec = importlib.util.spec_from_file_location("toolchain_check", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.pinned_verilator_dir()
+
+
+def prepend_tool_paths(pinned=pinned_verilator_dir) -> None:
+    """Put the directories of the SIM_PATH_PREPEND files (Bazel's Verilator) first on PATH.
+    Outside Bazel it names the pinned Verilator's folder first, so a direct run uses the
+    Verilator Bazel uses, never another one on PATH; child runs inherit it."""
+    if not os.environ.get("SIM_PATH_PREPEND", "").split():
+        os.environ["SIM_PATH_PREPEND"] = str(pinned())
     dirs = []
     for entry in os.environ.get("SIM_PATH_PREPEND", "").split():
         path = Path(entry).absolute()
@@ -266,7 +280,6 @@ def prepend_tool_paths() -> None:
 
 
 def main(argv=None) -> int:
-    prepend_tool_paths()
     # Why: a Verilator configured where ccache was on PATH names it in verilated.mk
     # (OBJCACHE ?= ccache); an empty OBJCACHE keeps every model build off it.
     os.environ.setdefault("OBJCACHE", "")
@@ -307,6 +320,8 @@ def main(argv=None) -> int:
     child.add_argument("--spec", type=Path)
     child.add_argument("--model", type=Path)
     args = parser.parse_args(argv)
+    if args.command != "list":
+        prepend_tool_paths()
     # Why: a Bazel model build or test reads only its spec; the registries are not its inputs.
     targets = {} if getattr(args, "spec", None) else load_targets()
     workdir = args.workdir if args.workdir.is_absolute() else ROOT / args.workdir
